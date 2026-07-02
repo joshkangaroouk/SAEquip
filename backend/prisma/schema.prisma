@@ -1,0 +1,54 @@
+// Prisma schema for saequip-product-hub backend.
+//
+// This DB stores only what Duda cannot: download gating and captured leads,
+// plus small bits of local mapping/metadata. Product content lives in Duda.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Maps a Duda custom field id to a human label + how we render it.
+model CustomFieldMap {
+  id          String   @id @default(cuid())
+  dudaFieldId String   @unique
+  label       String
+  kind        String // "html" | "image" | "text"
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+/// A downloadable asset for a product, optionally gated behind a lead form.
+model Download {
+  id         String   @id @default(cuid())
+  productSku String
+  title      String
+  fileUrl    String
+  gated      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  leads      Lead[]
+}
+
+/// A lead captured when someone requests a gated download.
+model Lead {
+  id         String   @id @default(cuid())
+  downloadId String
+  name       String
+  email      String
+  company    String?
+  createdAt  DateTime @default(now())
+  download   Download @relation(fields: [downloadId], references: [id])
+}
+
+/// A "compatible with" relationship between two product SKUs.
+model CompatibleLink {
+  id         String @id @default(cuid())
+  productSku String
+  relatedSku String
+  sortOrder  Int    @default(0)
+}
