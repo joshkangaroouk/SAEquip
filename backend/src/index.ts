@@ -4,6 +4,7 @@ import { env } from "./env.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { dudaRouter } from "./routes/duda.js";
 import { mediaRouter } from "./routes/media.js";
+import { logosRouter } from "./routes/logos.js";
 import { DudaApiError } from "./services/duda.js";
 import { StorageError, ensureBuckets } from "./services/storage.js";
 
@@ -26,6 +27,7 @@ app.get("/api/me", requireAuth, (req, res) => {
 const api = Router();
 api.use(dudaRouter);
 api.use(mediaRouter);
+api.use(logosRouter);
 app.use("/api", requireAuth, api);
 
 // Error handler: surface upstream failures with useful status codes.

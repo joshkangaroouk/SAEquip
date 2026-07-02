@@ -94,12 +94,24 @@ export interface HubMediaAsset {
 
 export interface HubProductLogo {
   id: string;
-  hubProductId: string;
-  mediaAssetId: string;
   kind: "SA_LOGO" | "CERT_LOGO";
+  label: string | null;
   alt: string | null;
   sortOrder: number;
+  mediaAssetId: string;
+  createdAt: string;
   mediaAsset: HubMediaAsset;
+}
+
+export interface LogoCatalogEntry {
+  id: string;
+  kind: "SA_LOGO" | "CERT_LOGO";
+  label: string | null;
+  alt: string | null;
+  sortOrder: number;
+  mediaAssetId: string;
+  url: string;
+  usage: number;
 }
 
 export interface HubSpecRow {

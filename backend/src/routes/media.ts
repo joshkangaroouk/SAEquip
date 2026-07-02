@@ -40,24 +40,30 @@ function kindForMime(mime: string): "image" | "file" | null {
   return null;
 }
 
+// A MediaAsset is "in use" if referenced by a catalog Logo OR a Download.
 async function usageCount(mediaAssetId: string): Promise<number> {
   const [logos, downloads] = await Promise.all([
-    prisma.productLogo.count({ where: { mediaAssetId } }),
+    prisma.logo.count({ where: { mediaAssetId } }),
     prisma.download.count({ where: { mediaAssetId } }),
   ]);
   return logos + downloads;
 }
 
-async function referencingProducts(mediaAssetId: string) {
+async function mediaReferences(mediaAssetId: string) {
   const [logos, downloads] = await Promise.all([
-    prisma.productLogo.findMany({ where: { mediaAssetId }, include: { hubProduct: true } }),
+    prisma.logo.findMany({ where: { mediaAssetId }, select: { id: true, kind: true, label: true } }),
     prisma.download.findMany({ where: { mediaAssetId }, include: { hubProduct: true } }),
   ]);
-  const byId = new Map<string, { hubProductId: string; sku: string | null }>();
-  for (const r of [...logos, ...downloads]) {
-    byId.set(r.hubProductId, { hubProductId: r.hubProductId, sku: r.hubProduct.sku });
-  }
-  return [...byId.values()];
+  return [
+    ...logos.map((l) => ({ type: "logo" as const, id: l.id, kind: l.kind, label: l.label })),
+    ...downloads.map((d) => ({
+      type: "download" as const,
+      id: d.id,
+      title: d.title,
+      hubProductId: d.hubProductId,
+      sku: d.hubProduct.sku,
+    })),
+  ];
 }
 
 /**
@@ -136,7 +142,7 @@ mediaRouter.get("/media/:id", async (req, res, next) => {
     }
     const [url, references] = await Promise.all([
       resolveUrl(asset.kind, asset.storagePath),
-      referencingProducts(asset.id),
+      mediaReferences(asset.id),
     ]);
     res.json({ ...asset, url, usage: references.length, references });
   } catch (err) {
@@ -157,7 +163,7 @@ mediaRouter.delete("/media/:id", async (req, res, next) => {
       return;
     }
 
-    const references = await referencingProducts(asset.id);
+    const references = await mediaReferences(asset.id);
     if (references.length > 0) {
       res.status(409).json({ error: "in_use", count: references.length, references });
       return;

@@ -18,6 +18,9 @@ export function AppHeader() {
       </Link>
       <div className="flex items-center gap-4 text-sm">
         <span className="hidden text-gray-500 sm:inline">{user?.email}</span>
+        <Link to="/logos" className="text-gray-500 hover:text-gray-900">
+          Logos
+        </Link>
         <Link to="/media" className="text-gray-500 hover:text-gray-900">
           Media
         </Link>

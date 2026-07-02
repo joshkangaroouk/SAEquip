@@ -51,19 +51,32 @@ model MediaAsset {
   uploadedBy  String?
   createdAt   DateTime @default(now())
 
-  logos     ProductLogo[]
+  logos     Logo[]
   downloads Download[]
 }
 
+/// Global logo catalog entry (shared across all products).
+model Logo {
+  id           String        @id @default(cuid())
+  kind         LogoKind
+  mediaAssetId String
+  label        String?
+  alt          String?
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  mediaAsset   MediaAsset    @relation(fields: [mediaAssetId], references: [id])
+  productLinks ProductLogo[]
+}
+
+/// Join: a row means this catalog logo is ACTIVE for this product.
 model ProductLogo {
   id           String     @id @default(cuid())
   hubProductId String
-  mediaAssetId String
-  kind         LogoKind
-  alt          String?
-  sortOrder    Int        @default(0)
+  logoId       String
   hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
-  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
+  logo         Logo       @relation(fields: [logoId], references: [id], onDelete: Cascade)
+
+  @@unique([hubProductId, logoId])
 }
 
 model SpecRow {

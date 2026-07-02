@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Media from "./pages/Media";
+import Logos from "./pages/Logos";
 import Status from "./pages/Status";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -31,6 +32,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Media />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/logos"
+        element={
+          <ProtectedRoute>
+            <Logos />
           </ProtectedRoute>
         }
       />

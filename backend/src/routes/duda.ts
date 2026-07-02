@@ -173,12 +173,17 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
     const full = await prisma.hubProduct.findUniqueOrThrow({
       where: { id: hub.id },
       include: {
-        logos: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
+        logos: { include: { logo: { include: { mediaAsset: true } } } },
         specRows: { orderBy: { sortOrder: "asc" } },
         textItems: { orderBy: { sortOrder: "asc" } },
         downloads: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
       },
     });
+
+    // Active logos come via the ProductLogo join → catalog Logo (Step 9 populates these).
+    const activeLogos = full.logos
+      .map((link) => link.logo)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
 
     res.json({
       hubProductId: full.id,
@@ -186,8 +191,8 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       sku: full.sku,
       name: full.name,
       logos: {
-        sa: full.logos.filter((l) => l.kind === LogoKind.SA_LOGO),
-        cert: full.logos.filter((l) => l.kind === LogoKind.CERT_LOGO),
+        sa: activeLogos.filter((l) => l.kind === LogoKind.SA_LOGO),
+        cert: activeLogos.filter((l) => l.kind === LogoKind.CERT_LOGO),
       },
       specs: full.specRows,
       benefits: full.textItems.filter((t) => t.kind === TextItemKind.BENEFIT),
