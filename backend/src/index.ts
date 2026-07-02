@@ -5,6 +5,7 @@ import { requireAuth } from "./middleware/requireAuth.js";
 import { dudaRouter } from "./routes/duda.js";
 import { mediaRouter } from "./routes/media.js";
 import { logosRouter } from "./routes/logos.js";
+import { downloadsRouter } from "./routes/downloads.js";
 import { DudaApiError } from "./services/duda.js";
 import { StorageError, ensureBuckets } from "./services/storage.js";
 
@@ -28,6 +29,7 @@ const api = Router();
 api.use(dudaRouter);
 api.use(mediaRouter);
 api.use(logosRouter);
+api.use(downloadsRouter);
 app.use("/api", requireAuth, api);
 
 // Error handler: surface upstream failures with useful status codes.

@@ -1,35 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import type { HubCustomPayload } from "../lib/types";
 import { SpecTableEditor } from "./SpecTableEditor";
 import { TextItemListEditor } from "./TextItemListEditor";
 import { LogoActivationPanel } from "./LogoActivationPanel";
-
-function ReadOnlySection({
-  title,
-  count,
-  children,
-}: {
-  title: string;
-  count: number;
-  children?: ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">{title}</h3>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-          {count}
-        </span>
-      </div>
-      {count === 0 ? (
-        <p className="text-sm text-gray-400">No items yet</p>
-      ) : (
-        <div className="space-y-1 text-sm text-gray-700">{children}</div>
-      )}
-    </section>
-  );
-}
+import { DownloadsEditor } from "./DownloadsEditor";
 
 export function HubContent({ productId }: { productId: string }) {
   const [data, setData] = useState<HubCustomPayload | null>(null);
@@ -127,17 +102,11 @@ export function HubContent({ productId }: { productId: string }) {
             initial={data.applications}
             onSaved={handleSaved}
           />
-
-          {/* Downloads — read-only for now (Step 10) */}
-          <ReadOnlySection title="Downloads" count={data.downloads.length}>
-            {data.downloads.map((d) => (
-              <div key={d.id}>
-                {d.title} {d.gated && <span className="text-xs text-gray-400">(gated)</span>}
-              </div>
-            ))}
-          </ReadOnlySection>
         </div>
       )}
+
+      {/* Downloads editor — self-loading, independent of /custom */}
+      <DownloadsEditor productId={productId} onToast={pushToast} />
     </div>
   );
 }

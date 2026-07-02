@@ -198,6 +198,24 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       })),
     );
 
+    const downloads = await Promise.all(
+      full.downloads.map(async (d) => ({
+        id: d.id,
+        title: d.title,
+        gated: d.gated,
+        sortOrder: d.sortOrder,
+        mediaAssetId: d.mediaAssetId,
+        file: {
+          filename: d.mediaAsset.filename,
+          mimeType: d.mediaAsset.mimeType,
+          sizeBytes: d.mediaAsset.sizeBytes,
+          // Withhold the URL for gated downloads — the public widget fetches the
+          // file only after lead capture (Step 11). Non-gated get a signed URL.
+          url: d.gated ? null : await resolveUrl(d.mediaAsset.kind, d.mediaAsset.storagePath),
+        },
+      })),
+    );
+
     res.json({
       hubProductId: full.id,
       dudaProductId: full.dudaProductId,
@@ -210,7 +228,7 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       specs: full.specRows,
       benefits: full.textItems.filter((t) => t.kind === TextItemKind.BENEFIT),
       applications: full.textItems.filter((t) => t.kind === TextItemKind.APPLICATION),
-      downloads: full.downloads,
+      downloads,
     });
   } catch (err) {
     next(err);

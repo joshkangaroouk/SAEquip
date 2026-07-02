@@ -141,14 +141,22 @@ export interface HubTextItem {
 
 export interface HubDownload {
   id: string;
-  hubProductId: string;
-  mediaAssetId: string;
   title: string;
   gated: boolean;
   sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-  mediaAsset: HubMediaAsset;
+  mediaAssetId: string;
+  file: { filename: string; mimeType: string; sizeBytes: number; url: string | null };
+}
+
+/** A download in the admin editor (always has a signed preview URL + leadCount). */
+export interface DownloadItem {
+  id: string;
+  title: string;
+  gated: boolean;
+  sortOrder: number;
+  mediaAssetId: string;
+  file: { filename: string; mimeType: string; sizeBytes: number; url: string };
+  leadCount: number;
 }
 
 export interface HubCustomPayload {
