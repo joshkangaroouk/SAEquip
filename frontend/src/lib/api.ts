@@ -18,3 +18,24 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
 
   return fetch(`${API_BASE}${path}`, { ...init, headers });
 }
+
+/**
+ * Upload helper for multipart/form-data. Attaches the Bearer token but does NOT
+ * set Content-Type — the browser must set the multipart boundary itself.
+ */
+export async function apiUpload(
+  path: string,
+  formData: FormData,
+  method: string = "POST",
+): Promise<Response> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const headers = new Headers();
+  if (session?.access_token) {
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+
+  return fetch(`${API_BASE}${path}`, { method, headers, body: formData });
+}

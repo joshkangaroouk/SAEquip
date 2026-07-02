@@ -92,7 +92,6 @@ export default function Products() {
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Price</th>
                   <th className="px-4 py-3 font-medium">Variations</th>
-                  <th className="px-4 py-3 font-medium">Custom fields</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -125,7 +124,6 @@ export default function Products() {
                     </td>
                     <td className="px-4 py-3 text-gray-700">{p.price ?? "—"}</td>
                     <td className="px-4 py-3 text-gray-600">{p.variation_count} variations</td>
-                    <td className="px-4 py-3 text-gray-600">{p.custom_field_count} custom fields</td>
                   </tr>
                 ))}
               </tbody>

@@ -15,7 +15,20 @@ export interface ProductSummary {
   price: string | null;
   thumbnail: string | null;
   variation_count: number;
-  custom_field_count: number;
+}
+
+export interface MediaAsset {
+  id: string;
+  filename: string;
+  storagePath: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: string; // "image" | "file"
+  alt: string | null;
+  uploadedBy: string | null;
+  createdAt: string;
+  url: string; // public (image) or short-lived signed (file)
+  usage: number;
 }
 
 export interface DudaImage {

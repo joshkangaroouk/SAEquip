@@ -100,7 +100,6 @@ dudaRouter.get("/products", async (_req, res, next) => {
       price: formatFirstPrice(p.prices),
       thumbnail: p.images?.[0]?.url ?? null,
       variation_count: p.variations?.length ?? 0,
-      custom_field_count: p.custom_fields?.length ?? 0,
     }));
 
     res.json(summaries);
@@ -117,7 +116,10 @@ dudaRouter.get("/products", async (_req, res, next) => {
 dudaRouter.get("/products/:id", async (req, res, next) => {
   try {
     const product = await duda.getProduct(req.params.id);
-    res.json(product);
+    // Drop Duda's raw custom_fields — custom content now lives in the hub DB.
+    const { custom_fields: _omit, ...rest } = product;
+    void _omit;
+    res.json(rest);
   } catch (err) {
     next(err);
   }

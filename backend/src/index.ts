@@ -1,9 +1,11 @@
-import express, { type ErrorRequestHandler } from "express";
+import express, { Router, type ErrorRequestHandler } from "express";
 import cors from "cors";
 import { env } from "./env.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { dudaRouter } from "./routes/duda.js";
+import { mediaRouter } from "./routes/media.js";
 import { DudaApiError } from "./services/duda.js";
+import { StorageError, ensureBuckets } from "./services/storage.js";
 
 const app = express();
 
@@ -20,10 +22,13 @@ app.get("/api/me", requireAuth, (req, res) => {
   res.json(req.user);
 });
 
-// --- Protected: Duda product read-layer (all behind requireAuth) ---
-app.use("/api", requireAuth, dudaRouter);
+// --- Protected API (Duda read-layer + Media Centre), all behind requireAuth ---
+const api = Router();
+api.use(dudaRouter);
+api.use(mediaRouter);
+app.use("/api", requireAuth, api);
 
-// Error handler: surface upstream Duda failures as 502 with the real status.
+// Error handler: surface upstream failures with useful status codes.
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof DudaApiError) {
     res.status(502).json({
@@ -33,6 +38,10 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     });
     return;
   }
+  if (err instanceof StorageError) {
+    res.status(502).json({ error: "storage_error", detail: err.message });
+    return;
+  }
   console.error(err);
   res.status(500).json({ error: "internal_error" });
 };
@@ -40,4 +49,5 @@ app.use(errorHandler);
 
 app.listen(env.PORT, () => {
   console.log(`[backend] listening on http://localhost:${env.PORT}`);
+  void ensureBuckets();
 });
