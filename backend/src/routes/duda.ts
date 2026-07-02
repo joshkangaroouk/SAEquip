@@ -1,8 +1,50 @@
 import { Router } from "express";
-import { duda, type DudaPrice } from "../services/duda.js";
+import { z } from "zod";
+import { duda, type DudaPrice, type DudaProductUpdate } from "../services/duda.js";
 import { decorateCustomFields } from "../services/customFields.js";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
+
+/** A non-negative numeric string, e.g. "400.0". */
+const priceString = z
+  .string()
+  .regex(/^\d+(\.\d+)?$/, "must be a numeric string")
+  .refine((s) => parseFloat(s) >= 0, "must be >= 0");
+
+const priceItemSchema = z
+  .object({
+    price: priceString,
+    compare_at_price: priceString.nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (p) => p.compare_at_price == null || parseFloat(p.compare_at_price) > parseFloat(p.price),
+    { message: "compare_at_price must be greater than price", path: ["compare_at_price"] },
+  );
+
+/** Mirrors the allowed editable keys. `.strict()` rejects any unknown key. */
+const updateProductSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    description: z.string().optional(),
+    sku: z.string().optional(),
+    type: z.enum(["PHYSICAL", "DIGITAL", "SERVICE", "DONATION"]).optional(),
+    status: z.enum(["ACTIVE", "HIDDEN"]).optional(),
+    stock_status: z.enum(["IN_STOCK", "OUT_OF_STOCK"]).optional(),
+    requires_shipping: z.boolean().optional(),
+    managed_inventory: z.boolean().optional(),
+    quantity: z.number().int().min(0).optional(),
+    prices: z.array(priceItemSchema).optional(),
+    seo: z
+      .object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        product_url: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 
 export const dudaRouter = Router();
 
@@ -77,6 +119,30 @@ dudaRouter.get("/products/:id", async (req, res, next) => {
     const custom_fields = decorateCustomFields(product.custom_fields ?? [], maps);
 
     res.json({ ...product, custom_fields });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/products/:id
+ * Partial update of native fields ONLY. Validates against the allowed keys
+ * (unknown keys -> 400), then returns the refreshed product in the same shape
+ * as GET /api/products/:id. Never writes images/variations/custom_fields.
+ */
+dudaRouter.patch("/products/:id", async (req, res, next) => {
+  const parsed = updateProductSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const updated = await duda.updateProduct(req.params.id, parsed.data as DudaProductUpdate);
+    const maps = await prisma.customFieldMap.findMany();
+    const custom_fields = decorateCustomFields(updated.custom_fields ?? [], maps);
+
+    res.json({ ...updated, custom_fields });
   } catch (err) {
     next(err);
   }

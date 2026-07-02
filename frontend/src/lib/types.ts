@@ -71,5 +71,6 @@ export interface ProductDetail {
   custom_fields: DecoratedCustomField[];
   managed_inventory: boolean;
   requires_shipping: boolean;
+  quantity?: number;
   categories: unknown[];
 }

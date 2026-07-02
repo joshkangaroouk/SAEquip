@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "duda:test": "tsx src/scripts/dudaTest.ts"
+    "duda:test": "tsx src/scripts/dudaTest.ts",
+    "duda:probe-customfields": "tsx src/scripts/dudaProbeCustomFields.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
