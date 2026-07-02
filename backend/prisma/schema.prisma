@@ -8,8 +8,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (pgbouncer), used at runtime
+  directUrl = env("DIRECT_URL") // direct connection, used for migrations
 }
 
 /// Maps a Duda custom field id to a human label + how we render it.
