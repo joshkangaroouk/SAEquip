@@ -4,11 +4,8 @@ import { z } from "zod";
 /**
  * Environment schema.
  *
- * DB + Supabase values are REQUIRED now — the app cannot serve auth without
- * them, so we throw with a clear message if any are missing.
- *
- * Duda credentials remain optional at this stage — we only warn. They aren't
- * used until the Duda integration step.
+ * DB + Supabase values are REQUIRED. Duda API credentials are now REQUIRED too
+ * (the read-layer needs them). We throw with a clear message if any are missing.
  */
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
@@ -30,9 +27,9 @@ const envSchema = z.object({
     .string()
     .min(1, 'ALLOWED_EMAIL_DOMAINS is required (e.g. "kangaroouk.com,saequip.com")'),
 
-  // --- Duda API (not required yet; wired up in a later step) ---
-  DUDA_API_USER: z.string().default(""),
-  DUDA_API_PASS: z.string().default(""),
+  // --- Duda API (now required for the product read-layer) ---
+  DUDA_API_USER: z.string().min(1, "DUDA_API_USER is required (Duda API credentials)"),
+  DUDA_API_PASS: z.string().min(1, "DUDA_API_PASS is required (Duda API credentials)"),
   DUDA_API_BASE_URL: z.string().url().default("https://api.duda.co/api"),
   DUDA_SITE_NAME: z.string().default("099434f3"),
 });
@@ -59,10 +56,3 @@ const allowedEmailDomains = raw.ALLOWED_EMAIL_DOMAINS.split(",")
   .filter(Boolean);
 
 export const env = { ...raw, allowedEmailDomains };
-
-if (!env.DUDA_API_USER || !env.DUDA_API_PASS) {
-  console.warn(
-    "[env] Duda API credentials are not set (DUDA_API_USER / DUDA_API_PASS). " +
-      "This is fine for now — Duda integration is added in a later step.",
-  );
-}
