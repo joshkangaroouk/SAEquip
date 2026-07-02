@@ -3,6 +3,7 @@ import { apiFetch } from "../lib/api";
 import type { HubCustomPayload } from "../lib/types";
 import { SpecTableEditor } from "./SpecTableEditor";
 import { TextItemListEditor } from "./TextItemListEditor";
+import { LogoActivationPanel } from "./LogoActivationPanel";
 
 function ReadOnlySection({
   title,
@@ -34,7 +35,7 @@ export function HubContent({ productId }: { productId: string }) {
   const [data, setData] = useState<HubCustomPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
 
   async function fetchCustom(): Promise<HubCustomPayload> {
     const r = await apiFetch(`/api/products/${productId}/custom`);
@@ -67,10 +68,11 @@ export function HubContent({ productId }: { productId: string }) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // After a section saves: refresh /custom (keeps read-only sections fresh) and toast.
-  // Editors are seeded once on mount, so this never clobbers other editors' unsaved edits.
+  function pushToast(msg: string, isError?: boolean) {
+    setToast({ msg, error: isError });
+  }
   function handleSaved(msg: string) {
-    setToast(msg);
+    pushToast(msg);
     fetchCustom()
       .then(setData)
       .catch(() => {});
@@ -86,10 +88,20 @@ export function HubContent({ productId }: { productId: string }) {
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
-          {toast}
+        <div
+          className={`fixed bottom-6 right-6 z-50 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-lg ${
+            toast.error ? "bg-red-600" : "bg-green-600"
+          }`}
+        >
+          {toast.msg}
         </div>
       )}
+
+      {/* Per-product logo activation — self-loading, independent of /custom */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <LogoActivationPanel productId={productId} kind="SA_LOGO" title="SA Logos" onToast={pushToast} />
+        <LogoActivationPanel productId={productId} kind="CERT_LOGO" title="Cert Logos" onToast={pushToast} />
+      </div>
 
       {loading && <p className="text-sm text-gray-500">Loading hub content…</p>}
       {error && (
@@ -100,21 +112,6 @@ export function HubContent({ productId }: { productId: string }) {
 
       {!loading && !error && data && (
         <div className="space-y-4">
-          {/* Logos — read-only for now (Step 8) */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <ReadOnlySection title="SA Logos" count={data.logos.sa.length}>
-              {data.logos.sa.map((l) => (
-                <div key={l.id}>{l.alt || l.mediaAsset.filename}</div>
-              ))}
-            </ReadOnlySection>
-            <ReadOnlySection title="Cert Logos" count={data.logos.cert.length}>
-              {data.logos.cert.map((l) => (
-                <div key={l.id}>{l.alt || l.mediaAsset.filename}</div>
-              ))}
-            </ReadOnlySection>
-          </div>
-
-          {/* Editable content */}
           <SpecTableEditor productId={productId} initial={data.specs} onSaved={handleSaved} />
           <TextItemListEditor
             title="Key Benefits"
@@ -131,7 +128,7 @@ export function HubContent({ productId }: { productId: string }) {
             onSaved={handleSaved}
           />
 
-          {/* Downloads — read-only for now (Step 8) */}
+          {/* Downloads — read-only for now (Step 10) */}
           <ReadOnlySection title="Downloads" count={data.downloads.length}>
             {data.downloads.map((d) => (
               <div key={d.id}>

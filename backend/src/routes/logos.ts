@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { LogoKind, type Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { ensureHubProduct } from "../services/hubProduct.js";
 import { resolveUrl } from "../services/storage.js";
 
 export const logosRouter = Router();
@@ -163,6 +164,90 @@ logosRouter.put("/logos/reorder", async (req, res, next) => {
       include: logoInclude,
     });
     res.json(await Promise.all(reordered.map(shapeLogo)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Per-product logo activation (populates the ProductLogo join) ---
+
+/**
+ * GET /api/products/:id/logos?kind=SA_LOGO|CERT_LOGO
+ * Full catalog for the kind, each entry annotated with `active` for this product.
+ * If kind is omitted, returns { sa, cert }.
+ */
+logosRouter.get("/products/:id/logos", async (req, res, next) => {
+  const rawKind = req.query.kind;
+  if (rawKind !== undefined && !parseKind(rawKind)) {
+    res.status(400).json({ error: "invalid_kind", detail: "kind must be SA_LOGO or CERT_LOGO" });
+    return;
+  }
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+    const links = await prisma.productLogo.findMany({
+      where: { hubProductId: hub.id },
+      select: { logoId: true },
+    });
+    const activeIds = new Set(links.map((l) => l.logoId));
+
+    const catalogFor = async (kind: LogoKind) => {
+      const logos = await prisma.logo.findMany({
+        where: { kind },
+        orderBy: { sortOrder: "asc" },
+        include: { mediaAsset: true },
+      });
+      return Promise.all(
+        logos.map(async (l) => ({
+          id: l.id,
+          label: l.label,
+          alt: l.alt,
+          sortOrder: l.sortOrder,
+          url: await resolveUrl(l.mediaAsset.kind, l.mediaAsset.storagePath),
+          active: activeIds.has(l.id),
+        })),
+      );
+    };
+
+    const kind = parseKind(rawKind);
+    if (kind) {
+      res.json(await catalogFor(kind));
+    } else {
+      const [sa, cert] = await Promise.all([catalogFor("SA_LOGO"), catalogFor("CERT_LOGO")]);
+      res.json({ sa, cert });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** PUT /api/products/:id/logos/:logoId — activate (idempotent). 404 if logo missing. */
+logosRouter.put("/products/:id/logos/:logoId", async (req, res, next) => {
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+    const logo = await prisma.logo.findUnique({ where: { id: req.params.logoId } });
+    if (!logo) {
+      res.status(404).json({ error: "logo_not_found" });
+      return;
+    }
+    await prisma.productLogo.upsert({
+      where: { hubProductId_logoId: { hubProductId: hub.id, logoId: logo.id } },
+      create: { hubProductId: hub.id, logoId: logo.id },
+      update: {},
+    });
+    res.json({ logoId: logo.id, active: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** DELETE /api/products/:id/logos/:logoId — deactivate (idempotent). Only removes the join. */
+logosRouter.delete("/products/:id/logos/:logoId", async (req, res, next) => {
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+    await prisma.productLogo.deleteMany({
+      where: { hubProductId: hub.id, logoId: req.params.logoId },
+    });
+    res.json({ logoId: req.params.logoId, active: false });
   } catch (err) {
     next(err);
   }

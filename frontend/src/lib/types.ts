@@ -99,8 +99,17 @@ export interface HubProductLogo {
   alt: string | null;
   sortOrder: number;
   mediaAssetId: string;
-  createdAt: string;
-  mediaAsset: HubMediaAsset;
+  url: string;
+}
+
+/** A catalog logo annotated with its active state for a specific product. */
+export interface ProductLogoEntry {
+  id: string;
+  label: string | null;
+  alt: string | null;
+  url: string;
+  sortOrder: number;
+  active: boolean;
 }
 
 export interface LogoCatalogEntry {

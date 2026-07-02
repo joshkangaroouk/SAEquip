@@ -3,6 +3,7 @@ import { z } from "zod";
 import { LogoKind, TextItemKind } from "@prisma/client";
 import { duda, type DudaPrice, type DudaProductUpdate } from "../services/duda.js";
 import { ensureHubProduct } from "../services/hubProduct.js";
+import { resolveUrl } from "../services/storage.js";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 
@@ -180,10 +181,22 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       },
     });
 
-    // Active logos come via the ProductLogo join → catalog Logo (Step 9 populates these).
+    // Active logos come via the ProductLogo join → catalog Logo, in catalog order,
+    // each with a resolved (public) image URL.
     const activeLogos = full.logos
       .map((link) => link.logo)
       .sort((a, b) => a.sortOrder - b.sortOrder);
+    const shapedLogos = await Promise.all(
+      activeLogos.map(async (l) => ({
+        id: l.id,
+        kind: l.kind,
+        label: l.label,
+        alt: l.alt,
+        sortOrder: l.sortOrder,
+        mediaAssetId: l.mediaAssetId,
+        url: await resolveUrl(l.mediaAsset.kind, l.mediaAsset.storagePath),
+      })),
+    );
 
     res.json({
       hubProductId: full.id,
@@ -191,8 +204,8 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       sku: full.sku,
       name: full.name,
       logos: {
-        sa: activeLogos.filter((l) => l.kind === LogoKind.SA_LOGO),
-        cert: activeLogos.filter((l) => l.kind === LogoKind.CERT_LOGO),
+        sa: shapedLogos.filter((l) => l.kind === LogoKind.SA_LOGO),
+        cert: shapedLogos.filter((l) => l.kind === LogoKind.CERT_LOGO),
       },
       specs: full.specRows,
       benefits: full.textItems.filter((t) => t.kind === TextItemKind.BENEFIT),
