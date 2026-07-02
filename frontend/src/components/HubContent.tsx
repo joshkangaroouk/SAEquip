@@ -1,8 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "../lib/api";
 import type { HubCustomPayload } from "../lib/types";
+import { SpecTableEditor } from "./SpecTableEditor";
+import { TextItemListEditor } from "./TextItemListEditor";
 
-function ContentSection({
+function ReadOnlySection({
   title,
   count,
   children,
@@ -32,15 +34,20 @@ export function HubContent({ productId }: { productId: string }) {
   const [data, setData] = useState<HubCustomPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  async function fetchCustom(): Promise<HubCustomPayload> {
+    const r = await apiFetch(`/api/products/${productId}/custom`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  }
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-
-    apiFetch(`/api/products/${productId}/custom`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d: HubCustomPayload) => {
+    fetchCustom()
+      .then((d) => {
         if (!cancelled) setData(d);
       })
       .catch((e) => {
@@ -49,11 +56,25 @@ export function HubContent({ productId }: { productId: string }) {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-
     return () => {
       cancelled = true;
     };
   }, [productId]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // After a section saves: refresh /custom (keeps read-only sections fresh) and toast.
+  // Editors are seeded once on mount, so this never clobbers other editors' unsaved edits.
+  function handleSaved(msg: string) {
+    setToast(msg);
+    fetchCustom()
+      .then(setData)
+      .catch(() => {});
+  }
 
   return (
     <div className="space-y-4">
@@ -64,6 +85,12 @@ export function HubContent({ productId }: { productId: string }) {
         </span>
       </div>
 
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          {toast}
+        </div>
+      )}
+
       {loading && <p className="text-sm text-gray-500">Loading hub content…</p>}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -72,46 +99,46 @@ export function HubContent({ productId }: { productId: string }) {
       )}
 
       {!loading && !error && data && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <ContentSection title="SA Logos" count={data.logos.sa.length}>
-            {data.logos.sa.map((l) => (
-              <div key={l.id}>{l.alt || l.mediaAsset.filename}</div>
-            ))}
-          </ContentSection>
+        <div className="space-y-4">
+          {/* Logos — read-only for now (Step 8) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <ReadOnlySection title="SA Logos" count={data.logos.sa.length}>
+              {data.logos.sa.map((l) => (
+                <div key={l.id}>{l.alt || l.mediaAsset.filename}</div>
+              ))}
+            </ReadOnlySection>
+            <ReadOnlySection title="Cert Logos" count={data.logos.cert.length}>
+              {data.logos.cert.map((l) => (
+                <div key={l.id}>{l.alt || l.mediaAsset.filename}</div>
+              ))}
+            </ReadOnlySection>
+          </div>
 
-          <ContentSection title="Cert Logos" count={data.logos.cert.length}>
-            {data.logos.cert.map((l) => (
-              <div key={l.id}>{l.alt || l.mediaAsset.filename}</div>
-            ))}
-          </ContentSection>
+          {/* Editable content */}
+          <SpecTableEditor productId={productId} initial={data.specs} onSaved={handleSaved} />
+          <TextItemListEditor
+            title="Key Benefits"
+            productId={productId}
+            endpoint="benefits"
+            initial={data.benefits}
+            onSaved={handleSaved}
+          />
+          <TextItemListEditor
+            title="Applications"
+            productId={productId}
+            endpoint="applications"
+            initial={data.applications}
+            onSaved={handleSaved}
+          />
 
-          <ContentSection title="Technical Specs" count={data.specs.length}>
-            {data.specs.map((s) => (
-              <div key={s.id}>
-                <span className="font-medium">{s.label}:</span> {s.value}
-              </div>
-            ))}
-          </ContentSection>
-
-          <ContentSection title="Key Benefits" count={data.benefits.length}>
-            {data.benefits.map((b) => (
-              <div key={b.id}>{b.text}</div>
-            ))}
-          </ContentSection>
-
-          <ContentSection title="Applications" count={data.applications.length}>
-            {data.applications.map((a) => (
-              <div key={a.id}>{a.text}</div>
-            ))}
-          </ContentSection>
-
-          <ContentSection title="Downloads" count={data.downloads.length}>
+          {/* Downloads — read-only for now (Step 8) */}
+          <ReadOnlySection title="Downloads" count={data.downloads.length}>
             {data.downloads.map((d) => (
               <div key={d.id}>
                 {d.title} {d.gated && <span className="text-xs text-gray-400">(gated)</span>}
               </div>
             ))}
-          </ContentSection>
+          </ReadOnlySection>
         </div>
       )}
     </div>

@@ -47,6 +47,21 @@ const updateProductSchema = z
   })
   .strict();
 
+// --- Hub content editors (replace-whole-set) ---
+
+const specRowSchema = z
+  .object({
+    label: z.string().trim().min(1, "label must not be blank").max(200, "label max 200 chars"),
+    value: z.string().trim().min(1, "value must not be blank").max(500, "value max 500 chars"),
+  })
+  .strict();
+const specsBody = z.object({ rows: z.array(specRowSchema).max(100, "max 100 rows") }).strict();
+
+const textItemSchema = z
+  .object({ text: z.string().trim().min(1, "text must not be blank").max(500, "text max 500 chars") })
+  .strict();
+const itemsBody = z.object({ items: z.array(textItemSchema).max(100, "max 100 items") }).strict();
+
 export const dudaRouter = Router();
 
 /** "USD 400.0" from the first price, or null when there are none. */
@@ -179,6 +194,83 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       applications: full.textItems.filter((t) => t.kind === TextItemKind.APPLICATION),
       downloads: full.downloads,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Replace all text items of a kind for a hub product (transaction). */
+async function replaceTextItems(
+  hubProductId: string,
+  kind: TextItemKind,
+  items: { text: string }[],
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.productTextItem.deleteMany({ where: { hubProductId, kind } });
+    if (items.length > 0) {
+      await tx.productTextItem.createMany({
+        data: items.map((it, i) => ({ hubProductId, kind, text: it.text, sortOrder: i })),
+      });
+    }
+    return tx.productTextItem.findMany({ where: { hubProductId, kind }, orderBy: { sortOrder: "asc" } });
+  });
+}
+
+/**
+ * PUT /api/products/:id/specs
+ * Replaces the full SpecRow set for the hub product (sortOrder = array index).
+ */
+dudaRouter.put("/products/:id/specs", async (req, res, next) => {
+  const parsed = specsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+    const rows = parsed.data.rows;
+    const saved = await prisma.$transaction(async (tx) => {
+      await tx.specRow.deleteMany({ where: { hubProductId: hub.id } });
+      if (rows.length > 0) {
+        await tx.specRow.createMany({
+          data: rows.map((r, i) => ({ hubProductId: hub.id, label: r.label, value: r.value, sortOrder: i })),
+        });
+      }
+      return tx.specRow.findMany({ where: { hubProductId: hub.id }, orderBy: { sortOrder: "asc" } });
+    });
+    res.json(saved);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** PUT /api/products/:id/benefits — replaces all BENEFIT text items. */
+dudaRouter.put("/products/:id/benefits", async (req, res, next) => {
+  const parsed = itemsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+    const saved = await replaceTextItems(hub.id, TextItemKind.BENEFIT, parsed.data.items);
+    res.json(saved);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** PUT /api/products/:id/applications — replaces all APPLICATION text items. */
+dudaRouter.put("/products/:id/applications", async (req, res, next) => {
+  const parsed = itemsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+    const saved = await replaceTextItems(hub.id, TextItemKind.APPLICATION, parsed.data.items);
+    res.json(saved);
   } catch (err) {
     next(err);
   }
