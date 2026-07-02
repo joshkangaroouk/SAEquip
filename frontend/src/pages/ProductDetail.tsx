@@ -4,6 +4,7 @@ import { apiFetch } from "../lib/api";
 import { AppHeader, StatusBadge } from "../components/AppHeader";
 import { RichHtml } from "../components/RichHtml";
 import { ProductEditForm } from "../components/ProductEditForm";
+import { HubContent } from "../components/HubContent";
 import type { ProductDetail as Product } from "../lib/types";
 
 function formatPrice(product: Product): string | null {
@@ -204,46 +205,8 @@ export default function ProductDetail() {
               )}
             </section>
 
-            {/* Custom Fields — strictly read-only */}
-            <section className="rounded-xl border border-gray-200 bg-white p-6">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-medium text-gray-500">
-                  Custom Fields ({product.custom_fields.length})
-                </h2>
-                {managedNote}
-              </div>
-              {product.custom_fields.length === 0 && (
-                <p className="text-sm text-gray-400">No custom fields.</p>
-              )}
-              <div className="space-y-5">
-                {product.custom_fields.map((f) => (
-                  <div key={f.id} className="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-800">
-                        {f.label ?? `Unmapped field ${f.id}`}
-                      </span>
-                      {f.unmapped && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                          unmapped
-                        </span>
-                      )}
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                        {f.kind}
-                      </span>
-                    </div>
-                    {f.kind === "image" && f.image ? (
-                      <img
-                        src={f.image.url}
-                        alt={f.image.alt || f.label || "custom field image"}
-                        className="max-h-40 rounded border border-gray-100 object-contain"
-                      />
-                    ) : (
-                      <RichHtml html={f.value} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
+            {/* Hub custom content — source of truth is the Supabase DB */}
+            <HubContent productId={product.id} />
           </div>
         )}
       </main>

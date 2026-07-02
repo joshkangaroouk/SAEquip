@@ -46,15 +46,6 @@ export interface Variation {
   options: VariationOption[];
 }
 
-export interface DecoratedCustomField {
-  id: string;
-  label: string | null;
-  kind: string; // "image" | "html" | ...
-  value: string;
-  image: DudaImage | null;
-  unmapped: boolean;
-}
-
 export interface ProductDetail {
   id: string;
   name: string;
@@ -68,9 +59,72 @@ export interface ProductDetail {
   prices: { currency: string; price: string; compare_at_price: string | null }[];
   options: ProductOption[];
   variations: Variation[];
-  custom_fields: DecoratedCustomField[];
   managed_inventory: boolean;
   requires_shipping: boolean;
   quantity?: number;
   categories: unknown[];
+}
+
+// --- Hub custom content (source of truth: Supabase DB) ---
+
+export interface HubMediaAsset {
+  id: string;
+  filename: string;
+  storagePath: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: string;
+  alt: string | null;
+  uploadedBy: string | null;
+  createdAt: string;
+}
+
+export interface HubProductLogo {
+  id: string;
+  hubProductId: string;
+  mediaAssetId: string;
+  kind: "SA_LOGO" | "CERT_LOGO";
+  alt: string | null;
+  sortOrder: number;
+  mediaAsset: HubMediaAsset;
+}
+
+export interface HubSpecRow {
+  id: string;
+  hubProductId: string;
+  label: string;
+  value: string;
+  sortOrder: number;
+}
+
+export interface HubTextItem {
+  id: string;
+  hubProductId: string;
+  kind: "BENEFIT" | "APPLICATION";
+  text: string;
+  sortOrder: number;
+}
+
+export interface HubDownload {
+  id: string;
+  hubProductId: string;
+  mediaAssetId: string;
+  title: string;
+  gated: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  mediaAsset: HubMediaAsset;
+}
+
+export interface HubCustomPayload {
+  hubProductId: string;
+  dudaProductId: string;
+  sku: string | null;
+  name: string | null;
+  logos: { sa: HubProductLogo[]; cert: HubProductLogo[] };
+  specs: HubSpecRow[];
+  benefits: HubTextItem[];
+  applications: HubTextItem[];
+  downloads: HubDownload[];
 }

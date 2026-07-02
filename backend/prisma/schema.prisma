@@ -1,7 +1,8 @@
 // Prisma schema for saequip-product-hub backend.
 //
-// This DB stores only what Duda cannot: download gating and captured leads,
-// plus small bits of local mapping/metadata. Product content lives in Duda.
+// The Supabase DB is now the SOURCE OF TRUTH for all custom product content
+// (logos, specs, benefits, applications, downloads). Duda keeps only native
+// fields + description. Product content is keyed to a HubProduct by dudaProductId.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,29 +14,90 @@ datasource db {
   directUrl = env("DIRECT_URL") // direct connection, used for migrations
 }
 
-/// Maps a Duda custom field id to a human label + how we render it.
-model CustomFieldMap {
+enum LogoKind {
+  SA_LOGO
+  CERT_LOGO
+}
+
+enum TextItemKind {
+  BENEFIT
+  APPLICATION
+}
+
+/// The hub-side record for a Duda product; anchor for all custom content.
+model HubProduct {
+  id            String   @id @default(cuid())
+  dudaProductId String   @unique
+  sku           String?
+  name          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  logos     ProductLogo[]
+  specRows  SpecRow[]
+  textItems ProductTextItem[]
+  downloads Download[]
+}
+
+/// An uploaded asset stored in the Supabase Storage bucket.
+model MediaAsset {
   id          String   @id @default(cuid())
-  dudaFieldId String   @unique
-  label       String
-  kind        String // "html" | "image" | "text"
-  sortOrder   Int      @default(0)
+  filename    String
+  storagePath String   @unique // path/key in the Supabase Storage bucket
+  mimeType    String
+  sizeBytes   Int
+  kind        String // "image" | "file", derived from mimeType
+  alt         String?
+  uploadedBy  String?
   createdAt   DateTime @default(now())
+
+  logos     ProductLogo[]
+  downloads Download[]
 }
 
-/// A downloadable asset for a product, optionally gated behind a lead form.
+model ProductLogo {
+  id           String     @id @default(cuid())
+  hubProductId String
+  mediaAssetId String
+  kind         LogoKind
+  alt          String?
+  sortOrder    Int        @default(0)
+  hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
+}
+
+model SpecRow {
+  id           String     @id @default(cuid())
+  hubProductId String
+  label        String
+  value        String
+  sortOrder    Int        @default(0)
+  hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+}
+
+model ProductTextItem {
+  id           String       @id @default(cuid())
+  hubProductId String
+  kind         TextItemKind
+  text         String
+  sortOrder    Int          @default(0)
+  hubProduct   HubProduct   @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+}
+
 model Download {
-  id         String   @id @default(cuid())
-  productSku String
-  title      String
-  fileUrl    String
-  gated      Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  leads      Lead[]
+  id           String     @id @default(cuid())
+  hubProductId String
+  mediaAssetId String
+  title        String
+  gated        Boolean    @default(true)
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
+  leads        Lead[]
 }
 
-/// A lead captured when someone requests a gated download.
 model Lead {
   id         String   @id @default(cuid())
   downloadId String
@@ -43,13 +105,13 @@ model Lead {
   email      String
   company    String?
   createdAt  DateTime @default(now())
-  download   Download @relation(fields: [downloadId], references: [id])
+  download   Download @relation(fields: [downloadId], references: [id], onDelete: Cascade)
 }
 
-/// A "compatible with" relationship between two product SKUs.
+// Parked for a later step; no editor yet.
 model CompatibleLink {
-  id         String @id @default(cuid())
-  productSku String
-  relatedSku String
-  sortOrder  Int    @default(0)
+  id           String @id @default(cuid())
+  hubProductId String
+  relatedSku   String
+  sortOrder    Int    @default(0)
 }

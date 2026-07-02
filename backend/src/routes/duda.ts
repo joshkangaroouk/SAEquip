@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
+import { LogoKind, TextItemKind } from "@prisma/client";
 import { duda, type DudaPrice, type DudaProductUpdate } from "../services/duda.js";
-import { decorateCustomFields } from "../services/customFields.js";
+import { ensureHubProduct } from "../services/hubProduct.js";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 
@@ -110,15 +111,13 @@ dudaRouter.get("/products", async (_req, res, next) => {
 
 /**
  * GET /api/products/:id
- * Full product: native fields + options + variations + decorated custom_fields.
+ * Full Duda product: native fields + options + variations. Duda custom_fields
+ * are no longer decorated or used — custom content now lives in the hub DB.
  */
 dudaRouter.get("/products/:id", async (req, res, next) => {
   try {
     const product = await duda.getProduct(req.params.id);
-    const maps = await prisma.customFieldMap.findMany();
-    const custom_fields = decorateCustomFields(product.custom_fields ?? [], maps);
-
-    res.json({ ...product, custom_fields });
+    res.json(product);
   } catch (err) {
     next(err);
   }
@@ -139,10 +138,45 @@ dudaRouter.patch("/products/:id", async (req, res, next) => {
 
   try {
     const updated = await duda.updateProduct(req.params.id, parsed.data as DudaProductUpdate);
-    const maps = await prisma.customFieldMap.findMany();
-    const custom_fields = decorateCustomFields(updated.custom_fields ?? [], maps);
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
 
-    res.json({ ...updated, custom_fields });
+/**
+ * GET /api/products/:id/custom
+ * Hub-side custom content for a product. Ensures the HubProduct row exists,
+ * then returns the six content groups (all empty until editors are added).
+ */
+dudaRouter.get("/products/:id/custom", async (req, res, next) => {
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+
+    const full = await prisma.hubProduct.findUniqueOrThrow({
+      where: { id: hub.id },
+      include: {
+        logos: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
+        specRows: { orderBy: { sortOrder: "asc" } },
+        textItems: { orderBy: { sortOrder: "asc" } },
+        downloads: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
+      },
+    });
+
+    res.json({
+      hubProductId: full.id,
+      dudaProductId: full.dudaProductId,
+      sku: full.sku,
+      name: full.name,
+      logos: {
+        sa: full.logos.filter((l) => l.kind === LogoKind.SA_LOGO),
+        cert: full.logos.filter((l) => l.kind === LogoKind.CERT_LOGO),
+      },
+      specs: full.specRows,
+      benefits: full.textItems.filter((t) => t.kind === TextItemKind.BENEFIT),
+      applications: full.textItems.filter((t) => t.kind === TextItemKind.APPLICATION),
+      downloads: full.downloads,
+    });
   } catch (err) {
     next(err);
   }
