@@ -6,7 +6,7 @@ import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
-import { resolveUrl, signedFileUrl } from "../services/storage.js";
+import { publicImageUrl, signedFileUrl } from "../services/storage.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -98,17 +98,16 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
   }
 
   const [key, value] = provided[0];
+  const startedAt = Date.now();
   try {
     const where =
       key === "slug" ? { slug: value } : key === "sku" ? { sku: value } : { dudaProductId: value };
-    const hub = await prisma.hubProduct.findFirst({ where });
-    if (!hub) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
 
-    const full = await prisma.hubProduct.findUniqueOrThrow({
-      where: { id: hub.id },
+    // Single query: HubProduct + all nested content. Source of truth is Supabase;
+    // this endpoint makes NO Duda / external API calls.
+    console.time("[public/content] db");
+    const full = await prisma.hubProduct.findFirst({
+      where,
       include: {
         logos: { include: { logo: { include: { mediaAsset: true } } } },
         specRows: { orderBy: { sortOrder: "asc" } },
@@ -116,27 +115,25 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
         downloads: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
       },
     });
+    console.timeEnd("[public/content] db");
 
+    if (!full) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+
+    // Logos: public image URLs are built locally (no network round-trip).
     const activeLogos = full.logos.map((l) => l.logo).sort((a, b) => a.sortOrder - b.sortOrder);
-    const sa = await Promise.all(
-      activeLogos
-        .filter((l) => l.kind === "SA_LOGO")
-        .map(async (l) => ({
-          url: await resolveUrl(l.mediaAsset.kind, l.mediaAsset.storagePath),
-          alt: l.alt,
-          label: l.label,
-        })),
-    );
-    const cert = await Promise.all(
-      activeLogos
-        .filter((l) => l.kind === "CERT_LOGO")
-        .map(async (l) => ({
-          url: await resolveUrl(l.mediaAsset.kind, l.mediaAsset.storagePath),
-          alt: l.alt,
-          label: l.label,
-        })),
-    );
+    const shapeLogo = (l: (typeof activeLogos)[number]) => ({
+      url: publicImageUrl(l.mediaAsset.storagePath),
+      alt: l.alt,
+      label: l.label,
+    });
+    const sa = activeLogos.filter((l) => l.kind === "SA_LOGO").map(shapeLogo);
+    const cert = activeLogos.filter((l) => l.kind === "CERT_LOGO").map(shapeLogo);
 
+    // Downloads: only NON-gated require a (network) signed URL; gated get none.
+    console.time("[public/content] sign");
     const downloads = await Promise.all(
       full.downloads.map(async (d) =>
         d.gated
@@ -145,11 +142,13 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
               id: d.id,
               title: d.title,
               gated: false as const,
-              fileUrl: await resolveUrl(d.mediaAsset.kind, d.mediaAsset.storagePath),
+              fileUrl: await signedFileUrl(d.mediaAsset.storagePath, 3600),
             },
       ),
     );
+    console.timeEnd("[public/content] sign");
 
+    res.setHeader("Cache-Control", "public, max-age=60");
     res.json({
       name: full.name,
       sku: full.sku,
@@ -161,6 +160,7 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       applications: full.textItems.filter((t) => t.kind === "APPLICATION").map((t) => t.text),
       downloads,
     });
+    console.log(`[public/content] ${key}=${value} total ${Date.now() - startedAt}ms`);
   } catch (err) {
     next(err);
   }

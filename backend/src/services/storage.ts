@@ -74,9 +74,14 @@ export async function removeObject(kind: "image" | "file", path: string): Promis
  */
 export async function resolveUrl(kind: string, storagePath: string): Promise<string> {
   if (kind === "image") {
-    return supabase.storage.from(BUCKETS.image).getPublicUrl(storagePath).data.publicUrl;
+    return publicImageUrl(storagePath);
   }
   return signedFileUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+}
+
+/** Public URL for an image in the public bucket. Constructed locally — no network. */
+export function publicImageUrl(storagePath: string): string {
+  return supabase.storage.from(BUCKETS.image).getPublicUrl(storagePath).data.publicUrl;
 }
 
 /** Create a signed URL for a private file with a custom TTL (seconds). */
