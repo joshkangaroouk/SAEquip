@@ -76,9 +76,14 @@ export async function resolveUrl(kind: string, storagePath: string): Promise<str
   if (kind === "image") {
     return supabase.storage.from(BUCKETS.image).getPublicUrl(storagePath).data.publicUrl;
   }
+  return signedFileUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+}
+
+/** Create a signed URL for a private file with a custom TTL (seconds). */
+export async function signedFileUrl(storagePath: string, ttlSeconds: number): Promise<string> {
   const { data, error } = await supabase.storage
     .from(BUCKETS.file)
-    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+    .createSignedUrl(storagePath, ttlSeconds);
   if (error || !data) throw new StorageError(error?.message ?? "failed to sign url");
   return data.signedUrl;
 }

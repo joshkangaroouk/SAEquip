@@ -10,10 +10,11 @@ import { duda } from "./duda.js";
  */
 export async function ensureHubProduct(dudaProductId: string): Promise<HubProduct> {
   const product = await duda.getProduct(dudaProductId);
+  const slug = product.seo?.product_url?.trim() || null;
 
   return prisma.hubProduct.upsert({
     where: { dudaProductId },
-    create: { dudaProductId, sku: product.sku ?? null, name: product.name ?? null },
-    update: { sku: product.sku ?? null, name: product.name ?? null },
+    create: { dudaProductId, sku: product.sku ?? null, name: product.name ?? null, slug },
+    update: { sku: product.sku ?? null, name: product.name ?? null, slug },
   });
 }

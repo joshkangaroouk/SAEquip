@@ -27,6 +27,9 @@ const envSchema = z.object({
     .string()
     .min(1, 'ALLOWED_EMAIL_DOMAINS is required (e.g. "kangaroouk.com,saequip.com")'),
 
+  // Comma-separated list of origins allowed to call the PUBLIC widget API.
+  PUBLIC_ALLOWED_ORIGINS: z.string().default(""),
+
   // --- Duda API (now required for the product read-layer) ---
   DUDA_API_USER: z.string().min(1, "DUDA_API_USER is required (Duda API credentials)"),
   DUDA_API_PASS: z.string().min(1, "DUDA_API_PASS is required (Duda API credentials)"),
@@ -55,4 +58,9 @@ const allowedEmailDomains = raw.ALLOWED_EMAIL_DOMAINS.split(",")
   .map((d) => d.trim().toLowerCase())
   .filter(Boolean);
 
-export const env = { ...raw, allowedEmailDomains };
+/** Origins allowed to call the public widget API (exact-match). */
+const publicAllowedOrigins = raw.PUBLIC_ALLOWED_ORIGINS.split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+export const env = { ...raw, allowedEmailDomains, publicAllowedOrigins };

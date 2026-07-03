@@ -6,13 +6,19 @@ import { dudaRouter } from "./routes/duda.js";
 import { mediaRouter } from "./routes/media.js";
 import { logosRouter } from "./routes/logos.js";
 import { downloadsRouter } from "./routes/downloads.js";
+import { publicRouter, publicCors } from "./routes/public.js";
 import { DudaApiError } from "./services/duda.js";
 import { StorageError, ensureBuckets } from "./services/storage.js";
 
 const app = express();
 
-app.use(cors());
 app.use(express.json());
+
+// --- PUBLIC widget API: own CORS allowlist + rate limits, NO auth ---
+app.use("/public", publicCors, publicRouter);
+
+// --- Everything else: permissive CORS ---
+app.use(cors());
 
 // --- Public ---
 app.get("/api/health", (_req, res) => {

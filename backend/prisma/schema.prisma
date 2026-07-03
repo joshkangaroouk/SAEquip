@@ -28,6 +28,7 @@ enum TextItemKind {
 model HubProduct {
   id            String   @id @default(cuid())
   dudaProductId String   @unique
+  slug          String?  @unique
   sku           String?
   name          String?
   createdAt     DateTime @default(now())
