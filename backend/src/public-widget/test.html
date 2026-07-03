@@ -3,26 +3,27 @@
   SAEquip Product Hub — local widget test harness.
 
   HOW TO USE (against a running local backend):
-    1. Start the backend:  npm run dev -w backend   (listens on http://localhost:4000)
-    2. Open this page from an ALLOWLISTED origin so the widget's fetches pass CORS.
-       Easiest: the backend serves it — open  http://localhost:4000/public/test.html
-       (localhost origins are included in PUBLIC_ALLOWED_ORIGINS in .env).
-       NOTE: opening as a bare file:// URL will be blocked by CORS (Origin "null").
+    1. Start the backend:  npm run dev -w backend   (http://localhost:4000)
+    2. Open  http://localhost:4000/public/test.html  (an allowlisted origin, so CORS passes).
+       A bare file:// URL is blocked by CORS (Origin "null").
 
-  This page simulates a Duda product page. The mount div sets data-slug="ex-heater"
-  so it works regardless of this page's URL path. Remove data-slug to test path-based
-  detection on a real /product/<slug> URL.
+  This page demonstrates SECTION-SCOPED mounts placed independently, plus one
+  legacy full embed — all for the same product (data-slug="ex-heater"). It also
+  loads widget.js TWICE to prove multiple embeds don't double-render or refetch
+  (check the Network tab: exactly ONE request to /public/products/content).
 -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SAEquip Widget — Test Harness</title>
+    <title>SAEquip Widget — Section Mounts Harness</title>
     <style>
       body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #fff; color: #222; }
       .page { max-width: 960px; margin: 0 auto; padding: 24px; }
       .fake-hero { background: #111; color: #fff; padding: 28px; border-radius: 10px; }
       .fake-hero h1 { margin: 0 0 6px; }
+      .slot { border: 1px dashed #ddd; border-radius: 8px; padding: 8px 14px; margin: 18px 0; }
+      .slot > .label { font: 700 11px/1 monospace; color: #999; text-transform: uppercase; }
       .note { background: #fffbe6; border: 1px solid #ffe58f; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin: 16px 0; }
     </style>
   </head>
@@ -30,19 +31,37 @@
     <div class="page">
       <div class="fake-hero">
         <h1>EX Heater</h1>
-        <p>Simulated Duda product page — the widget renders below this hero.</p>
+        <p>Simulated Duda product page — sections are placed independently below.</p>
       </div>
 
       <div class="note">
-        Test harness. The block below is rendered entirely by <code>widget.js</code>
-        fetched from the backend. It reads <code>data-slug="ex-heater"</code>.
+        Each dashed slot below is a separate mount with its own <code>data-section</code>.
+        They render independently but share a single API call.
       </div>
 
-      <!-- The widget mounts here -->
-      <div id="saequip-product-hub" data-slug="ex-heater"></div>
+      <div class="slot"><span class="label">data-section="cert-logos"</span>
+        <div class="saequip-hub" data-section="cert-logos" data-slug="ex-heater"></div>
+      </div>
+
+      <div class="slot"><span class="label">data-section="sa-logos"</span>
+        <div class="saequip-hub" data-section="sa-logos" data-slug="ex-heater"></div>
+      </div>
+
+      <div class="slot"><span class="label">data-section="specs"</span>
+        <div class="saequip-hub" data-section="specs" data-slug="ex-heater"></div>
+      </div>
+
+      <div class="slot"><span class="label">data-section="downloads"</span>
+        <div class="saequip-hub" data-section="downloads" data-slug="ex-heater"></div>
+      </div>
+
+      <div class="slot"><span class="label">legacy full embed (no data-section)</span>
+        <div id="saequip-product-hub" data-slug="ex-heater"></div>
+      </div>
     </div>
 
-    <!-- Load the widget from the backend that will serve it in production -->
+    <!-- Multiple embeds on one page (each Duda section-embed ships its own copy). -->
+    <script src="http://localhost:4000/public/widget.js" defer></script>
     <script src="http://localhost:4000/public/widget.js" defer></script>
   </body>
 </html>

@@ -1,23 +1,39 @@
 /*
  * SAEquip Product Hub — embeddable public widget (vanilla JS, no framework).
  *
- * Usage on a product page:
- *   <div id="saequip-product-hub"></div>
+ * ONE full embed (backward compatible):
+ *   <div id="saequip-product-hub" data-slug="ex-heater"></div>
  *   <script src="https://YOUR-BACKEND/public/widget.js" defer></script>
  *
- * - API base is derived from this script's own src (so it calls the backend
- *   that served it) — nothing is hardcoded.
- * - Product slug: data-slug on the mount div, else parsed from /product/<slug>.
- * - Fails quietly: never throws into / breaks the host page.
+ * SECTION-SCOPED mounts (place each section independently on the page):
+ *   <div class="saequip-hub" data-section="sa-logos"  data-slug="ex-heater"></div>
+ *   <div class="saequip-hub" data-section="downloads" data-slug="ex-heater"></div>
+ *   <script src="https://YOUR-BACKEND/public/widget.js" defer></script>
+ *
+ * - Mount selector: #saequip-product-hub | .saequip-hub | [data-saequip-hub]
+ * - data-section ∈ sa-logos | cert-logos | specs | benefits | applications | downloads | all
+ *   (missing or "all" renders every section — the original behavior).
+ * - Slug: a data-slug on any mount, else parsed from /product/<slug>.
+ * - The content API is fetched ONCE per slug (memoized on a window global), even
+ *   with many mounts or several copies of this script on the page.
+ * - Renders inline into each mount, so the mount auto-sizes to its content
+ *   (no iframe / no manual resize needed). Fails quietly; never breaks the host.
  */
 (function () {
   "use strict";
 
-  var MOUNT_ID = "saequip-product-hub";
   var STYLE_ID = "saeh-styles";
+  var RENDERED_ATTR = "data-saeh-rendered";
+  var MOUNT_SELECTOR = "#saequip-product-hub, .saequip-hub, [data-saequip-hub]";
+  var ALL_SECTIONS = ["cert-logos", "sa-logos", "specs", "benefits", "applications", "downloads"];
+  var VALID = { "sa-logos": 1, "cert-logos": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1 };
 
-  function apiBaseFromScript() {
-    var src = (document.currentScript && document.currentScript.src) || "";
+  // Capture the executing script NOW — currentScript is null inside async
+  // callbacks and on deferred re-execution.
+  var thisScript = document.currentScript;
+
+  function findApiBase() {
+    var src = (thisScript && thisScript.src) || "";
     if (!src) {
       var tag = document.querySelector('script[src*="/public/widget.js"]');
       if (tag) src = tag.src || tag.getAttribute("src") || "";
@@ -29,15 +45,10 @@
     }
   }
 
-  var API = apiBaseFromScript();
-
-  function slugFrom(mount) {
-    var ds = mount.getAttribute("data-slug");
-    if (ds && ds.trim()) return ds.trim();
-    var path = (window.location && window.location.pathname) || "";
-    var m = path.match(/\/product\/([^\/?#]+)/);
-    return m ? decodeURIComponent(m[1]) : "";
-  }
+  // Shared, cross-script state — one object per page, so multiple copies of this
+  // script (one per Duda embed) share the API base and the memoized fetches.
+  var hub = window.__saequipHub || (window.__saequipHub = { api: "", fetches: {} });
+  if (!hub.api) hub.api = findApiBase();
 
   // ---- tiny DOM helpers (textContent only — never inject HTML) ----
   function el(tag, cls, text) {
@@ -180,7 +191,7 @@
 
       submit.disabled = true;
       submit.textContent = "Submitting…";
-      fetch(API + "/public/downloads/" + encodeURIComponent(downloadId) + "/lead", {
+      fetch(hub.api + "/public/downloads/" + encodeURIComponent(downloadId) + "/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -257,45 +268,90 @@
     return sec;
   }
 
-  function render(mount, data) {
-    if (!data) return; // unknown product / error → render nothing
+  // Build the DOM node for one named section, or null if that section is empty.
+  function buildSection(name, data) {
     var logos = data.logos || { sa: [], cert: [] };
-    var root = el("div", "saeh-root");
+    if (name === "cert-logos") return logos.cert && logos.cert.length ? logoSection("Certifications", logos.cert) : null;
+    if (name === "sa-logos") return logos.sa && logos.sa.length ? logoSection("", logos.sa) : null;
+    if (name === "specs") return data.specs && data.specs.length ? specsSection(data.specs) : null;
+    if (name === "benefits") return data.benefits && data.benefits.length ? listSection("Key Benefits", data.benefits, true) : null;
+    if (name === "applications") return data.applications && data.applications.length ? listSection("Applications", data.applications, false) : null;
+    if (name === "downloads") return data.downloads && data.downloads.length ? downloadsSection(data.downloads) : null;
+    return null;
+  }
 
-    if (logos.cert && logos.cert.length) root.appendChild(logoSection("Certifications", logos.cert));
-    if (logos.sa && logos.sa.length) root.appendChild(logoSection("", logos.sa));
-    if (data.specs && data.specs.length) root.appendChild(specsSection(data.specs));
-    if (data.benefits && data.benefits.length) root.appendChild(listSection("Key Benefits", data.benefits, true));
-    if (data.applications && data.applications.length)
-      root.appendChild(listSection("Applications", data.applications, false));
-    if (data.downloads && data.downloads.length) root.appendChild(downloadsSection(data.downloads));
+  // ---- fetch (memoized once per slug across all mounts + script copies) ----
+  function fetchContent(slug) {
+    if (!hub.fetches[slug]) {
+      hub.fetches[slug] = fetch(hub.api + "/public/products/content?slug=" + encodeURIComponent(slug), { credentials: "omit" })
+        .then(function (res) {
+          return res.ok ? res.json() : null;
+        })
+        .catch(function () {
+          return null;
+        });
+    }
+    return hub.fetches[slug];
+  }
 
-    if (!root.childNodes.length) return; // nothing to show
-    injectStyles();
-    mount.innerHTML = "";
-    mount.appendChild(root);
+  function pathSlug() {
+    var m = ((window.location && window.location.pathname) || "").match(/\/product\/([^\/?#]+)/);
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
+  // First data-slug found on any mount, else the /product/<slug> path.
+  function pageSlug(mounts) {
+    for (var i = 0; i < mounts.length; i++) {
+      var ds = mounts[i].getAttribute("data-slug");
+      if (ds && ds.trim()) return ds.trim();
+    }
+    return pathSlug();
+  }
+
+  function sectionsFor(mount) {
+    var raw = (mount.getAttribute("data-section") || "").trim().toLowerCase();
+    if (!raw || raw === "all") return ALL_SECTIONS.slice();
+    return VALID[raw] ? [raw] : []; // unknown value → render nothing (fail-closed)
+  }
+
+  function renderMount(mount, slug) {
+    if (mount.getAttribute(RENDERED_ATTR)) return; // idempotency: skip already-processed mounts
+    mount.setAttribute(RENDERED_ATTR, "1"); // claim synchronously so re-exec skips it
+    if (!hub.api || !slug) return;
+    var sections = sectionsFor(mount);
+    if (!sections.length) return;
+
+    fetchContent(slug).then(function (data) {
+      try {
+        if (!data) return; // unknown product / error → render nothing
+        var root = el("div", "saeh-root");
+        for (var i = 0; i < sections.length; i++) {
+          var node = buildSection(sections[i], data);
+          if (node) root.appendChild(node);
+        }
+        if (!root.childNodes.length) return; // section(s) empty → render nothing
+        injectStyles();
+        mount.innerHTML = "";
+        mount.appendChild(root);
+      } catch (e) {
+        /* never break the host page */
+      }
+    }).catch(function () {});
+  }
+
+  function processMounts() {
+    var mounts = document.querySelectorAll(MOUNT_SELECTOR);
+    if (!mounts.length) return;
+    var shared = pageSlug(mounts);
+    for (var i = 0; i < mounts.length; i++) {
+      var own = (mounts[i].getAttribute("data-slug") || "").trim();
+      renderMount(mounts[i], own || shared);
+    }
   }
 
   function init() {
     try {
-      var mount = document.getElementById(MOUNT_ID);
-      if (!mount || !API) return;
-      var slug = slugFrom(mount);
-      if (!slug) return;
-      fetch(API + "/public/products/content?slug=" + encodeURIComponent(slug), { credentials: "omit" })
-        .then(function (res) {
-          return res.ok ? res.json() : null;
-        })
-        .then(function (data) {
-          try {
-            render(mount, data);
-          } catch (e) {
-            /* never break the host page */
-          }
-        })
-        .catch(function () {
-          /* network error → render nothing */
-        });
+      processMounts();
     } catch (e) {
       /* never break the host page */
     }
