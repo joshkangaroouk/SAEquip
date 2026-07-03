@@ -1,4 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../prisma.js";
@@ -46,6 +48,32 @@ const leadLimiter = rateLimit({
 });
 
 export const publicRouter = Router();
+
+// Directory holding the hand-written widget assets (served as static files).
+const WIDGET_DIR = path.resolve(process.cwd(), "src/public-widget");
+
+/** GET /public/widget.js — the embeddable widget script. */
+publicRouter.get("/widget.js", (_req, res) => {
+  try {
+    const js = readFileSync(path.join(WIDGET_DIR, "widget.js"), "utf8");
+    res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(js);
+  } catch {
+    res.status(500).type("text/plain").send("// widget unavailable");
+  }
+});
+
+/** GET /public/test.html — local test harness (open at http://localhost:4000/public/test.html). */
+publicRouter.get("/test.html", (_req, res) => {
+  try {
+    const html = readFileSync(path.join(WIDGET_DIR, "test.html"), "utf8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch {
+    res.status(404).type("text/plain").send("not found");
+  }
+});
 
 /**
  * GET /public/products/content?slug=|sku=|dudaId=
