@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { AppHeader, StatusBadge } from "../components/AppHeader";
+import { StatusBadge } from "../components/ui";
 import { RichHtml } from "../components/RichHtml";
 import { ProductEditForm } from "../components/ProductEditForm";
 import { HubContent } from "../components/HubContent";
@@ -64,16 +64,14 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader />
-
+    <>
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       )}
 
-      <main className="mx-auto max-w-4xl px-4 py-8">
+      <div className="mx-auto max-w-4xl">
         <Link to="/" className="text-sm text-gray-500 hover:text-gray-900">
           ← Back to products
         </Link>
@@ -209,7 +207,7 @@ export default function ProductDetail() {
             <HubContent productId={product.id} />
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

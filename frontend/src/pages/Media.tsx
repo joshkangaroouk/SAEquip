@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { AppHeader } from "../components/AppHeader";
 import { apiFetch, apiUpload } from "../lib/api";
 import type { MediaAsset } from "../lib/types";
 
@@ -94,11 +93,8 @@ export default function Media() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader />
-
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="text-xl font-semibold text-gray-900">Media Centre</h1>
+    <>
+      <h1 className="text-xl font-semibold text-gray-900">Media Centre</h1>
         <p className="mt-1 text-sm text-gray-500">
           Reusable library of images and files, stored in Supabase.
         </p>
@@ -208,7 +204,6 @@ export default function Media() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+    </>
   );
 }

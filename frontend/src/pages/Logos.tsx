@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { AppHeader } from "../components/AppHeader";
 import { MediaPicker } from "../components/MediaPicker";
 import { apiFetch } from "../lib/api";
 import type { LogoCatalogEntry, MediaAsset } from "../lib/types";
@@ -172,16 +171,14 @@ export default function Logos() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader />
-
+    <>
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       )}
 
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-gray-900">Logos</h1>
           <button onClick={() => setPickerOpen(true)} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
@@ -228,7 +225,7 @@ export default function Logos() {
             ))}
           </div>
         )}
-      </main>
+      </div>
 
       {pickerOpen && <MediaPicker kind="image" onPick={onPickMedia} onClose={() => setPickerOpen(false)} />}
 
@@ -252,6 +249,6 @@ export default function Logos() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

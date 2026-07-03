@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { AppHeader } from "../components/AppHeader";
 import { apiFetch } from "../lib/api";
 
 type Health = "loading" | "ok" | "unreachable";
@@ -47,10 +46,8 @@ export default function Status() {
         : "Backend: unreachable";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader />
-      <main className="mx-auto mt-8 max-w-md space-y-4 px-4">
-        <h1 className="text-lg font-semibold text-gray-900">System status</h1>
+    <div className="mx-auto max-w-md space-y-4">
+      <h1 className="text-lg font-semibold text-gray-900">System status</h1>
 
         <div className="rounded-xl border border-gray-200 bg-white p-6">
           <h2 className="text-sm font-medium text-gray-500">Backend health</h2>
@@ -70,7 +67,6 @@ export default function Status() {
             {me.status === "error" && <span className="text-red-600">/api/me failed</span>}
           </div>
         </div>
-      </main>
     </div>
   );
 }

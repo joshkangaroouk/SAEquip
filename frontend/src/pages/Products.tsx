@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { AppHeader, StatusBadge } from "../components/AppHeader";
+import { StatusBadge } from "../components/ui";
 import type { ProductSummary, StoreInfo } from "../lib/types";
 
 export default function Products() {
@@ -45,11 +45,8 @@ export default function Products() {
   const lowHeadroom = store?.remaining != null && store.remaining <= 10;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader />
-
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="text-xl font-semibold text-gray-900">Products</h1>
+    <>
+      <h1 className="text-xl font-semibold text-gray-900">Products</h1>
 
         {/* Headroom banner */}
         {store && (
@@ -130,7 +127,6 @@ export default function Products() {
             </table>
           </div>
         )}
-      </main>
-    </div>
+    </>
   );
 }

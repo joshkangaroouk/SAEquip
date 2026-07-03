@@ -1,3 +1,94 @@
+/* ==========================================================================
+   SAEquip Product Hub — brand design system
+   Dark base · white/grey content · yellow accent · SHARP corners everywhere.
+   Typeface: Clash Grotesk (ONLY weights 300 Light + 600 Semibold exist).
+   ========================================================================== */
+
+/* --- Fonts ---------------------------------------------------------------
+   Served from /public/fonts. Only Light (300) and Semibold (600) are shipped.
+   Never request 400/500/700 — the browser would synthesise a faux weight. */
+@font-face {
+  font-family: "Clash Grotesk";
+  src: url("/fonts/clash-grotesk/ClashGrotesk-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clash Grotesk";
+  src: url("/fonts/clash-grotesk/ClashGrotesk-Semibold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* --- Design tokens -------------------------------------------------------
+   Mirrored in tailwind.config.js theme.extend.colors so the same names are
+   available as Tailwind utilities (bg-surface, text-muted, border-accent…). */
+:root {
+  --bg: #0a0a0a;
+  --surface: #161616;
+  --surface-2: #1f1f1f;
+  --border: #2a2a2a;
+  --text: #ffffff;
+  --muted: #a1a1aa;
+  --subtle: #6b7280;
+  --accent: #fed217;
+  --accent-hover: #e5bd14;
+  --accent-foreground: #0a0a0a;
+  --danger: #ef4444;
+  --success: #22c55e;
+}
+
+@layer base {
+  /* Never synthesise the missing weights. */
+  html {
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: "Clash Grotesk", ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 300;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* Headings use the Semibold cut. */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  /* Yellow text selection. */
+  ::selection {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  /* Consistent yellow focus ring across interactive elements. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Inherit the brand font/weight into form controls. */
+  input, textarea, select, button {
+    font-family: inherit;
+    font-weight: inherit;
+  }
+
+  /* Dark native scrollbars where supported. */
+  * {
+    scrollbar-color: var(--border) transparent;
+  }
+}
