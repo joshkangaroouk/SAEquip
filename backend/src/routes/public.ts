@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../prisma.js";
@@ -49,8 +50,10 @@ const leadLimiter = rateLimit({
 
 export const publicRouter = Router();
 
-// Directory holding the hand-written widget assets (served as static files).
-const WIDGET_DIR = path.resolve(process.cwd(), "src/public-widget");
+// Directory holding the widget assets, resolved relative to THIS module so it
+// works both in dev (tsx from src/routes) and prod (node from dist/routes).
+// postbuild copies src/public-widget -> dist/public-widget.
+const WIDGET_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "../public-widget");
 
 /** GET /public/widget.js — the embeddable widget script. */
 publicRouter.get("/widget.js", (_req, res) => {
