@@ -7,6 +7,7 @@ import rateLimit from "express-rate-limit";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 import { publicImageUrl, signedFileUrl } from "../services/storage.js";
+import { sendQuoteNotification } from "../services/email.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -46,6 +47,14 @@ const leadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "rate_limited" },
+});
+
+const quoteLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "Too many requests, please try again shortly." },
 });
 
 export const publicRouter = Router();
@@ -148,7 +157,10 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
     );
     console.timeEnd("[public/content] sign");
 
-    res.setHeader("Cache-Control", "public, max-age=60");
+    // Short freshness window + background revalidation: visitors get an instant
+    // (at most 5s-stale) response, and edits (e.g. toggling a logo) propagate
+    // within a request or two instead of waiting out a flat 60s cache.
+    res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=55");
     res.json({
       name: full.name,
       sku: full.sku,
@@ -207,5 +219,87 @@ publicRouter.post("/downloads/:downloadId/lead", leadLimiter, async (req, res, n
     res.status(201).json({ fileUrl });
   } catch (err) {
     next(err);
+  }
+});
+
+const quoteItemSchema = z.object({
+  name: z.string().trim().min(1, "each item needs a name").max(200),
+  sku: z.string().trim().max(200).optional(),
+  options: z.any().optional(),
+  price: z.string().trim().max(100).optional(),
+  quantity: z.coerce.number().int().positive().max(100_000).optional(),
+});
+
+const quoteSchema = z.object({
+  name: z.string().trim().min(1, "name is required").max(200),
+  email: z.string().trim().email("a valid email is required").max(320),
+  company: z.string().trim().max(200).optional(),
+  phone: z.string().trim().max(50).optional(),
+  message: z.string().trim().max(5000).optional(),
+  items: z.array(quoteItemSchema).min(1, "at least one item is required").max(100, "too many items"),
+});
+
+/**
+ * POST /public/quotes
+ * Replaces the legacy quote-mailer.php — SAME request/response contract, so
+ * the live Duda basket-page widget can point at this unchanged.
+ *
+ * Honeypot (`website` non-empty) and bot-timing (`elapsedMs` < 1500) checks
+ * run on the raw body BEFORE schema validation, so a bot that omits/garbles
+ * real fields still gets trapped silently rather than surfacing a 400.
+ */
+publicRouter.post("/quotes", quoteLimiter, async (req, res) => {
+  try {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+
+    const website = typeof body.website === "string" ? body.website.trim() : "";
+    if (website.length > 0) {
+      res.status(200).json({ ok: true }); // bot — no quote request created
+      return;
+    }
+
+    const elapsedMs = Number(body.elapsedMs);
+    if (Number.isFinite(elapsedMs) && elapsedMs < 1500) {
+      res.status(200).json({ ok: false, error: "Please try again." });
+      return;
+    }
+
+    const parsed = quoteSchema.safeParse(body);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? "Invalid request.";
+      res.status(400).json({ ok: false, error: message });
+      return;
+    }
+    const { name, email, company, phone, message, items } = parsed.data;
+
+    const created = await prisma.quoteRequest.create({
+      data: {
+        name,
+        email,
+        company: company || null,
+        phone: phone || null,
+        message: message || null,
+        items: {
+          create: items.map((item) => ({
+            name: item.name,
+            sku: item.sku || null,
+            options: item.options ?? undefined,
+            price: item.price || null,
+            quantity: item.quantity ?? 1,
+          })),
+        },
+      },
+      include: { items: true },
+    });
+
+    const emailResult = await sendQuoteNotification(created, created.items);
+    if (emailResult.sent) {
+      await prisma.quoteRequest.update({ where: { id: created.id }, data: { emailSent: true } });
+    }
+
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    console.error("[public/quotes] unexpected error:", err);
+    res.status(500).json({ ok: false, error: "Something went wrong. Please try again." });
   }
 });

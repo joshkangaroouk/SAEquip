@@ -6,6 +6,7 @@ import { dudaRouter } from "./routes/duda.js";
 import { mediaRouter } from "./routes/media.js";
 import { logosRouter } from "./routes/logos.js";
 import { downloadsRouter } from "./routes/downloads.js";
+import { quotesRouter } from "./routes/quotes.js";
 import { publicRouter, publicCors } from "./routes/public.js";
 import { DudaApiError } from "./services/duda.js";
 import { StorageError, ensureBuckets } from "./services/storage.js";
@@ -36,6 +37,7 @@ api.use(dudaRouter);
 api.use(mediaRouter);
 api.use(logosRouter);
 api.use(downloadsRouter);
+api.use(quotesRouter);
 app.use("/api", requireAuth, api);
 
 // Error handler: surface upstream failures with useful status codes.

@@ -35,6 +35,13 @@ const envSchema = z.object({
   DUDA_API_PASS: z.string().min(1, "DUDA_API_PASS is required (Duda API credentials)"),
   DUDA_API_BASE_URL: z.string().url().default("https://api.duda.co/api"),
   DUDA_SITE_NAME: z.string().default("099434f3"),
+
+  // --- Resend (OPTIONAL — quote-request email notifications).
+  // The app must run fine with none of these set; email is inert until all
+  // three are present (see services/email.ts isEmailConfigured()).
+  RESEND_API_KEY: z.string().optional(),
+  QUOTE_NOTIFY_FROM: z.string().optional(),
+  QUOTE_NOTIFY_TO: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -170,3 +170,31 @@ export interface HubCustomPayload {
   applications: HubTextItem[];
   downloads: HubDownload[];
 }
+
+// --- Quote requests (public basket-page widget submissions) ---
+
+export interface QuoteRequestItem {
+  id: string;
+  name: string;
+  sku: string | null;
+  options: Record<string, unknown> | null;
+  price: string | null;
+  quantity: number;
+}
+
+export interface QuoteRequest {
+  id: string;
+  name: string;
+  email: string;
+  company: string | null;
+  phone: string | null;
+  message: string | null;
+  createdAt: string;
+  emailSent: boolean;
+  items: QuoteRequestItem[];
+}
+
+export interface QuotesResponse {
+  emailEnabled: boolean;
+  requests: QuoteRequest[];
+}

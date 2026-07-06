@@ -129,3 +129,29 @@ model CompatibleLink {
   relatedSku   String
   sortOrder    Int    @default(0)
 }
+
+/// A quote request submitted via the public basket-page widget (replaces the
+/// legacy quote-mailer.php). Email notification is optional; emailSent tracks
+/// whether Resend actually sent the alert.
+model QuoteRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  company   String?
+  phone     String?
+  message   String?
+  createdAt DateTime @default(now())
+  emailSent Boolean  @default(false)
+  items     QuoteRequestItem[]
+}
+
+model QuoteRequestItem {
+  id             String       @id @default(cuid())
+  quoteRequestId String
+  name           String
+  sku            String?
+  options        Json?
+  price          String?
+  quantity       Int          @default(1)
+  quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+}

@@ -4,6 +4,7 @@ import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Media from "./pages/Media";
 import Logos from "./pages/Logos";
+import Quotes from "./pages/Quotes";
 import Status from "./pages/Status";
 import UIShowcase from "./pages/UIShowcase";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/media" element={<Media />} />
         <Route path="/logos" element={<Logos />} />
+        <Route path="/quotes" element={<Quotes />} />
         <Route path="/status" element={<Status />} />
         {/* Temporary component-kit showcase — removed after verification. */}
         <Route path="/ui" element={<UIShowcase />} />
