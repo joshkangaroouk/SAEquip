@@ -271,11 +271,11 @@
   // Build the DOM node for one named section, or null if that section is empty.
   function buildSection(name, data) {
     var logos = data.logos || { sa: [], cert: [] };
-    if (name === "cert-logos") return logos.cert && logos.cert.length ? logoSection("Certifications", logos.cert) : null;
+    if (name === "cert-logos") return logos.cert && logos.cert.length ? logoSection("", logos.cert) : null;
     if (name === "sa-logos") return logos.sa && logos.sa.length ? logoSection("", logos.sa) : null;
     if (name === "specs") return data.specs && data.specs.length ? specsSection(data.specs) : null;
     if (name === "benefits") return data.benefits && data.benefits.length ? listSection("Key Benefits", data.benefits, true) : null;
-    if (name === "applications") return data.applications && data.applications.length ? listSection("Applications", data.applications, false) : null;
+    if (name === "applications") return data.applications && data.applications.length ? listSection("Applications", data.applications, true) : null;
     if (name === "downloads") return data.downloads && data.downloads.length ? downloadsSection(data.downloads) : null;
     return null;
   }

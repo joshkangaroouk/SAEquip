@@ -1,28 +1,9 @@
 /* ==========================================================================
    SAEquip Product Hub — brand design system
    LIGHT base · black content · yellow accent · clean, minimal, rounded.
-   Typeface: Clash Grotesk (weights 400 Regular, 600 Semibold). The 300 Light
-   cut is not used anywhere — 400 is the default body weight.
+   Typeface: Montserrat everywhere (loaded via @fontsource in main.tsx, weights
+   400 and 600). Clash Grotesk is retired — do not reintroduce it.
    ========================================================================== */
-
-/* --- Fonts ---------------------------------------------------------------
-   Served from /public/fonts. Two cuts exist: Regular (400), Semibold (600).
-   Never request any other weight — font-synthesis is off so the browser
-   can't fake one. */
-@font-face {
-  font-family: "Clash Grotesk";
-  src: url("/fonts/clash-grotesk/ClashGrotesk-Regular.otf") format("opentype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Clash Grotesk";
-  src: url("/fonts/clash-grotesk/ClashGrotesk-Semibold.otf") format("opentype");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
 
 @tailwind base;
 @tailwind components;
@@ -59,9 +40,9 @@
   body {
     background-color: var(--bg);
     color: var(--text);
-    font-family: "Clash Grotesk", ui-sans-serif, system-ui, -apple-system,
+    font-family: "Montserrat", ui-sans-serif, system-ui, -apple-system,
       "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-weight: 400; /* Regular for body / paragraph / small text */
+    font-weight: 400;
     font-size: 16px;
     line-height: 1.6;
   }

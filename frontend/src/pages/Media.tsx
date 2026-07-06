@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { apiFetch, apiUpload } from "../lib/api";
+import { FileIcon, useConfirm } from "../components/ui";
 import type { MediaAsset } from "../lib/types";
 
 function formatBytes(n: number): string {
@@ -11,6 +12,7 @@ function formatBytes(n: number): string {
 type Filter = "" | "image" | "file";
 
 export default function Media() {
+  const confirm = useConfirm();
   const [assets, setAssets] = useState<MediaAsset[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +74,17 @@ export default function Media() {
     }
   }
 
-  async function onDelete(id: string) {
+  async function onDelete(asset: MediaAsset) {
+    const ok = await confirm({
+      title: `Delete "${asset.filename}"?`,
+      description:
+        "This file may be used on the live website (a product image, logo, or download). Deleting it cannot be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+
+    const id = asset.id;
     setDeleteErrors((m) => {
       const next = { ...m };
       delete next[id];
@@ -110,7 +122,7 @@ export default function Media() {
               ref={fileInputRef}
               type="file"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="mt-1 block text-sm"
+              className="mt-1 block text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
             />
           </label>
           <label className="text-sm font-semibold text-text">
@@ -173,7 +185,7 @@ export default function Media() {
                       rel="noreferrer"
                       className="flex flex-col items-center text-muted hover:text-text"
                     >
-                      <span className="text-3xl">📄</span>
+                      <FileIcon className="h-10 w-10" />
                       <span className="mt-1 text-xs">Open file</span>
                     </a>
                   )}
@@ -184,7 +196,6 @@ export default function Media() {
                     {a.filename}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted">
-                    <span className="rounded-full bg-surface-2 px-1.5 py-0.5">{a.kind}</span>
                     <span>{formatBytes(a.sizeBytes)}</span>
                     <span>· used {a.usage}×</span>
                   </div>
@@ -192,7 +203,7 @@ export default function Media() {
                 </div>
 
                 <button
-                  onClick={() => onDelete(a.id)}
+                  onClick={() => onDelete(a)}
                   className="mt-2 rounded-md border border-border px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10"
                 >
                   Delete

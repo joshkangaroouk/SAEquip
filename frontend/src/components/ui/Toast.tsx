@@ -17,7 +17,7 @@ export function Toaster() {
           borderRadius: "0.75rem",
           boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
           color: "var(--text)",
-          fontFamily: '"Clash Grotesk", sans-serif',
+          fontFamily: '"Montserrat", sans-serif',
           fontWeight: 400,
         },
         classNames: {

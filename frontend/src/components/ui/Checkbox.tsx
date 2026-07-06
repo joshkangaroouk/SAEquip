@@ -7,10 +7,11 @@ export interface CheckboxProps {
   disabled?: boolean;
   label?: React.ReactNode;
   id?: string;
+  className?: string;
 }
 
 /** Rounded checkbox — yellow fill with a black tick when checked. */
-export function Checkbox({ checked, onChange, disabled, label, id }: CheckboxProps) {
+export function Checkbox({ checked, onChange, disabled, label, id, className }: CheckboxProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
   return (
@@ -19,6 +20,7 @@ export function Checkbox({ checked, onChange, disabled, label, id }: CheckboxPro
       className={cn(
         "inline-flex items-center gap-2.5 select-none",
         disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+        className,
       )}
     >
       <span className="relative inline-flex">

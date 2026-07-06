@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch, apiUpload } from "../lib/api";
+import { FileIcon } from "./ui";
 import type { MediaAsset } from "../lib/types";
 
 /**
@@ -69,7 +70,12 @@ export function MediaPicker({
           <h2 className="text-sm font-semibold text-text">
             Choose {kind === "image" ? "an image" : "a file"}
           </h2>
-          <button onClick={onClose} className="text-subtle hover:text-text">✕</button>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-text"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="border-b border-border px-5 py-4">
@@ -78,7 +84,7 @@ export function MediaPicker({
               ref={fileRef}
               type="file"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-sm"
+              className="text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
             />
             <button
               onClick={onUpload}
@@ -111,7 +117,9 @@ export function MediaPicker({
                   {a.kind === "image" ? (
                     <img src={a.url} alt={a.alt || a.filename} className="h-16 w-full object-contain" />
                   ) : (
-                    <span className="flex h-16 items-center text-2xl">📄</span>
+                    <span className="flex h-16 items-center">
+                      <FileIcon className="h-8 w-8" />
+                    </span>
                   )}
                   <span className="mt-1 w-full truncate text-center text-xs text-muted" title={a.filename}>
                     {a.filename}

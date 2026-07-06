@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { to: "/", label: "Products", end: true },
   { to: "/media", label: "Media" },
   { to: "/logos", label: "Logos" },
+  { to: "/widgets", label: "Widgets" },
   { to: "/quotes", label: "Quote Requests" },
   { to: "/status", label: "Status" },
 ];
@@ -81,11 +82,11 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="px-6 py-7">
-        <NavLink to="/" onClick={onNavigate} className="inline-flex items-center gap-3">
-          <img src={logoUrl} alt="SAEquip" className="h-10 w-auto" />
-          <span className="text-body font-semibold uppercase tracking-widest text-white">
-            SAEquip
+      <div className="px-6 py-8">
+        <NavLink to="/" onClick={onNavigate} className="flex flex-col items-center gap-3">
+          <img src={logoUrl} alt="SAEquip" className="h-24 w-auto" />
+          <span className="text-xs font-semibold uppercase tracking-widest text-white">
+            Product Manager
           </span>
         </NavLink>
       </div>

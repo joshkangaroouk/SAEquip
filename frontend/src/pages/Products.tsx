@@ -10,6 +10,7 @@ export default function Products() {
   const [products, setProducts] = useState<ProductSummary[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -44,9 +45,49 @@ export default function Products() {
 
   const lowHeadroom = store?.remaining != null && store.remaining <= 10;
 
+  const q = query.trim().toLowerCase();
+  const filtered =
+    products && q
+      ? products.filter((p) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
+      : products;
+
   return (
     <>
-      <h1 className="text-xl font-semibold text-text">Products</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-text">Products</h1>
+
+        <div className="relative w-full max-w-xs">
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle"
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name or SKU…"
+            className="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-8 text-sm font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              title="Clear search"
+              className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-subtle transition-colors hover:bg-surface-2 hover:text-text"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
 
         {/* Headroom banner */}
         {store && (
@@ -77,9 +118,17 @@ export default function Products() {
         {!loading && !error && products && products.length === 0 && (
           <p className="mt-8 text-muted">No products in this store yet.</p>
         )}
+        {!loading && !error && products && products.length > 0 && filtered && filtered.length === 0 && (
+          <p className="mt-8 text-muted">
+            No products match "{query}".{" "}
+            <button type="button" onClick={() => setQuery("")} className="text-text underline underline-offset-2 hover:text-muted">
+              Clear search
+            </button>
+          </p>
+        )}
 
         {/* Table */}
-        {!loading && !error && products && products.length > 0 && (
+        {!loading && !error && filtered && filtered.length > 0 && (
           <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-surface">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-surface-2 text-left text-xs uppercase tracking-wide text-muted">
@@ -92,7 +141,7 @@ export default function Products() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {products.map((p) => (
+                {filtered.map((p) => (
                   <tr
                     key={p.id}
                     onClick={() => navigate(`/products/${p.id}`)}
@@ -115,12 +164,12 @@ export default function Products() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted">{p.sku || "—"}</td>
+                    <td className="px-4 py-3 font-medium text-muted">{p.sku || "—"}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={p.status} />
                     </td>
-                    <td className="px-4 py-3 text-text">{p.price ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted">{p.variation_count} variations</td>
+                    <td className="px-4 py-3 font-medium text-text">{p.price ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium text-muted">{p.variation_count} variations</td>
                   </tr>
                 ))}
               </tbody>

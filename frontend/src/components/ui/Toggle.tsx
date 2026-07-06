@@ -37,8 +37,8 @@ export function Toggle({ checked, onChange, disabled, label, id }: ToggleProps) 
       >
         <span
           className={cn(
-            "absolute top-0.5 h-4 w-4 rounded-full transition-transform",
-            checked ? "translate-x-[22px] bg-accent-foreground" : "translate-x-1 bg-muted",
+            "absolute left-1 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full shadow-sm transition-transform",
+            checked ? "translate-x-[18px] bg-accent-foreground" : "translate-x-0 bg-muted",
           )}
         />
       </button>

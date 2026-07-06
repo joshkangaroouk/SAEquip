@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
+import { Badge } from "./ui";
 import type { ProductLogoEntry } from "../lib/types";
 
 /**
@@ -64,14 +65,10 @@ export function LogoActivationPanel({
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text">{title}</h3>
-        {entries && entries.length > 0 && (
-          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-muted">
-            {activeCount} active
-          </span>
-        )}
+        <h3 className="text-body font-semibold text-text">{title}</h3>
+        {entries && entries.length > 0 && <Badge tone="accent">{activeCount} active</Badge>}
       </div>
-      <p className="mb-3 text-xs text-subtle">
+      <p className="mb-3 text-small text-subtle">
         Select which logos display on this product. Manage the catalog in{" "}
         <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
           Logos
@@ -79,11 +76,11 @@ export function LogoActivationPanel({
         .
       </p>
 
-      {loading && <p className="text-sm text-muted">Loading…</p>}
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {loading && <p className="text-body text-muted">Loading…</p>}
+      {error && <p className="text-body text-danger">{error}</p>}
 
       {!loading && !error && entries && entries.length === 0 && (
-        <p className="text-sm text-subtle">
+        <p className="text-body text-subtle">
           No {kind === "SA_LOGO" ? "SA" : "Cert"} logos in the catalog yet —{" "}
           <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
             add some
@@ -110,15 +107,15 @@ export function LogoActivationPanel({
                 />
               </div>
               <div className="mt-2 flex w-full items-center justify-between gap-1">
-                <span className="truncate text-xs text-muted" title={entry.label ?? ""}>
+                <span className="truncate text-small text-muted" title={entry.label ?? ""}>
                   {entry.label || "—"}
                 </span>
                 <span
-                  className={`inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full px-0.5 ${
-                    entry.active ? "justify-end bg-success" : "justify-start bg-subtle"
+                  className={`inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full px-1 ${
+                    entry.active ? "justify-end bg-accent" : "justify-start bg-surface-2"
                   }`}
                 >
-                  <span className="h-3 w-3 rounded-full bg-surface" />
+                  <span className="h-3.5 w-3.5 rounded-full bg-surface shadow-sm" />
                 </span>
               </div>
             </button>

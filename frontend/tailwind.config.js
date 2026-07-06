@@ -2,16 +2,17 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    // Two weights exist: 400 (Regular), 600 (Semibold). 300 (Light) is not
-    // used anywhere. Map every Tailwind weight name onto one of the two so
-    // stray classes (font-light, font-medium, …) can never trigger a faux
-    // weight or accidentally request the unused Light cut.
+    // Three Montserrat weights are loaded: 400 (Regular, body/paragraph text),
+    // 500 (Medium, input/list/table item content), 600 (Semibold, headings/
+    // labels/buttons/table-headers/emphasis). Map every Tailwind weight name
+    // onto one of the three so stray classes can never request an unloaded
+    // weight.
     fontWeight: {
       thin: "400",
       extralight: "400",
       light: "400",
       normal: "400",
-      medium: "600",
+      medium: "500",
       semibold: "600",
       bold: "600",
       extrabold: "600",
@@ -35,8 +36,10 @@ export default {
         success: "var(--success)",
       },
       fontFamily: {
+        // Montserrat everywhere — this is already the <body> default (see
+        // index.css); the "font-sans" utility exists for explicit opt-in.
         sans: [
-          '"Clash Grotesk"',
+          '"Montserrat"',
           "ui-sans-serif",
           "system-ui",
           "-apple-system",

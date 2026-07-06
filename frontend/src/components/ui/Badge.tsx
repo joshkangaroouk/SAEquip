@@ -2,14 +2,17 @@ import { cn } from "../../lib/cn";
 
 type Tone = "neutral" | "accent" | "success" | "danger";
 
+// Solid backgrounds with white text (accent is the one exception — yellow is
+// too light for white text to stay legible, so it keeps black text, matching
+// the primary Button variant). Hover darkens the same solid colour.
 const tones: Record<Tone, string> = {
-  neutral: "bg-surface-2 text-muted border-border",
-  accent: "bg-accent/15 text-accent border-accent/40",
-  success: "bg-success/15 text-success border-success/40",
-  danger: "bg-danger/15 text-danger border-danger/40",
+  neutral: "bg-muted text-white",
+  accent: "bg-accent text-accent-foreground",
+  success: "bg-success text-white",
+  danger: "bg-danger text-white",
 };
 
-/** Rounded status pill. */
+/** Compact, solid-colour status pill. */
 export function Badge({
   tone = "neutral",
   className,
@@ -22,7 +25,8 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-small font-semibold uppercase tracking-wide",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
+        "transition hover:brightness-90",
         tones[tone],
         className,
       )}

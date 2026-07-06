@@ -66,8 +66,8 @@ export default function UIShowcase() {
           <h2 className="text-h2">Heading 2</h2>
           <h3 className="text-h3">Heading 3</h3>
           <p className="text-body">
-            Body text at 16px, weight 400 (Regular). Only Regular (400) and Semibold (600) cuts
-            of Clash Grotesk exist — <span className="font-semibold">this span is semibold (600)</span>.
+            Body text at 16px, weight 400 (Regular). Montserrat is the only typeface — only
+            Regular (400) and Semibold (600) are loaded — <span className="font-semibold">this span is semibold (600)</span>.
           </p>
           <p className="text-small text-muted">Small / muted text at 15px.</p>
         </Card>

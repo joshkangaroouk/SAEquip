@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { rectSortingStrategy } from "@dnd-kit/sortable";
 import { MediaPicker } from "../components/MediaPicker";
+import { DragHandle, RemoveButton, SortableList, useConfirm, type DragHandleProps } from "../components/ui";
 import { apiFetch } from "../lib/api";
 import type { LogoCatalogEntry, MediaAsset } from "../lib/types";
 
@@ -7,16 +9,12 @@ type Kind = "SA_LOGO" | "CERT_LOGO";
 
 function LogoCard({
   entry,
-  index,
-  total,
-  onMove,
+  handle,
   onDelete,
   onSaved,
 }: {
   entry: LogoCatalogEntry;
-  index: number;
-  total: number;
-  onMove: (index: number, dir: -1 | 1) => void;
+  handle: DragHandleProps;
   onDelete: (entry: LogoCatalogEntry) => void;
   onSaved: (updated: LogoCatalogEntry) => void;
 }) {
@@ -40,7 +38,7 @@ function LogoCard({
     }
   }
 
-  const inputCls = "w-full rounded-md border border-border px-2 py-1 text-sm focus:border-text focus:outline-none placeholder:text-subtle";
+  const inputCls = "w-full rounded-md border border-border px-2 py-1 text-sm font-medium focus:border-text focus:outline-none placeholder:text-subtle";
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-surface p-3">
@@ -60,12 +58,11 @@ function LogoCard({
       </div>
 
       <div className="mt-2 flex items-center justify-between">
-        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">used by {entry.usage}</span>
-        <div className="text-subtle">
-          <button onClick={() => onMove(index, -1)} disabled={index === 0} className="px-1 disabled:opacity-30" title="Move up">↑</button>
-          <button onClick={() => onMove(index, 1)} disabled={index === total - 1} className="px-1 disabled:opacity-30" title="Move down">↓</button>
-          <button onClick={() => onDelete(entry)} className="px-1 text-danger hover:opacity-80" title="Delete">×</button>
+        <div className="flex items-center gap-1.5">
+          <DragHandle handle={handle} />
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">used by {entry.usage}</span>
         </div>
+        <RemoveButton onClick={() => onDelete(entry)} title="Delete logo" />
       </div>
 
       {dirty && (
@@ -78,14 +75,13 @@ function LogoCard({
 }
 
 export default function Logos() {
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Kind>("SA_LOGO");
   const [entries, setEntries] = useState<LogoCatalogEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<LogoCatalogEntry | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   async function load(kind: Kind) {
     setLoading(true);
@@ -128,18 +124,13 @@ export default function Logos() {
     }
   }
 
-  async function onMove(index: number, dir: -1 | 1) {
-    if (!entries) return;
-    const j = index + dir;
-    if (j < 0 || j >= entries.length) return;
-    const reordered = [...entries];
-    [reordered[index], reordered[j]] = [reordered[j], reordered[index]];
-    setEntries(reordered); // optimistic
+  async function reorder(next: LogoCatalogEntry[]) {
+    setEntries(next); // optimistic
     try {
       const res = await apiFetch("/api/logos/reorder", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: tab, orderedIds: reordered.map((e) => e.id) }),
+        body: JSON.stringify({ kind: tab, orderedIds: next.map((e) => e.id) }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setEntries(await res.json());
@@ -154,19 +145,27 @@ export default function Logos() {
     setToast("Saved");
   }
 
-  async function confirmDelete() {
-    if (!deleteTarget || deleting) return;
-    setDeleting(true);
+  async function handleDelete(entry: LogoCatalogEntry) {
+    const ok = await confirm({
+      title: "Delete logo?",
+      description: (
+        <>
+          This will remove the logo from the catalog and from{" "}
+          <span className="font-semibold">{entry.usage} product(s)</span> that currently use it. The image
+          stays in the Media Centre.
+        </>
+      ),
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     try {
-      const res = await apiFetch(`/api/logos/${deleteTarget.id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/logos/${entry.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setEntries((prev) => prev?.filter((e) => e.id !== deleteTarget.id) ?? null);
+      setEntries((prev) => prev?.filter((e) => e.id !== entry.id) ?? null);
       setToast("Logo deleted (image kept in Media Centre)");
-      setDeleteTarget(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
-    } finally {
-      setDeleting(false);
     }
   }
 
@@ -211,44 +210,20 @@ export default function Logos() {
         )}
 
         {!loading && !error && entries && entries.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {entries.map((entry, i) => (
-              <LogoCard
-                key={entry.id}
-                entry={entry}
-                index={i}
-                total={entries.length}
-                onMove={onMove}
-                onDelete={setDeleteTarget}
-                onSaved={onSavedMeta}
-              />
-            ))}
-          </div>
+          <SortableList
+            items={entries}
+            getId={(entry) => entry.id}
+            onReorder={reorder}
+            strategy={rectSortingStrategy}
+            className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+            renderItem={(entry, handle) => (
+              <LogoCard entry={entry} handle={handle} onDelete={handleDelete} onSaved={onSavedMeta} />
+            )}
+          />
         )}
       </div>
 
       {pickerOpen && <MediaPicker kind="image" onPick={onPickMedia} onClose={() => setPickerOpen(false)} />}
-
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDeleteTarget(null)}>
-          <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-base font-semibold text-text">Delete logo?</h2>
-            <p className="mt-2 text-sm text-muted">
-              This will remove the logo from the catalog and from{" "}
-              <span className="font-semibold">{deleteTarget.usage} product(s)</span> that currently use it. The
-              image stays in the Media Centre.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="rounded-md px-4 py-2 text-sm font-semibold text-muted hover:text-text">
-                Cancel
-              </button>
-              <button onClick={confirmDelete} disabled={deleting} className="rounded-md bg-danger px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40">
-                {deleting ? "Deleting…" : "Continue"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

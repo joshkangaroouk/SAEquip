@@ -5,6 +5,7 @@ import { SpecTableEditor } from "./SpecTableEditor";
 import { TextItemListEditor } from "./TextItemListEditor";
 import { LogoActivationPanel } from "./LogoActivationPanel";
 import { DownloadsEditor } from "./DownloadsEditor";
+import { Badge } from "./ui";
 
 export function HubContent({ productId }: { productId: string }) {
   const [data, setData] = useState<HubCustomPayload | null>(null);
@@ -57,9 +58,7 @@ export function HubContent({ productId }: { productId: string }) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-lg font-semibold text-text">Hub Content</h2>
-        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-muted">
-          Stored in Supabase
-        </span>
+        <Badge tone="neutral">Stored Externally from Duda</Badge>
       </div>
 
       {toast && (
@@ -78,9 +77,9 @@ export function HubContent({ productId }: { productId: string }) {
         <LogoActivationPanel productId={productId} kind="CERT_LOGO" title="Cert Logos" onToast={pushToast} />
       </div>
 
-      {loading && <p className="text-sm text-muted">Loading hub content…</p>}
+      {loading && <p className="text-body text-muted">Loading hub content…</p>}
       {error && (
-        <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
           {error}
         </div>
       )}

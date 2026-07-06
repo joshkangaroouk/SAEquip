@@ -46,3 +46,34 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     </button>
   );
 });
+
+/** Bigger "×" remove/delete control. Same neutral background hover as DragHandle for consistency. */
+export function RemoveButton({
+  onClick,
+  title = "Remove",
+  disabled,
+  className,
+}: {
+  onClick: () => void;
+  title?: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-xl leading-none text-danger transition-colors",
+        "hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        "disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent",
+        className,
+      )}
+    >
+      ×
+    </button>
+  );
+}

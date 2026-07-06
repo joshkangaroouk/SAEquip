@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { apiFetch } from "../lib/api";
+import { DragHandle, RemoveButton, SortableList } from "./ui";
 import type { HubTextItem } from "../lib/types";
 
-type Item = { text: string };
+type Item = { id: string; text: string };
 
-const toItems = (initial: HubTextItem[]): Item[] => initial.map((i) => ({ text: i.text }));
+const toItems = (initial: HubTextItem[]): Item[] => initial.map((i) => ({ id: i.id, text: i.text }));
 
 export function TextItemListEditor({
   title,
@@ -28,18 +29,10 @@ export function TextItemListEditor({
   const valid =
     items.length <= 100 && items.every((it) => it.text.trim().length > 0 && it.text.trim().length <= 500);
 
-  const update = (i: number, val: string) =>
-    setItems((its) => its.map((it, idx) => (idx === i ? { text: val } : it)));
-  const del = (i: number) => setItems((its) => its.filter((_, idx) => idx !== i));
-  const move = (i: number, dir: -1 | 1) =>
-    setItems((its) => {
-      const j = i + dir;
-      if (j < 0 || j >= its.length) return its;
-      const copy = [...its];
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-      return copy;
-    });
-  const add = () => setItems((its) => [...its, { text: "" }]);
+  const update = (id: string, val: string) =>
+    setItems((its) => its.map((it) => (it.id === id ? { ...it, text: val } : it)));
+  const del = (id: string) => setItems((its) => its.filter((it) => it.id !== id));
+  const add = () => setItems((its) => [...its, { id: crypto.randomUUID(), text: "" }]);
 
   async function save() {
     if (!dirty || !valid || saving) return;
@@ -68,55 +61,55 @@ export function TextItemListEditor({
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text">{title}</h3>
-        <span className="text-xs text-subtle">{dirty ? "Unsaved changes" : "Saved"}</span>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-body font-semibold text-text">{title}</h3>
+        <span className="text-small text-subtle">{dirty ? "Unsaved changes" : "Saved"}</span>
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
           {error}
         </div>
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-subtle">No items. Add one below.</p>
+        <p className="text-small text-subtle">No items. Add one below.</p>
       ) : (
-        <ol className="space-y-2">
-          {items.map((it, i) => (
-            <li key={i} className="flex items-center gap-2 rounded-md border border-border bg-surface p-2">
-              <span className="w-5 text-right text-xs text-subtle">{i + 1}.</span>
+        <SortableList
+          items={items}
+          getId={(it) => it.id}
+          onReorder={setItems}
+          renderItem={(it, handle, index) => (
+            <div className="flex items-center gap-3 rounded-md border border-border bg-surface p-3">
+              <DragHandle handle={handle} />
+              <span className="w-6 text-right text-xs text-subtle">{index + 1}.</span>
               <input
-                className={`flex-1 rounded-md border bg-surface px-2 py-1 text-sm text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent ${
+                className={`flex-1 rounded-md border bg-surface px-3 py-2 text-xs font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent ${
                   it.text.trim() ? "border-border" : "border-danger"
                 }`}
                 value={it.text}
-                onChange={(e) => update(i, e.target.value)}
+                onChange={(e) => update(it.id, e.target.value)}
                 placeholder="Enter text…"
               />
-              <span className="whitespace-nowrap text-subtle">
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="px-1 hover:text-text disabled:opacity-30" title="Move up">↑</button>
-                <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} className="px-1 hover:text-text disabled:opacity-30" title="Move down">↓</button>
-                <button type="button" onClick={() => del(i)} className="px-1 text-danger hover:opacity-80" title="Delete">×</button>
-              </span>
-            </li>
-          ))}
-        </ol>
+              <RemoveButton onClick={() => del(it.id)} title="Delete item" />
+            </div>
+          )}
+        />
       )}
 
       <div className="mt-4 flex items-center gap-3">
-        <button type="button" onClick={add} className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-text hover:bg-surface-2">
+        <button type="button" onClick={add} className="rounded-md border border-border px-3 py-1.5 text-small font-semibold text-text hover:bg-surface-2">
           + Add item
         </button>
         <div className="flex-1" />
-        <button type="button" onClick={() => { setItems(baseline); setError(null); }} disabled={!dirty || saving} className="rounded-md px-3 py-1.5 text-sm font-semibold text-muted hover:text-text disabled:opacity-40">
+        <button type="button" onClick={() => { setItems(baseline); setError(null); }} disabled={!dirty || saving} className="rounded-md px-3 py-1.5 text-small font-semibold text-muted hover:text-text disabled:opacity-40">
           Reset
         </button>
-        <button type="button" onClick={save} disabled={!dirty || !valid || saving} className="rounded-md bg-accent px-4 py-1.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
+        <button type="button" onClick={save} disabled={!dirty || !valid || saving} className="rounded-md bg-accent px-4 py-1.5 text-small font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
           {saving ? "Saving…" : "Save"}
         </button>
       </div>
-      {!valid && <p className="mt-2 text-xs text-danger">Every item is required and must be ≤500 chars; max 100 items.</p>}
+      {!valid && <p className="mt-2 text-small text-danger">Every item is required and must be ≤500 chars; max 100 items.</p>}
     </section>
   );
 }

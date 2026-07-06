@@ -79,7 +79,7 @@ export function TH({ className, children, ...rest }: React.ThHTMLAttributes<HTML
 
 export function TD({ className, children, ...rest }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("px-4 py-3.5 text-body align-middle", className)} {...rest}>
+    <td className={cn("px-4 py-3.5 text-body font-medium align-middle", className)} {...rest}>
       {children}
     </td>
   );

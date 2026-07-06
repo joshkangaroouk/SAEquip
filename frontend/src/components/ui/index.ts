@@ -1,5 +1,5 @@
 /** SAEquip brand component kit — dark · sharp · yellow. */
-export { Button, type ButtonProps } from "./Button";
+export { Button, RemoveButton, type ButtonProps } from "./Button";
 export { Input, Field, type InputProps } from "./Input";
 export { Textarea, type TextareaProps } from "./Textarea";
 export { Select, type SelectProps } from "./Select";
@@ -13,5 +13,6 @@ export { Toaster, toast } from "./Toast";
 export { FileDropzone, type FileDropzoneProps } from "./FileDropzone";
 export { SortableList, DragHandle, type DragHandleProps } from "./SortableList";
 export { EmptyState } from "./EmptyState";
+export { FileIcon } from "./FileIcon";
 export { Spinner, Loader } from "./Spinner";
 export { PageHeader } from "./PageHeader";

@@ -14,6 +14,7 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
+  type SortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "../../lib/cn";
@@ -31,6 +32,8 @@ interface SortableListProps<T> {
   /** Container element — "div" for lists, "tbody" for table rows. Default "div". */
   as?: "div" | "tbody";
   className?: string;
+  /** dnd-kit sorting strategy — use rectSortingStrategy for multi-column grids. */
+  strategy?: SortingStrategy;
 }
 
 /** A ready-made grip handle. Spread the `handle` from renderItem onto it. */
@@ -46,7 +49,8 @@ export function DragHandle({
       type="button"
       aria-label="Drag to reorder"
       className={cn(
-        "cursor-grab touch-none text-subtle hover:text-text active:cursor-grabbing",
+        "flex shrink-0 cursor-grab touch-none items-center justify-center rounded-md p-1.5",
+        "text-subtle transition-colors hover:bg-surface-2 hover:text-text active:cursor-grabbing",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         className,
       )}
@@ -102,6 +106,7 @@ export function SortableList<T>({
   renderItem,
   as = "div",
   className,
+  strategy = verticalListSortingStrategy,
 }: SortableListProps<T>) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -131,11 +136,16 @@ export function SortableList<T>({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+      <SortableContext items={ids} strategy={strategy}>
         {as === "tbody" ? (
           <tbody className={cn("divide-y divide-border", className)}>{children}</tbody>
         ) : (
-          <div className={cn("space-y-2", className)}>{children}</div>
+          // The space-y-2 default only applies when the caller hasn't supplied
+          // their own container classes — a custom className (e.g. a grid with
+          // its own gap) fully replaces it, since space-y's `> * + *` margin
+          // would otherwise stack on top of a grid gap and misalign the first
+          // row (every item but the first gets an extra margin-top).
+          <div className={className ? className : "space-y-2"}>{children}</div>
         )}
       </SortableContext>
     </DndContext>
