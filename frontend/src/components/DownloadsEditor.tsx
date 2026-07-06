@@ -41,46 +41,46 @@ function DownloadRow({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 p-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface p-3">
       <span className="text-2xl">📄</span>
       <div className="min-w-[8rem] flex-1">
         <input
-          className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-gray-900 focus:outline-none"
+          className="w-full rounded-md border border-border bg-surface px-2 py-1 text-sm text-text placeholder:text-subtle focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={commitTitle}
         />
-        <div className="mt-1 truncate text-xs text-gray-400" title={item.file.filename}>
+        <div className="mt-1 truncate text-xs text-subtle" title={item.file.filename}>
           {item.file.filename} · {formatBytes(item.file.sizeBytes)}
         </div>
       </div>
 
-      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+      <label className="flex items-center gap-1.5 text-xs font-semibold text-muted">
         <button
           type="button"
           onClick={() => onToggleGated(item)}
           className={`inline-flex h-4 w-7 items-center rounded-full px-0.5 ${
-            item.gated ? "justify-end bg-green-500" : "justify-start bg-gray-300"
+            item.gated ? "justify-end bg-success" : "justify-start bg-subtle"
           }`}
           title="Gated"
         >
-          <span className="h-3 w-3 rounded-full bg-white" />
+          <span className="h-3 w-3 rounded-full bg-surface" />
         </button>
         Gated
       </label>
 
-      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+      <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">
         {item.leadCount} lead{item.leadCount === 1 ? "" : "s"}
       </span>
 
-      <a href={item.file.url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline">
+      <a href={item.file.url} target="_blank" rel="noreferrer" className="text-xs text-text underline underline-offset-2 hover:text-muted">
         Preview
       </a>
 
-      <span className="whitespace-nowrap text-gray-400">
-        <button onClick={() => onMove(index, -1)} disabled={index === 0} className="px-1 disabled:opacity-30" title="Move up">↑</button>
-        <button onClick={() => onMove(index, 1)} disabled={index === total - 1} className="px-1 disabled:opacity-30" title="Move down">↓</button>
-        <button onClick={() => onDelete(item)} className="px-1 text-red-500 hover:text-red-700" title="Delete">×</button>
+      <span className="whitespace-nowrap text-subtle">
+        <button onClick={() => onMove(index, -1)} disabled={index === 0} className="px-1 hover:text-text disabled:opacity-30" title="Move up">↑</button>
+        <button onClick={() => onMove(index, 1)} disabled={index === total - 1} className="px-1 hover:text-text disabled:opacity-30" title="Move down">↓</button>
+        <button onClick={() => onDelete(item)} className="px-1 text-danger hover:opacity-80" title="Delete">×</button>
       </span>
     </div>
   );
@@ -227,21 +227,21 @@ export function DownloadsEditor({
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6">
+    <section className="rounded-xl border border-border bg-surface p-6">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">Downloads</h3>
+        <h3 className="text-sm font-semibold text-text">Downloads</h3>
         <button
           onClick={() => setPickerOpen(true)}
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover"
         >
           + Add download
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Loading…</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-muted">Loading…</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       {!loading && !error && items && items.length === 0 && (
-        <p className="text-sm text-gray-400">No downloads yet.</p>
+        <p className="text-sm text-subtle">No downloads yet.</p>
       )}
 
       {!loading && !error && items && items.length > 0 && (
@@ -266,26 +266,26 @@ export function DownloadsEditor({
       {/* Title + gated prompt after picking a file */}
       {pendingAsset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setPendingAsset(null)}>
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-base font-semibold text-gray-900">Add download</h2>
-            <p className="mt-1 truncate text-xs text-gray-400">{pendingAsset.filename}</p>
-            <label className="mt-4 block text-sm font-medium text-gray-700">
+          <div className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-text">Add download</h2>
+            <p className="mt-1 truncate text-xs text-subtle">{pendingAsset.filename}</p>
+            <label className="mt-4 block text-sm font-semibold text-text">
               Title
               <input
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                className="mt-1 block w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-subtle focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
               />
             </label>
-            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+            <label className="mt-3 flex items-center gap-2 text-sm text-text">
               <input type="checkbox" checked={newGated} onChange={(e) => setNewGated(e.target.checked)} />
               Gated (require lead capture before download)
             </label>
             <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setPendingAsset(null)} className="rounded-md px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900">
+              <button onClick={() => setPendingAsset(null)} className="rounded-md px-4 py-2 text-sm font-semibold text-muted hover:text-text">
                 Cancel
               </button>
-              <button onClick={confirmAdd} disabled={adding || !newTitle.trim()} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40">
+              <button onClick={confirmAdd} disabled={adding || !newTitle.trim()} className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
                 {adding ? "Adding…" : "Add"}
               </button>
             </div>
@@ -296,12 +296,12 @@ export function DownloadsEditor({
       {/* Delete confirmation */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDeleteTarget(null)}>
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-base font-semibold text-gray-900">Delete download?</h2>
-            <p className="mt-2 text-sm text-gray-600">
+          <div className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-text">Delete download?</h2>
+            <p className="mt-2 text-sm text-muted">
               {deleteTarget.leadCount > 0 ? (
                 <>
-                  This download has <span className="font-medium">{deleteTarget.leadCount} captured lead(s)</span>.
+                  This download has <span className="font-semibold">{deleteTarget.leadCount} captured lead(s)</span>.
                   Deleting it will permanently remove those leads too. The file stays in the Media Centre.
                 </>
               ) : (
@@ -309,10 +309,10 @@ export function DownloadsEditor({
               )}
             </p>
             <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="rounded-md px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900">
+              <button onClick={() => setDeleteTarget(null)} className="rounded-md px-4 py-2 text-sm font-semibold text-muted hover:text-text">
                 Cancel
               </button>
-              <button onClick={confirmDelete} disabled={deleting} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40">
+              <button onClick={confirmDelete} disabled={deleting} className="rounded-md bg-danger px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40">
                 {deleting ? "Deleting…" : "Continue"}
               </button>
             </div>

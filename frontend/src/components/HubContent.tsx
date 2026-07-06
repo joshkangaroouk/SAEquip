@@ -56,16 +56,16 @@ export function HubContent({ productId }: { productId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold text-gray-900">Hub Content</h2>
-        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+        <h2 className="text-lg font-semibold text-text">Hub Content</h2>
+        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-muted">
           Stored in Supabase
         </span>
       </div>
 
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-lg ${
-            toast.error ? "bg-red-600" : "bg-green-600"
+          className={`fixed bottom-6 right-6 z-50 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-lg ${
+            toast.error ? "bg-danger" : "bg-success"
           }`}
         >
           {toast.msg}
@@ -78,9 +78,9 @@ export function HubContent({ productId }: { productId: string }) {
         <LogoActivationPanel productId={productId} kind="CERT_LOGO" title="Cert Logos" onToast={pushToast} />
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Loading hub content…</p>}
+      {loading && <p className="text-sm text-muted">Loading hub content…</p>}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
           {error}
         </div>
       )}

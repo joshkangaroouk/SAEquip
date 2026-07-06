@@ -35,9 +35,9 @@ export default function Status() {
   }, []);
 
   const healthColor =
-    health === "loading" ? "text-gray-500" : health === "ok" ? "text-green-600" : "text-red-600";
+    health === "loading" ? "text-muted" : health === "ok" ? "text-success" : "text-danger";
   const healthDot =
-    health === "loading" ? "bg-gray-400" : health === "ok" ? "bg-green-500" : "bg-red-500";
+    health === "loading" ? "bg-subtle" : health === "ok" ? "bg-success" : "bg-danger";
   const healthLabel =
     health === "loading"
       ? "Backend: checking…"
@@ -47,24 +47,24 @@ export default function Status() {
 
   return (
     <div className="mx-auto max-w-md space-y-4">
-      <h1 className="text-lg font-semibold text-gray-900">System status</h1>
+      <h1 className="text-lg font-semibold text-text">System status</h1>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="text-sm font-medium text-gray-500">Backend health</h2>
+        <div className="rounded-xl border border-border bg-surface p-6">
+          <h2 className="text-sm font-semibold text-muted">Backend health</h2>
           <div className="mt-2 flex items-center gap-2">
             <span className={`inline-block h-3 w-3 rounded-full ${healthDot}`} />
-            <span className={`font-medium ${healthColor}`}>{healthLabel}</span>
+            <span className={`font-semibold ${healthColor}`}>{healthLabel}</span>
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="text-sm font-medium text-gray-500">Authenticated API call</h2>
-          <div className="mt-2 font-medium">
-            {me.status === "loading" && <span className="text-gray-500">Checking /api/me…</span>}
+        <div className="rounded-xl border border-border bg-surface p-6">
+          <h2 className="text-sm font-semibold text-muted">Authenticated API call</h2>
+          <div className="mt-2 font-semibold">
+            {me.status === "loading" && <span className="text-muted">Checking /api/me…</span>}
             {me.status === "ok" && (
-              <span className="text-green-600">Authenticated as {me.email}</span>
+              <span className="text-success">Authenticated as {me.email}</span>
             )}
-            {me.status === "error" && <span className="text-red-600">/api/me failed</span>}
+            {me.status === "error" && <span className="text-danger">/api/me failed</span>}
           </div>
         </div>
     </div>

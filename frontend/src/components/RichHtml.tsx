@@ -9,10 +9,10 @@ export function RichHtml({ html, className = "" }: { html: string; className?: s
   return (
     <div
       className={
-        "text-sm leading-relaxed text-gray-700 " +
+        "text-sm leading-relaxed text-text " +
         "[&_p]:mb-2 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 " +
         "[&_img]:inline [&_img]:align-middle [&_img]:mr-1 " +
-        "[&_a]:text-blue-600 [&_a]:underline " +
+        "[&_a]:text-text [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-muted " +
         className
       }
       dangerouslySetInnerHTML={{ __html: clean }}

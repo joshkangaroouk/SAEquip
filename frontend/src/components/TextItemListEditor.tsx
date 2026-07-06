@@ -67,37 +67,37 @@ export function TextItemListEditor({
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6">
+    <section className="rounded-xl border border-border bg-surface p-6">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">{title}</h3>
-        <span className="text-xs text-gray-400">{dirty ? "Unsaved changes" : "Saved"}</span>
+        <h3 className="text-sm font-semibold text-text">{title}</h3>
+        <span className="text-xs text-subtle">{dirty ? "Unsaved changes" : "Saved"}</span>
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </div>
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-gray-400">No items. Add one below.</p>
+        <p className="text-sm text-subtle">No items. Add one below.</p>
       ) : (
         <ol className="space-y-2">
           {items.map((it, i) => (
-            <li key={i} className="flex items-center gap-2">
-              <span className="w-5 text-right text-xs text-gray-400">{i + 1}.</span>
+            <li key={i} className="flex items-center gap-2 rounded-md border border-border bg-surface p-2">
+              <span className="w-5 text-right text-xs text-subtle">{i + 1}.</span>
               <input
-                className={`flex-1 rounded-md border px-2 py-1 text-sm focus:outline-none focus:border-gray-900 ${
-                  it.text.trim() ? "border-gray-300" : "border-red-300"
+                className={`flex-1 rounded-md border bg-surface px-2 py-1 text-sm text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent ${
+                  it.text.trim() ? "border-border" : "border-danger"
                 }`}
                 value={it.text}
                 onChange={(e) => update(i, e.target.value)}
                 placeholder="Enter text…"
               />
-              <span className="whitespace-nowrap text-gray-400">
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="px-1 disabled:opacity-30" title="Move up">↑</button>
-                <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} className="px-1 disabled:opacity-30" title="Move down">↓</button>
-                <button type="button" onClick={() => del(i)} className="px-1 text-red-500 hover:text-red-700" title="Delete">×</button>
+              <span className="whitespace-nowrap text-subtle">
+                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="px-1 hover:text-text disabled:opacity-30" title="Move up">↑</button>
+                <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} className="px-1 hover:text-text disabled:opacity-30" title="Move down">↓</button>
+                <button type="button" onClick={() => del(i)} className="px-1 text-danger hover:opacity-80" title="Delete">×</button>
               </span>
             </li>
           ))}
@@ -105,18 +105,18 @@ export function TextItemListEditor({
       )}
 
       <div className="mt-4 flex items-center gap-3">
-        <button type="button" onClick={add} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100">
+        <button type="button" onClick={add} className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-text hover:bg-surface-2">
           + Add item
         </button>
         <div className="flex-1" />
-        <button type="button" onClick={() => { setItems(baseline); setError(null); }} disabled={!dirty || saving} className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 disabled:opacity-40">
+        <button type="button" onClick={() => { setItems(baseline); setError(null); }} disabled={!dirty || saving} className="rounded-md px-3 py-1.5 text-sm font-semibold text-muted hover:text-text disabled:opacity-40">
           Reset
         </button>
-        <button type="button" onClick={save} disabled={!dirty || !valid || saving} className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40">
+        <button type="button" onClick={save} disabled={!dirty || !valid || saving} className="rounded-md bg-accent px-4 py-1.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
           {saving ? "Saving…" : "Save"}
         </button>
       </div>
-      {!valid && <p className="mt-2 text-xs text-red-600">Every item is required and must be ≤500 chars; max 100 items.</p>}
+      {!valid && <p className="mt-2 text-xs text-danger">Every item is required and must be ≤500 chars; max 100 items.</p>}
     </section>
   );
 }

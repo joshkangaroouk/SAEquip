@@ -94,17 +94,17 @@ export default function Media() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-gray-900">Media Centre</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <h1 className="text-xl font-semibold text-text">Media Centre</h1>
+        <p className="mt-1 text-sm text-muted">
           Reusable library of images and files, stored in Supabase.
         </p>
 
         {/* Upload */}
         <form
           onSubmit={onUpload}
-          className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-4"
+          className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4"
         >
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-semibold text-text">
             File
             <input
               ref={fileInputRef}
@@ -113,23 +113,23 @@ export default function Media() {
               className="mt-1 block text-sm"
             />
           </label>
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-semibold text-text">
             Alt text (optional)
             <input
               value={alt}
               onChange={(e) => setAlt(e.target.value)}
               placeholder="describe the image"
-              className="mt-1 block rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+              className="mt-1 block rounded-md border border-border px-3 py-2 text-sm focus:border-text focus:outline-none placeholder:text-subtle"
             />
           </label>
           <button
             type="submit"
             disabled={!file || uploading}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
           >
             {uploading ? "Uploading…" : "Upload"}
           </button>
-          {uploadError && <span className="text-sm text-red-600">{uploadError}</span>}
+          {uploadError && <span className="text-sm text-danger">{uploadError}</span>}
         </form>
 
         {/* Filter */}
@@ -138,8 +138,8 @@ export default function Media() {
             <button
               key={f || "all"}
               onClick={() => setFilter(f)}
-              className={`rounded-full px-3 py-1 font-medium ${
-                filter === f ? "bg-gray-900 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-100"
+              className={`rounded-full px-3 py-1 font-semibold ${
+                filter === f ? "bg-accent text-accent-foreground" : "border border-border text-muted hover:bg-surface-2"
               }`}
             >
               {f === "" ? "All" : f === "image" ? "Images" : "Files"}
@@ -148,22 +148,22 @@ export default function Media() {
         </div>
 
         {/* States */}
-        {loading && <p className="mt-8 text-gray-500">Loading media…</p>}
+        {loading && <p className="mt-8 text-muted">Loading media…</p>}
         {error && (
-          <div className="mt-8 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
             {error}
           </div>
         )}
         {!loading && !error && assets && assets.length === 0 && (
-          <p className="mt-8 text-gray-500">No media yet. Upload a file to get started.</p>
+          <p className="mt-8 text-muted">No media yet. Upload a file to get started.</p>
         )}
 
         {/* Grid */}
         {!loading && !error && assets && assets.length > 0 && (
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {assets.map((a) => (
-              <div key={a.id} className="flex flex-col rounded-xl border border-gray-200 bg-white p-3">
-                <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg bg-gray-50">
+              <div key={a.id} className="flex flex-col rounded-xl border border-border bg-surface p-3">
+                <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
                   {a.kind === "image" ? (
                     <img src={a.url} alt={a.alt || a.filename} className="max-h-32 max-w-full object-contain" />
                   ) : (
@@ -171,7 +171,7 @@ export default function Media() {
                       href={a.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex flex-col items-center text-gray-500 hover:text-gray-900"
+                      className="flex flex-col items-center text-muted hover:text-text"
                     >
                       <span className="text-3xl">📄</span>
                       <span className="mt-1 text-xs">Open file</span>
@@ -180,25 +180,25 @@ export default function Media() {
                 </div>
 
                 <div className="mt-2 flex-1">
-                  <p className="truncate text-sm font-medium text-gray-900" title={a.filename}>
+                  <p className="truncate text-sm font-semibold text-text" title={a.filename}>
                     {a.filename}
                   </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-gray-500">
-                    <span className="rounded-full bg-gray-100 px-1.5 py-0.5">{a.kind}</span>
+                  <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted">
+                    <span className="rounded-full bg-surface-2 px-1.5 py-0.5">{a.kind}</span>
                     <span>{formatBytes(a.sizeBytes)}</span>
                     <span>· used {a.usage}×</span>
                   </div>
-                  {a.alt && <p className="mt-1 truncate text-xs text-gray-400">alt: {a.alt}</p>}
+                  {a.alt && <p className="mt-1 truncate text-xs text-subtle">alt: {a.alt}</p>}
                 </div>
 
                 <button
                   onClick={() => onDelete(a.id)}
-                  className="mt-2 rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                  className="mt-2 rounded-md border border-border px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10"
                 >
                   Delete
                 </button>
                 {deleteErrors[a.id] && (
-                  <p className="mt-1 text-xs text-amber-700">{deleteErrors[a.id]}</p>
+                  <p className="mt-1 text-xs text-danger">{deleteErrors[a.id]}</p>
                 )}
               </div>
             ))}

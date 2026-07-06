@@ -1,23 +1,24 @@
 import { Toaster as SonnerToaster, toast } from "sonner";
 
 /**
- * Themed sonner Toaster — dark, sharp-cornered, top-right, yellow accents.
+ * Themed sonner Toaster — light, sharp-cornered, top-right, yellow accents.
  * Mount ONCE near the app root. Fire toasts with the re-exported `toast`.
  */
 export function Toaster() {
   return (
     <SonnerToaster
       position="top-right"
-      theme="dark"
+      theme="light"
       richColors={false}
       toastOptions={{
         style: {
           background: "var(--surface)",
           border: "1px solid var(--border)",
           borderRadius: "0",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
           color: "var(--text)",
           fontFamily: '"Clash Grotesk", sans-serif',
-          fontWeight: 300,
+          fontWeight: 400,
         },
         classNames: {
           title: "font-semibold",

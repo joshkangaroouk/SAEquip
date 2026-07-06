@@ -4,6 +4,14 @@ import { useAuth } from "../auth/AuthContext";
 import { cn } from "../lib/cn";
 import logoUrl from "../assets/saequip-logo.svg";
 
+/**
+ * The sidebar is intentionally kept DARK against the light content area — the
+ * SAEquip logo is built for dark backgrounds. All sidebar colours are hardcoded
+ * (black bg, light text, yellow active bar) and do NOT follow the light tokens.
+ */
+const SIDEBAR = "bg-[#0A0A0A] text-white";
+const SIDEBAR_BORDER = "border-white/10";
+
 interface NavItem {
   to: string;
   label: string;
@@ -32,8 +40,8 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
               // Left accent bar for the active route (no rounding).
               "before:absolute before:left-0 before:top-0 before:h-full before:w-0.5 before:transition-colors",
               isActive
-                ? "bg-surface-2 text-text font-semibold before:bg-accent"
-                : "text-muted hover:bg-surface-2 hover:text-text before:bg-transparent",
+                ? "bg-white/10 text-white font-semibold before:bg-accent"
+                : "text-white/60 hover:bg-white/5 hover:text-white before:bg-transparent",
             )
           }
         >
@@ -49,8 +57,8 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
             "relative mt-1 flex items-center px-4 py-2.5 text-small transition-colors",
             "before:absolute before:left-0 before:top-0 before:h-full before:w-0.5",
             isActive
-              ? "bg-surface-2 text-accent font-semibold before:bg-accent"
-              : "text-subtle hover:bg-surface-2 hover:text-muted before:bg-transparent",
+              ? "bg-white/10 text-accent font-semibold before:bg-accent"
+              : "text-white/40 hover:bg-white/5 hover:text-white/70 before:bg-transparent",
           )
         }
       >
@@ -75,7 +83,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       <div className="px-6 py-7">
         <NavLink to="/" onClick={onNavigate} className="inline-flex items-center gap-3">
           <img src={logoUrl} alt="SAEquip" className="h-10 w-auto" />
-          <span className="text-body font-semibold uppercase tracking-widest text-text">
+          <span className="text-body font-semibold uppercase tracking-widest text-white">
             SAEquip
           </span>
         </NavLink>
@@ -87,16 +95,16 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {/* User + sign out, pinned to bottom */}
-      <div className="border-t border-border px-4 py-4">
-        <p className="truncate px-2 pb-3 text-small text-muted" title={user?.email ?? undefined}>
+      <div className={cn("border-t px-4 py-4", SIDEBAR_BORDER)}>
+        <p className="truncate px-2 pb-3 text-small text-white/50" title={user?.email ?? undefined}>
           {user?.email}
         </p>
         <button
           onClick={handleSignOut}
           className={cn(
-            "w-full border border-border px-4 py-2 text-small font-semibold text-text",
-            "transition-colors hover:bg-surface-2",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
+            "w-full border border-white/20 px-4 py-2 text-small font-semibold text-white",
+            "transition-colors hover:bg-white/10",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]",
           )}
         >
           Sign out
@@ -106,27 +114,41 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** App shell: fixed left sidebar on desktop; top bar + slide-in drawer on mobile. */
+/** App shell: fixed dark left sidebar on desktop; dark top bar + drawer on mobile. */
 export function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-bg text-text">
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border bg-surface lg:block">
+      {/* Desktop sidebar (dark) */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-30 hidden w-64 border-r lg:block",
+          SIDEBAR,
+          SIDEBAR_BORDER,
+        )}
+      >
         <SidebarBody />
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-surface px-4 py-3 lg:hidden">
+      {/* Mobile top bar (dark) */}
+      <header
+        className={cn(
+          "sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 lg:hidden",
+          SIDEBAR,
+          SIDEBAR_BORDER,
+        )}
+      >
         <NavLink to="/" className="inline-flex items-center gap-2">
           <img src={logoUrl} alt="SAEquip" className="h-8 w-auto" />
-          <span className="text-small font-semibold uppercase tracking-widest">SAEquip</span>
+          <span className="text-small font-semibold uppercase tracking-widest text-white">
+            SAEquip
+          </span>
         </NavLink>
         <button
           aria-label="Open menu"
           onClick={() => setDrawerOpen(true)}
-          className="border border-border p-2 text-text hover:bg-surface-2"
+          className="border border-white/20 p-2 text-white hover:bg-white/10"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.5" />
@@ -134,18 +156,15 @@ export function Layout() {
         </button>
       </header>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer (dark) */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/70"
-            onClick={() => setDrawerOpen(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 w-72 border-r border-border bg-surface">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
+          <aside className={cn("absolute inset-y-0 left-0 w-72 border-r", SIDEBAR, SIDEBAR_BORDER)}>
             <button
               aria-label="Close menu"
               onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-4 border border-border p-1.5 text-text hover:bg-surface-2"
+              className="absolute right-3 top-4 border border-white/20 p-1.5 text-white hover:bg-white/10"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.5" />
@@ -156,7 +175,7 @@ export function Layout() {
         </div>
       )}
 
-      {/* Main content */}
+      {/* Main content (light) */}
       <main className="lg:pl-64">
         <div className="mx-auto max-w-6xl px-6 py-10 lg:px-10">
           <Outlet />

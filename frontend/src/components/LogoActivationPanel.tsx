@@ -62,30 +62,30 @@ export function LogoActivationPanel({
   const activeCount = entries?.filter((e) => e.active).length ?? 0;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6">
+    <section className="rounded-xl border border-border bg-surface p-6">
       <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">{title}</h3>
+        <h3 className="text-sm font-semibold text-text">{title}</h3>
         {entries && entries.length > 0 && (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-muted">
             {activeCount} active
           </span>
         )}
       </div>
-      <p className="mb-3 text-xs text-gray-400">
+      <p className="mb-3 text-xs text-subtle">
         Select which logos display on this product. Manage the catalog in{" "}
-        <Link to="/logos" className="text-blue-600 underline">
+        <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
           Logos
         </Link>
         .
       </p>
 
-      {loading && <p className="text-sm text-gray-500">Loading…</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-muted">Loading…</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {!loading && !error && entries && entries.length === 0 && (
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-subtle">
           No {kind === "SA_LOGO" ? "SA" : "Cert"} logos in the catalog yet —{" "}
-          <Link to="/logos" className="text-blue-600 underline">
+          <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
             add some
           </Link>
           .
@@ -99,10 +99,10 @@ export function LogoActivationPanel({
               key={entry.id}
               onClick={() => toggle(entry)}
               className={`flex flex-col items-center rounded-lg border-2 p-2 text-left transition ${
-                entry.active ? "border-gray-900 bg-gray-50" : "border-gray-200 hover:border-gray-300"
+                entry.active ? "border-accent bg-accent/10" : "border-border hover:border-subtle"
               }`}
             >
-              <div className="flex h-16 w-full items-center justify-center">
+              <div className="flex h-16 w-full items-center justify-center bg-surface-2">
                 <img
                   src={entry.url}
                   alt={entry.alt || entry.label || "logo"}
@@ -110,15 +110,15 @@ export function LogoActivationPanel({
                 />
               </div>
               <div className="mt-2 flex w-full items-center justify-between gap-1">
-                <span className="truncate text-xs text-gray-600" title={entry.label ?? ""}>
+                <span className="truncate text-xs text-muted" title={entry.label ?? ""}>
                   {entry.label || "—"}
                 </span>
                 <span
                   className={`inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full px-0.5 ${
-                    entry.active ? "justify-end bg-green-500" : "justify-start bg-gray-300"
+                    entry.active ? "justify-end bg-success" : "justify-start bg-subtle"
                   }`}
                 >
-                  <span className="h-3 w-3 rounded-full bg-white" />
+                  <span className="h-3 w-3 rounded-full bg-surface" />
                 </span>
               </div>
             </button>

@@ -15,13 +15,15 @@ export default {
       "3xl": "0",
       full: "0",
     },
-    // Only two weights exist. Map every Tailwind weight name onto 300 or 600
-    // so stray `font-medium`/`font-bold` never trigger a faux weight.
+    // Three weights exist: 300 (Light), 400 (Regular), 600 (Semibold). Map
+    // every Tailwind weight name onto one of them so stray classes can never
+    // trigger a faux weight. font-light -> 300, font-normal -> 400,
+    // font-medium/semibold/bold -> 600.
     fontWeight: {
       thin: "300",
       extralight: "300",
       light: "300",
-      normal: "300",
+      normal: "400",
       medium: "600",
       semibold: "600",
       bold: "600",

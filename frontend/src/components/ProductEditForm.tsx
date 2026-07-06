@@ -41,8 +41,8 @@ function formFromProduct(p: Product): EditForm {
 
 const NUMERIC = /^\d+(\.\d+)?$/;
 const inputCls =
-  "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400";
-const labelCls = "block text-sm font-medium text-gray-700";
+  "mt-1 block w-full rounded-md bg-surface border border-border px-3 py-2 text-sm text-text placeholder:text-subtle focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none disabled:bg-surface-2 disabled:text-subtle";
+const labelCls = "block text-sm font-semibold text-text";
 
 export function ProductEditForm({
   product,
@@ -142,14 +142,14 @@ export function ProductEditForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-xl border border-gray-200 bg-white p-6">
+    <form onSubmit={onSubmit} className="rounded-xl border border-border bg-surface p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-500">Edit native fields</h2>
-        <span className="text-xs text-gray-400">{dirty ? "Unsaved changes" : "No changes"}</span>
+        <h2 className="text-sm font-semibold text-text">Edit native fields</h2>
+        <span className="text-xs text-subtle">{dirty ? "Unsaved changes" : "No changes"}</span>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </div>
       )}
@@ -158,7 +158,7 @@ export function ProductEditForm({
         <label className={labelCls}>
           Name
           <input className={inputCls} value={form.name} onChange={(e) => set("name", e.target.value)} />
-          {!nameOk && <span className="text-xs text-red-600">Name is required</span>}
+          {!nameOk && <span className="text-xs text-danger">Name is required</span>}
         </label>
 
         <label className={labelCls}>
@@ -205,7 +205,7 @@ export function ProductEditForm({
             value={form.price}
             onChange={(e) => set("price", e.target.value)}
           />
-          {!priceOk && <span className="text-xs text-red-600">Must be a number ≥ 0</span>}
+          {!priceOk && <span className="text-xs text-danger">Must be a number ≥ 0</span>}
         </label>
 
         <label className={labelCls}>
@@ -217,7 +217,7 @@ export function ProductEditForm({
             onChange={(e) => set("compare_at_price", e.target.value)}
           />
           {!compareOk && (
-            <span className="text-xs text-red-600">Must be a number greater than price</span>
+            <span className="text-xs text-danger">Must be a number greater than price</span>
           )}
         </label>
 
@@ -232,10 +232,10 @@ export function ProductEditForm({
             value={form.quantity}
             onChange={(e) => set("quantity", e.target.value)}
           />
-          {!quantityOk && <span className="text-xs text-red-600">Must be a whole number ≥ 0</span>}
+          {!quantityOk && <span className="text-xs text-danger">Must be a whole number ≥ 0</span>}
         </label>
 
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        <label className="flex items-center gap-2 text-sm font-semibold text-text">
           <input
             type="checkbox"
             checked={form.requires_shipping}
@@ -244,7 +244,7 @@ export function ProductEditForm({
           Requires shipping
         </label>
 
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        <label className="flex items-center gap-2 text-sm font-semibold text-text">
           <input
             type="checkbox"
             checked={form.managed_inventory}
@@ -263,8 +263,8 @@ export function ProductEditForm({
         />
       </label>
 
-      <fieldset className="mt-4 rounded-lg border border-gray-200 p-4">
-        <legend className="px-1 text-xs font-medium uppercase tracking-wide text-gray-400">SEO</legend>
+      <fieldset className="mt-4 rounded-lg border border-border p-4">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted">SEO</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className={labelCls}>
             Title
@@ -297,7 +297,7 @@ export function ProductEditForm({
         <button
           type="submit"
           disabled={!dirty || !valid || saving}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
@@ -305,7 +305,7 @@ export function ProductEditForm({
           type="button"
           onClick={() => setForm(initial)}
           disabled={!dirty || saving}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+          className="rounded-md border border-border px-4 py-2 text-sm font-semibold text-text hover:bg-surface-2 disabled:opacity-40"
         >
           Reset
         </button>
@@ -313,7 +313,7 @@ export function ProductEditForm({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="rounded-md px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900"
+          className="rounded-md px-4 py-2 text-sm font-semibold text-muted hover:text-text"
         >
           Cancel
         </button>

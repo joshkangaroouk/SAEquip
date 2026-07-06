@@ -67,38 +67,38 @@ export function SpecTableEditor({
   }
 
   const inputCls =
-    "w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:border-gray-900";
+    "w-full rounded-md border bg-surface px-2 py-1 text-sm text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent";
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6">
+    <section className="rounded-xl border border-border bg-surface p-6">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">Technical Specs</h3>
-        <span className="text-xs text-gray-400">{dirty ? "Unsaved changes" : "Saved"}</span>
+        <h3 className="text-sm font-semibold text-text">Technical Specs</h3>
+        <span className="text-xs text-subtle">{dirty ? "Unsaved changes" : "Saved"}</span>
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </div>
       )}
 
       {rows.length === 0 ? (
-        <p className="text-sm text-gray-400">No rows. Add one below.</p>
+        <p className="text-sm text-subtle">No rows. Add one below.</p>
       ) : (
-        <table className="w-full text-sm">
+        <table className="w-full text-sm text-text">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
-              <th className="pb-2 font-medium">Label</th>
-              <th className="pb-2 font-medium">Value</th>
-              <th className="pb-2" />
+            <tr className="text-left text-xs uppercase tracking-wide text-muted">
+              <th className="bg-surface-2 pb-2 font-semibold">Label</th>
+              <th className="bg-surface-2 pb-2 font-semibold">Value</th>
+              <th className="bg-surface-2 pb-2" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border">
             {rows.map((r, i) => (
-              <tr key={i}>
+              <tr key={i} className="hover:bg-surface-2">
                 <td className="py-1 pr-2 align-top">
                   <input
-                    className={`${inputCls} ${r.label.trim() ? "border-gray-300" : "border-red-300"}`}
+                    className={`${inputCls} ${r.label.trim() ? "border-border" : "border-danger"}`}
                     value={r.label}
                     onChange={(e) => update(i, "label", e.target.value)}
                     placeholder="e.g. Weight"
@@ -106,16 +106,16 @@ export function SpecTableEditor({
                 </td>
                 <td className="py-1 pr-2 align-top">
                   <input
-                    className={`${inputCls} ${r.value.trim() ? "border-gray-300" : "border-red-300"}`}
+                    className={`${inputCls} ${r.value.trim() ? "border-border" : "border-danger"}`}
                     value={r.value}
                     onChange={(e) => update(i, "value", e.target.value)}
                     placeholder="e.g. 55kg"
                   />
                 </td>
-                <td className="whitespace-nowrap py-1 text-gray-400">
-                  <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="px-1 disabled:opacity-30" title="Move up">↑</button>
-                  <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="px-1 disabled:opacity-30" title="Move down">↓</button>
-                  <button type="button" onClick={() => del(i)} className="px-1 text-red-500 hover:text-red-700" title="Delete">×</button>
+                <td className="whitespace-nowrap py-1 text-subtle">
+                  <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="px-1 hover:text-text disabled:opacity-30" title="Move up">↑</button>
+                  <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="px-1 hover:text-text disabled:opacity-30" title="Move down">↓</button>
+                  <button type="button" onClick={() => del(i)} className="px-1 text-danger hover:opacity-80" title="Delete">×</button>
                 </td>
               </tr>
             ))}
@@ -124,18 +124,18 @@ export function SpecTableEditor({
       )}
 
       <div className="mt-4 flex items-center gap-3">
-        <button type="button" onClick={add} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100">
+        <button type="button" onClick={add} className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-text hover:bg-surface-2">
           + Add row
         </button>
         <div className="flex-1" />
-        <button type="button" onClick={() => { setRows(baseline); setError(null); }} disabled={!dirty || saving} className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 disabled:opacity-40">
+        <button type="button" onClick={() => { setRows(baseline); setError(null); }} disabled={!dirty || saving} className="rounded-md px-3 py-1.5 text-sm font-semibold text-muted hover:text-text disabled:opacity-40">
           Reset
         </button>
-        <button type="button" onClick={save} disabled={!dirty || !valid || saving} className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40">
+        <button type="button" onClick={save} disabled={!dirty || !valid || saving} className="rounded-md bg-accent px-4 py-1.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
           {saving ? "Saving…" : "Save"}
         </button>
       </div>
-      {!valid && <p className="mt-2 text-xs text-red-600">Every label and value is required (label ≤200, value ≤500 chars); max 100 rows.</p>}
+      {!valid && <p className="mt-2 text-xs text-danger">Every label and value is required (label ≤200, value ≤500 chars); max 100 rows.</p>}
     </section>
   );
 }
