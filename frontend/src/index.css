@@ -1,20 +1,14 @@
 /* ==========================================================================
    SAEquip Product Hub — brand design system
-   LIGHT base · black content · yellow accent · SHARP corners everywhere.
-   Typeface: Clash Grotesk (weights 300 Light, 400 Regular, 600 Semibold).
+   LIGHT base · black content · yellow accent · clean, minimal, rounded.
+   Typeface: Clash Grotesk (weights 400 Regular, 600 Semibold). The 300 Light
+   cut is not used anywhere — 400 is the default body weight.
    ========================================================================== */
 
 /* --- Fonts ---------------------------------------------------------------
-   Served from /public/fonts. Three cuts exist: Light (300), Regular (400),
-   Semibold (600). Never request any other weight — font-synthesis is off so
-   the browser can't fake one. */
-@font-face {
-  font-family: "Clash Grotesk";
-  src: url("/fonts/clash-grotesk/ClashGrotesk-Light.otf") format("opentype");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
+   Served from /public/fonts. Two cuts exist: Regular (400), Semibold (600).
+   Never request any other weight — font-synthesis is off so the browser
+   can't fake one. */
 @font-face {
   font-family: "Clash Grotesk";
   src: url("/fonts/clash-grotesk/ClashGrotesk-Regular.otf") format("opentype");

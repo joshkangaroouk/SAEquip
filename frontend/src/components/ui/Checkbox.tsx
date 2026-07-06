@@ -9,7 +9,7 @@ export interface CheckboxProps {
   id?: string;
 }
 
-/** Sharp-cornered checkbox — yellow fill with a black tick when checked. */
+/** Rounded checkbox — yellow fill with a black tick when checked. */
 export function Checkbox({ checked, onChange, disabled, label, id }: CheckboxProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
@@ -29,7 +29,7 @@ export function Checkbox({ checked, onChange, disabled, label, id }: CheckboxPro
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
           className={cn(
-            "peer h-5 w-5 shrink-0 appearance-none border bg-surface transition-colors",
+            "peer h-5 w-5 shrink-0 appearance-none rounded border bg-surface transition-colors",
             "checked:bg-accent checked:border-accent",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
             "focus-visible:ring-offset-2 focus-visible:ring-offset-bg",

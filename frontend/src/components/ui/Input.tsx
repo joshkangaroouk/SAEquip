@@ -2,14 +2,14 @@ import { forwardRef, type InputHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
 
 const fieldBase =
-  "w-full bg-surface border border-border text-text placeholder:text-subtle " +
+  "w-full rounded-md bg-surface border border-border text-text placeholder:text-subtle " +
   "px-3 py-2.5 text-body transition-colors " +
   "focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 export type InputProps = InputHTMLAttributes<HTMLInputElement>;
 
-/** Dark, sharp-cornered text input with a yellow focus ring. */
+/** Rounded text input with a yellow focus ring. */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, ...rest },
   ref,

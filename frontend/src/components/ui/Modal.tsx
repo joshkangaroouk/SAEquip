@@ -31,7 +31,7 @@ export interface ModalProps {
   dismissable?: boolean;
 }
 
-/** Sharp-cornered dialog rendered in a portal with a dimmed backdrop. */
+/** Rounded dialog rendered in a portal with a dimmed backdrop. */
 export function Modal({
   open,
   onClose,
@@ -70,7 +70,7 @@ export function Modal({
       />
       <div
         className={cn(
-          "relative w-full bg-surface border border-border shadow-2xl",
+          "relative w-full overflow-hidden rounded-xl bg-surface border border-border shadow-2xl",
           sizes[size],
         )}
       >

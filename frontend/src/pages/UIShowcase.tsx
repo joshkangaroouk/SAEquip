@@ -66,8 +66,8 @@ export default function UIShowcase() {
           <h2 className="text-h2">Heading 2</h2>
           <h3 className="text-h3">Heading 3</h3>
           <p className="text-body">
-            Body text at 16px, weight 300. Only Light (300) and Semibold (600) cuts of Clash
-            Grotesk exist — <span className="font-semibold">this span is semibold (600)</span>.
+            Body text at 16px, weight 400 (Regular). Only Regular (400) and Semibold (600) cuts
+            of Clash Grotesk exist — <span className="font-semibold">this span is semibold (600)</span>.
           </p>
           <p className="text-small text-muted">Small / muted text at 15px.</p>
         </Card>
@@ -134,7 +134,7 @@ export default function UIShowcase() {
         <Card>
           <CardHeader
             title="Panel title"
-            description="A surface panel with a hairline border and sharp corners."
+            description="A surface panel with a hairline border and rounded corners."
             actions={<Button size="sm" variant="secondary">Action</Button>}
           />
           <p className="text-body text-muted">Panel body content goes here.</p>
@@ -210,7 +210,7 @@ export default function UIShowcase() {
           open={modalOpen}
           onClose={() => setModalOpen(false)}
           title="Example modal"
-          description="Sharp-cornered dialog rendered in a portal."
+          description="Rounded dialog rendered in a portal."
           footer={
             <>
               <Button variant="secondary" size="sm" onClick={() => setModalOpen(false)}>

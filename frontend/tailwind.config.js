@@ -2,27 +2,14 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    // SHARP CORNERS EVERYWHERE — override, don't extend, so `rounded`,
-    // `rounded-md`, `rounded-full` etc. all resolve to 0. Nothing is round.
-    borderRadius: {
-      none: "0",
-      DEFAULT: "0",
-      sm: "0",
-      md: "0",
-      lg: "0",
-      xl: "0",
-      "2xl": "0",
-      "3xl": "0",
-      full: "0",
-    },
-    // Three weights exist: 300 (Light), 400 (Regular), 600 (Semibold). Map
-    // every Tailwind weight name onto one of them so stray classes can never
-    // trigger a faux weight. font-light -> 300, font-normal -> 400,
-    // font-medium/semibold/bold -> 600.
+    // Two weights exist: 400 (Regular), 600 (Semibold). 300 (Light) is not
+    // used anywhere. Map every Tailwind weight name onto one of the two so
+    // stray classes (font-light, font-medium, …) can never trigger a faux
+    // weight or accidentally request the unused Light cut.
     fontWeight: {
-      thin: "300",
-      extralight: "300",
-      light: "300",
+      thin: "400",
+      extralight: "400",
+      light: "400",
       normal: "400",
       medium: "600",
       semibold: "600",

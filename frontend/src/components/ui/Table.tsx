@@ -1,7 +1,7 @@
 import { cn } from "../../lib/cn";
 
 /**
- * Sharp-cornered table primitives. Spacious cells, hairline row dividers,
+ * Rounded table primitives. Spacious cells, hairline row dividers,
  * yellow-tinted row hover, and an optional sticky header.
  *
  *   <Table>
@@ -13,7 +13,7 @@ import { cn } from "../../lib/cn";
  */
 export function Table({ className, children, ...rest }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto border border-border">
+    <div className="w-full overflow-x-auto rounded-lg border border-border">
       <table className={cn("w-full border-collapse text-left", className)} {...rest}>
         {children}
       </table>

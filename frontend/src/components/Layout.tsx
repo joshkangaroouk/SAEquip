@@ -102,7 +102,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         <button
           onClick={handleSignOut}
           className={cn(
-            "w-full border border-white/20 px-4 py-2 text-small font-semibold text-white",
+            "w-full rounded-md border border-white/20 px-4 py-2 text-small font-semibold text-white",
             "transition-colors hover:bg-white/10",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]",
           )}
@@ -148,7 +148,7 @@ export function Layout() {
         <button
           aria-label="Open menu"
           onClick={() => setDrawerOpen(true)}
-          className="border border-white/20 p-2 text-white hover:bg-white/10"
+          className="rounded-md border border-white/20 p-2 text-white hover:bg-white/10"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.5" />
@@ -164,7 +164,7 @@ export function Layout() {
             <button
               aria-label="Close menu"
               onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-4 border border-white/20 p-1.5 text-white hover:bg-white/10"
+              className="absolute right-3 top-4 rounded-md border border-white/20 p-1.5 text-white hover:bg-white/10"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.5" />

@@ -132,7 +132,7 @@ export function FileDropzone({
       <div
         {...getRootProps()}
         className={cn(
-          "flex cursor-pointer flex-col items-center justify-center border-2 border-dashed px-6 py-10 text-center transition-colors",
+          "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
           isDragActive
             ? "border-accent bg-accent/10 text-text"
             : "border-border bg-surface text-muted hover:border-subtle",
@@ -150,7 +150,7 @@ export function FileDropzone({
       {items.length > 0 && (
         <ul className="space-y-2">
           {items.map((it) => (
-            <li key={it.id} className="bg-surface border border-border px-4 py-3">
+            <li key={it.id} className="rounded-md bg-surface border border-border px-4 py-3">
               <div className="flex items-center justify-between gap-3 text-small">
                 <span className="truncate text-text">{it.name}</span>
                 <span
@@ -166,10 +166,10 @@ export function FileDropzone({
                   {it.status === "error" ? it.error : `${it.progress}%`}
                 </span>
               </div>
-              <div className="mt-2 h-1 w-full bg-surface-2">
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
                 <div
                   className={cn(
-                    "h-full transition-all",
+                    "h-full rounded-full transition-all",
                     it.status === "error" ? "bg-danger" : "bg-accent",
                   )}
                   style={{ width: `${it.progress}%` }}

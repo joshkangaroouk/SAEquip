@@ -4,8 +4,8 @@ import { cn } from "../../lib/cn";
 export type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
 
 /**
- * Dark, sharp-cornered native select with a yellow focus ring and a custom
- * chevron (native arrow hidden via appearance-none).
+ * Rounded native select with a yellow focus ring and a custom chevron
+ * (native arrow hidden via appearance-none).
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   { className, children, ...rest },
@@ -16,7 +16,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       <select
         ref={ref}
         className={cn(
-          "w-full appearance-none bg-surface border border-border text-text",
+          "w-full appearance-none rounded-md bg-surface border border-border text-text",
           "px-3 py-2.5 pr-10 text-body transition-colors",
           "focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent",
           "disabled:cursor-not-allowed disabled:opacity-50",

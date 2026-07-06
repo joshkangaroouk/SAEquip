@@ -1,13 +1,13 @@
 import { cn } from "../../lib/cn";
 
-/** Surface panel with a hairline border. Sharp corners, generous padding. */
+/** Surface panel with a hairline border. Rounded corners, generous padding. */
 export function Card({
   className,
   children,
   ...rest
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("bg-surface border border-border p-6", className)} {...rest}>
+    <div className={cn("rounded-xl bg-surface border border-border p-6", className)} {...rest}>
       {children}
     </div>
   );

@@ -12,7 +12,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap " +
+  "inline-flex items-center justify-center gap-2 rounded-md font-semibold whitespace-nowrap " +
   "transition-colors select-none focus-visible:outline-none focus-visible:ring-2 " +
   "focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg " +
   "disabled:cursor-not-allowed disabled:opacity-50";
@@ -29,7 +29,7 @@ const sizes: Record<Size, string> = {
   md: "h-11 px-5 text-body",
 };
 
-/** Sharp-cornered button. Yellow primary, outline secondary, ghost, danger. */
+/** Rounded button. Yellow primary, outline secondary, ghost, danger. */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = "primary", size = "md", loading = false, disabled, className, children, ...rest },
   ref,

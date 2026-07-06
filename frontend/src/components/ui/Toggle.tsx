@@ -9,8 +9,8 @@ export interface ToggleProps {
 }
 
 /**
- * Sharp-cornered switch. Track turns yellow when on; the knob is a square that
- * slides. Uses a real checkbox role for keyboard/AT support.
+ * Rounded pill switch. Track turns yellow when on; a circular knob slides.
+ * Uses a real checkbox role for keyboard/AT support.
  */
 export function Toggle({ checked, onChange, disabled, label, id }: ToggleProps) {
   return (
@@ -29,7 +29,7 @@ export function Toggle({ checked, onChange, disabled, label, id }: ToggleProps) 
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative h-6 w-11 shrink-0 border transition-colors",
+          "relative h-6 w-11 shrink-0 rounded-full border transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
           "focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
           checked ? "bg-accent border-accent" : "bg-surface-2 border-border",
@@ -37,7 +37,7 @@ export function Toggle({ checked, onChange, disabled, label, id }: ToggleProps) 
       >
         <span
           className={cn(
-            "absolute top-0.5 h-4 w-4 transition-transform",
+            "absolute top-0.5 h-4 w-4 rounded-full transition-transform",
             checked ? "translate-x-[22px] bg-accent-foreground" : "translate-x-1 bg-muted",
           )}
         />
