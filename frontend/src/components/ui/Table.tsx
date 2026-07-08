@@ -30,7 +30,7 @@ export function THead({
   return (
     <thead
       className={cn(
-        "bg-surface-2 text-small font-semibold uppercase tracking-wide text-muted",
+        "bg-surface-2 text-xs font-semibold uppercase tracking-wide text-muted",
         sticky && "sticky top-0 z-10",
         className,
       )}
@@ -79,7 +79,7 @@ export function TH({ className, children, ...rest }: React.ThHTMLAttributes<HTML
 
 export function TD({ className, children, ...rest }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("px-4 py-3.5 text-body font-medium align-middle", className)} {...rest}>
+    <td className={cn("px-4 py-3.5 text-sm font-medium align-middle", className)} {...rest}>
       {children}
     </td>
   );
