@@ -1,17 +1,38 @@
 import { env } from "../env.js";
 
 /**
- * Duda store REST client (READ-ONLY).
+ * Duda store REST client.
  *
  * Path segments live in ONE place so they're trivial to correct if Duda's docs
  * differ from what we assumed. Auth is HTTP Basic (base64 "user:pass").
+ *
+ * NOTE: product OPTIONS are a STORE-LEVEL (per-catalog) resource, not
+ * per-product — a product attaches an existing catalog option and may expose a
+ * subset of its choices. Variations are then AUTO-GENERATED as the cartesian
+ * product of the attached choices; they can be PATCHed but never created or
+ * deleted directly. See CLAUDE.md.
  */
 const PATHS = {
   store: (site: string) => `/sites/multiscreen/${site}/ecommerce/store`,
   products: (site: string) => `/sites/multiscreen/${site}/ecommerce/products`,
   product: (site: string, productId: string) =>
     `/sites/multiscreen/${site}/ecommerce/products/${productId}`,
+  productVariation: (site: string, productId: string, variationId: string) =>
+    `/sites/multiscreen/${site}/ecommerce/products/${productId}/variations/${variationId}`,
+  options: (site: string) => `/sites/multiscreen/${site}/ecommerce/options`,
+  option: (site: string, optionId: string) =>
+    `/sites/multiscreen/${site}/ecommerce/options/${optionId}`,
+  optionChoices: (site: string, optionId: string) =>
+    `/sites/multiscreen/${site}/ecommerce/options/${optionId}/choices`,
+  optionChoice: (site: string, optionId: string, choiceId: string) =>
+    `/sites/multiscreen/${site}/ecommerce/options/${optionId}/choices/${choiceId}`,
 } as const;
+
+/**
+ * Duda clamps `limit` on the product list to 200 (verified: asking for 1000
+ * echoed limit=200), so paging must step in chunks no larger than this.
+ */
+const MAX_PAGE_SIZE = 200;
 
 // --- Types (verified against the live "099434f3" store) ---
 
@@ -89,6 +110,11 @@ export interface DudaProduct {
   variations: DudaVariation[];
   custom_fields: DudaCustomField[];
   external_id?: string | null;
+  /**
+   * WRITE-ONLY in practice: `quantity` is accepted by PATCH but Duda does not
+   * return it on the product read, so it can be set and never read back.
+   */
+  quantity?: number;
 }
 
 export interface DudaStore {
@@ -192,9 +218,33 @@ export const duda = {
     return dudaGet<DudaStore>(PATHS.store(site()));
   },
 
-  listProducts({ limit = 100, offset = 0 }: { limit?: number; offset?: number } = {}): Promise<DudaProductList> {
-    const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  listProducts({ limit = MAX_PAGE_SIZE, offset = 0 }: { limit?: number; offset?: number } = {}): Promise<DudaProductList> {
+    const qs = new URLSearchParams({
+      limit: String(Math.min(limit, MAX_PAGE_SIZE)),
+      offset: String(offset),
+    });
     return dudaGet<DudaProductList>(`${PATHS.products(site())}?${qs.toString()}`);
+  },
+
+  /**
+   * Every product, paged. The store now allows up to 1000 products but Duda
+   * clamps a page to 200, so a single listProducts() call silently truncates.
+   * The page cap is a backstop against a bad total_responses spinning forever.
+   */
+  async listAllProducts(): Promise<DudaProduct[]> {
+    const collected: DudaProduct[] = [];
+    let offset = 0;
+
+    for (let page = 0; page < 20; page++) {
+      const res = await this.listProducts({ limit: MAX_PAGE_SIZE, offset });
+      collected.push(...res.results);
+
+      const total = res.total_responses ?? collected.length;
+      if (collected.length >= total || res.results.length === 0) break;
+      offset += res.results.length;
+    }
+
+    return collected;
   },
 
   getProduct(productId: string): Promise<DudaProduct> {

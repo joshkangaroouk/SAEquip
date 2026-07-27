@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { rectSortingStrategy } from "@dnd-kit/sortable";
 import { MediaPicker } from "../components/MediaPicker";
-import { DragHandle, RemoveButton, SortableList, useConfirm, type DragHandleProps } from "../components/ui";
-import { apiFetch } from "../lib/api";
+import {
+  DragHandle,
+  RemoveButton,
+  SortableList,
+  toast,
+  useConfirm,
+  type DragHandleProps,
+} from "../components/ui";
+import { apiJson } from "../lib/api";
 import type { LogoCatalogEntry, MediaAsset } from "../lib/types";
 
 type Kind = "SA_LOGO" | "CERT_LOGO";
@@ -27,12 +34,16 @@ function LogoCard({
     if (!dirty || saving) return;
     setSaving(true);
     try {
-      const res = await apiFetch(`/api/logos/${entry.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: label.trim() || null, alt: alt.trim() || null }),
-      });
-      if (res.ok) onSaved((await res.json()) as LogoCatalogEntry);
+      onSaved(
+        await apiJson<LogoCatalogEntry>(`/api/logos/${entry.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ label: label.trim() || null, alt: alt.trim() || null }),
+        }),
+      );
+    } catch (e) {
+      // Previously failed silently — a swallowed save looks identical to a
+      // successful one, so surface it.
+      toast.error(e instanceof Error ? e.message : "Could not save logo details");
     } finally {
       setSaving(false);
     }
@@ -80,16 +91,13 @@ export default function Logos() {
   const [entries, setEntries] = useState<LogoCatalogEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   async function load(kind: Kind) {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`/api/logos?kind=${kind}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setEntries(await res.json());
+      setEntries(await apiJson<LogoCatalogEntry[]>(`/api/logos?kind=${kind}`));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load logos");
     } finally {
@@ -101,48 +109,39 @@ export default function Logos() {
     load(tab);
   }, [tab]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   async function onPickMedia(asset: MediaAsset) {
     setPickerOpen(false);
     try {
-      const res = await apiFetch("/api/logos", {
+      const created = await apiJson<LogoCatalogEntry>("/api/logos", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind: tab, mediaAssetId: asset.id, alt: asset.alt || undefined }),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.detail || json.error || `Add failed (${res.status})`);
-      setEntries((prev) => [...(prev ?? []), json as LogoCatalogEntry]);
-      setToast("Logo added");
+      setEntries((prev) => [...(prev ?? []), created]);
+      toast.success("Logo added");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Add failed");
+      toast.error(e instanceof Error ? e.message : "Add failed");
     }
   }
 
   async function reorder(next: LogoCatalogEntry[]) {
     setEntries(next); // optimistic
     try {
-      const res = await apiFetch("/api/logos/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: tab, orderedIds: next.map((e) => e.id) }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setEntries(await res.json());
-      setToast("Order saved");
-    } catch {
+      setEntries(
+        await apiJson<LogoCatalogEntry[]>("/api/logos/reorder", {
+          method: "PUT",
+          body: JSON.stringify({ kind: tab, orderedIds: next.map((e) => e.id) }),
+        }),
+      );
+      toast.success("Order saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save order");
       load(tab); // revert to server state on failure
     }
   }
 
   function onSavedMeta(updated: LogoCatalogEntry) {
     setEntries((prev) => prev?.map((e) => (e.id === updated.id ? updated : e)) ?? null);
-    setToast("Saved");
+    toast.success("Saved");
   }
 
   async function handleDelete(entry: LogoCatalogEntry) {
@@ -160,23 +159,16 @@ export default function Logos() {
     });
     if (!ok) return;
     try {
-      const res = await apiFetch(`/api/logos/${entry.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await apiJson(`/api/logos/${entry.id}`, { method: "DELETE" });
       setEntries((prev) => prev?.filter((e) => e.id !== entry.id) ?? null);
-      setToast("Logo deleted (image kept in Media Centre)");
+      toast.success("Logo deleted (image kept in Media Centre)");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     }
   }
 
   return (
     <>
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white shadow-lg">
-          {toast}
-        </div>
-      )}
-
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-text">Logos</h1>

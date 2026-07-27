@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { apiFetch, apiUpload } from "../lib/api";
+import { apiJson, apiUpload } from "../lib/api";
 import { FileIcon } from "./ui";
 import type { MediaAsset } from "../lib/types";
 
@@ -26,9 +26,8 @@ export function MediaPicker({
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch(`/api/media?kind=${kind}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d: MediaAsset[]) => {
+    apiJson<MediaAsset[]>(`/api/media?kind=${kind}`)
+      .then((d) => {
         if (!cancelled) setAssets(d);
       })
       .catch((e) => {

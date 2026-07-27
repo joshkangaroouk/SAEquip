@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { LogoKind, TextItemKind } from "@prisma/client";
 import { duda, type DudaPrice, type DudaProductUpdate } from "../services/duda.js";
-import { ensureHubProduct } from "../services/hubProduct.js";
+import { ensureHubProduct, findSlugConflict, syncHubProduct } from "../services/hubProduct.js";
 import { resolveUrl } from "../services/storage.js";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
@@ -78,10 +78,8 @@ function formatFirstPrice(prices: DudaPrice[] | undefined): string | null {
  */
 dudaRouter.get("/store", async (_req, res, next) => {
   try {
-    const [store, list] = await Promise.all([
-      duda.getStore(),
-      duda.listProducts({ limit: 100 }),
-    ]);
+    // limit:1 — we only need total_responses for the count, not the products.
+    const [store, list] = await Promise.all([duda.getStore(), duda.listProducts({ limit: 1 })]);
 
     const max_products = store.features?.max_products ?? null;
     const product_count = list.total_responses ?? list.results.length;
@@ -92,6 +90,11 @@ dudaRouter.get("/store", async (_req, res, next) => {
       max_products,
       product_count,
       remaining,
+      // Needed by the options/variations editors. max_options is per-CATALOG
+      // (shared across every product) and does not rise with the store plan.
+      max_variations_per_product: store.features?.max_variations_per_product ?? null,
+      max_options: store.features?.max_options ?? null,
+      max_choices_per_option: store.features?.max_choices_per_option ?? null,
     });
   } catch (err) {
     next(err);
@@ -104,9 +107,11 @@ dudaRouter.get("/store", async (_req, res, next) => {
  */
 dudaRouter.get("/products", async (_req, res, next) => {
   try {
-    const list = await duda.listProducts({ limit: 100 });
+    // Pages internally — Duda clamps a single page to 200 and the store now
+    // allows up to 1000 products, so one listProducts() call would truncate.
+    const results = await duda.listAllProducts();
 
-    const summaries = list.results.map((p) => ({
+    const summaries = results.map((p) => ({
       id: p.id,
       name: p.name,
       sku: p.sku,
@@ -155,7 +160,25 @@ dudaRouter.patch("/products/:id", async (req, res, next) => {
   }
 
   try {
+    // Guard the HubProduct.slug unique constraint BEFORE writing to Duda: Duda
+    // may accept a duplicate product_url, and the public widget resolves
+    // products by slug, so a collision would make two products ambiguous.
+    const nextSlug = parsed.data.seo?.product_url;
+    if (nextSlug !== undefined) {
+      const clash = await findSlugConflict(nextSlug, req.params.id);
+      if (clash) {
+        res.status(409).json({
+          error: "duplicate_slug",
+          detail: `The URL slug "${nextSlug.trim()}" is already used by "${clash.name ?? clash.dudaProductId}".`,
+        });
+        return;
+      }
+    }
+
     const updated = await duda.updateProduct(req.params.id, parsed.data as DudaProductUpdate);
+    // Keep the hub row's name/sku/slug in step — the public widget serves those
+    // from HubProduct, so skipping this leaves the live site stale after a rename.
+    await syncHubProduct(updated);
     res.json(updated);
   } catch (err) {
     next(err);

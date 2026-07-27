@@ -40,12 +40,26 @@ api.use(downloadsRouter);
 api.use(quotesRouter);
 app.use("/api", requireAuth, api);
 
+/** Prisma known-request errors carry a string `code` like "P2002". */
+function prismaErrorCode(err: unknown): string | null {
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === "string" && /^P\d{4}$/.test(code) ? code : null;
+}
+
 // Error handler: surface upstream failures with useful status codes.
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof DudaApiError) {
-    res.status(502).json({
+    // Map the upstream status through rather than blanket-502ing. A Duda 4xx
+    // means OUR payload was wrong, and reporting that as 502 hides the real
+    // cause exactly when array-payload writes are being developed.
+    const upstream = err.status;
+    const status =
+      upstream === 404 ? 404 : upstream === 429 ? 429 : upstream >= 400 && upstream < 500 ? 400 : 502;
+
+    if (upstream === 429) res.setHeader("Retry-After", "5");
+    res.status(status).json({
       error: "duda_api_error",
-      upstream_status: err.status,
+      upstream_status: upstream,
       detail: err.body.slice(0, 500),
     });
     return;
@@ -54,6 +68,24 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(502).json({ error: "storage_error", detail: err.message });
     return;
   }
+
+  const code = prismaErrorCode(err);
+  if (code === "P2002") {
+    // Unique constraint. HubProduct.slug is the realistic case, and a generic
+    // 500 here reads as a server bug rather than "that slug is taken".
+    const target = (err as { meta?: { target?: unknown } }).meta?.target;
+    const field = Array.isArray(target) ? target.join(", ") : typeof target === "string" ? target : undefined;
+    res.status(409).json({
+      error: field?.includes("slug") ? "duplicate_slug" : "unique_violation",
+      detail: field ? `Already in use: ${field}` : "A unique field is already in use.",
+    });
+    return;
+  }
+  if (code === "P2025") {
+    res.status(404).json({ error: "not_found", detail: "The requested record does not exist." });
+    return;
+  }
+
   console.error(err);
   res.status(500).json({ error: "internal_error" });
 };
