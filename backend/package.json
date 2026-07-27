@@ -12,7 +12,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "duda:test": "tsx src/scripts/dudaTest.ts",
-    "duda:probe-customfields": "tsx src/scripts/dudaProbeCustomFields.ts"
+    "duda:probe-customfields": "tsx src/scripts/dudaProbeCustomFields.ts",
+    "duda:snapshot": "tsx src/scripts/dudaSnapshot.ts",
+    "duda:spike-options": "tsx src/scripts/dudaSpikeOptions.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
