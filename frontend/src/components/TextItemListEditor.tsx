@@ -1,70 +1,41 @@
-import { useState } from "react";
-import { apiFetch } from "../lib/api";
-import { DragHandle, RemoveButton, SortableList } from "./ui";
-import type { HubTextItem } from "../lib/types";
+import { Badge, Button, Card, CardHeader, DragHandle, RemoveButton, SortableList } from "./ui";
+import type { TextItemDraft } from "./product/productEditorTypes";
 
-type Item = { id: string; text: string };
-
-const toItems = (initial: HubTextItem[]): Item[] => initial.map((i) => ({ id: i.id, text: i.text }));
-
+/**
+ * Ordered text list, used for both Key Benefits and Applications. Controlled —
+ * the parent owns the items and the unified save bar commits them.
+ */
 export function TextItemListEditor({
+  id,
   title,
-  productId,
-  endpoint,
-  initial,
-  onSaved,
+  description,
+  items,
+  onChange,
+  dirty,
+  error,
+  placeholder = "Enter text…",
 }: {
+  id: string;
   title: string;
-  productId: string;
-  endpoint: "benefits" | "applications";
-  initial: HubTextItem[];
-  onSaved: (msg: string) => void;
+  description?: string;
+  items: TextItemDraft[];
+  onChange: (next: TextItemDraft[]) => void;
+  dirty: boolean;
+  error?: string;
+  placeholder?: string;
 }) {
-  const [baseline, setBaseline] = useState<Item[]>(() => toItems(initial));
-  const [items, setItems] = useState<Item[]>(() => toItems(initial));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const dirty = JSON.stringify(items) !== JSON.stringify(baseline);
-  const valid =
-    items.length <= 100 && items.every((it) => it.text.trim().length > 0 && it.text.trim().length <= 500);
-
-  const update = (id: string, val: string) =>
-    setItems((its) => its.map((it) => (it.id === id ? { ...it, text: val } : it)));
-  const del = (id: string) => setItems((its) => its.filter((it) => it.id !== id));
-  const add = () => setItems((its) => [...its, { id: crypto.randomUUID(), text: "" }]);
-
-  async function save() {
-    if (!dirty || !valid || saving) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/api/products/${productId}/${endpoint}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: items.map((it) => ({ text: it.text.trim() })) }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(json?.details ? "Validation error" : json?.detail || json?.error || `Save failed (${res.status})`);
-      }
-      const norm = toItems(json as HubTextItem[]);
-      setBaseline(norm);
-      setItems(norm);
-      onSaved(`${title} saved`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  }
+  const update = (itemId: string, val: string) =>
+    onChange(items.map((it) => (it.id === itemId ? { ...it, text: val } : it)));
+  const del = (itemId: string) => onChange(items.filter((it) => it.id !== itemId));
+  const add = () => onChange([...items, { id: crypto.randomUUID(), text: "" }]);
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-body font-semibold text-text">{title}</h3>
-        <span className="text-small text-subtle">{dirty ? "Unsaved changes" : "Saved"}</span>
-      </div>
+    <Card id={id}>
+      <CardHeader
+        title={title}
+        description={description}
+        actions={dirty ? <Badge tone="accent">Unsaved</Badge> : undefined}
+      />
 
       {error && (
         <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
@@ -78,7 +49,7 @@ export function TextItemListEditor({
         <SortableList
           items={items}
           getId={(it) => it.id}
-          onReorder={setItems}
+          onReorder={onChange}
           renderItem={(it, handle, index) => (
             <div className="flex items-center gap-3 rounded-md border border-border bg-surface p-3">
               <DragHandle handle={handle} />
@@ -89,7 +60,7 @@ export function TextItemListEditor({
                 }`}
                 value={it.text}
                 onChange={(e) => update(it.id, e.target.value)}
-                placeholder="Enter text…"
+                placeholder={placeholder}
               />
               <RemoveButton onClick={() => del(it.id)} title="Delete item" />
             </div>
@@ -97,19 +68,11 @@ export function TextItemListEditor({
         />
       )}
 
-      <div className="mt-4 flex items-center gap-3">
-        <button type="button" onClick={add} className="rounded-md border border-border px-3 py-1.5 text-small font-semibold text-text hover:bg-surface-2">
+      <div className="mt-4">
+        <Button variant="secondary" size="sm" onClick={add}>
           + Add item
-        </button>
-        <div className="flex-1" />
-        <button type="button" onClick={() => { setItems(baseline); setError(null); }} disabled={!dirty || saving} className="rounded-md px-3 py-1.5 text-small font-semibold text-muted hover:text-text disabled:opacity-40">
-          Reset
-        </button>
-        <button type="button" onClick={save} disabled={!dirty || !valid || saving} className="rounded-md bg-accent px-4 py-1.5 text-small font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
-          {saving ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </div>
-      {!valid && <p className="mt-2 text-small text-danger">Every item is required and must be ≤500 chars; max 100 items.</p>}
-    </section>
+    </Card>
   );
 }

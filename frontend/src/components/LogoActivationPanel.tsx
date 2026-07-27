@@ -1,85 +1,56 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch } from "../lib/api";
-import { Badge } from "./ui";
+import { Badge, Card, CardHeader } from "./ui";
 import type { ProductLogoEntry } from "../lib/types";
 
 /**
- * Per-product logo activation. Renders the full catalog for a kind as toggle
- * cards; toggling applies immediately (PUT to activate, DELETE to deactivate)
- * with optimistic UI and revert-on-error.
+ * Per-product logo activation. Renders the whole catalog for a kind as toggle
+ * cards; the parent owns which ids are active.
+ *
+ * Toggling used to apply immediately (PUT/DELETE per click). It is now part of
+ * the page's unified save, so a toggle only stages a change — the "Unsaved"
+ * badge and the save bar are what tell the user it hasn't committed yet.
  */
 export function LogoActivationPanel({
-  productId,
+  id,
   kind,
   title,
-  onToast,
+  entries,
+  activeIds,
+  onToggle,
+  dirty,
 }: {
-  productId: string;
+  id: string;
   kind: "SA_LOGO" | "CERT_LOGO";
   title: string;
-  onToast: (msg: string, error?: boolean) => void;
+  entries: ProductLogoEntry[];
+  activeIds: string[];
+  onToggle: (logoId: string) => void;
+  dirty: boolean;
 }) {
-  const [entries, setEntries] = useState<ProductLogoEntry[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    apiFetch(`/api/products/${productId}/logos?kind=${kind}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d: ProductLogoEntry[]) => {
-        if (!cancelled) setEntries(d);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [productId, kind]);
-
-  async function toggle(entry: ProductLogoEntry) {
-    const next = !entry.active;
-    // optimistic
-    setEntries((es) => es?.map((e) => (e.id === entry.id ? { ...e, active: next } : e)) ?? null);
-    try {
-      const res = await apiFetch(`/api/products/${productId}/logos/${entry.id}`, {
-        method: next ? "PUT" : "DELETE",
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch {
-      // revert
-      setEntries((es) => es?.map((e) => (e.id === entry.id ? { ...e, active: !next } : e)) ?? null);
-      onToast(`Couldn't ${next ? "activate" : "deactivate"} logo — reverted`, true);
-    }
-  }
-
-  const activeCount = entries?.filter((e) => e.active).length ?? 0;
+  const active = new Set(activeIds);
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-body font-semibold text-text">{title}</h3>
-        {entries && entries.length > 0 && <Badge tone="accent">{activeCount} active</Badge>}
-      </div>
-      <p className="mb-3 text-small text-subtle">
-        Select which logos display on this product. Manage the catalog in{" "}
-        <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
-          Logos
-        </Link>
-        .
-      </p>
+    <Card id={id}>
+      <CardHeader
+        title={title}
+        description={
+          <>
+            Select which logos display on this product. Manage the catalog in{" "}
+            <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
+              Logos
+            </Link>
+            .
+          </>
+        }
+        actions={
+          <>
+            {dirty && <Badge tone="accent">Unsaved</Badge>}
+            {entries.length > 0 && <Badge tone="neutral">{active.size} active</Badge>}
+          </>
+        }
+      />
 
-      {loading && <p className="text-body text-muted">Loading…</p>}
-      {error && <p className="text-body text-danger">{error}</p>}
-
-      {!loading && !error && entries && entries.length === 0 && (
+      {entries.length === 0 ? (
         <p className="text-body text-subtle">
           No {kind === "SA_LOGO" ? "SA" : "Cert"} logos in the catalog yet —{" "}
           <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
@@ -87,41 +58,44 @@ export function LogoActivationPanel({
           </Link>
           .
         </p>
-      )}
-
-      {!loading && !error && entries && entries.length > 0 && (
+      ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {entries.map((entry) => (
-            <button
-              key={entry.id}
-              onClick={() => toggle(entry)}
-              className={`flex flex-col items-center rounded-lg border-2 p-2 text-left transition ${
-                entry.active ? "border-accent bg-accent/10" : "border-border hover:border-subtle"
-              }`}
-            >
-              <div className="flex h-16 w-full items-center justify-center bg-surface-2">
-                <img
-                  src={entry.url}
-                  alt={entry.alt || entry.label || "logo"}
-                  className="max-h-16 max-w-full object-contain"
-                />
-              </div>
-              <div className="mt-2 flex w-full items-center justify-between gap-1">
-                <span className="truncate text-small text-muted" title={entry.label ?? ""}>
-                  {entry.label || "—"}
-                </span>
-                <span
-                  className={`inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full px-1 ${
-                    entry.active ? "justify-end bg-accent" : "justify-start bg-surface-2"
-                  }`}
-                >
-                  <span className="h-3.5 w-3.5 rounded-full bg-surface shadow-sm" />
-                </span>
-              </div>
-            </button>
-          ))}
+          {entries.map((entry) => {
+            const on = active.has(entry.id);
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => onToggle(entry.id)}
+                aria-pressed={on}
+                className={`flex flex-col items-center rounded-lg border-2 p-2 text-left transition ${
+                  on ? "border-accent bg-accent/10" : "border-border hover:border-subtle"
+                }`}
+              >
+                <div className="flex h-16 w-full items-center justify-center bg-surface-2">
+                  <img
+                    src={entry.url}
+                    alt={entry.alt || entry.label || "logo"}
+                    className="max-h-16 max-w-full object-contain"
+                  />
+                </div>
+                <div className="mt-2 flex w-full items-center justify-between gap-1">
+                  <span className="truncate text-small text-muted" title={entry.label ?? ""}>
+                    {entry.label || "—"}
+                  </span>
+                  <span
+                    className={`inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full px-1 ${
+                      on ? "justify-end bg-accent" : "justify-start bg-surface-2"
+                    }`}
+                  >
+                    <span className="h-3.5 w-3.5 rounded-full bg-surface shadow-sm" />
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
-    </section>
+    </Card>
   );
 }
