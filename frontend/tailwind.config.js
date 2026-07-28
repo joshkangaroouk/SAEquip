@@ -2,7 +2,7 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    // Three Montserrat weights are loaded: 400 (Regular, body/paragraph text),
+    // Three IBM Plex Sans weights are loaded: 400 (Regular, body/paragraph text),
     // 500 (Medium, input/list/table item content), 600 (Semibold, headings/
     // labels/buttons/table-headers/emphasis). Map every Tailwind weight name
     // onto one of the three so stray classes can never request an unloaded
@@ -48,10 +48,10 @@ export default {
         success: "var(--success)",
       },
       fontFamily: {
-        // Montserrat everywhere — this is already the <body> default (see
+        // IBM Plex Sans everywhere — this is already the <body> default (see
         // index.css); the "font-sans" utility exists for explicit opt-in.
         sans: [
-          '"Montserrat"',
+          '"IBM Plex Sans"',
           "ui-sans-serif",
           "system-ui",
           "-apple-system",

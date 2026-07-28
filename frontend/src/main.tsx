@@ -4,9 +4,9 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./App";
 import { AuthProvider } from "./auth/AuthContext";
 import { ConfirmProvider, Toaster } from "./components/ui";
-import "@fontsource/montserrat/400.css";
-import "@fontsource/montserrat/500.css";
-import "@fontsource/montserrat/600.css";
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
