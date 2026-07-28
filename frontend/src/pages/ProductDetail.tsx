@@ -5,6 +5,7 @@ import { SpecTableEditor } from "../components/SpecTableEditor";
 import { TextItemListEditor } from "../components/TextItemListEditor";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import { DescriptionSection } from "../components/product/DescriptionSection";
+import { ImagesSection } from "../components/product/ImagesSection";
 import { ProductDetailsSection } from "../components/product/ProductDetailsSection";
 import { ProductSaveBar } from "../components/product/ProductSaveBar";
 import { useProductEditor } from "../components/product/useProductEditor";
@@ -113,24 +114,12 @@ export default function ProductDetail() {
               dirty={dirty.details}
             />
 
-            {/* Images — editable in a later stage. */}
-            <Card>
-              <CardHeader title="Images" actions={readOnlyNote} />
-              {product.images.length === 0 ? (
-                <p className="text-small text-subtle">No images on this product.</p>
-              ) : (
-                <div className="flex flex-wrap gap-3">
-                  {product.images.map((img, i) => (
-                    <img
-                      key={`${img.url}-${i}`}
-                      src={img.url}
-                      alt={img.alt || product.name}
-                      className="h-28 w-28 rounded-lg border border-border object-cover"
-                    />
-                  ))}
-                </div>
-              )}
-            </Card>
+            <ImagesSection
+              images={draft.images}
+              onChange={(next) => setSection("images", next)}
+              dirty={dirty.images}
+              error={saveErrors.images ?? validationErrors.images}
+            />
 
             {/* Options & Variations — editable in a later stage. */}
             <Card>

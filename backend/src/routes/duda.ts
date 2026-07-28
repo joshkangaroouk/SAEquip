@@ -48,6 +48,34 @@ const updateProductSchema = z
   })
   .strict();
 
+/**
+ * Product gallery — FULL replacement, order = array position.
+ *
+ * Duda fetches each URL server-side to re-host it, so the URL must be absolute
+ * and publicly reachable. A relative path or a data: URI would fail inside
+ * Duda with a far less obvious error than a 400 from here.
+ */
+const imageItemSchema = z
+  .object({
+    url: z
+      .string()
+      .trim()
+      .min(1, "url must not be blank")
+      .refine((u) => {
+        try {
+          return ["http:", "https:"].includes(new URL(u).protocol);
+        } catch {
+          return false;
+        }
+      }, "must be an absolute http(s) URL that Duda can fetch"),
+    alt: z.string().max(300, "alt max 300 chars").optional(),
+  })
+  .strict();
+
+const imagesBody = z
+  .object({ images: z.array(imageItemSchema).max(50, "max 50 images") })
+  .strict();
+
 // --- Hub content editors (replace-whole-set) ---
 
 const specRowSchema = z
@@ -179,6 +207,26 @@ dudaRouter.patch("/products/:id", async (req, res, next) => {
     // Keep the hub row's name/sku/slug in step — the public widget serves those
     // from HubProduct, so skipping this leaves the live site stale after a rename.
     await syncHubProduct(updated);
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /api/products/:id/images
+ * Replaces the whole gallery in one call. Kept off PATCH /products/:id so that
+ * route retains its guarantee of never touching a collection.
+ */
+dudaRouter.put("/products/:id/images", async (req, res, next) => {
+  const parsed = imagesBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const updated = await duda.updateProductImages(req.params.id, parsed.data.images);
     res.json(updated);
   } catch (err) {
     next(err);

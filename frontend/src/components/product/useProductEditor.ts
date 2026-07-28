@@ -11,6 +11,7 @@ import type {
 import {
   activeLogoIds,
   buildDetailsPayload,
+  imagesFrom,
   isSectionDirty,
   itemsFrom,
   logoDiff,
@@ -28,10 +29,18 @@ import {
   type SectionKey,
 } from "./productEditorTypes";
 
-const SECTION_KEYS: SectionKey[] = ["details", "specs", "benefits", "applications", "logos"];
+const SECTION_KEYS: SectionKey[] = [
+  "details",
+  "images",
+  "specs",
+  "benefits",
+  "applications",
+  "logos",
+];
 
 const emptyDirty: DirtyMap = {
   details: false,
+  images: false,
   specs: false,
   benefits: false,
   applications: false,
@@ -84,6 +93,7 @@ export function useProductEditor(productId: string | undefined) {
 
       const snapshot: EditorSnapshot = {
         details: nativeFromProduct(product),
+        images: imagesFrom(product.images),
         specs: specsFrom(custom.specs),
         benefits: itemsFrom(custom.benefits),
         applications: itemsFrom(custom.applications),
@@ -182,6 +192,25 @@ export function useProductEditor(productId: string | undefined) {
           });
           setContext((c) => (c ? { ...c, product: updated } : c));
           return { details: nativeFromProduct(updated) };
+        },
+      });
+    }
+
+    if (dirty.images) {
+      tasks.push({
+        keys: ["images"],
+        label: "images",
+        run: async () => {
+          // Full ordered replacement. Duda ingests any not-yet-hosted URL and
+          // returns its own CDN URL, so we re-baseline from the response.
+          const updated = await apiJson<ProductDetail>(`/api/products/${productId}/images`, {
+            method: "PUT",
+            body: JSON.stringify({
+              images: draft.images.map((img) => ({ url: img.url, alt: img.alt })),
+            }),
+          });
+          setContext((c) => (c ? { ...c, product: updated } : c));
+          return { images: imagesFrom(updated.images) };
         },
       });
     }

@@ -7,6 +7,7 @@ import type {
 import type {
   EditorSnapshot,
   ErrorMap,
+  ImageDraft,
   LogoKind,
   NativeForm,
   SectionKey,
@@ -37,6 +38,9 @@ export function nativeFromProduct(p: ProductDetail): NativeForm {
   };
 }
 
+export const imagesFrom = (images: ProductDetail["images"]): ImageDraft[] =>
+  images.map((img, i) => ({ key: `${img.url}#${i}`, url: img.url, alt: img.alt ?? "" }));
+
 export const specsFrom = (rows: HubSpecRow[]): SpecRowDraft[] =>
   rows.map((r) => ({ id: r.id, label: r.label, value: r.value }));
 
@@ -58,6 +62,9 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
   switch (key) {
     case "details":
       return snapshot.details;
+    case "images":
+      // Drop the cosmetic key; url+alt+position are the whole payload.
+      return snapshot.images.map(({ url, alt }) => ({ url, alt }));
     case "specs":
       return snapshot.specs.map(({ label, value }) => ({ label, value }));
     case "benefits":
@@ -112,6 +119,10 @@ export function validate(draft: EditorSnapshot): ErrorMap {
   else if (!priceOk) errors.details = "Price must be a number ≥ 0.";
   else if (!compareOk) errors.details = "Compare-at price must be a number greater than the price.";
   else if (!quantityOk) errors.details = "Quantity must be a whole number ≥ 0.";
+
+  if (draft.images.length > 50) errors.images = "Max 50 images.";
+  else if (!draft.images.every((i) => /^https?:\/\//i.test(i.url)))
+    errors.images = "Every image needs an absolute http(s) URL that Duda can fetch.";
 
   if (draft.specs.length > 100) errors.specs = "Max 100 rows.";
   else if (!draft.specs.every(specRowValid))

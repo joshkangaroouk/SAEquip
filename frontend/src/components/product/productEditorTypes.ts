@@ -1,10 +1,17 @@
 import type { ProductDetail, ProductLogoEntry } from "../../lib/types";
 
 /** Sections that participate in the unified dirty/save flow. */
-export type SectionKey = "details" | "specs" | "benefits" | "applications" | "logos";
+export type SectionKey =
+  | "details"
+  | "images"
+  | "specs"
+  | "benefits"
+  | "applications"
+  | "logos";
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
   details: "Details",
+  images: "Images",
   specs: "Technical Specs",
   benefits: "Key Benefits",
   applications: "Applications",
@@ -46,12 +53,24 @@ export interface TextItemDraft {
   text: string;
 }
 
+/**
+ * A gallery image. `key` is cosmetic (React key + dnd id) because Duda's image
+ * shape is only {url, alt} — there is no server-side image id to key on.
+ * Position in the array IS the order, and index 0 is the product thumbnail.
+ */
+export interface ImageDraft {
+  key: string;
+  url: string;
+  alt: string;
+}
+
 /** Active catalog logo ids per kind. */
 export type LogosDraft = Record<LogoKind, string[]>;
 
 /** Everything editable on the product page, in one comparable shape. */
 export interface EditorSnapshot {
   details: NativeForm;
+  images: ImageDraft[];
   specs: SpecRowDraft[];
   benefits: TextItemDraft[];
   applications: TextItemDraft[];

@@ -211,6 +211,17 @@ const EDITABLE_PRODUCT_KEYS = [
   "seo",
 ] as const satisfies readonly (keyof DudaProductUpdate)[];
 
+/**
+ * Product ARRAY fields are full-replacement: Duda's docs say "must pass all
+ * data when making any changes to this property". They're kept out of
+ * DudaProductUpdate (and out of updateProduct) so a scalar edit can never wipe
+ * a collection; each array gets its own explicit method instead.
+ */
+export interface DudaImageInput {
+  url: string;
+  alt?: string;
+}
+
 const site = () => env.DUDA_SITE_NAME;
 
 export const duda = {
@@ -263,6 +274,23 @@ export const duda = {
       if (partial[key] !== undefined) body[key] = partial[key];
     }
     await dudaRequest<unknown>("PATCH", PATHS.product(site(), productId), body);
+    return this.getProduct(productId);
+  },
+
+  /**
+   * Replaces the product's ENTIRE image gallery, in order.
+   *
+   * Duda ingests any publicly-reachable URL and re-hosts it on its own CDN
+   * (verified), so a freshly-uploaded Supabase URL and an existing
+   * irp.cdn-website.com URL can be mixed in one call: new ones get re-hosted,
+   * already-hosted ones come back byte-identical.
+   *
+   * Order is array position, and images[0] is the product thumbnail.
+   */
+  async updateProductImages(productId: string, images: DudaImageInput[]): Promise<DudaProduct> {
+    await dudaRequest<unknown>("PATCH", PATHS.product(site(), productId), {
+      images: images.map((img) => ({ url: img.url, alt: img.alt ?? "" })),
+    });
     return this.getProduct(productId);
   },
 };
