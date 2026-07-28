@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { API_BASE } from "../lib/api";
-import { Card, toast } from "../components/ui";
+import { Badge, Card, Toggle, toast } from "../components/ui";
 
 /**
  * The embeddable widget's own production CSS (verbatim from
@@ -192,6 +192,10 @@ interface WidgetDef {
   description: string;
   section: string | null; // null = legacy full embed (no data-section)
   preview: React.ReactNode;
+  /** Default true. When false the embed snippet is withheld entirely. */
+  enabled?: boolean;
+  /** Why it's off. Shown in place of the snippet. */
+  disabledReason?: string;
 }
 
 export default function Widgets() {
@@ -239,6 +243,9 @@ export default function Widgets() {
       description: "Download rows. Gated files show a lead-capture form first.",
       section: "downloads",
       preview: <DownloadsPreview />,
+      enabled: false,
+      disabledReason:
+        "Parked — the per-product downloads editor has been removed, so there is nothing to render yet. The backend, captured leads and the widget's downloads section are all still in place, so re-enabling this is a UI change only.",
     },
     {
       key: "all",
@@ -290,15 +297,34 @@ export default function Widgets() {
             : `<div id="saequip-product-hub"></div>`;
           const code = `${div}\n${scriptTag}`;
 
+          const enabled = w.enabled !== false;
+
           return (
-            <Card key={w.key}>
+            <Card key={w.key} className={enabled ? undefined : "opacity-70"}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-body font-semibold text-text">{w.name}</h2>
-                {w.section && (
-                  <code className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-muted">
-                    data-section="{w.section}"
-                  </code>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-body font-semibold text-text">{w.name}</h2>
+                  {!enabled && <Badge tone="neutral">Disabled</Badge>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {w.section && (
+                    <code className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-muted">
+                      data-section="{w.section}"
+                    </code>
+                  )}
+                  {/* Genuinely inert, not a toggle that pretends to control the
+                      live site — the widget renders downloads from
+                      /public/products/content regardless of anything here. */}
+                  {!enabled && (
+                    <Toggle
+                      checked={false}
+                      disabled
+                      onChange={() => {}}
+                      label="Enabled"
+                      id={`toggle-${w.key}`}
+                    />
+                  )}
+                </div>
               </div>
               <p className="mt-1 text-sm text-muted">{w.description}</p>
 
@@ -307,7 +333,13 @@ export default function Widgets() {
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
                     Embed in Duda
                   </p>
-                  <CodeBlock code={code} />
+                  {enabled ? (
+                    <CodeBlock code={code} />
+                  ) : (
+                    <p className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-muted">
+                      {w.disabledReason}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
