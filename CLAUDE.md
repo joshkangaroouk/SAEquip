@@ -64,12 +64,44 @@ Backend side (`backend/src/routes/quotes.ts`, `backend/src/services/email.ts`): 
 
 Base URL `https://api.duda.co/api`, HTTP Basic auth (`DUDA_API_USER`/`DUDA_API_PASS`). SAEquip's `site_name` is `099434f3`. **Path pattern includes a `multiscreen` segment that's easy to miss** — omitting it 404s (`RESTEASY003210`): `/sites/multiscreen/{site}/ecommerce/store`, `.../ecommerce/products`, `.../ecommerce/products/{id}` (see `backend/src/services/duda.ts`). Duda's product `custom_fields` are deliberately unused (see the Duda-vs-Hub split above) — don't reintroduce writes to them.
 
+### Verified write surface + behaviours (probed live, 2026-07-27/28)
+
+Run `npm run duda:spike-options -- --confirm` to re-derive any of this; `npm run --silent duda:snapshot -- <productId>` dumps a product read-only for a pre-write backup.
+
+- **Options are STORE-LEVEL / shared across the whole catalog**, not per-product: `GET|POST /ecommerce/options`, `GET|PUT|DELETE /ecommerce/options/{id}`, `POST /ecommerce/options/{id}/choices`, `DELETE .../choices/{choiceId}`. Create body is `{name, type:"TEXT"|"COLOR", choices:[string]}` with no product id.
+- **A product CAN expose a subset of a shared option's choices**, via `PATCH /products/{id}` with `options: [{id, choices:[{id}]}]`. Adding a choice to a catalog option does **not** propagate to products already using it — so catalog *additions are safe*; renames and choice deletions are what affect other products.
+- **Variations are auto-generated as the cartesian product** of the attached choices. There is no variations collection endpoint (`/variations` 400s); only `PATCH /products/{id}/variations/{vid}` for `sku`/`price_difference`/`quantity`/`status`/`images`. Variation IDs **and their SKUs survive** an option change. Regeneration is synchronous. **Variation array order is not stable — never rely on index.**
+- **Images**: `PATCH /products/{id}` with `images` re-hosts any publicly-reachable URL onto Duda's CDN (`irp.cdn-website.com`), so `/sites/multiscreen/resources/{site}/upload` is unnecessary. Already-hosted URLs come back byte-identical across repeat PATCHes. The array is **full replacement** and `images[0]` is the thumbnail.
+- **All product array fields are full replacement** ("must pass all data when making any changes to this property"). `services/duda.ts` therefore keeps `images`/`options`/`variations` out of `DudaProductUpdate` and gives each its own explicit method, so a scalar edit can never wipe a collection.
+- Create/delete: `POST /ecommerce/products` (minimum `{name, prices:[{price}]}`; `seo.product_url` is auto-slugged from the name) and `DELETE /ecommerce/products/{id}`.
+- `quantity` is **write-only** — accepted on PATCH, never returned on read.
+- **`GET /products` clamps `limit` to 200** regardless of what you ask for, so paging is required now `max_products` is 1000 (`duda.listAllProducts()`).
+- Store limits live at `GET /ecommerce/store` → currently `max_products:1000, max_variations_per_product:300, max_options:20, max_choices_per_option:50`. **`max_options:20` is per-CATALOG and did NOT rise with the plan upgrade — it's the binding constraint across ~86 products.**
+
 ## Environment variables
 
 See `backend/.env.example` and `frontend/.env.example` for the full annotated list. Highlights:
 - Backend **requires**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL_DOMAINS`, `DUDA_API_USER`, `DUDA_API_PASS`. `PUBLIC_ALLOWED_ORIGINS` must include every domain allowed to call `/public/*` (Duda domains + the frontend origin + localhost for dev) — CORS rejects anything not listed, no trailing slashes.
 - Backend **optional**: `RESEND_API_KEY` + `QUOTE_NOTIFY_FROM` + `QUOTE_NOTIFY_TO` (all-or-nothing for email).
 - Frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL` (baked in at **build time** — changing it requires a rebuild/redeploy, not just a running-process restart).
+
+## The product editor (unified save)
+
+`frontend/src/pages/ProductDetail.tsx` is a full two-way editor: title, SKU, type, status, stock, price, SEO, description, images, plus all Hub content. `frontend/src/components/product/` holds the machinery:
+
+- **`useProductEditor.ts`** owns two copies of one `EditorSnapshot` — `baseline` (last server-confirmed truth) and `draft` — loaded in one `Promise.all`. Every section is a controlled component; there are **no per-section Save buttons**, just `ProductSaveBar`.
+- **Dirty detection** (`normalize.ts` `project()`) strips cosmetic row ids before comparing. New rows use `crypto.randomUUID()` with no server counterpart, so comparing ids directly would report a section dirty forever after a save. Logo ids compare sorted so toggle order isn't a change. **If you add a slice, add it to `project()` or it will never look dirty.**
+- **Save builds its task list from the dirty map only.** Never PUT a clean section: specs/benefits/applications are delete-all-then-recreate, so a no-op PUT is a real destructive round-trip against live data. Tasks run sequentially and each banks its confirmed slice into *both* baseline and draft, so earlier work survives a later failure; failures are per-section and leave that section dirty (keeping the guard armed). Retrying the same save converges, because every sub-operation is a full replacement or idempotent.
+- **`seo` is sent whole** whenever any sub-field changed — dropping `seo.product_url` would break the public widget's slug detection.
+- The unsaved-changes guard (`hooks/useUnsavedChangesWarning.ts`) needs the **data router**: `useBlocker` calls `useDataRouterContext()` and throws under `<BrowserRouter>`. That's why `App.tsx` exports `createBrowserRouter`. It also pairs a `beforeunload` listener, which `useBlocker` does not cover.
+- Description is a **raw-HTML two-pane editor, not a WYSIWYG** — a WYSIWYG normalises markup on load, so merely opening a product would silently rewrite Duda's legacy WordPress HTML. The preview is DOMPurify-sanitised; the textarea is what saves.
+- Product images upload to Supabase for a public URL, then Duda ingests them **on save** (hence the "Pending upload" badge). There is deliberately no local `ProductImage` mirror: once Duda re-hosts an image the product no longer references Supabase, so deleting the Media Centre original can't break a live gallery.
+
+## Prisma migrations — baselined
+
+The database had **no `_prisma_migrations` table** until 2026-07-28 (schema applied without migration tracking), so `migrate deploy` failed with `P3005`. The five pre-existing migrations were baselined with `prisma migrate resolve --applied`. Migration state is now consistent — don't re-baseline.
+
+`Lead` deliberately has a **nullable `downloadId` with `onDelete: SetNull`** plus `productName`/`productSku`/`downloadTitle` snapshot columns written at capture time, so deleting a product **preserves** captured leads (a null `downloadId` means "product since deleted"). Don't restore the cascade. `QuoteRequest`/`QuoteRequestItem` were never at risk — they hold denormalised snapshots with no FK to `HubProduct`.
 
 ## Deployment gotchas (Railway) — read before touching build/deploy config
 
@@ -87,12 +119,15 @@ See `backend/.env.example` and `frontend/.env.example` for the full annotated li
 
 **Rule going forward: every verification/test must use a dedicated throwaway product (create hidden → test → delete), never the live EX Heater** — and never run a replace-whole-set write against real data without snapshotting first. Read-only checks against EX Heater are fine.
 
-## Known gaps / backlog (as of last update)
+## Known gaps / backlog (as of 2026-07-28)
 
-- No admin UI to view captured `Lead` rows from gated downloads yet (they're stored, just not surfaced — unlike `QuoteRequest`, which does have a `/quotes` admin page).
-- Only 1 of ~86 SAEquip products exists in the Duda store so far (EX Heater) — the rest are still on the legacy WordPress site and haven't been migrated in.
+- **Options & Variations are still read-only** on the product page. The write surface is fully mapped (see above) but the editor isn't built. When it is: options are a *shared catalog*, so it needs the same usage-count + danger-confirm treatment as `frontend/src/pages/Logos.tsx`, a live cartesian-product meter against `max_variations_per_product`, and `options used: N / 20` wherever an option can be created. Catalog mutations must stay OUT of the unified save (`POST /ecommerce/options` isn't idempotent, so a retried save would duplicate options and eat the 20-slot cap).
+- No admin UI to view captured `Lead` rows from gated downloads yet (they're stored and now survive product deletion, just not surfaced — unlike `QuoteRequest`, which has a `/quotes` page). More valuable now that retained leads can outlive their product.
+- Per-product **Downloads editor was removed**; the Downloads widget is parked as visibly disabled on `/widgets`. Backend routes, leads, `/custom` payload and the widget's downloads section all still work, so restoring it is a UI-only change (`git show d68e28b~1:frontend/src/components/DownloadsEditor.tsx` for the old implementation).
+- Only 1 of ~86 SAEquip products exists in the Duda store so far (EX Heater) — the rest are still on the legacy WordPress site. `/products/new` ("Create and add another") is the intended migration path.
 - `CompatibleLink` model exists with no editor/UI.
 - Widget visual styling is functional but not deeply brand-tuned.
+- No optimistic-concurrency check: because array writes are full replacement, a stale dashboard tab can overwrite edits made in Duda. Mitigated only by the "loaded HH:MM / refresh" control in the product header.
 
 ## Working conventions
 
