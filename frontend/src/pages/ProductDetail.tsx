@@ -56,7 +56,7 @@ export default function ProductDetail() {
     <>
       <UnsavedChangesModal blocker={blocker} onSave={save} dirtyLabels={dirtyLabels} />
 
-      <div className="mx-auto max-w-4xl pb-4">
+      <div className="pb-4">
         <Link to="/" className="text-sm text-muted hover:text-text">
           ← Back to products
         </Link>
@@ -69,7 +69,7 @@ export default function ProductDetail() {
         )}
 
         {!loading && !loadError && product && draft && context && (
-          <div className="mt-4 space-y-6">
+          <div className="mt-4 space-y-4">
             {/* Header — live summary of the saved product, not the draft. */}
             <Card>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -157,7 +157,7 @@ export default function ProductDetail() {
               <Badge tone="neutral">Stored outside Duda</Badge>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <LogoActivationPanel
                 id="section-logos"
                 kind="SA_LOGO"

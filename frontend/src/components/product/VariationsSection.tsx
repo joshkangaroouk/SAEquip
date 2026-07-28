@@ -78,7 +78,7 @@ export function VariationsSection({
             <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface-2 p-3">
               <span className="text-small font-semibold text-text">Set all:</span>
               <Input
-                className="w-28 px-2 py-1 text-xs"
+                size="sm" className="w-28"
                 inputMode="decimal"
                 value={bulkPrice}
                 onChange={(e) => setBulkPrice(e.target.value)}
@@ -129,7 +129,7 @@ export function VariationsSection({
                       ))}
                       <TD>
                         <Input
-                          className="px-2 py-1 text-xs"
+                          size="sm"
                           value={v.sku}
                           disabled={lockedByOptions}
                           onChange={(e) => onChange(v.id, { sku: e.target.value })}
@@ -139,11 +139,12 @@ export function VariationsSection({
                       </TD>
                       <TD>
                         <Input
-                          className={`px-2 py-1 text-xs ${
+                          size="sm"
+                          className={
                             /^-?\d+(\.\d+)?$/.test(v.price_difference)
-                              ? ""
+                              ? undefined
                               : "border-danger focus:border-danger"
-                          }`}
+                          }
                           inputMode="decimal"
                           value={v.price_difference}
                           disabled={lockedByOptions}
@@ -153,7 +154,7 @@ export function VariationsSection({
                       </TD>
                       <TD>
                         <Select
-                          className="px-2 py-1 text-xs"
+                          size="sm"
                           value={v.status === "HIDDEN" ? "HIDDEN" : "ACTIVE"}
                           disabled={lockedByOptions}
                           onChange={(e) => onChange(v.id, { status: e.target.value })}

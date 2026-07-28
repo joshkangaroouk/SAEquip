@@ -1,95 +1,82 @@
-import { useRef, useState } from "react";
-import { Badge, Button, Card, CardHeader, Textarea } from "../ui";
-import { RichHtml } from "../RichHtml";
+import { useState } from "react";
+import { Badge, Card, CardHeader, RichTextEditor, Textarea } from "../ui";
 
 /**
- * Two-pane raw-HTML editor for the product description.
+ * Product description editor — a WYSIWYG (tiptap) with a raw-HTML escape hatch.
  *
- * Deliberately NOT a WYSIWYG: every rich-text editor normalises markup when it
- * loads, so merely opening a product and saving anything else would silently
- * rewrite Duda's existing (legacy WordPress) HTML. Staff also need to see and
- * fix that markup during migration, not just style it.
+ * Tiptap normalises markup it parses, so the risk is silently rewriting Duda's
+ * legacy WordPress HTML. Two things contain that:
  *
- * The preview runs through DOMPurify while the textarea is what actually
- * saves — the header says so, because the two can legitimately differ.
+ *  1. RichTextEditor only reports genuine user edits, so opening a product and
+ *     changing nothing leaves the stored HTML untouched.
+ *  2. If tiptap's parse differs from what's stored, we say so and offer the HTML
+ *     view — because for migrated content, seeing the real markup is sometimes
+ *     the only way to fix it.
  */
-const WRAPS: { label: string; before: string; after: string }[] = [
-  { label: "Paragraph", before: "<p>", after: "</p>" },
-  { label: "Bold", before: "<strong>", after: "</strong>" },
-  { label: "List", before: "<ul>\n  <li>", after: "</li>\n</ul>" },
-  { label: "Link", before: '<a href="https://">', after: "</a>" },
-];
-
 export function DescriptionSection({
   value,
   onChange,
   dirty,
 }: {
   value: string;
-  onChange: (next: string) => void;
+  onChange: (html: string) => void;
   dirty: boolean;
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const [showPreview, setShowPreview] = useState(true);
-
-  /** Wraps the selection (or inserts at the caret) without losing focus. */
-  function wrap(before: string, after: string) {
-    const el = ref.current;
-    if (!el) return;
-    const { selectionStart: start, selectionEnd: end } = el;
-    const selected = value.slice(start, end);
-    const next = `${value.slice(0, start)}${before}${selected}${after}${value.slice(end)}`;
-    onChange(next);
-    // Restore a sensible caret after React re-renders the value.
-    requestAnimationFrame(() => {
-      el.focus();
-      const caret = start + before.length + selected.length;
-      el.setSelectionRange(caret, caret);
-    });
-  }
+  const [mode, setMode] = useState<"rich" | "html">("rich");
+  const [wouldReformat, setWouldReformat] = useState(false);
 
   return (
     <Card id="section-description">
       <CardHeader
         title="Description"
-        description="Raw HTML — this is what saves to Duda. The preview is sanitised for display only."
+        description="Shown on the product page in Duda."
         actions={
           <>
             {dirty && <Badge tone="accent">Unsaved</Badge>}
-            <Button variant="ghost" size="sm" onClick={() => setShowPreview((p) => !p)}>
-              {showPreview ? "Hide preview" : "Show preview"}
-            </Button>
+            <div className="flex rounded-md border border-border p-0.5">
+              {(["rich", "html"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
+                    mode === m
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted hover:text-text"
+                  }`}
+                >
+                  {m === "rich" ? "Rich text" : "HTML"}
+                </button>
+              ))}
+            </div>
           </>
         }
       />
 
-      <div className="mb-2 flex flex-wrap gap-2">
-        {WRAPS.map((w) => (
-          <Button key={w.label} variant="secondary" size="sm" onClick={() => wrap(w.before, w.after)}>
-            {w.label}
-          </Button>
-        ))}
-      </div>
+      {mode === "rich" && wouldReformat && !dirty && (
+        <p className="mb-3 rounded-md border border-border bg-surface-2 px-3 py-2 text-small text-muted">
+          This description was written elsewhere, so editing it here will tidy the underlying HTML.
+          Switch to <span className="font-semibold">HTML</span> if you need the original markup kept
+          exactly as-is.
+        </p>
+      )}
 
-      <div className={showPreview ? "grid grid-cols-1 gap-4 lg:grid-cols-2" : ""}>
+      {mode === "rich" ? (
+        <RichTextEditor
+          value={value}
+          onChange={onChange}
+          onNormalisedDiffers={setWouldReformat}
+        />
+      ) : (
         <Textarea
-          ref={ref}
+          size="sm"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-64 font-mono text-small"
+          className="h-56 font-mono"
           placeholder="<p>Product description…</p>"
           spellCheck={false}
         />
-        {showPreview && (
-          <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-surface-2 p-4">
-            {value.trim() ? (
-              <RichHtml html={value} />
-            ) : (
-              <p className="text-small text-subtle">Nothing to preview yet.</p>
-            )}
-          </div>
-        )}
-      </div>
+      )}
     </Card>
   );
 }

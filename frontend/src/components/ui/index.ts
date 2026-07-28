@@ -16,3 +16,4 @@ export { EmptyState } from "./EmptyState";
 export { FileIcon } from "./FileIcon";
 export { Spinner, Loader } from "./Spinner";
 export { PageHeader } from "./PageHeader";
+export { RichTextEditor } from "./RichTextEditor";

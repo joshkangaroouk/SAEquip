@@ -37,17 +37,17 @@ export function ProductDetailsSection({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Name" htmlFor="p-name" className="sm:col-span-2">
-          <Input id="p-name" value={value.name} onChange={(e) => set("name", e.target.value)} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field label="Name" htmlFor="p-name" className="sm:col-span-2 lg:col-span-3">
+          <Input size="sm" id="p-name" value={value.name} onChange={(e) => set("name", e.target.value)} />
         </Field>
 
         <Field label="SKU" htmlFor="p-sku">
-          <Input id="p-sku" value={value.sku} onChange={(e) => set("sku", e.target.value)} />
+          <Input size="sm" id="p-sku" value={value.sku} onChange={(e) => set("sku", e.target.value)} />
         </Field>
 
         <Field label="Type" htmlFor="p-type">
-          <Select id="p-type" value={value.type} onChange={(e) => set("type", e.target.value)}>
+          <Select size="sm" id="p-type" value={value.type} onChange={(e) => set("type", e.target.value)}>
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
@@ -57,7 +57,7 @@ export function ProductDetailsSection({
         </Field>
 
         <Field label="Status" htmlFor="p-status" hint="Hidden products aren't shown in the store.">
-          <Select id="p-status" value={value.status} onChange={(e) => set("status", e.target.value)}>
+          <Select size="sm" id="p-status" value={value.status} onChange={(e) => set("status", e.target.value)}>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -67,7 +67,7 @@ export function ProductDetailsSection({
         </Field>
 
         <Field label="Stock status" htmlFor="p-stock">
-          <Select
+          <Select size="sm"
             id="p-stock"
             value={value.stock_status}
             onChange={(e) => set("stock_status", e.target.value)}
@@ -81,7 +81,7 @@ export function ProductDetailsSection({
         </Field>
 
         <Field label="Price" htmlFor="p-price">
-          <Input
+          <Input size="sm"
             id="p-price"
             inputMode="decimal"
             value={value.price}
@@ -94,7 +94,7 @@ export function ProductDetailsSection({
           htmlFor="p-compare"
           hint="Optional. Must exceed the price; shown as a strike-through."
         >
-          <Input
+          <Input size="sm"
             id="p-compare"
             inputMode="decimal"
             value={value.compare_at_price}
@@ -111,7 +111,7 @@ export function ProductDetailsSection({
               : "Enable managed inventory to set a quantity."
           }
         >
-          <Input
+          <Input size="sm"
             id="p-qty"
             type="number"
             min={0}
@@ -136,13 +136,13 @@ export function ProductDetailsSection({
         </div>
       </div>
 
-      <fieldset className="mt-6 rounded-lg border border-border p-4">
+      <fieldset className="mt-4 rounded-lg border border-border p-3">
         <legend className="px-1 text-small font-semibold uppercase tracking-wide text-muted">
           SEO
         </legend>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Title" htmlFor="p-seo-title">
-            <Input
+            <Input size="sm"
               id="p-seo-title"
               value={value.seo_title}
               onChange={(e) => set("seo_title", e.target.value)}
@@ -153,14 +153,14 @@ export function ProductDetailsSection({
             htmlFor="p-seo-url"
             hint="The public widget finds this product by its slug — changing it changes the live URL."
           >
-            <Input
+            <Input size="sm"
               id="p-seo-url"
               value={value.seo_product_url}
               onChange={(e) => set("seo_product_url", e.target.value)}
             />
           </Field>
-          <Field label="Meta description" htmlFor="p-seo-desc" className="sm:col-span-2">
-            <Input
+          <Field label="Meta description" htmlFor="p-seo-desc" className="sm:col-span-3">
+            <Input size="sm"
               id="p-seo-desc"
               value={value.seo_description}
               onChange={(e) => set("seo_description", e.target.value)}

@@ -40,7 +40,7 @@ export function ImageCard({
       <div className="mt-2 flex items-center gap-1">
         <DragHandle handle={handle} />
         <Input
-          className="px-2 py-1 text-xs"
+          size="sm"
           value={image.alt}
           onChange={(e) => onAltChange(e.target.value)}
           placeholder="Alt text"

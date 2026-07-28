@@ -1,14 +1,17 @@
 import { forwardRef, type SelectHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
+import { fieldSizes, type FieldSize } from "./Input";
 
-export type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
+export type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> & {
+  size?: FieldSize;
+};
 
 /**
  * Rounded native select with a yellow focus ring and a custom chevron
  * (native arrow hidden via appearance-none).
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { className, children, ...rest },
+  { className, children, size = "md", ...rest },
   ref,
 ) {
   return (
@@ -17,7 +20,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         ref={ref}
         className={cn(
           "w-full appearance-none rounded-md bg-surface border border-border text-text",
-          "px-3 py-2.5 pr-10 text-body transition-colors",
+          fieldSizes[size],
+          size === "sm" ? "pr-8" : "pr-10",
+          "transition-colors",
           "focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent",
           "disabled:cursor-not-allowed disabled:opacity-50",
           className,
@@ -27,7 +32,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         {children}
       </select>
       <svg
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+        className={cn(
+          "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted",
+          size === "sm" ? "right-2.5" : "right-3",
+        )}
         width="14"
         height="14"
         viewBox="0 0 16 16"
