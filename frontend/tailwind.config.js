@@ -19,33 +19,44 @@ export default {
       black: "600",
     },
     extend: {
+      // Colours are declared as `rgb(var(--token) / <alpha-value>)` so Tailwind
+      // can inject an alpha channel — this is what makes `bg-danger/10`,
+      // `border-accent/50` etc. actually render. See the FORMAT note in
+      // index.css before changing the token values to hex.
       colors: {
-        bg: "var(--bg)",
-        surface: "var(--surface)",
-        "surface-2": "var(--surface-2)",
-        border: "var(--border)",
-        input: "var(--input)",
-        ring: "var(--ring)",
-        text: "var(--text)",
+        bg: "rgb(var(--bg) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        "surface-2": "rgb(var(--surface-2) / <alpha-value>)",
+        border: "rgb(var(--border) / <alpha-value>)",
+        input: "rgb(var(--input) / <alpha-value>)",
+        ring: "rgb(var(--ring) / <alpha-value>)",
+        text: "rgb(var(--text) / <alpha-value>)",
         // NOTE: `muted` is secondary TEXT here, not shadcn's grey fill — see
         // the naming note in index.css before repurposing it.
-        muted: "var(--muted)",
-        subtle: "var(--subtle)",
+        muted: "rgb(var(--muted) / <alpha-value>)",
+        subtle: "rgb(var(--subtle) / <alpha-value>)",
         accent: {
-          DEFAULT: "var(--accent)",
-          hover: "var(--accent-hover)",
-          foreground: "var(--accent-foreground)",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          hover: "rgb(var(--accent-hover) / <alpha-value>)",
+          foreground: "rgb(var(--accent-foreground) / <alpha-value>)",
         },
         primary: {
-          DEFAULT: "var(--primary)",
-          foreground: "var(--primary-foreground)",
+          DEFAULT: "rgb(var(--primary) / <alpha-value>)",
+          foreground: "rgb(var(--primary-foreground) / <alpha-value>)",
         },
         secondary: {
-          DEFAULT: "var(--secondary)",
-          foreground: "var(--secondary-foreground)",
+          DEFAULT: "rgb(var(--secondary) / <alpha-value>)",
+          foreground: "rgb(var(--secondary-foreground) / <alpha-value>)",
         },
-        danger: "var(--danger)",
-        success: "var(--success)",
+        danger: "rgb(var(--danger) / <alpha-value>)",
+        success: "rgb(var(--success) / <alpha-value>)",
+        sidebar: {
+          DEFAULT: "rgb(var(--sidebar) / <alpha-value>)",
+          foreground: "rgb(var(--sidebar-foreground) / <alpha-value>)",
+          muted: "rgb(var(--sidebar-muted) / <alpha-value>)",
+          subtle: "rgb(var(--sidebar-subtle) / <alpha-value>)",
+          border: "rgb(var(--sidebar-border) / <alpha-value>)",
+        },
       },
       fontFamily: {
         // IBM Plex Sans everywhere — this is already the <body> default (see
@@ -91,11 +102,11 @@ export default {
         lg: "0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)",
       },
       ringColor: {
-        DEFAULT: "var(--ring)",
+        DEFAULT: "rgb(var(--ring) / <alpha-value>)",
       },
       ringOffsetColor: {
-        bg: "var(--bg)",
-        surface: "var(--surface)",
+        bg: "rgb(var(--bg) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
       },
     },
   },

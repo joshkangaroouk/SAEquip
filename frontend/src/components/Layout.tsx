@@ -1,74 +1,125 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  BarChart3,
+  Images,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  Package,
+  Palette,
+  ShieldCheck,
+  Sparkles,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { cn } from "../lib/cn";
 import logoUrl from "../assets/saequip-logo.svg";
 
 /**
- * Light sidebar, following shadcn's dashboard shell: a near-white panel divided
- * from the content by a hairline border, muted nav labels, and a soft rounded
- * "pill" for the active route rather than a hard accent bar.
+ * Dark sidebar against the light content area.
  *
- * This was previously dark because the logo was assumed to need a dark ground.
- * The current asset carries its own yellow and black blocks, so it reads
- * correctly on light — verified against #fafafa.
+ * Colours come from the `--sidebar-*` tokens rather than being hardcoded, so
+ * the whole panel can be retuned in index.css. The active route gets three
+ * cues at once: a soft yellow-tinted pill, a bright accent bar pinned to the
+ * panel's left edge, and an accent-coloured icon.
  */
-const SIDEBAR = "bg-surface text-text";
-const SIDEBAR_BORDER = "border-border";
+const SIDEBAR = "bg-sidebar text-sidebar-foreground";
+const SIDEBAR_BORDER = "border-sidebar-border";
 
 interface NavItem {
   to: string;
   label: string;
+  icon: LucideIcon;
   end?: boolean;
 }
 
 const NAV: NavItem[] = [
-  { to: "/", label: "Products", end: true },
-  { to: "/media", label: "Media" },
-  { to: "/logos", label: "Logos" },
-  { to: "/widgets", label: "Widgets" },
-  { to: "/quotes", label: "Quote Requests" },
-  { to: "/status", label: "Status" },
+  { to: "/", label: "Products", icon: Package, end: true },
+  { to: "/media", label: "Media", icon: Images },
+  { to: "/logos", label: "Logos", icon: ShieldCheck },
+  { to: "/widgets", label: "Widgets", icon: LayoutGrid },
+  { to: "/quotes", label: "Quote Requests", icon: BarChart3 },
+  { to: "/status", label: "Status", icon: Sparkles },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-col gap-1">
-      {NAV.map((item) => (
+    <nav className="flex flex-col gap-0.5">
+      <p className="px-3 pb-2 pt-1 text-xs font-medium uppercase tracking-wider text-sidebar-subtle">
+        Main menu
+      </p>
+
+      {NAV.map(({ to, label, icon: Icon, end }) => (
         <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.end}
+          key={to}
+          to={to}
+          end={end}
           onClick={onNavigate}
           className={({ isActive }) =>
             cn(
-              "flex items-center rounded-md px-3 py-2 text-body transition-colors",
+              // The accent bar is a ::before pinned to the sidebar's left edge,
+              // which is why the row carries the negative inset rather than the
+              // pill doing it.
+              "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-body transition-colors duration-150",
+              "before:absolute before:-left-3 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2",
+              "before:rounded-r-full before:transition-all before:duration-150",
               isActive
-                ? "bg-surface-2 font-medium text-text"
-                : "text-muted hover:bg-surface-2/70 hover:text-text",
+                ? "bg-accent/[0.12] font-medium text-sidebar-foreground before:bg-accent"
+                : "text-sidebar-muted before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-foreground",
             )
           }
         >
-          {item.label}
+          {({ isActive }) => (
+            <>
+              <Icon
+                size={16}
+                strokeWidth={2}
+                className={cn(
+                  "shrink-0 transition-colors duration-150",
+                  isActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
+                )}
+              />
+              {label}
+            </>
+          )}
         </NavLink>
       ))}
+
       {/* Temporary: component-kit showcase (removed after verification). */}
       <NavLink
         to="/ui"
         onClick={onNavigate}
         className={({ isActive }) =>
           cn(
-            "mt-1 flex items-center rounded-md px-3 py-2 text-small transition-colors",
+            "group relative mt-2 flex items-center gap-2.5 rounded-md px-3 py-2 text-small transition-colors duration-150",
+            "before:absolute before:-left-3 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2",
+            "before:rounded-r-full before:transition-all before:duration-150",
             isActive
-              ? "bg-surface-2 font-medium text-text"
-              : "text-subtle hover:bg-surface-2/70 hover:text-muted",
+              ? "bg-accent/[0.12] font-medium text-sidebar-foreground before:bg-accent"
+              : "text-sidebar-subtle before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-muted",
           )
         }
       >
+        <Palette size={16} strokeWidth={2} className="shrink-0" />
         Component kit
       </NavLink>
     </nav>
   );
+}
+
+/**
+ * Initials for the avatar, derived from the email's local part: a separator
+ * gives two initials (josh.wright -> JW), otherwise the first two letters
+ * (josh -> JO). Falls back to the brand mark when there's no email yet.
+ */
+function initialsFrom(email: string | null | undefined): string {
+  const local = (email ?? "").split("@")[0];
+  if (!local) return "SA";
+  const parts = local.split(/[._\-+]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return local.slice(0, 2).toUpperCase();
 }
 
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
@@ -82,44 +133,53 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Logo */}
-      <div className="px-4 py-5">
+      {/* Brand */}
+      <div className="px-4 py-4">
         <NavLink to="/" onClick={onNavigate} className="flex items-center gap-2.5">
-          <img src={logoUrl} alt="SAEquip" className="h-10 w-auto" />
-          <span className="text-small font-medium leading-tight text-muted">
-            Product
-            <br />
-            Manager
-          </span>
+          <img src={logoUrl} alt="SAEquip" className="h-9 w-auto shrink-0" />
+          <span className="text-body font-semibold text-sidebar-foreground">SAEquip Admin</span>
         </NavLink>
       </div>
 
       {/* Nav */}
-      <div className="flex-1 overflow-y-auto px-3">
+      <div className="flex-1 overflow-y-auto px-3 py-2">
         <NavItems onNavigate={onNavigate} />
       </div>
 
-      {/* User + sign out, pinned to bottom */}
+      {/* Account */}
       <div className={cn("border-t px-3 py-3", SIDEBAR_BORDER)}>
-        <p className="truncate px-1 pb-2 text-small text-subtle" title={user?.email ?? undefined}>
-          {user?.email}
-        </p>
-        <button
-          onClick={handleSignOut}
-          className={cn(
-            "h-8 w-full rounded-md border border-border bg-surface px-3 text-body font-medium text-text",
-            "shadow-xs transition-colors hover:bg-surface-2 outline-none",
-            "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          )}
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground"
+          >
+            {initialsFrom(user?.email)}
+          </span>
+          <span
+            className="min-w-0 flex-1 truncate text-small text-sidebar-muted"
+            title={user?.email ?? undefined}
+          >
+            {user?.email}
+          </span>
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            aria-label="Sign out"
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sidebar-subtle",
+              "transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground outline-none",
+              "focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            )}
+          >
+            <LogOut size={16} strokeWidth={2} />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-/** App shell: fixed light sidebar on desktop; top bar + drawer on mobile. */
+/** App shell: fixed dark sidebar on desktop; dark top bar + drawer on mobile. */
 export function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -139,38 +199,35 @@ export function Layout() {
       {/* Mobile top bar */}
       <header
         className={cn(
-          "sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 lg:hidden",
+          "sticky top-0 z-30 flex items-center justify-between border-b px-4 py-2.5 lg:hidden",
           SIDEBAR,
           SIDEBAR_BORDER,
         )}
       >
         <NavLink to="/" className="inline-flex items-center gap-2">
           <img src={logoUrl} alt="SAEquip" className="h-8 w-auto" />
+          <span className="text-body font-semibold text-sidebar-foreground">SAEquip Admin</span>
         </NavLink>
         <button
           aria-label="Open menu"
           onClick={() => setDrawerOpen(true)}
-          className="rounded-md border border-border p-2 text-muted shadow-xs hover:bg-surface-2 hover:text-text"
+          className="rounded-md p-2 text-sidebar-muted transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
+          <Menu size={18} strokeWidth={2} />
         </button>
       </header>
 
       {/* Mobile drawer */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
           <aside className={cn("absolute inset-y-0 left-0 w-72 border-r", SIDEBAR, SIDEBAR_BORDER)}>
             <button
               aria-label="Close menu"
               onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-4 rounded-md border border-border p-1.5 text-muted shadow-xs hover:bg-surface-2 hover:text-text"
+              className="absolute right-3 top-3.5 rounded-md p-1.5 text-sidebar-muted transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
+              <X size={18} strokeWidth={2} />
             </button>
             <SidebarBody onNavigate={() => setDrawerOpen(false)} />
           </aside>

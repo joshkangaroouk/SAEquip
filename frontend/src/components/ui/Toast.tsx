@@ -12,11 +12,11 @@ export function Toaster() {
       richColors={false}
       toastOptions={{
         style: {
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
+          background: "rgb(var(--surface))",
+          border: "1px solid rgb(var(--border))",
           borderRadius: "0.75rem",
           boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
-          color: "var(--text)",
+          color: "rgb(var(--text))",
           fontFamily: '"IBM Plex Sans", sans-serif',
           fontWeight: 400,
         },
