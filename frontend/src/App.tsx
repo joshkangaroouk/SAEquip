@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import Login from "./pages/Login";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
+import ProductNew from "./pages/ProductNew";
 import Media from "./pages/Media";
 import Logos from "./pages/Logos";
 import Widgets from "./pages/Widgets";
@@ -30,6 +31,9 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: "/", element: <Products /> },
+      // Static segments outrank dynamic ones in v7's route ranking, so
+      // /products/new wins over /products/:id regardless of declaration order.
+      { path: "/products/new", element: <ProductNew /> },
       { path: "/products/:id", element: <ProductDetail /> },
       { path: "/media", element: <Media /> },
       { path: "/logos", element: <Logos /> },

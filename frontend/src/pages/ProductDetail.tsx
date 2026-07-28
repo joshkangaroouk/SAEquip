@@ -4,6 +4,7 @@ import { LogoActivationPanel } from "../components/LogoActivationPanel";
 import { SpecTableEditor } from "../components/SpecTableEditor";
 import { TextItemListEditor } from "../components/TextItemListEditor";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
+import { DangerZoneSection } from "../components/product/DangerZoneSection";
 import { DescriptionSection } from "../components/product/DescriptionSection";
 import { ImagesSection } from "../components/product/ImagesSection";
 import { ProductDetailsSection } from "../components/product/ProductDetailsSection";
@@ -37,6 +38,7 @@ export default function ProductDetail() {
     save,
     reload,
     guardSuppressed,
+    disarmGuard,
   } = editor;
 
   // Arm the navigate-away guard only while there's something to lose, and never
@@ -241,6 +243,12 @@ export default function ProductDetail() {
               dirty={dirty.applications}
               error={saveErrors.applications ?? validationErrors.applications}
               placeholder="e.g. Refineries"
+            />
+
+            <DangerZoneSection
+              productId={product.id}
+              productName={product.name}
+              onBeforeNavigate={disarmGuard}
             />
 
             <ProductSaveBar

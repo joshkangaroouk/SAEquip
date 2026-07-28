@@ -222,6 +222,17 @@ export interface DudaImageInput {
   alt?: string;
 }
 
+/** Minimum viable new product. Verified: {name, prices, status} is accepted. */
+export interface DudaProductCreate {
+  name: string;
+  prices: { price: string; compare_at_price?: string | null }[];
+  status?: DudaProductStatus;
+  type?: DudaProductType;
+  sku?: string;
+  description?: string;
+  requires_shipping?: boolean;
+}
+
 const site = () => env.DUDA_SITE_NAME;
 
 export const duda = {
@@ -260,6 +271,19 @@ export const duda = {
 
   getProduct(productId: string): Promise<DudaProduct> {
     return dudaGet<DudaProduct>(PATHS.product(site(), productId));
+  },
+
+  /**
+   * Creates a product. `name` and `prices` are the only fields Duda requires;
+   * `seo.product_url` is auto-slugged from the name when omitted.
+   */
+  createProduct(input: DudaProductCreate): Promise<DudaProduct> {
+    return dudaRequest<DudaProduct>("POST", PATHS.products(site()), input);
+  },
+
+  /** Deletes a product. Irreversible on Duda's side. */
+  async deleteProduct(productId: string): Promise<void> {
+    await dudaRequest<unknown>("DELETE", PATHS.product(site(), productId));
   },
 
   /**

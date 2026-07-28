@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { StatusBadge } from "../components/ui";
+import { Button, StatusBadge } from "../components/ui";
 import type { ProductSummary, StoreInfo } from "../lib/types";
 
 export default function Products() {
@@ -51,11 +51,31 @@ export default function Products() {
       ? products.filter((p) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
       : products;
 
+  const storeFull = store?.remaining != null && store.remaining <= 0;
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-text">Products</h1>
 
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate("/products/new")}
+            disabled={storeFull}
+            title={
+              storeFull
+                ? `The store is at its limit of ${store?.max_products} products.`
+                : "Create a new product"
+            }
+          >
+            + New product
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
         <div className="relative w-full max-w-xs">
           <svg
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle"

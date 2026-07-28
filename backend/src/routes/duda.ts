@@ -48,6 +48,23 @@ const updateProductSchema = z
   })
   .strict();
 
+/** New product. Status defaults to HIDDEN at the route, not here. */
+const createProductSchema = z
+  .object({
+    name: z.string().trim().min(1, "name is required"),
+    price: priceString,
+    compare_at_price: priceString.nullable().optional(),
+    sku: z.string().optional(),
+    type: z.enum(["PHYSICAL", "DIGITAL", "SERVICE", "DONATION"]).default("PHYSICAL"),
+    status: z.enum(["ACTIVE", "HIDDEN"]).default("HIDDEN"),
+    description: z.string().optional(),
+  })
+  .strict()
+  .refine(
+    (p) => p.compare_at_price == null || parseFloat(p.compare_at_price) > parseFloat(p.price),
+    { message: "compare_at_price must be greater than price", path: ["compare_at_price"] },
+  );
+
 /**
  * Product gallery — FULL replacement, order = array position.
  *
@@ -152,6 +169,107 @@ dudaRouter.get("/products", async (_req, res, next) => {
     }));
 
     res.json(summaries);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/products
+ * Creates a product. Defaults to HIDDEN so a half-migrated product never goes
+ * live mid-edit, which matters when bulk-importing the legacy catalog.
+ */
+dudaRouter.post("/products", async (req, res, next) => {
+  const parsed = createProductSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    // Pre-flight the store cap so we fail with a clear reason rather than a
+    // raw Duda rejection.
+    const [store, list] = await Promise.all([duda.getStore(), duda.listProducts({ limit: 1 })]);
+    const max = store.features?.max_products ?? null;
+    const count = list.total_responses ?? 0;
+    if (max != null && count >= max) {
+      res.status(409).json({
+        error: "store_full",
+        detail: `The store already holds ${count} of its ${max} products.`,
+      });
+      return;
+    }
+
+    const { price, compare_at_price, ...rest } = parsed.data;
+    const created = await duda.createProduct({
+      ...rest,
+      prices: [{ price, compare_at_price: compare_at_price ?? null }],
+    });
+    await syncHubProduct(created);
+    res.status(201).json(created);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/products/:id/delete-preview
+ * What a delete would destroy vs. keep, so the confirm dialog can be specific.
+ */
+dudaRouter.get("/products/:id/delete-preview", async (req, res, next) => {
+  try {
+    const product = await duda.getProduct(req.params.id);
+    const hub = await prisma.hubProduct.findUnique({
+      where: { dudaProductId: req.params.id },
+      include: {
+        _count: { select: { specRows: true, textItems: true, logos: true, downloads: true } },
+        downloads: { select: { _count: { select: { leads: true } } } },
+      },
+    });
+
+    const leadCount = hub?.downloads.reduce((n, d) => n + d._count.leads, 0) ?? 0;
+
+    res.json({
+      name: product.name,
+      sku: product.sku,
+      // Destroyed with the product.
+      destroys: {
+        specRows: hub?._count.specRows ?? 0,
+        textItems: hub?._count.textItems ?? 0,
+        activeLogos: hub?._count.logos ?? 0,
+        downloads: hub?._count.downloads ?? 0,
+      },
+      // Deliberately RETAINED — leads are business data and survive via a
+      // SetNull FK plus their captured product/download snapshot.
+      retains: { leads: leadCount },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /api/products/:id?confirm=true
+ * Removes the product from Duda and its HubProduct row (cascading the hub
+ * content). Captured leads survive with downloadId nulled.
+ *
+ * HubProduct is hard-deleted rather than soft-deleted because `slug` is unique
+ * — a retained orphan row would permanently block re-creating that product URL.
+ */
+dudaRouter.delete("/products/:id", async (req, res, next) => {
+  if (req.query.confirm !== "true") {
+    res.status(400).json({
+      error: "confirm_required",
+      detail: "Pass ?confirm=true to delete this product.",
+    });
+    return;
+  }
+
+  try {
+    await duda.deleteProduct(req.params.id);
+    const hub = await prisma.hubProduct.findUnique({ where: { dudaProductId: req.params.id } });
+    if (hub) await prisma.hubProduct.delete({ where: { id: hub.id } });
+    res.json({ deleted: true });
   } catch (err) {
     next(err);
   }

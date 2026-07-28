@@ -112,14 +112,27 @@ model Download {
   leads        Lead[]
 }
 
+/// A lead captured by a gated download's form.
+///
+/// Leads OUTLIVE the download and product they came from: deleting a product
+/// must not destroy captured business data. That is why `downloadId` is
+/// nullable with SetNull rather than Cascade, and why the product/download
+/// identity is snapshotted onto the row at capture time — the same
+/// denormalised approach QuoteRequestItem already uses. A null downloadId
+/// means "the product this came from has since been deleted".
 model Lead {
-  id         String   @id @default(cuid())
-  downloadId String
-  name       String
-  email      String
-  company    String?
-  createdAt  DateTime @default(now())
-  download   Download @relation(fields: [downloadId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  downloadId    String?
+  name          String
+  email         String
+  company       String?
+  createdAt     DateTime  @default(now())
+  // Snapshot of where this lead came from, written at capture time so the row
+  // stays self-describing after the download or product is gone.
+  productName   String?
+  productSku    String?
+  downloadTitle String?
+  download      Download? @relation(fields: [downloadId], references: [id], onDelete: SetNull)
 }
 
 // Parked for a later step; no editor yet.

@@ -208,13 +208,26 @@ publicRouter.post("/downloads/:downloadId/lead", leadLimiter, async (req, res, n
   try {
     const dl = await prisma.download.findUnique({
       where: { id: req.params.downloadId },
-      include: { mediaAsset: true },
+      include: { mediaAsset: true, hubProduct: true },
     });
     if (!dl) {
       res.status(404).json({ error: "download_not_found" });
       return;
     }
-    await prisma.lead.create({ data: { downloadId: dl.id, name, email, company: company ?? null } });
+    // Snapshot where the lead came from. The FK is SetNull, so if the product
+    // is later deleted the lead survives — but only stays meaningful because
+    // these denormalised fields were written here, at capture time.
+    await prisma.lead.create({
+      data: {
+        downloadId: dl.id,
+        name,
+        email,
+        company: company ?? null,
+        downloadTitle: dl.title,
+        productName: dl.hubProduct.name,
+        productSku: dl.hubProduct.sku,
+      },
+    });
     const fileUrl = await signedFileUrl(dl.mediaAsset.storagePath, 300); // 5-min TTL
     res.status(201).json({ fileUrl });
   } catch (err) {
