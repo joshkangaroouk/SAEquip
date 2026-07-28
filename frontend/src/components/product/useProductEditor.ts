@@ -16,22 +16,30 @@ import {
   itemsFrom,
   logoDiff,
   nativeFromProduct,
+  optionsFrom,
   specsFrom,
   validate,
+  variationsFrom,
 } from "./normalize";
 import {
   SECTION_LABELS,
+  type CatalogOption,
   type DirtyMap,
   type EditorContext,
   type EditorSnapshot,
   type ErrorMap,
   type LogoKind,
+  type OptionCatalog,
+  type OptionRefDraft,
   type SectionKey,
+  type VariationDraft,
 } from "./productEditorTypes";
 
 const SECTION_KEYS: SectionKey[] = [
   "details",
   "images",
+  "options",
+  "variations",
   "specs",
   "benefits",
   "applications",
@@ -41,6 +49,8 @@ const SECTION_KEYS: SectionKey[] = [
 const emptyDirty: DirtyMap = {
   details: false,
   images: false,
+  options: false,
+  variations: false,
   specs: false,
   benefits: false,
   applications: false,
@@ -84,23 +94,32 @@ export function useProductEditor(productId: string | undefined) {
     try {
       // One round of parallel fetches replaces the three independent loads the
       // page used to do (product, /custom, and one per logo kind).
-      const [product, custom, sa, cert] = await Promise.all([
+      const [product, custom, sa, cert, optionCatalog, store] = await Promise.all([
         apiJson<ProductDetail>(`/api/products/${productId}`),
         apiJson<HubCustomPayload>(`/api/products/${productId}/custom`),
         apiJson<ProductLogoEntry[]>(`/api/products/${productId}/logos?kind=SA_LOGO`),
         apiJson<ProductLogoEntry[]>(`/api/products/${productId}/logos?kind=CERT_LOGO`),
+        apiJson<OptionCatalog>(`/api/options`),
+        apiJson<{ max_variations_per_product: number | null }>(`/api/store`),
       ]);
 
       const snapshot: EditorSnapshot = {
         details: nativeFromProduct(product),
         images: imagesFrom(product.images),
+        options: optionsFrom(product.options),
+        variations: variationsFrom(product.variations),
         specs: specsFrom(custom.specs),
         benefits: itemsFrom(custom.benefits),
         applications: itemsFrom(custom.applications),
         logos: { SA_LOGO: activeLogoIds(sa), CERT_LOGO: activeLogoIds(cert) },
       };
 
-      setContext({ product, logoCatalog: { SA_LOGO: sa, CERT_LOGO: cert } });
+      setContext({
+        product,
+        logoCatalog: { SA_LOGO: sa, CERT_LOGO: cert },
+        optionCatalog,
+        maxVariations: store.max_variations_per_product,
+      });
       // Two independent copies — mutating the draft must never touch baseline.
       setBaseline(structuredClone(snapshot));
       setDraft(structuredClone(snapshot));
@@ -144,7 +163,10 @@ export function useProductEditor(productId: string | undefined) {
   }, [draft, baseline]);
 
   const isDirty = SECTION_KEYS.some((k) => dirty[k]);
-  const validationErrors = useMemo(() => (draft ? validate(draft) : {}), [draft]);
+  const validationErrors = useMemo(
+    () => (draft ? validate(draft, context?.maxVariations) : {}),
+    [draft, context?.maxVariations],
+  );
   const isValid = Object.keys(validationErrors).length === 0;
 
   const dirtyLabels = useMemo(
@@ -156,6 +178,67 @@ export function useProductEditor(productId: string | undefined) {
     if (baseline) setDraft(structuredClone(baseline));
     setSaveErrors({});
   }, [baseline]);
+
+  /** Attach a catalog option, exposing all of its choices by default. */
+  const attachOption = useCallback((option: CatalogOption) => {
+    setDraft((d) => {
+      if (!d || d.options.some((o) => o.id === option.id)) return d;
+      const ref: OptionRefDraft = {
+        id: option.id,
+        name: option.name,
+        type: option.type,
+        choiceIds: option.choices.map((c) => c.id),
+      };
+      return { ...d, options: [...d.options, ref] };
+    });
+  }, []);
+
+  const detachOption = useCallback((optionId: string) => {
+    setDraft((d) => (d ? { ...d, options: d.options.filter((o) => o.id !== optionId) } : d));
+  }, []);
+
+  /** Include/exclude one of an attached option's choices for THIS product. */
+  const toggleOptionChoice = useCallback((optionId: string, choiceId: string) => {
+    setDraft((d) => {
+      if (!d) return d;
+      return {
+        ...d,
+        options: d.options.map((o) =>
+          o.id !== optionId
+            ? o
+            : {
+                ...o,
+                choiceIds: o.choiceIds.includes(choiceId)
+                  ? o.choiceIds.filter((c) => c !== choiceId)
+                  : [...o.choiceIds, choiceId],
+              },
+        ),
+      };
+    });
+  }, []);
+
+  const setVariation = useCallback((id: string, patch: Partial<VariationDraft>) => {
+    setDraft((d) =>
+      d
+        ? { ...d, variations: d.variations.map((v) => (v.id === id ? { ...v, ...patch } : v)) }
+        : d,
+    );
+  }, []);
+
+  /** Bulk-fill one field across every variation — essential past ~8 rows. */
+  const setAllVariations = useCallback((patch: Partial<VariationDraft>) => {
+    setDraft((d) => (d ? { ...d, variations: d.variations.map((v) => ({ ...v, ...patch })) } : d));
+  }, []);
+
+  /** Re-read just the shared option catalog after a catalog-level mutation. */
+  const reloadOptionCatalog = useCallback(async () => {
+    try {
+      const optionCatalog = await apiJson<OptionCatalog>(`/api/options`);
+      setContext((c) => (c ? { ...c, optionCatalog } : c));
+    } catch {
+      // Non-fatal: the attach modal just shows a slightly stale catalog.
+    }
+  }, []);
 
   /**
    * Saves every dirty section, sequentially.
@@ -211,6 +294,70 @@ export function useProductEditor(productId: string | undefined) {
           });
           setContext((c) => (c ? { ...c, product: updated } : c));
           return { images: imagesFrom(updated.images) };
+        },
+      });
+    }
+
+    // Options BEFORE variations: Duda regenerates variations (with new ids) on
+    // an option change, so any variation edit in the same save would target
+    // dead ids. The UI locks the variations table while options are dirty, and
+    // the backend 409s on stale ids as a backstop.
+    if (dirty.options) {
+      tasks.push({
+        keys: ["options", "variations"],
+        label: "options",
+        run: async () => {
+          const res = await apiJson<{
+            product: ProductDetail;
+            variationData: { restored: number; dropped: string[] };
+          }>(`/api/products/${productId}/options`, {
+            method: "PUT",
+            body: JSON.stringify({
+              options: draft.options.map((o) => ({ id: o.id, choiceIds: o.choiceIds })),
+            }),
+          });
+
+          setContext((c) => (c ? { ...c, product: res.product } : c));
+
+          // Duda blanks every SKU/price on regeneration; the backend re-applies
+          // what it can. Tell the user plainly what didn't survive.
+          const { restored, dropped } = res.variationData;
+          if (restored > 0) {
+            toast.success(`Carried variation details across ${restored} combination(s)`);
+          }
+          if (dropped.length > 0) {
+            toast.error(
+              `${dropped.length} combination(s) no longer exist, so their SKU and price difference were lost`,
+            );
+          }
+
+          return {
+            options: optionsFrom(res.product.options),
+            variations: variationsFrom(res.product.variations),
+          };
+        },
+      });
+    } else if (dirty.variations) {
+      tasks.push({
+        keys: ["variations"],
+        label: "variations",
+        run: async () => {
+          const res = await apiJson<{ product: ProductDetail }>(
+            `/api/products/${productId}/variations`,
+            {
+              method: "PUT",
+              body: JSON.stringify({
+                variations: draft.variations.map((v) => ({
+                  id: v.id,
+                  sku: v.sku,
+                  price_difference: v.price_difference,
+                  status: v.status === "HIDDEN" ? "HIDDEN" : "ACTIVE",
+                })),
+              }),
+            },
+          );
+          setContext((c) => (c ? { ...c, product: res.product } : c));
+          return { variations: variationsFrom(res.product.variations) };
         },
       });
     }
@@ -325,6 +472,12 @@ export function useProductEditor(productId: string | undefined) {
     dirtyLabels,
     setSection,
     toggleLogo,
+    attachOption,
+    detachOption,
+    toggleOptionChoice,
+    setVariation,
+    setAllVariations,
+    reloadOptionCatalog,
     reset,
     save,
     reload: load,

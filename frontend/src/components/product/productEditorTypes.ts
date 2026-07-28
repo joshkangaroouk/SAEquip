@@ -4,6 +4,8 @@ import type { ProductDetail, ProductLogoEntry } from "../../lib/types";
 export type SectionKey =
   | "details"
   | "images"
+  | "options"
+  | "variations"
   | "specs"
   | "benefits"
   | "applications"
@@ -12,6 +14,8 @@ export type SectionKey =
 export const SECTION_LABELS: Record<SectionKey, string> = {
   details: "Details",
   images: "Images",
+  options: "Options",
+  variations: "Variations",
   specs: "Technical Specs",
   benefits: "Key Benefits",
   applications: "Applications",
@@ -64,6 +68,32 @@ export interface ImageDraft {
   alt: string;
 }
 
+/**
+ * A store-level option attached to this product, exposing only `choiceIds`.
+ * Attachment order is meaningful (it's the display order on the product page),
+ * so it participates in dirty comparison.
+ */
+export interface OptionRefDraft {
+  id: string;
+  name: string;
+  type: string;
+  choiceIds: string[];
+}
+
+/**
+ * One generated variation. Duda regenerates these (with new ids and blanked
+ * SKUs) whenever the attached option set changes, so `signature` — the
+ * order-independent set of choice values — is the stable identity.
+ */
+export interface VariationDraft {
+  id: string;
+  signature: string;
+  choices: { optionId: string; value: string }[];
+  sku: string;
+  price_difference: string;
+  status: string;
+}
+
 /** Active catalog logo ids per kind. */
 export type LogosDraft = Record<LogoKind, string[]>;
 
@@ -71,18 +101,42 @@ export type LogosDraft = Record<LogoKind, string[]>;
 export interface EditorSnapshot {
   details: NativeForm;
   images: ImageDraft[];
+  options: OptionRefDraft[];
+  variations: VariationDraft[];
   specs: SpecRowDraft[];
   benefits: TextItemDraft[];
   applications: TextItemDraft[];
   logos: LogosDraft;
 }
 
+/** A store-level option in the shared catalog, with its usage across products. */
+export interface CatalogOption {
+  id: string;
+  name: string;
+  type: string;
+  choices: { id: string; value: string; usage: number }[];
+  usage: number;
+  products: { id: string; name: string; sku: string }[];
+}
+
+export interface OptionCatalog {
+  max_options: number | null;
+  max_choices_per_option: number | null;
+  count: number;
+  remaining: number | null;
+  options: CatalogOption[];
+}
+
 /** Read-only context that sits alongside the editable snapshot. */
 export interface EditorContext {
-  /** The raw Duda product, for sections not yet editable (images, variations). */
+  /** The raw Duda product, for anything not modelled as an editable slice. */
   product: ProductDetail;
   /** Full logo catalog per kind, for rendering the activation toggles. */
   logoCatalog: Record<LogoKind, ProductLogoEntry[]>;
+  /** The shared store-level option catalog. */
+  optionCatalog: OptionCatalog;
+  /** Store limit for generated variations per product. */
+  maxVariations: number | null;
 }
 
 export type DirtyMap = Record<SectionKey, boolean>;

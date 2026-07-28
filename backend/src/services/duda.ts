@@ -74,7 +74,8 @@ export interface DudaVariationOption {
 
 export interface DudaVariation {
   id: string;
-  sku: string;
+  /** Null on a freshly (re)generated variation — Duda doesn't default it to "". */
+  sku: string | null;
   price_difference: string;
   status: string;
   images: DudaImage[];
@@ -179,6 +180,27 @@ async function dudaRequest<T>(method: string, path: string, body?: unknown): Pro
 const dudaGet = <T>(path: string): Promise<T> => dudaRequest<T>("GET", path);
 
 /**
+ * Duda returns `options: null` rather than `[]` for a product with no options
+ * attached — both for brand-new products and after detaching them all. Every
+ * other collection comes back as a proper array.
+ *
+ * Normalising here, at the boundary, means nothing downstream (routes, the
+ * frontend, the usage index) has to guard for it. Without this, opening a
+ * freshly-created product crashes the detail page on `product.options.length`.
+ */
+function normalizeProduct(p: DudaProduct): DudaProduct {
+  return {
+    ...p,
+    options: p.options ?? [],
+    variations: p.variations ?? [],
+    images: p.images ?? [],
+    prices: p.prices ?? [],
+    categories: p.categories ?? [],
+    custom_fields: p.custom_fields ?? [],
+  };
+}
+
+/**
  * The ONLY product keys this step is allowed to write. Notably absent:
  * images, options, variations, custom_fields, categories — those are managed
  * elsewhere, and sending them would REPLACE the live collections.
@@ -222,6 +244,34 @@ export interface DudaImageInput {
   alt?: string;
 }
 
+/**
+ * A product's attachment to a store-level option, optionally exposing only
+ * SOME of that option's choices (verified supported).
+ */
+export interface DudaOptionRef {
+  id: string;
+  choiceIds: string[];
+}
+
+/** Per-variation editable fields. Variations cannot be created or deleted. */
+export interface DudaVariationUpdate {
+  sku?: string;
+  price_difference?: string;
+  quantity?: number;
+  status?: "ACTIVE" | "HIDDEN";
+}
+
+export interface DudaOptionCreate {
+  name: string;
+  type: "TEXT" | "COLOR";
+  choices: string[];
+}
+
+export interface DudaOptionList {
+  results: DudaOption[];
+  total_responses: number;
+}
+
 /** Minimum viable new product. Verified: {name, prices, status} is accepted. */
 export interface DudaProductCreate {
   name: string;
@@ -245,7 +295,10 @@ export const duda = {
       limit: String(Math.min(limit, MAX_PAGE_SIZE)),
       offset: String(offset),
     });
-    return dudaGet<DudaProductList>(`${PATHS.products(site())}?${qs.toString()}`);
+    return dudaGet<DudaProductList>(`${PATHS.products(site())}?${qs.toString()}`).then((r) => ({
+      ...r,
+      results: (r.results ?? []).map(normalizeProduct),
+    }));
   },
 
   /**
@@ -270,7 +323,7 @@ export const duda = {
   },
 
   getProduct(productId: string): Promise<DudaProduct> {
-    return dudaGet<DudaProduct>(PATHS.product(site(), productId));
+    return dudaGet<DudaProduct>(PATHS.product(site(), productId)).then(normalizeProduct);
   },
 
   /**
@@ -278,7 +331,7 @@ export const duda = {
    * `seo.product_url` is auto-slugged from the name when omitted.
    */
   createProduct(input: DudaProductCreate): Promise<DudaProduct> {
-    return dudaRequest<DudaProduct>("POST", PATHS.products(site()), input);
+    return dudaRequest<DudaProduct>("POST", PATHS.products(site()), input).then(normalizeProduct);
   },
 
   /** Deletes a product. Irreversible on Duda's side. */
@@ -299,6 +352,62 @@ export const duda = {
     }
     await dudaRequest<unknown>("PATCH", PATHS.product(site(), productId), body);
     return this.getProduct(productId);
+  },
+
+  // --- Store-level option catalog (SHARED across every product) ---
+
+  listOptions(): Promise<DudaOptionList> {
+    return dudaGet<DudaOptionList>(`${PATHS.options(site())}?limit=100`);
+  },
+
+  createOption(input: DudaOptionCreate): Promise<DudaOption> {
+    return dudaRequest<DudaOption>("POST", PATHS.options(site()), input);
+  },
+
+  /** Full replace of the option. Renaming affects every product using it. */
+  updateOption(optionId: string, input: { name: string; type: "TEXT" | "COLOR" }): Promise<DudaOption> {
+    return dudaRequest<DudaOption>("PUT", PATHS.option(site(), optionId), input);
+  },
+
+  async deleteOption(optionId: string): Promise<void> {
+    await dudaRequest<unknown>("DELETE", PATHS.option(site(), optionId));
+  },
+
+  /** Adding a choice does NOT propagate to products already using the option. */
+  addOptionChoice(optionId: string, value: string): Promise<DudaOptionChoice> {
+    return dudaRequest<DudaOptionChoice>("POST", PATHS.optionChoices(site(), optionId), { value });
+  },
+
+  /** Removing a choice DOES affect every product currently exposing it. */
+  async deleteOptionChoice(optionId: string, choiceId: string): Promise<void> {
+    await dudaRequest<unknown>("DELETE", PATHS.optionChoice(site(), optionId, choiceId));
+  },
+
+  // --- Per-product option attachment + variations ---
+
+  /**
+   * Replaces the product's ENTIRE set of attached options. Duda regenerates
+   * `variations` as the cartesian product of the attached choices, synchronously.
+   * Passing [] detaches everything and clears variations.
+   */
+  async updateProductOptions(productId: string, refs: DudaOptionRef[]): Promise<DudaProduct> {
+    await dudaRequest<unknown>("PATCH", PATHS.product(site(), productId), {
+      options: refs.map((r) => ({ id: r.id, choices: r.choiceIds.map((id) => ({ id })) })),
+    });
+    return this.getProduct(productId);
+  },
+
+  /** Edits one generated variation. There is no variations collection endpoint. */
+  async patchVariation(
+    productId: string,
+    variationId: string,
+    partial: DudaVariationUpdate,
+  ): Promise<void> {
+    await dudaRequest<unknown>(
+      "PATCH",
+      PATHS.productVariation(site(), productId, variationId),
+      partial,
+    );
   },
 
   /**

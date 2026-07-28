@@ -9,10 +9,12 @@ import type {
   ErrorMap,
   ImageDraft,
   LogoKind,
+  OptionRefDraft,
   NativeForm,
   SectionKey,
   SpecRowDraft,
   TextItemDraft,
+  VariationDraft,
 } from "./productEditorTypes";
 
 const NUMERIC = /^\d+(\.\d+)?$/;
@@ -41,6 +43,36 @@ export function nativeFromProduct(p: ProductDetail): NativeForm {
 export const imagesFrom = (images: ProductDetail["images"]): ImageDraft[] =>
   images.map((img, i) => ({ key: `${img.url}#${i}`, url: img.url, alt: img.alt ?? "" }));
 
+export const optionsFrom = (options: ProductDetail["options"]): OptionRefDraft[] =>
+  (options ?? []).map((o) => ({
+    id: o.id,
+    name: o.name,
+    type: o.type,
+    choiceIds: o.choices.map((c) => c.id),
+  }));
+
+/** Order-independent identity for a variation — mirrors the backend's version. */
+export const variationSignature = (v: ProductDetail["variations"][number]): string =>
+  v.options
+    .map((o) => `${o.option_name}=${o.choice_value}`)
+    .sort()
+    .join("|");
+
+export const variationsFrom = (variations: ProductDetail["variations"]): VariationDraft[] =>
+  (variations ?? []).map((v) => ({
+    id: v.id,
+    signature: variationSignature(v),
+    choices: v.options.map((o) => ({ optionId: o.option_id, value: o.choice_value })),
+    // Duda returns null on a freshly generated variation.
+    sku: v.sku ?? "",
+    price_difference: v.price_difference ?? "0.0",
+    status: v.status ?? "ACTIVE",
+  }));
+
+/** Variations a given attachment set will generate. */
+export const cartesianSize = (refs: OptionRefDraft[]): number =>
+  refs.length === 0 ? 0 : refs.reduce((n, r) => n * r.choiceIds.length, 1);
+
 export const specsFrom = (rows: HubSpecRow[]): SpecRowDraft[] =>
   rows.map((r) => ({ id: r.id, label: r.label, value: r.value }));
 
@@ -65,6 +97,17 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
     case "images":
       // Drop the cosmetic key; url+alt+position are the whole payload.
       return snapshot.images.map(({ url, alt }) => ({ url, alt }));
+    case "options":
+      // Attachment order is meaningful (display order), so it's compared as-is;
+      // choice order within an option is not.
+      return snapshot.options.map((o) => ({ id: o.id, choiceIds: [...o.choiceIds].sort() }));
+    case "variations":
+      return snapshot.variations.map(({ id, sku, price_difference, status }) => ({
+        id,
+        sku,
+        price_difference,
+        status,
+      }));
     case "specs":
       return snapshot.specs.map(({ label, value }) => ({ label, value }));
     case "benefits":
@@ -99,10 +142,33 @@ export const specRowValid = (r: SpecRowDraft): boolean =>
 export const textItemValid = (i: TextItemDraft): boolean =>
   i.text.trim().length > 0 && i.text.trim().length <= 500;
 
-/** Per-section validation messages; an empty object means the draft is saveable. */
-export function validate(draft: EditorSnapshot): ErrorMap {
+const PRICE_DELTA = /^-?\d+(\.\d+)?$/;
+
+/**
+ * Per-section validation messages; an empty object means the draft is saveable.
+ *
+ * `maxVariations` comes from the store so the cartesian cap is enforced
+ * client-side, rather than letting Duda reject the save with a raw error.
+ */
+export function validate(draft: EditorSnapshot, maxVariations?: number | null): ErrorMap {
   const errors: ErrorMap = {};
   const d = draft.details;
+
+  if (draft.options.length > 20) errors.options = "Max 20 options.";
+  else if (draft.options.some((o) => o.choiceIds.length === 0))
+    errors.options = "Every attached option needs at least one choice selected.";
+  else if (new Set(draft.options.map((o) => o.id)).size !== draft.options.length)
+    errors.options = "An option can only be attached once.";
+  else {
+    const projected = cartesianSize(draft.options);
+    if (maxVariations != null && projected > maxVariations)
+      errors.options = `That would generate ${projected} variations, over the limit of ${maxVariations}. Remove a choice or an option.`;
+  }
+
+  if (!draft.variations.every((v) => v.sku.length <= 100))
+    errors.variations = "Variation SKUs must be 100 characters or fewer.";
+  else if (!draft.variations.every((v) => PRICE_DELTA.test(v.price_difference)))
+    errors.variations = "Every price difference must be a number (negatives allowed).";
 
   const priceOk = NUMERIC.test(d.price) && parseFloat(d.price) >= 0;
   const compareOk =

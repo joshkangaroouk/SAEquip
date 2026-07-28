@@ -4,6 +4,7 @@ import { LogoKind, TextItemKind } from "@prisma/client";
 import { duda, type DudaPrice, type DudaProductUpdate } from "../services/duda.js";
 import { ensureHubProduct, findSlugConflict, syncHubProduct } from "../services/hubProduct.js";
 import { resolveUrl } from "../services/storage.js";
+import { cartesianSize, updateOptionsPreservingVariations } from "../services/productOptions.js";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 
@@ -45,6 +46,43 @@ const updateProductSchema = z
       })
       .strict()
       .optional(),
+  })
+  .strict();
+
+/** Attached option set: each option plus the choices this product exposes. */
+const optionsBody = z
+  .object({
+    options: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1),
+            choiceIds: z.array(z.string().min(1)).min(1, "select at least one choice"),
+          })
+          .strict(),
+      )
+      .max(20, "max 20 options"),
+  })
+  .strict();
+
+/** Sparse variation edits, keyed by the generated variation id. */
+const variationsBody = z
+  .object({
+    variations: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1),
+            sku: z.string().max(100).optional(),
+            price_difference: z
+              .string()
+              .regex(/^-?\d+(\.\d+)?$/, "must be a number")
+              .optional(),
+            status: z.enum(["ACTIVE", "HIDDEN"]).optional(),
+          })
+          .strict(),
+      )
+      .max(300, "max 300 variations"),
   })
   .strict();
 
@@ -346,6 +384,108 @@ dudaRouter.put("/products/:id/images", async (req, res, next) => {
   try {
     const updated = await duda.updateProductImages(req.params.id, parsed.data.images);
     res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /api/products/:id/options
+ * Replaces the product's attached option set (each with its own choice subset).
+ *
+ * Duda regenerates variations from the cartesian product and BLANKS every sku /
+ * price_difference in the process, so this carries that data across for any
+ * combination that still exists and reports what it couldn't keep.
+ */
+dudaRouter.put("/products/:id/options", async (req, res, next) => {
+  const parsed = optionsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+
+  const refs = parsed.data.options;
+  const duplicateIds = refs.length !== new Set(refs.map((r) => r.id)).size;
+  if (duplicateIds) {
+    res.status(400).json({ error: "duplicate_option", detail: "Each option may be attached once." });
+    return;
+  }
+
+  try {
+    // Pre-flight the cartesian size against the store limit so we fail with a
+    // number the user can act on rather than a raw Duda rejection.
+    const projected = cartesianSize(refs);
+    const store = await duda.getStore();
+    const max = store.features?.max_variations_per_product ?? null;
+    if (max != null && projected > max) {
+      res.status(409).json({
+        error: "variation_cap_exceeded",
+        detail: `That combination would generate ${projected} variations, over the limit of ${max}.`,
+        projected,
+        max,
+      });
+      return;
+    }
+
+    const report = await updateOptionsPreservingVariations(req.params.id, refs);
+    res.json({
+      product: report.product,
+      variationData: {
+        restored: report.restored,
+        dropped: report.dropped,
+        failed: report.failed,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /api/products/:id/variations
+ * Bulk-edits generated variations by id. There is no variations collection
+ * endpoint upstream, so this loops and reports per-variation outcomes rather
+ * than failing the whole request on one bad row.
+ */
+dudaRouter.put("/products/:id/variations", async (req, res, next) => {
+  const parsed = variationsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const current = await duda.getProduct(req.params.id);
+    const known = new Set(current.variations.map((v) => v.id));
+    const unknown = parsed.data.variations.filter((v) => !known.has(v.id)).map((v) => v.id);
+    if (unknown.length > 0) {
+      // Stale ids mean the option set changed underneath this edit — Duda
+      // regenerates variations with new ids, so the client must reload.
+      res.status(409).json({
+        error: "stale_variations",
+        detail:
+          "Some variations no longer exist — the product's options changed since this page loaded. Reload and re-enter these values.",
+        unknown,
+      });
+      return;
+    }
+
+    const failed: { id: string; error: string }[] = [];
+    for (const v of parsed.data.variations) {
+      const { id, ...partial } = v;
+      try {
+        await duda.patchVariation(req.params.id, id, partial);
+      } catch (err) {
+        failed.push({ id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    const product = await duda.getProduct(req.params.id);
+    if (failed.length > 0) {
+      res.status(500).json({ error: "partial_variation_save", failed, product });
+      return;
+    }
+    res.json({ product });
   } catch (err) {
     next(err);
   }

@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { Badge, Card, CardHeader, Loader, StatusBadge } from "../components/ui";
+import { Badge, Card, Loader, StatusBadge } from "../components/ui";
 import { LogoActivationPanel } from "../components/LogoActivationPanel";
 import { SpecTableEditor } from "../components/SpecTableEditor";
 import { TextItemListEditor } from "../components/TextItemListEditor";
@@ -7,13 +7,12 @@ import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import { DangerZoneSection } from "../components/product/DangerZoneSection";
 import { DescriptionSection } from "../components/product/DescriptionSection";
 import { ImagesSection } from "../components/product/ImagesSection";
+import { OptionsSection } from "../components/product/OptionsSection";
+import { VariationsSection } from "../components/product/VariationsSection";
 import { ProductDetailsSection } from "../components/product/ProductDetailsSection";
 import { ProductSaveBar } from "../components/product/ProductSaveBar";
 import { useProductEditor } from "../components/product/useProductEditor";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
-
-/** Read-only pill for sections that aren't editable yet. */
-const readOnlyNote = <Badge tone="neutral">Read only for now</Badge>;
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +33,12 @@ export default function ProductDetail() {
     dirtyLabels,
     setSection,
     toggleLogo,
+    attachOption,
+    detachOption,
+    toggleOptionChoice,
+    setVariation,
+    setAllVariations,
+    reloadOptionCatalog,
     reset,
     save,
     reload,
@@ -123,71 +128,28 @@ export default function ProductDetail() {
               error={saveErrors.images ?? validationErrors.images}
             />
 
-            {/* Options & Variations — editable in a later stage. */}
-            <Card>
-              <CardHeader
-                title="Options & Variations"
-                description="Options are shared across the whole store catalog; variations are generated from the selected choices."
-                actions={readOnlyNote}
-              />
+            <OptionsSection
+              options={draft.options}
+              catalog={context.optionCatalog}
+              currentVariationCount={context.product.variations.length}
+              maxVariations={context.maxVariations}
+              dirty={dirty.options}
+              error={saveErrors.options ?? validationErrors.options}
+              onAttach={attachOption}
+              onDetach={detachOption}
+              onToggleChoice={toggleOptionChoice}
+              onCatalogChanged={() => void reloadOptionCatalog()}
+            />
 
-              {product.options.length === 0 ? (
-                <p className="text-small text-subtle">No options on this product.</p>
-              ) : (
-                <>
-                  <ul className="mb-4 space-y-1 text-sm text-text">
-                    {product.options.map((o) => (
-                      <li key={o.id}>
-                        <span className="font-semibold">{o.name}:</span>{" "}
-                        {o.choices.map((c) => c.value).join(", ")}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {product.variations.length > 0 && (
-                    <div className="overflow-x-auto rounded-lg border border-border">
-                      <table className="min-w-full divide-y divide-border text-sm">
-                        <thead className="bg-surface-2 text-left text-xs uppercase tracking-wide text-muted">
-                          <tr>
-                            <th className="px-3 py-2 font-semibold">#</th>
-                            {product.options.map((o) => (
-                              <th key={o.id} className="px-3 py-2 font-semibold">
-                                {o.name}
-                              </th>
-                            ))}
-                            <th className="px-3 py-2 font-semibold">SKU</th>
-                            <th className="px-3 py-2 font-semibold">Price Δ</th>
-                            <th className="px-3 py-2 font-semibold">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {product.variations.map((v, idx) => (
-                            <tr key={v.id}>
-                              <td className="px-3 py-2 font-medium text-subtle">{idx + 1}</td>
-                              {product.options.map((o) => {
-                                const vo = v.options.find((x) => x.option_id === o.id);
-                                return (
-                                  <td key={o.id} className="px-3 py-2 font-medium text-text">
-                                    {vo?.choice_value ?? "—"}
-                                  </td>
-                                );
-                              })}
-                              <td className="px-3 py-2 font-medium text-muted">{v.sku || "—"}</td>
-                              <td className="px-3 py-2 font-medium text-muted">
-                                {v.price_difference}
-                              </td>
-                              <td className="px-3 py-2">
-                                <StatusBadge status={v.status} />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              )}
-            </Card>
+            <VariationsSection
+              variations={draft.variations}
+              options={draft.options}
+              lockedByOptions={dirty.options}
+              dirty={dirty.variations}
+              error={saveErrors.variations ?? validationErrors.variations}
+              onChange={setVariation}
+              onChangeAll={setAllVariations}
+            />
 
             {/* Hub content — source of truth is the Supabase DB. */}
             <div className="flex items-center gap-2 pt-2">
