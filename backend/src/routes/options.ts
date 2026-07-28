@@ -206,19 +206,24 @@ optionsRouter.post("/options/:id/choices", async (req, res, next) => {
 });
 
 /**
- * DELETE /api/options/:id/choices/:choiceId?confirm=true
- * Unlike adding, removing a choice DOES affect every product exposing it —
- * their variations regenerate and lose that combination.
+ * DELETE /api/options/:id/choices/:choiceId
+ *
+ * Only possible while NO product offers the value: Duda itself refuses with
+ * "Can't remove choice that is connected to variations" otherwise (verified).
+ * There is deliberately no override — it can't be made to work — so this
+ * returns the products that must stop offering the value first, which is the
+ * actionable version of Duda's message.
  */
 optionsRouter.delete("/options/:id/choices/:choiceId", async (req, res, next) => {
   try {
     const usage = (await getOptionUsage()).get(req.params.id) ?? emptyUsage();
     const affected = usage.choiceUsage[req.params.choiceId] ?? 0;
 
-    if (affected > 0 && req.query.confirm !== "true") {
+    if (affected > 0) {
+      const names = usage.products.map((p) => p.name).join(", ");
       res.status(409).json({
         error: "choice_in_use",
-        detail: `${affected} product(s) currently offer this choice. Removing it regenerates their variations and drops that combination.`,
+        detail: `${affected} product(s) still offer this value, and Duda won't remove a value that has variations attached. Deselect it on ${names} first, save, then delete it here.`,
         products: usage.products,
       });
       return;
@@ -226,7 +231,7 @@ optionsRouter.delete("/options/:id/choices/:choiceId", async (req, res, next) =>
 
     await duda.deleteOptionChoice(req.params.id, req.params.choiceId);
     invalidateOptionUsage();
-    res.json({ deleted: true, affectedProducts: affected });
+    res.json({ deleted: true });
   } catch (err) {
     next(err);
   }

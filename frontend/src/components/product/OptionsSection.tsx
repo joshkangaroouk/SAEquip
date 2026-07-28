@@ -47,6 +47,7 @@ export function OptionsSection({
   const confirm = useConfirm();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [managing, setManaging] = useState<string | null>(null);
   const [newChoice, setNewChoice] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -71,6 +72,45 @@ export function OptionsSection({
       danger: true,
     });
     if (ok) onDetach(ref.id);
+  }
+
+  /**
+   * Deletes a value from the SHARED option. Only offered when no product still
+   * offers it — Duda refuses otherwise ("Can't remove choice that is connected
+   * to variations"), so there's no override to provide.
+   */
+  async function deleteChoice(
+    optionId: string,
+    optionName: string,
+    choice: { id: string; value: string },
+  ) {
+    const ok = await confirm({
+      title: `Delete “${choice.value}” from ${optionName}?`,
+      description: (
+        <>
+          This removes the value from the shared catalog, so no product will be able to offer it.
+          Nothing currently uses it, so no variations are affected.
+        </>
+      ),
+      confirmLabel: "Delete value",
+      danger: true,
+    });
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      await apiJson(`/api/options/${optionId}/choices/${choice.id}`, { method: "DELETE" });
+      toast.success(`Deleted “${choice.value}”`);
+      await onCatalogChanged();
+      // If this product had it selected, drop it so the draft can't reference a
+      // value that no longer exists.
+      const stillSelected = options.find((o) => o.id === optionId)?.choiceIds.includes(choice.id);
+      if (stillSelected) onToggleChoice(optionId, choice.id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete the value");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function addCatalogChoice(optionId: string, optionName: string) {
@@ -157,13 +197,59 @@ export function OptionsSection({
                       <span className="text-small text-muted">
                         {ref.choiceIds.length} of {cat?.choices.length ?? ref.choiceIds.length} values
                       </span>
+                      {cat && cat.choices.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setManaging((m) => (m === ref.id ? null : ref.id))}
+                          className="text-small text-muted underline underline-offset-2 hover:text-text"
+                        >
+                          {managing === ref.id ? "Done" : "Manage values"}
+                        </button>
+                      )}
                     </div>
                     <RemoveButton onClick={() => void detach(ref)} title="Remove from this product" />
                   </div>
 
+                  {managing === ref.id && (
+                    <p className="mt-2 text-small text-muted">
+                      Deleting a value removes it from the shared catalog for every product. Duda only
+                      allows it while no product still offers the value.
+                    </p>
+                  )}
+
                   <div className="mt-2 flex flex-wrap gap-2">
                     {(cat?.choices ?? []).map((c) => {
                       const on = selected.has(c.id);
+                      if (managing === ref.id) {
+                        const removable = c.usage === 0;
+                        return (
+                          <span
+                            key={c.id}
+                            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-small font-medium ${
+                              removable ? "border-border text-text" : "border-border text-subtle"
+                            }`}
+                          >
+                            {c.value}
+                            <span className="text-subtle">
+                              {c.usage > 0 ? `· used by ${c.usage}` : ""}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => void deleteChoice(ref.id, ref.name, c)}
+                              disabled={!removable || busy}
+                              aria-label={`Delete ${c.value}`}
+                              title={
+                                removable
+                                  ? `Delete “${c.value}” from the shared option`
+                                  : `${c.usage} product(s) still offer this value — deselect it there and save first`
+                              }
+                              className="ml-0.5 leading-none text-danger transition hover:text-danger/70 disabled:cursor-not-allowed disabled:text-subtle disabled:opacity-50"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      }
                       return (
                         <button
                           key={c.id}
