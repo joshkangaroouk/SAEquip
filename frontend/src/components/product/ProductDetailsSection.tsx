@@ -137,7 +137,7 @@ export function ProductDetailsSection({
       </div>
 
       <fieldset className="mt-4 rounded-lg border border-border p-3">
-        <legend className="px-1 text-small font-semibold uppercase tracking-wide text-muted">
+        <legend className="px-1.5 text-small font-medium text-muted">
           SEO
         </legend>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

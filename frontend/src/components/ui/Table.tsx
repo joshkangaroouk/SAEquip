@@ -13,7 +13,7 @@ import { cn } from "../../lib/cn";
  */
 export function Table({ className, children, ...rest }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-border">
+    <div className="w-full overflow-x-auto rounded-lg border border-border bg-surface">
       <table className={cn("w-full border-collapse text-left", className)} {...rest}>
         {children}
       </table>
@@ -30,7 +30,9 @@ export function THead({
   return (
     <thead
       className={cn(
-        "bg-surface-2 text-xs font-semibold uppercase tracking-wide text-muted",
+        // shadcn: a plain header row separated by a border, sentence case.
+        // The old grey uppercase band read as a much heavier element.
+        "border-b border-border text-muted [&_th]:font-medium",
         sticky && "sticky top-0 z-10",
         className,
       )}
@@ -59,7 +61,7 @@ export function TR({
     <tr
       className={cn(
         "border-b border-border last:border-0",
-        hover && "cursor-pointer transition-colors hover:bg-surface-2",
+        hover && "cursor-pointer transition-colors hover:bg-surface-2/70",
         className,
       )}
       {...rest}
@@ -71,7 +73,7 @@ export function TR({
 
 export function TH({ className, children, ...rest }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={cn("px-4 py-3 font-semibold", className)} {...rest}>
+    <th className={cn("h-10 px-3 align-middle text-small font-medium", className)} {...rest}>
       {children}
     </th>
   );
@@ -79,7 +81,7 @@ export function TH({ className, children, ...rest }: React.ThHTMLAttributes<HTML
 
 export function TD({ className, children, ...rest }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("px-4 py-3.5 text-sm font-medium align-middle", className)} {...rest}>
+    <td className={cn("px-3 py-2.5 align-middle text-body", className)} {...rest}>
       {children}
     </td>
   );

@@ -1,10 +1,14 @@
 import { forwardRef, type InputHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
 
+// shadcn field treatment: hairline border, soft 3px ring at half opacity on
+// focus, and a red ring when aria-invalid. The previous hard 1px yellow ring
+// plus border colour change read as much more aggressive.
 const fieldBase =
-  "w-full rounded-md bg-surface border border-border text-text placeholder:text-subtle " +
-  "transition-colors " +
-  "focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent " +
+  "w-full rounded-md bg-surface border border-input text-text placeholder:text-subtle " +
+  "shadow-xs transition-[color,box-shadow] outline-none " +
+  "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
+  "aria-[invalid=true]:border-danger aria-[invalid=true]:ring-[3px] aria-[invalid=true]:ring-danger/20 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
@@ -13,9 +17,10 @@ const fieldBase =
  */
 export type FieldSize = "sm" | "md";
 
+// Matches the Button heights: 32px compact, 36px default.
 export const fieldSizes: Record<FieldSize, string> = {
-  sm: "px-2.5 py-1.5 text-small",
-  md: "px-3 py-2.5 text-body",
+  sm: "h-8 px-2.5 text-body",
+  md: "h-9 px-3 text-body",
 };
 
 // Omit the native numeric `size` so ours (density) wins without widening to
@@ -51,7 +56,7 @@ export function Field({
   return (
     <div className={cn("space-y-1.5", className)}>
       {label && (
-        <label htmlFor={htmlFor} className="block text-small font-semibold text-text">
+        <label htmlFor={htmlFor} className="block text-body font-medium text-text">
           {label}
         </label>
       )}

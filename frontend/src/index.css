@@ -1,31 +1,62 @@
 /* ==========================================================================
-   SAEquip Product Hub — brand design system
-   LIGHT base · black content · yellow accent · clean, minimal, rounded.
-   Typeface: Montserrat everywhere (loaded via @fontsource in main.tsx, weights
-   400 and 600). Clash Grotesk is retired — do not reintroduce it.
+   SAEquip Product Hub — design system
+   Styling language follows shadcn/ui: white surfaces separated by hairline
+   borders rather than fills, a restrained neutral scale, 14px UI text, small
+   radii, and soft focus rings instead of hard outlines.
+   Brand yellow (#FED217) stays as the accent — shadcn's own primary is
+   near-black, but the brand takes precedence.
+   Typeface: Montserrat (@fontsource in main.tsx, weights 400/500/600).
    ========================================================================== */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* --- Design tokens (LIGHT) -----------------------------------------------
-   Mirrored in tailwind.config.js theme.extend.colors so the same names are
-   available as Tailwind utilities (bg-surface, text-muted, border-accent…).
-   The sidebar is intentionally kept dark and hardcodes its own colours. */
+/* --- Design tokens -------------------------------------------------------
+   Mirrored in tailwind.config.js so the same names exist as utilities.
+
+   NOTE on naming: shadcn calls its light grey fill `--muted` and its secondary
+   text `--muted-foreground`. This codebase already uses `muted` to mean
+   secondary TEXT across ~10 pages, so that name keeps its existing meaning and
+   shadcn's non-colliding names (primary, secondary, input, ring, destructive)
+   are added alongside. Renaming `muted` would silently turn every piece of
+   secondary text near-white.
+
+   Values are the sRGB equivalents of shadcn's OKLCH neutrals, which line up
+   with Tailwind's `neutral` palette. */
 :root {
-  --bg: #f4f4f5; /* light grey app base */
-  --surface: #ffffff; /* cards / panels / fields */
-  --surface-2: #ececec; /* subtle raised / table header / hover */
-  --border: #e4e4e7;
-  --text: #0a0a0a; /* near-black content */
-  --muted: #52525b; /* secondary text */
-  --subtle: #a1a1aa; /* tertiary / placeholder */
+  /* Surfaces */
+  --bg: #fafafa; /* neutral-50 — page base */
+  --surface: #ffffff; /* cards, panels, fields */
+  --surface-2: #f5f5f5; /* neutral-100 — table headers, hover, subtle fills */
+
+  /* Lines — a hairline border does the work a shadow used to */
+  --border: #e5e5e5; /* neutral-200 */
+  --input: #e5e5e5;
+  --ring: #fed217; /* brand yellow focus ring */
+
+  /* Content */
+  --text: #0a0a0a; /* neutral-950 */
+  --muted: #737373; /* neutral-500 — secondary text (shadcn muted-foreground) */
+  --subtle: #a3a3a3; /* neutral-400 — placeholders, tertiary */
+
+  /* Brand accent */
   --accent: #fed217;
-  --accent-hover: #e5bd14;
-  --accent-foreground: #0a0a0a; /* black text on yellow */
+  --accent-hover: #f0c40f;
+  --accent-foreground: #0a0a0a;
+
+  /* Neutral primary, for shadcn-style dark controls where yellow is too loud */
+  --primary: #171717; /* neutral-900 */
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+
+  /* Status */
   --danger: #dc2626;
   --success: #16a34a;
+
+  /* shadcn's 0.625rem base radius */
+  --radius: 0.625rem;
 }
 
 @layer base {
@@ -43,35 +74,37 @@
     font-family: "Montserrat", ui-sans-serif, system-ui, -apple-system,
       "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-weight: 400;
-    font-size: 16px;
-    line-height: 1.6;
+    /* 14px is shadcn's UI base, and the main reason the old 16px felt
+       oversized. Set on body rather than html so rem-based spacing stays on
+       the 16px grid — shrinking the root size would silently compress every
+       margin and padding in the app as a side effect. */
+    font-size: 0.875rem;
+    line-height: 1.4285714;
   }
 
-  /* Headings use the Semibold cut. */
   h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
     line-height: 1.2;
+    letter-spacing: -0.01em;
   }
 
-  /* Yellow text selection with legible black text. */
   ::selection {
     background-color: var(--accent);
     color: var(--accent-foreground);
   }
 
-  /* Consistent yellow focus ring across interactive elements. */
+  /* Soft ring rather than a hard outline — the shadcn focus treatment.
+     Controls that style their own focus state override this. */
   :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
   }
 
-  /* Inherit the brand font/weight into form controls. */
   input, textarea, select, button {
     font-family: inherit;
     font-weight: inherit;
   }
 
-  /* Light native scrollbars where supported. */
   * {
     scrollbar-color: var(--subtle) transparent;
   }

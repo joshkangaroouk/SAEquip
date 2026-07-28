@@ -11,22 +11,28 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
+// shadcn buttons are medium-weight, compact, and focus with a soft 3px ring at
+// half opacity rather than a hard offset outline.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md font-semibold whitespace-nowrap " +
-  "transition-colors select-none focus-visible:outline-none focus-visible:ring-2 " +
-  "focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg " +
-  "disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap " +
+  "transition-colors select-none outline-none " +
+  "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
+  "disabled:pointer-events-none disabled:opacity-50 " +
+  "[&_svg]:pointer-events-none [&_svg]:shrink-0";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-accent-foreground hover:bg-accent-hover",
-  secondary: "border border-border bg-transparent text-text hover:bg-surface-2",
+  // Brand yellow keeps the primary slot — shadcn's own primary is near-black.
+  primary: "bg-accent text-accent-foreground shadow-xs hover:bg-accent-hover",
+  // shadcn's "outline": bordered, transparent, subtle hover fill.
+  secondary: "border border-border bg-surface text-text shadow-xs hover:bg-surface-2",
   ghost: "bg-transparent text-muted hover:bg-surface-2 hover:text-text",
-  danger: "bg-danger text-white hover:opacity-90",
+  danger: "bg-danger text-white shadow-xs hover:bg-danger/90",
 };
 
+// shadcn's control heights: 36px default, 32px small.
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-3 text-small",
-  md: "h-11 px-5 text-body",
+  sm: "h-8 gap-1.5 px-3 text-small",
+  md: "h-9 px-4 text-body",
 };
 
 /** Rounded button. Yellow primary, outline secondary, ghost, danger. */
@@ -67,8 +73,8 @@ export function RemoveButton({
       title={title}
       aria-label={title}
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-xl leading-none text-danger transition-colors",
-        "hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-lg leading-none text-muted transition-colors",
+        "hover:bg-surface-2 hover:text-danger outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent",
         className,
       )}

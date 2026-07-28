@@ -2,14 +2,15 @@ import { cn } from "../../lib/cn";
 
 type Tone = "neutral" | "accent" | "success" | "danger";
 
-// Solid backgrounds with white text (accent is the one exception — yellow is
-// too light for white text to stay legible, so it keeps black text, matching
-// the primary Button variant). Hover darkens the same solid colour.
+// shadcn badges are quiet: a tinted fill with a matching hairline border and
+// coloured text, rather than a saturated solid block. They read as metadata
+// instead of competing with buttons for attention. Accent stays solid because
+// yellow at 10% is invisible.
 const tones: Record<Tone, string> = {
-  neutral: "bg-muted text-white",
-  accent: "bg-accent text-accent-foreground",
-  success: "bg-success text-white",
-  danger: "bg-danger text-white",
+  neutral: "border-border bg-surface-2 text-muted",
+  accent: "border-accent bg-accent text-accent-foreground",
+  success: "border-success/25 bg-success/10 text-success",
+  danger: "border-danger/25 bg-danger/10 text-danger",
 };
 
 /** Compact, solid-colour status pill. */
@@ -25,8 +26,9 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
-        "transition hover:brightness-90",
+        // rounded-md not full, and no hover — a badge isn't interactive.
+        "inline-flex w-fit shrink-0 items-center gap-1 rounded-md border px-2 py-0.5",
+        "text-xs font-medium leading-normal whitespace-nowrap",
         tones[tone],
         className,
       )}
