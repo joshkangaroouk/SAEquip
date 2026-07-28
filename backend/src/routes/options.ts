@@ -181,9 +181,25 @@ optionsRouter.post("/options/:id/choices", async (req, res, next) => {
       return;
     }
 
-    const created = await duda.addOptionChoice(req.params.id, parsed.data.value);
+    // Duda returns the whole updated option, so identify the new choice by
+    // diffing ids against the pre-add state. Diffing ids (not matching on
+    // value) stays correct even if two choices share a value.
+    const before = new Set(option.choices.map((c) => c.id));
+    const updated = await duda.addOptionChoice(req.params.id, parsed.data.value);
     invalidateOptionUsage();
-    res.status(201).json(created);
+
+    const choice = (updated.choices ?? []).find((c) => !before.has(c.id));
+    if (!choice) {
+      res.status(502).json({
+        error: "choice_not_returned",
+        detail: "Duda accepted the new choice but did not return it. Reload to see the current values.",
+      });
+      return;
+    }
+
+    // { choice, option } — never the raw upstream body, whose `id` is the
+    // OPTION's id and would be mistaken for a choice id by callers.
+    res.status(201).json({ choice, option: updated });
   } catch (err) {
     next(err);
   }

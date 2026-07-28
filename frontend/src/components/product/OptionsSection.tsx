@@ -42,7 +42,7 @@ export function OptionsSection({
   onAttach: (option: CatalogOption) => void;
   onDetach: (optionId: string) => void;
   onToggleChoice: (optionId: string, choiceId: string) => void;
-  onCatalogChanged: () => void;
+  onCatalogChanged: () => Promise<void> | void;
 }) {
   const confirm = useConfirm();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -78,14 +78,18 @@ export function OptionsSection({
     if (!value || busy) return;
     setBusy(true);
     try {
-      const created = await apiJson<{ id: string; value: string }>(
+      // The response is { choice, option } — Duda's own body is the whole
+      // option, whose `id` is the OPTION's, so the backend resolves the real
+      // new choice for us rather than letting that id leak in here.
+      const { choice } = await apiJson<{ choice: { id: string; value: string } }>(
         `/api/options/${optionId}/choices`,
         { method: "POST", body: JSON.stringify({ value }) },
       );
-      toast.success(`Added “${created.value}” to ${optionName}`);
-      onCatalogChanged();
-      // Opt this product into the new choice — otherwise it's invisible here.
-      onToggleChoice(optionId, created.id);
+      toast.success(`Added “${choice.value}” to ${optionName}`);
+      // Refresh the catalog FIRST so the new choice exists locally before this
+      // product opts into it — otherwise the chip has nothing to render from.
+      await onCatalogChanged();
+      onToggleChoice(optionId, choice.id);
       setNewChoice("");
       setAddingTo(null);
     } catch (e) {

@@ -138,7 +138,7 @@ export default function ProductDetail() {
               onAttach={attachOption}
               onDetach={detachOption}
               onToggleChoice={toggleOptionChoice}
-              onCatalogChanged={() => void reloadOptionCatalog()}
+              onCatalogChanged={reloadOptionCatalog}
             />
 
             <VariationsSection

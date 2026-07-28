@@ -412,6 +412,33 @@ dudaRouter.put("/products/:id/options", async (req, res, next) => {
   }
 
   try {
+    // Validate every option/choice id against the live catalog BEFORE writing.
+    // Duda's own error for a bad id reads "option X does not have choice with
+    // identifier X", which is close to undebuggable from the UI.
+    const catalog = await duda.listOptions();
+    const byId = new Map(catalog.results.map((o) => [o.id, o]));
+    for (const ref of refs) {
+      const option = byId.get(ref.id);
+      if (!option) {
+        res.status(400).json({
+          error: "unknown_option",
+          detail: `No option with id ${ref.id} exists in the store catalog.`,
+        });
+        return;
+      }
+      const valid = new Set(option.choices.map((c) => c.id));
+      const bad = ref.choiceIds.filter((c) => !valid.has(c));
+      if (bad.length > 0) {
+        res.status(400).json({
+          error: "unknown_choice",
+          detail: `"${option.name}" has no choice with id ${bad.join(", ")}. Reload the product and try again.`,
+          option: option.name,
+          unknownChoiceIds: bad,
+        });
+        return;
+      }
+    }
+
     // Pre-flight the cartesian size against the store limit so we fail with a
     // number the user can act on rather than a raw Duda rejection.
     const projected = cartesianSize(refs);

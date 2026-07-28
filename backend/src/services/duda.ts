@@ -373,9 +373,17 @@ export const duda = {
     await dudaRequest<unknown>("DELETE", PATHS.option(site(), optionId));
   },
 
-  /** Adding a choice does NOT propagate to products already using the option. */
-  addOptionChoice(optionId: string, value: string): Promise<DudaOptionChoice> {
-    return dudaRequest<DudaOptionChoice>("POST", PATHS.optionChoices(site(), optionId), { value });
+  /**
+   * Adds a choice to a shared option. Does NOT propagate to products already
+   * using the option — each keeps its own subset.
+   *
+   * NOTE: Duda responds with the WHOLE UPDATED OPTION, not the created choice.
+   * The return type says so deliberately: treating the response as a choice
+   * means using the option's id as a choice id, which Duda later rejects with
+   * the baffling "option X does not have choice with identifier X".
+   */
+  addOptionChoice(optionId: string, value: string): Promise<DudaOption> {
+    return dudaRequest<DudaOption>("POST", PATHS.optionChoices(site(), optionId), { value });
   },
 
   /** Removing a choice DOES affect every product currently exposing it. */

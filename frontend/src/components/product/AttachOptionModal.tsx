@@ -25,7 +25,7 @@ export function AttachOptionModal({
   catalog: OptionCatalog;
   attachedIds: string[];
   onAttach: (option: CatalogOption) => void;
-  onCatalogChanged: () => void;
+  onCatalogChanged: () => Promise<void> | void;
 }) {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
@@ -59,7 +59,7 @@ export function AttachOptionModal({
         body: JSON.stringify({ name: newName.trim(), type: "TEXT", choices: cleanChoices }),
       });
       toast.success(`Created “${created.name}”`);
-      onCatalogChanged();
+      await onCatalogChanged();
       // Attach it straight away — creating one you don't then use is never the intent.
       onAttach({ ...created, usage: 0, products: [], choices: created.choices ?? [] });
       setCreating(false);
