@@ -277,14 +277,17 @@ export default function ProductOptions() {
                   <TR key={o.id}>
                     <TD className="font-medium text-text">{o.name}</TD>
                     <TD>
-                      <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         {o.choices.length === 0 && (
                           <span className="text-muted">No values yet</span>
                         )}
                         {o.choices.map((c) => (
                           <span
                             key={c.id}
-                            className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-2 px-2 py-0.5 text-small"
+                            // Fixed height with the remove button inset on the
+                            // right, so the hover square has room to read as a
+                            // target rather than a cramped glyph.
+                            className="inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-surface pl-2.5 pr-0.5 text-body"
                             title={c.usage > 0 ? `Offered by ${c.usage} product(s)` : "Not used by any product"}
                           >
                             {c.value}
@@ -297,7 +300,7 @@ export default function ProductOptions() {
                                     ? `Delete “${c.value}” and the variations using it on ${c.usage} product(s)`
                                     : `Delete “${c.value}”`
                               }
-                              className="h-4 w-4 text-sm"
+                              size="sm"
                             />
                           </span>
                         ))}

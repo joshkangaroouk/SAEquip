@@ -55,16 +55,27 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   );
 });
 
-/** Bigger "×" remove/delete control. Same neutral background hover as DragHandle for consistency. */
+/**
+ * "×" remove control: neutral until hovered, then a tinted square and a red
+ * glyph — the same treatment used to detach an option on the product editor.
+ *
+ * `size` is a prop rather than something callers override via className: cn()
+ * is plain concatenation with no tailwind-merge, so passing "h-6 w-6" alongside
+ * the built-in "h-8 w-8" leaves BOTH in the class list and the winner up to
+ * stylesheet order.
+ */
 export function RemoveButton({
   onClick,
   title = "Remove",
   disabled,
+  size = "md",
   className,
 }: {
   onClick: () => void;
   title?: string;
   disabled?: boolean;
+  /** "sm" (24px) sits inside a chip; "md" (32px) stands alone in a row. */
+  size?: "sm" | "md";
   className?: string;
 }) {
   return (
@@ -75,7 +86,8 @@ export function RemoveButton({
       title={title}
       aria-label={title}
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-lg leading-none text-muted transition-colors",
+        "flex shrink-0 items-center justify-center rounded-md leading-none text-muted transition-colors",
+        size === "sm" ? "h-6 w-6 text-base" : "h-8 w-8 text-lg",
         "hover:bg-surface-2 hover:text-danger outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent",
         className,
