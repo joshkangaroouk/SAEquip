@@ -14,11 +14,18 @@ export function ProductDetailsSection({
   onChange,
   dirty,
   error,
+  hideCommerce = false,
 }: {
   value: NativeForm;
   onChange: (next: NativeForm) => void;
   dirty: boolean;
   error?: string;
+  /**
+   * Hides the native-commerce fields (type, stock, pricing, quantity, shipping,
+   * inventory). They're still on the product and still saved untouched — a
+   * hidden field simply never becomes dirty, so it isn't sent.
+   */
+  hideCommerce?: boolean;
 }) {
   const set = <K extends keyof NativeForm>(key: K, v: NativeForm[K]) =>
     onChange({ ...value, [key]: v });
@@ -46,6 +53,7 @@ export function ProductDetailsSection({
           <Input size="sm" id="p-sku" value={value.sku} onChange={(e) => set("sku", e.target.value)} />
         </Field>
 
+        {!hideCommerce && (
         <Field label="Type" htmlFor="p-type">
           <Select size="sm" id="p-type" value={value.type} onChange={(e) => set("type", e.target.value)}>
             {TYPES.map((t) => (
@@ -55,6 +63,7 @@ export function ProductDetailsSection({
             ))}
           </Select>
         </Field>
+        )}
 
         <Field label="Status" htmlFor="p-status" hint="Hidden products aren't shown in the store.">
           <Select size="sm" id="p-status" value={value.status} onChange={(e) => set("status", e.target.value)}>
@@ -66,6 +75,8 @@ export function ProductDetailsSection({
           </Select>
         </Field>
 
+        {!hideCommerce && (
+          <>
         <Field label="Stock status" htmlFor="p-stock">
           <Select size="sm"
             id="p-stock"
@@ -134,6 +145,8 @@ export function ProductDetailsSection({
             onChange={(v) => set("managed_inventory", v)}
           />
         </div>
+          </>
+        )}
       </div>
 
       <fieldset className="mt-4 rounded-lg border border-border p-3">

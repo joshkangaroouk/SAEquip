@@ -22,6 +22,7 @@ export function VariationsSection({
   error,
   onChange,
   onChangeAll,
+  hideCommerce = false,
 }: {
   variations: VariationDraft[];
   options: OptionRefDraft[];
@@ -30,6 +31,8 @@ export function VariationsSection({
   error?: string;
   onChange: (id: string, patch: Partial<VariationDraft>) => void;
   onChangeAll: (patch: Partial<VariationDraft>) => void;
+  /** Hides the price-difference column and its bulk-fill control. */
+  hideCommerce?: boolean;
 }) {
   const [bulkPrice, setBulkPrice] = useState("");
 
@@ -39,7 +42,11 @@ export function VariationsSection({
     <Card id="section-variations">
       <CardHeader
         title="Variations"
-        description="Generated automatically from the option values above. Add SKUs and price differences here."
+        description={
+          hideCommerce
+            ? "Generated automatically from the option values above. Add SKUs here."
+            : "Generated automatically from the option values above. Add SKUs and price differences here."
+        }
         actions={
           <>
             {dirty && <Badge tone="accent">Unsaved</Badge>}
@@ -77,23 +84,28 @@ export function VariationsSection({
           {!lockedByOptions && variations.length > 2 && (
             <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface-2 p-3">
               <span className="text-small font-semibold text-text">Set all:</span>
-              <Input
-                size="sm" className="w-28"
-                inputMode="decimal"
-                value={bulkPrice}
-                onChange={(e) => setBulkPrice(e.target.value)}
-                placeholder="Price Δ"
-                aria-label="Price difference for all variations"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={!/^-?\d+(\.\d+)?$/.test(bulkPrice)}
-                onClick={() => onChangeAll({ price_difference: bulkPrice })}
-              >
-                Apply price Δ
-              </Button>
-              <span className="mx-1 h-6 w-px bg-border" />
+              {!hideCommerce && (
+                <>
+                  <Input
+                    size="sm"
+                    className="w-28"
+                    inputMode="decimal"
+                    value={bulkPrice}
+                    onChange={(e) => setBulkPrice(e.target.value)}
+                    placeholder="Price Δ"
+                    aria-label="Price difference for all variations"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!/^-?\d+(\.\d+)?$/.test(bulkPrice)}
+                    onClick={() => onChangeAll({ price_difference: bulkPrice })}
+                  >
+                    Apply price Δ
+                  </Button>
+                  <span className="mx-1 h-6 w-px bg-border" />
+                </>
+              )}
               <Button variant="ghost" size="sm" onClick={() => onChangeAll({ status: "ACTIVE" })}>
                 All active
               </Button>
@@ -112,7 +124,7 @@ export function VariationsSection({
                     <TH key={o.id}>{o.name}</TH>
                   ))}
                   <TH>SKU</TH>
-                  <TH className="w-28">Price Δ</TH>
+                  {!hideCommerce && <TH className="w-28">Price Δ</TH>}
                   <TH className="w-32">Status</TH>
                 </TR>
               </THead>
@@ -137,21 +149,23 @@ export function VariationsSection({
                           aria-label={`SKU for variation ${idx + 1}`}
                         />
                       </TD>
-                      <TD>
-                        <Input
-                          size="sm"
-                          className={
-                            /^-?\d+(\.\d+)?$/.test(v.price_difference)
-                              ? undefined
-                              : "border-danger focus:border-danger"
-                          }
-                          inputMode="decimal"
-                          value={v.price_difference}
-                          disabled={lockedByOptions}
-                          onChange={(e) => onChange(v.id, { price_difference: e.target.value })}
-                          aria-label={`Price difference for variation ${idx + 1}`}
-                        />
-                      </TD>
+                      {!hideCommerce && (
+                        <TD>
+                          <Input
+                            size="sm"
+                            className={
+                              /^-?\d+(\.\d+)?$/.test(v.price_difference)
+                                ? undefined
+                                : "border-danger focus:border-danger"
+                            }
+                            inputMode="decimal"
+                            value={v.price_difference}
+                            disabled={lockedByOptions}
+                            onChange={(e) => onChange(v.id, { price_difference: e.target.value })}
+                            aria-label={`Price difference for variation ${idx + 1}`}
+                          />
+                        </TD>
+                      )}
                       <TD>
                         <Select
                           size="sm"

@@ -64,7 +64,10 @@ interface SaveTask {
   run: () => Promise<Partial<EditorSnapshot>>;
 }
 
-export function useProductEditor(productId: string | undefined) {
+export function useProductEditor(
+  productId: string | undefined,
+  { hideCommerce = false }: { hideCommerce?: boolean } = {},
+) {
   const [context, setContext] = useState<EditorContext | null>(null);
   const [baseline, setBaseline] = useState<EditorSnapshot | null>(null);
   const [draft, setDraft] = useState<EditorSnapshot | null>(null);
@@ -164,8 +167,8 @@ export function useProductEditor(productId: string | undefined) {
 
   const isDirty = SECTION_KEYS.some((k) => dirty[k]);
   const validationErrors = useMemo(
-    () => (draft ? validate(draft, context?.maxVariations) : {}),
-    [draft, context?.maxVariations],
+    () => (draft ? validate(draft, context?.maxVariations, { hideCommerce }) : {}),
+    [draft, context?.maxVariations, hideCommerce],
   );
   const isValid = Object.keys(validationErrors).length === 0;
 

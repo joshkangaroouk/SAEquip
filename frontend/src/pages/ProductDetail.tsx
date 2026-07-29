@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { Badge, Card, Loader, StatusBadge } from "../components/ui";
+import { Badge, Card, Checkbox, Loader, StatusBadge } from "../components/ui";
 import { LogoActivationPanel } from "../components/LogoActivationPanel";
 import { SpecTableEditor } from "../components/SpecTableEditor";
 import { TextItemListEditor } from "../components/TextItemListEditor";
@@ -12,11 +12,15 @@ import { VariationsSection } from "../components/product/VariationsSection";
 import { ProductDetailsSection } from "../components/product/ProductDetailsSection";
 import { ProductSaveBar } from "../components/product/ProductSaveBar";
 import { useProductEditor } from "../components/product/useProductEditor";
+import { useHideCommerceFields } from "../hooks/useUserPreference";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
-  const editor = useProductEditor(id);
+  // Saved against the account (Supabase user_metadata), so it follows the user
+  // across sessions and machines rather than living in this browser.
+  const { value: hideCommerce, setValue: setHideCommerce } = useHideCommerceFields();
+  const editor = useProductEditor(id, { hideCommerce });
   const {
     context,
     draft,
@@ -100,10 +104,18 @@ export default function ProductDetail() {
                     )}
                   </p>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2">
-                  <StatusBadge status={product.status} />
-                  <StatusBadge status={product.stock_status} />
-                  <Badge tone="neutral">{product.type}</Badge>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <StatusBadge status={product.status} />
+                    {!hideCommerce && <StatusBadge status={product.stock_status} />}
+                    {!hideCommerce && <Badge tone="neutral">{product.type}</Badge>}
+                  </div>
+                  <Checkbox
+                    className="text-muted"
+                    label="Hide pricing & stock fields"
+                    checked={hideCommerce}
+                    onChange={(v) => void setHideCommerce(v)}
+                  />
                 </div>
               </div>
             </Card>
@@ -113,6 +125,7 @@ export default function ProductDetail() {
               onChange={(next) => setSection("details", next)}
               dirty={dirty.details}
               error={saveErrors.details ?? validationErrors.details}
+              hideCommerce={hideCommerce}
             />
 
             <DescriptionSection
@@ -149,6 +162,7 @@ export default function ProductDetail() {
               error={saveErrors.variations ?? validationErrors.variations}
               onChange={setVariation}
               onChangeAll={setAllVariations}
+              hideCommerce={hideCommerce}
             />
 
             {/* Hub content — source of truth is the Supabase DB. */}

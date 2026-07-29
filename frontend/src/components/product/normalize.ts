@@ -150,7 +150,11 @@ const PRICE_DELTA = /^-?\d+(\.\d+)?$/;
  * `maxVariations` comes from the store so the cartesian cap is enforced
  * client-side, rather than letting Duda reject the save with a raw error.
  */
-export function validate(draft: EditorSnapshot, maxVariations?: number | null): ErrorMap {
+export function validate(
+  draft: EditorSnapshot,
+  maxVariations?: number | null,
+  { hideCommerce = false }: { hideCommerce?: boolean } = {},
+): ErrorMap {
   const errors: ErrorMap = {};
   const d = draft.details;
 
@@ -167,7 +171,7 @@ export function validate(draft: EditorSnapshot, maxVariations?: number | null): 
 
   if (!draft.variations.every((v) => v.sku.length <= 100))
     errors.variations = "Variation SKUs must be 100 characters or fewer.";
-  else if (!draft.variations.every((v) => PRICE_DELTA.test(v.price_difference)))
+  else if (!hideCommerce && !draft.variations.every((v) => PRICE_DELTA.test(v.price_difference)))
     errors.variations = "Every price difference must be a number (negatives allowed).";
 
   const priceOk = NUMERIC.test(d.price) && parseFloat(d.price) >= 0;
@@ -182,9 +186,14 @@ export function validate(draft: EditorSnapshot, maxVariations?: number | null): 
     (/^\d+$/.test(d.quantity) && parseInt(d.quantity, 10) >= 0);
 
   if (!d.name.trim()) errors.details = "Name is required.";
-  else if (!priceOk) errors.details = "Price must be a number ≥ 0.";
-  else if (!compareOk) errors.details = "Compare-at price must be a number greater than the price.";
-  else if (!quantityOk) errors.details = "Quantity must be a whole number ≥ 0.";
+  // Pricing/quantity are only validated while visible. A hidden field is never
+  // edited, so it never becomes dirty and never gets sent — and blocking Save on
+  // a field the user can't see or reach would be an unfixable dead end.
+  else if (!hideCommerce && !priceOk) errors.details = "Price must be a number ≥ 0.";
+  else if (!hideCommerce && !compareOk)
+    errors.details = "Compare-at price must be a number greater than the price.";
+  else if (!hideCommerce && !quantityOk)
+    errors.details = "Quantity must be a whole number ≥ 0.";
 
   if (draft.images.length > 50) errors.images = "Max 50 images.";
   else if (!draft.images.every((i) => /^https?:\/\//i.test(i.url)))
