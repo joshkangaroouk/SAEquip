@@ -43,7 +43,9 @@ export function UnsavedChangesModal({
       open={open}
       onClose={() => blocker.reset?.()}
       dismissable={!saving}
-      size="sm"
+      // md, not sm: three actions don't fit 384px minus the footer padding, so
+      // they wrapped.
+      size="md"
       title="You have unsaved changes"
       description={
         dirtyLabels.length > 0
@@ -51,18 +53,28 @@ export function UnsavedChangesModal({
           : "Leaving now discards your edits."
       }
       footer={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant="ghost" onClick={() => blocker.reset?.()} disabled={saving}>
+        // w-full so justify-between wins over the Modal footer's own
+        // justify-end. "Stay" sits apart on the left because it's the only
+        // action that keeps you here; the two on the right both leave.
+        <div className="flex w-full items-center justify-between gap-2">
+          <Button variant="ghost" size="sm" onClick={() => blocker.reset?.()} disabled={saving}>
             Stay on page
           </Button>
-          <Button variant="secondary" onClick={() => blocker.proceed?.()} disabled={saving}>
-            Discard changes
-          </Button>
-          {onSave && (
-            <Button variant="primary" onClick={saveAndLeave} loading={saving}>
-              Save and leave
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => blocker.proceed?.()}
+              disabled={saving}
+            >
+              Discard changes
             </Button>
-          )}
+            {onSave && (
+              <Button variant="primary" size="sm" onClick={saveAndLeave} loading={saving}>
+                Save and leave
+              </Button>
+            )}
+          </div>
         </div>
       }
     />
