@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { duda, DudaApiError } from "../services/duda.js";
 import { emptyUsage, getOptionUsage, invalidateOptionUsage } from "../services/optionUsage.js";
+import { deleteChoiceCascade, deleteOptionCascade } from "../services/optionCascade.js";
 
 export const optionsRouter = Router();
 
@@ -130,8 +131,11 @@ optionsRouter.put("/options/:id", async (req, res, next) => {
 
 /**
  * DELETE /api/options/:id?confirm=true
- * Refuses without ?confirm=true when the option is in use, returning the full
- * list of affected products so the UI can name them.
+ *
+ * Refuses without confirmation when in use, returning the affected products so
+ * the UI can name them. With confirmation it detaches the option from each of
+ * those products first (Duda's API won't delete an option whose values are
+ * attached to variations) and then removes it.
  */
 optionsRouter.delete("/options/:id", async (req, res, next) => {
   try {
@@ -145,9 +149,15 @@ optionsRouter.delete("/options/:id", async (req, res, next) => {
       return;
     }
 
+    if (usage.productCount > 0) {
+      const report = await deleteOptionCascade(req.params.id);
+      res.json({ deleted: true, affectedProducts: usage.productCount, cascade: report });
+      return;
+    }
+
     await duda.deleteOption(req.params.id);
     invalidateOptionUsage();
-    res.json({ deleted: true, affectedProducts: usage.productCount });
+    res.json({ deleted: true, affectedProducts: 0 });
   } catch (err) {
     next(err);
   }
@@ -208,45 +218,65 @@ optionsRouter.post("/options/:id/choices", async (req, res, next) => {
 });
 
 /**
- * DELETE /api/options/:id/choices/:choiceId
+ * DELETE /api/options/:id/choices/:choiceId[?force=true]
  *
- * Only possible while NO product offers the value: Duda itself refuses with
- * "Can't remove choice that is connected to variations" otherwise (verified).
- * There is deliberately no override — it can't be made to work — so this
- * returns the products that must stop offering the value first, which is the
- * actionable version of Duda's message.
+ * Duda's REST API refuses to remove a value attached to variations, but its own
+ * admin UI allows it behind a warning — by detaching from the affected products
+ * first. `?force=true` does that orchestration (see optionCascade.ts), keeping
+ * the SKUs of combinations that survive.
+ *
+ * Without `force`, an in-use value returns 409 plus the counts the UI needs to
+ * warn with, mirroring Duda's own dialog.
  */
 optionsRouter.delete("/options/:id/choices/:choiceId", async (req, res, next) => {
   try {
+    // An option must keep at least one value — Duda: "Option should have at
+    // least 1 choices". Deleting the last one means deleting the option.
+    const list = await duda.listOptions();
+    const option = list.results.find((o) => o.id === req.params.id);
+    if (!option) {
+      res.status(404).json({ error: "option_not_found" });
+      return;
+    }
+    if (option.choices.length <= 1) {
+      res.status(409).json({
+        error: "last_choice",
+        detail: `"${option.name}" would be left with no values, which Duda doesn't allow. Delete the whole option instead.`,
+      });
+      return;
+    }
+
     // FRESH, not cached: this gates a write, and a client that loaded its page
     // before the value spread to a product would otherwise sail past its own
-    // check straight into Duda's raw 400.
+    // check.
     const usage = (await getOptionUsage({ fresh: true })).get(req.params.id) ?? emptyUsage();
     const affected = usage.choiceUsage[req.params.choiceId] ?? 0;
 
-    if (affected > 0) {
-      const names = usage.products.map((p) => p.name).join(", ");
+    if (affected > 0 && req.query.force !== "true") {
       res.status(409).json({
         error: "choice_in_use",
-        detail: `${affected} product(s) still offer this value, and Duda won't remove a value that has variations attached. Deselect it on ${names} first, save, then delete it here.`,
+        detail: `${affected} product(s) offer this value. Deleting it removes the variations that use it.`,
+        affectedProducts: affected,
         products: usage.products,
       });
+      return;
+    }
+
+    if (affected > 0) {
+      const report = await deleteChoiceCascade(req.params.id, req.params.choiceId);
+      res.json({ deleted: true, cascade: report });
       return;
     }
 
     try {
       await duda.deleteOptionChoice(req.params.id, req.params.choiceId);
     } catch (err) {
-      // Backstop: Duda is the real authority on variation attachment, and
-      // something could change between the sweep above and this call. Translate
-      // its message rather than leaking "Duda error 400: {...}" to the UI.
+      // Backstop: Duda is the authority on variation attachment, and something
+      // could change between the sweep above and this call. Cascade rather than
+      // leaking a raw "Duda error 400: {...}".
       if (err instanceof DudaApiError && /connected to variations/i.test(err.body)) {
-        invalidateOptionUsage();
-        res.status(409).json({
-          error: "choice_in_use",
-          detail:
-            "Duda still has variations using this value. Open the product, deselect the value, save, then delete it here.",
-        });
+        const report = await deleteChoiceCascade(req.params.id, req.params.choiceId);
+        res.json({ deleted: true, cascade: report });
         return;
       }
       throw err;

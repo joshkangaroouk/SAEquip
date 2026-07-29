@@ -128,28 +128,52 @@ export default function ProductOptions() {
   }
 
   async function deleteValue(option: CatalogOption, choice: { id: string; value: string; usage: number }) {
-    if (choice.usage > 0) {
+    // Duda won't leave an option with no values, so the last one can only go by
+    // deleting the option itself.
+    if (option.choices.length <= 1) {
       toast.error(
-        `“${choice.value}” is still offered by ${choice.usage} product(s). Deselect it there and save first.`,
+        `“${option.name}” would be left with no values. Delete the whole option instead.`,
       );
       return;
     }
+
+    const inUse = choice.usage > 0;
     const ok = await confirm({
       title: `Delete “${choice.value}”?`,
-      description: "It's removed from the shared option, so no product will be able to offer it. Nothing uses it today.",
-      confirmLabel: "Delete value",
+      description: inUse ? (
+        <>
+          <span className="font-semibold">
+            {choice.usage} product{choice.usage === 1 ? "" : "s"}
+          </span>{" "}
+          currently offer this value. Deleting it permanently removes the variations that use it.
+          SKUs and price differences on the remaining combinations are kept.
+        </>
+      ) : (
+        "It's removed from the shared option, so no product will be able to offer it. Nothing uses it today."
+      ),
+      confirmLabel: inUse ? "Delete value & variants" : "Delete value",
       danger: true,
     });
     if (!ok) return;
+
     try {
-      await apiJson(`/api/options/${option.id}/choices/${choice.id}`, { method: "DELETE" });
-      toast.success(`Deleted “${choice.value}”`);
+      // force=true does the detach-then-delete orchestration server-side, which
+      // is how Duda's own UI manages it.
+      const res = await apiJson<{ cascade?: { productsUpdated: { name: string }[] } }>(
+        `/api/options/${option.id}/choices/${choice.id}${inUse ? "?force=true" : ""}`,
+        { method: "DELETE" },
+      );
+      const touched = res.cascade?.productsUpdated.length ?? 0;
+      toast.success(
+        touched > 0
+          ? `Deleted “${choice.value}” and updated ${touched} product${touched === 1 ? "" : "s"}`
+          : `Deleted “${choice.value}”`,
+      );
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete the value");
-      // The usage count this decision was based on came from page load, so a
-      // rejection means it's stale. Reload so the chip immediately shows the
-      // real count instead of inviting the same failed click again.
+      // The usage count behind this decision came from page load, so a rejection
+      // means it went stale — reload so the chip shows the real count.
       await load();
     }
   }
@@ -161,18 +185,27 @@ export default function ProductOptions() {
       description: inUse ? (
         <>
           This option is used by <span className="font-semibold">{option.usage} product(s)</span>.
-          Deleting it removes it from all of them and regenerates their variations.
+          Deleting it removes it from all of them and permanently removes the variations built from
+          its values.
         </>
       ) : (
         "Nothing currently uses this option."
       ),
-      confirmLabel: "Delete option",
+      confirmLabel: inUse ? "Delete option & variants" : "Delete option",
       danger: true,
     });
     if (!ok) return;
     try {
-      await apiJson(`/api/options/${option.id}${inUse ? "?confirm=true" : ""}`, { method: "DELETE" });
-      toast.success(`Deleted “${option.name}”`);
+      const res = await apiJson<{ cascade?: { productsUpdated: { name: string }[] } }>(
+        `/api/options/${option.id}${inUse ? "?confirm=true" : ""}`,
+        { method: "DELETE" },
+      );
+      const touched = res.cascade?.productsUpdated.length ?? 0;
+      toast.success(
+        touched > 0
+          ? `Deleted “${option.name}” and updated ${touched} product${touched === 1 ? "" : "s"}`
+          : `Deleted “${option.name}”`,
+      );
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete the option");
@@ -258,9 +291,11 @@ export default function ProductOptions() {
                             <RemoveButton
                               onClick={() => void deleteValue(o, c)}
                               title={
-                                c.usage > 0
-                                  ? `${c.usage} product(s) still offer this value`
-                                  : `Delete “${c.value}”`
+                                o.choices.length <= 1
+                                  ? "An option must keep at least one value — delete the option instead"
+                                  : c.usage > 0
+                                    ? `Delete “${c.value}” and the variations using it on ${c.usage} product(s)`
+                                    : `Delete “${c.value}”`
                               }
                               className="h-4 w-4 text-sm"
                             />
