@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { duda } from "../services/duda.js";
+import { duda, DudaApiError } from "../services/duda.js";
 import { emptyUsage, getOptionUsage, invalidateOptionUsage } from "../services/optionUsage.js";
 
 export const optionsRouter = Router();
@@ -135,7 +135,7 @@ optionsRouter.put("/options/:id", async (req, res, next) => {
  */
 optionsRouter.delete("/options/:id", async (req, res, next) => {
   try {
-    const usage = (await getOptionUsage()).get(req.params.id) ?? emptyUsage();
+    const usage = (await getOptionUsage({ fresh: true })).get(req.params.id) ?? emptyUsage();
     if (usage.productCount > 0 && req.query.confirm !== "true") {
       res.status(409).json({
         error: "option_in_use",
@@ -155,8 +155,10 @@ optionsRouter.delete("/options/:id", async (req, res, next) => {
 
 /**
  * POST /api/options/:id/choices
- * Adding a choice is SAFE: verified that it does not propagate to products
- * already using the option — each product keeps its own subset.
+ * Duda does not push a new choice onto products already using the option —
+ * each keeps its own subset. Note the PRODUCT page auto-selects a value added
+ * from there, so saving that product does grow its variation set; the cause is
+ * ours, not Duda's.
  */
 optionsRouter.post("/options/:id/choices", async (req, res, next) => {
   const parsed = choiceSchema.safeParse(req.body);
@@ -216,7 +218,10 @@ optionsRouter.post("/options/:id/choices", async (req, res, next) => {
  */
 optionsRouter.delete("/options/:id/choices/:choiceId", async (req, res, next) => {
   try {
-    const usage = (await getOptionUsage()).get(req.params.id) ?? emptyUsage();
+    // FRESH, not cached: this gates a write, and a client that loaded its page
+    // before the value spread to a product would otherwise sail past its own
+    // check straight into Duda's raw 400.
+    const usage = (await getOptionUsage({ fresh: true })).get(req.params.id) ?? emptyUsage();
     const affected = usage.choiceUsage[req.params.choiceId] ?? 0;
 
     if (affected > 0) {
@@ -229,7 +234,24 @@ optionsRouter.delete("/options/:id/choices/:choiceId", async (req, res, next) =>
       return;
     }
 
-    await duda.deleteOptionChoice(req.params.id, req.params.choiceId);
+    try {
+      await duda.deleteOptionChoice(req.params.id, req.params.choiceId);
+    } catch (err) {
+      // Backstop: Duda is the real authority on variation attachment, and
+      // something could change between the sweep above and this call. Translate
+      // its message rather than leaking "Duda error 400: {...}" to the UI.
+      if (err instanceof DudaApiError && /connected to variations/i.test(err.body)) {
+        invalidateOptionUsage();
+        res.status(409).json({
+          error: "choice_in_use",
+          detail:
+            "Duda still has variations using this value. Open the product, deselect the value, save, then delete it here.",
+        });
+        return;
+      }
+      throw err;
+    }
+
     invalidateOptionUsage();
     res.json({ deleted: true });
   } catch (err) {

@@ -117,8 +117,9 @@ export default function ProductOptions() {
         method: "POST",
         body: JSON.stringify({ value }),
       });
-      // Adding is safe: verified that a new value does NOT propagate to products
-      // already using the option — each keeps its own selection.
+      // Duda itself doesn't push a new value onto products already using the
+      // option. Note the product page DOES auto-select it, so adding there and
+      // saving will grow that product's variations.
       toast.success(`Added “${value}”`);
       await load();
     } catch (e) {
@@ -146,6 +147,10 @@ export default function ProductOptions() {
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete the value");
+      // The usage count this decision was based on came from page load, so a
+      // rejection means it's stale. Reload so the chip immediately shows the
+      // real count instead of inviting the same failed click again.
+      await load();
     }
   }
 

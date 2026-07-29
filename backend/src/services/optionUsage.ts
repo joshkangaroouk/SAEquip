@@ -48,8 +48,13 @@ function build(products: DudaProduct[]): Map<string, OptionUsage> {
   return index;
 }
 
-export async function getOptionUsage(): Promise<Map<string, OptionUsage>> {
-  if (cache && Date.now() - cache.at < TTL_MS) return cache.index;
+/**
+ * `fresh: true` skips the cache. Use it for any decision that GATES a write —
+ * a stale index there means we wave through a delete Duda will reject, and the
+ * user sees a raw upstream 400 instead of an actionable message.
+ */
+export async function getOptionUsage({ fresh = false } = {}): Promise<Map<string, OptionUsage>> {
+  if (!fresh && cache && Date.now() - cache.at < TTL_MS) return cache.index;
   const products = await duda.listAllProducts();
   const index = build(products);
   cache = { at: Date.now(), index };
