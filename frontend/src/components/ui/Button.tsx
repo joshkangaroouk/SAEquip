@@ -3,7 +3,7 @@ import { cn } from "../../lib/cn";
 import { Spinner } from "./Spinner";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md";
+type Size = "xs" | "sm" | "md";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -29,8 +29,10 @@ const variants: Record<Variant, string> = {
   danger: "bg-danger text-white shadow-xs hover:bg-danger/90",
 };
 
-// shadcn's control heights: 36px default, 32px small.
+// shadcn's control heights: 36px default, 32px small. `xs` (28px) exists to sit
+// inline with pill-shaped chips without towering over them.
 const sizes: Record<Size, string> = {
+  xs: "h-7 gap-1 px-2.5 text-small",
   sm: "h-8 gap-1.5 px-3 text-small",
   md: "h-9 px-4 text-body",
 };
