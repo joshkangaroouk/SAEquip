@@ -16,4 +16,5 @@ export { EmptyState } from "./EmptyState";
 export { FileIcon } from "./FileIcon";
 export { Spinner, Loader } from "./Spinner";
 export { PageHeader } from "./PageHeader";
+export { DropdownMenu, type MenuAction } from "./DropdownMenu";
 export { RichTextEditor } from "./RichTextEditor";

@@ -3,6 +3,8 @@ import Login from "./pages/Login";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import ProductNew from "./pages/ProductNew";
+import Categories from "./pages/Categories";
+import ProductOptions from "./pages/ProductOptions";
 import Media from "./pages/Media";
 import Logos from "./pages/Logos";
 import Widgets from "./pages/Widgets";
@@ -35,6 +37,8 @@ export const router = createBrowserRouter([
       // /products/new wins over /products/:id regardless of declaration order.
       { path: "/products/new", element: <ProductNew /> },
       { path: "/products/:id", element: <ProductDetail /> },
+      { path: "/categories", element: <Categories /> },
+      { path: "/options", element: <ProductOptions /> },
       { path: "/media", element: <Media /> },
       { path: "/logos", element: <Logos /> },
       { path: "/widgets", element: <Widgets /> },

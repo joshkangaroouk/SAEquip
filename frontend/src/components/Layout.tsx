@@ -33,16 +33,36 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   end?: boolean;
+  /** Rendered indented beneath the parent, as Duda's Catalog group does. */
+  children?: { to: string; label: string }[];
 }
 
 const NAV: NavItem[] = [
-  { to: "/", label: "Products", icon: Package, end: true },
+  {
+    to: "/",
+    label: "Products",
+    icon: Package,
+    end: true,
+    children: [
+      { to: "/categories", label: "Categories" },
+      { to: "/options", label: "Product Options" },
+    ],
+  },
   { to: "/media", label: "Media", icon: Images },
   { to: "/logos", label: "Logos", icon: ShieldCheck },
   { to: "/widgets", label: "Widgets", icon: LayoutGrid },
   { to: "/quotes", label: "Quote Requests", icon: BarChart3 },
   { to: "/status", label: "Status", icon: Sparkles },
 ];
+
+/** Shared row treatment so parents and children can't drift apart visually. */
+const rowBase =
+  "group relative flex items-center gap-2.5 rounded-md px-3 py-2 transition-colors duration-150 " +
+  "before:absolute before:-left-3 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 " +
+  "before:rounded-r-full before:transition-all before:duration-150";
+const rowActive = "bg-accent/[0.12] font-medium text-sidebar-foreground before:bg-accent";
+const rowIdle =
+  "text-sidebar-muted before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-foreground";
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
@@ -51,40 +71,52 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
         Main menu
       </p>
 
-      {NAV.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              // The accent bar is a ::before pinned to the sidebar's left edge,
-              // which is why the row carries the negative inset rather than the
-              // pill doing it.
-              "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-body transition-colors duration-150",
-              "before:absolute before:-left-3 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2",
-              "before:rounded-r-full before:transition-all before:duration-150",
-              isActive
-                ? "bg-accent/[0.12] font-medium text-sidebar-foreground before:bg-accent"
-                : "text-sidebar-muted before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-foreground",
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Icon
-                size={16}
-                strokeWidth={2}
-                className={cn(
-                  "shrink-0 transition-colors duration-150",
-                  isActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
-                )}
-              />
-              {label}
-            </>
+      {NAV.map(({ to, label, icon: Icon, end, children }) => (
+        <div key={to}>
+          <NavLink
+            to={to}
+            end={end}
+            onClick={onNavigate}
+            // The accent bar is a ::before pinned to the sidebar's left edge,
+            // which is why the row carries the negative inset rather than the
+            // pill doing it.
+            className={({ isActive }) => cn(rowBase, "text-body", isActive ? rowActive : rowIdle)}
+          >
+            {({ isActive }) => (
+              <>
+                <Icon
+                  size={16}
+                  strokeWidth={2}
+                  className={cn(
+                    "shrink-0 transition-colors duration-150",
+                    isActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
+                  )}
+                />
+                {label}
+              </>
+            )}
+          </NavLink>
+
+          {/* Sub-items stay visible rather than collapsing: there are only two,
+              and hiding them behind a chevron would bury the two catalog
+              screens that are otherwise hard to find. */}
+          {children && (
+            <div className="mt-0.5 flex flex-col gap-0.5">
+              {children.map((child) => (
+                <NavLink
+                  key={child.to}
+                  to={child.to}
+                  onClick={onNavigate}
+                  className={({ isActive }) =>
+                    cn(rowBase, "pl-[2.4rem] text-small", isActive ? rowActive : rowIdle)
+                  }
+                >
+                  {child.label}
+                </NavLink>
+              ))}
+            </div>
           )}
-        </NavLink>
+        </div>
       ))}
 
       {/* Temporary: component-kit showcase (removed after verification). */}
@@ -93,11 +125,10 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
         onClick={onNavigate}
         className={({ isActive }) =>
           cn(
-            "group relative mt-2 flex items-center gap-2.5 rounded-md px-3 py-2 text-small transition-colors duration-150",
-            "before:absolute before:-left-3 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2",
-            "before:rounded-r-full before:transition-all before:duration-150",
+            rowBase,
+            "mt-2 text-small",
             isActive
-              ? "bg-accent/[0.12] font-medium text-sidebar-foreground before:bg-accent"
+              ? rowActive
               : "text-sidebar-subtle before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-muted",
           )
         }

@@ -26,6 +26,9 @@ const PATHS = {
     `/sites/multiscreen/${site}/ecommerce/options/${optionId}/choices`,
   optionChoice: (site: string, optionId: string, choiceId: string) =>
     `/sites/multiscreen/${site}/ecommerce/options/${optionId}/choices/${choiceId}`,
+  categories: (site: string) => `/sites/multiscreen/${site}/ecommerce/categories`,
+  category: (site: string, categoryId: string) =>
+    `/sites/multiscreen/${site}/ecommerce/categories/${categoryId}`,
 } as const;
 
 /**
@@ -272,6 +275,44 @@ export interface DudaOptionList {
   total_responses: number;
 }
 
+/**
+ * Categories are a FLAT list carrying `parent_id`; the tree is derived, not
+ * returned nested. Top-level categories use the sentinel `"ROOT"` rather than
+ * null. The list endpoint returns only these four fields — description, image
+ * and seo come from the single-category GET.
+ */
+export const CATEGORY_ROOT = "ROOT";
+
+export interface DudaCategorySummary {
+  id: string;
+  title: string;
+  parent_id: string;
+  products_count: number;
+}
+
+export interface DudaCategory extends Omit<DudaCategorySummary, "products_count"> {
+  description?: string;
+  image?: DudaImage | null;
+  seo?: { url?: string; title?: string; description?: string };
+  subcategories?: DudaCategorySummary[];
+  products?: unknown[];
+}
+
+export interface DudaCategoryList {
+  results: DudaCategorySummary[];
+  total_responses: number;
+  offset: number;
+  limit: number;
+}
+
+export interface DudaCategoryInput {
+  title: string;
+  parent_id?: string;
+  description?: string;
+  image?: DudaImageInput | null;
+  seo?: { url?: string; title?: string; description?: string };
+}
+
 /** Minimum viable new product. Verified: {name, prices, status} is accepted. */
 export interface DudaProductCreate {
   name: string;
@@ -416,6 +457,48 @@ export const duda = {
       PATHS.productVariation(site(), productId, variationId),
       partial,
     );
+  },
+
+  // --- Categories ---
+
+  /**
+   * Every category, flat. The list endpoint defaults to limit 20, so this asks
+   * for the max and pages if the store ever exceeds it.
+   */
+  async listAllCategories(): Promise<DudaCategorySummary[]> {
+    const collected: DudaCategorySummary[] = [];
+    let offset = 0;
+    for (let page = 0; page < 20; page++) {
+      const qs = new URLSearchParams({ limit: String(MAX_PAGE_SIZE), offset: String(offset) });
+      const res = await dudaGet<DudaCategoryList>(`${PATHS.categories(site())}?${qs.toString()}`);
+      const results = res.results ?? [];
+      collected.push(...results);
+      const total = res.total_responses ?? collected.length;
+      if (collected.length >= total || results.length === 0) break;
+      offset += results.length;
+    }
+    return collected;
+  },
+
+  /** Single category — the only shape that includes description, image and seo. */
+  getCategory(categoryId: string): Promise<DudaCategory> {
+    return dudaGet<DudaCategory>(PATHS.category(site(), categoryId));
+  },
+
+  createCategory(input: DudaCategoryInput): Promise<DudaCategory> {
+    return dudaRequest<DudaCategory>("POST", PATHS.categories(site()), {
+      ...input,
+      parent_id: input.parent_id ?? CATEGORY_ROOT,
+    });
+  },
+
+  /** PATCH — send only the fields being changed. */
+  updateCategory(categoryId: string, input: Partial<DudaCategoryInput>): Promise<DudaCategory> {
+    return dudaRequest<DudaCategory>("PATCH", PATHS.category(site(), categoryId), input);
+  },
+
+  async deleteCategory(categoryId: string): Promise<void> {
+    await dudaRequest<unknown>("DELETE", PATHS.category(site(), categoryId));
   },
 
   /**
