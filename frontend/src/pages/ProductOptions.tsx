@@ -285,9 +285,10 @@ export default function ProductOptions() {
                           <span
                             key={c.id}
                             // Fixed height with the remove button inset on the
-                            // right, so the hover square has room to read as a
-                            // target rather than a cramped glyph.
-                            className="inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-surface pl-2.5 pr-0.5 text-body"
+                            // right. The gap matters: the button grows a filled
+                            // square on hover, and at a tighter gap that square
+                            // visibly collides with the value text.
+                            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-surface pl-3 pr-1 text-body"
                             title={c.usage > 0 ? `Offered by ${c.usage} product(s)` : "Not used by any product"}
                           >
                             {c.value}
