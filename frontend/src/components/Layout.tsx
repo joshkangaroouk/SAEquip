@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BarChart3,
+  FolderTree,
   Images,
   LayoutGrid,
   LogOut,
@@ -9,6 +10,7 @@ import {
   Package,
   Palette,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   X,
   type LucideIcon,
@@ -27,27 +29,21 @@ import logoUrl from "../assets/saequip-logo.svg";
  */
 const SIDEBAR = "bg-sidebar text-sidebar-foreground";
 const SIDEBAR_BORDER = "border-sidebar-border";
+/** Declared once — the aside's width and the main content's offset must match. */
+const SIDEBAR_W = "w-[17rem]";
+const MAIN_OFFSET = "lg:pl-[17rem]";
 
 interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
   end?: boolean;
-  /** Rendered indented beneath the parent, as Duda's Catalog group does. */
-  children?: { to: string; label: string }[];
 }
 
 const NAV: NavItem[] = [
-  {
-    to: "/",
-    label: "Products",
-    icon: Package,
-    end: true,
-    children: [
-      { to: "/categories", label: "Categories" },
-      { to: "/options", label: "Product Options" },
-    ],
-  },
+  { to: "/", label: "Products", icon: Package, end: true },
+  { to: "/categories", label: "Categories", icon: FolderTree },
+  { to: "/options", label: "Product Options", icon: SlidersHorizontal },
   { to: "/media", label: "Media", icon: Images },
   { to: "/logos", label: "Logos", icon: ShieldCheck },
   { to: "/widgets", label: "Widgets", icon: LayoutGrid },
@@ -57,8 +53,8 @@ const NAV: NavItem[] = [
 
 /** Shared row treatment so parents and children can't drift apart visually. */
 const rowBase =
-  "group relative flex items-center gap-2.5 rounded-md px-3 py-2 transition-colors duration-150 " +
-  "before:absolute before:-left-3 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 " +
+  "group relative flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-150 " +
+  "before:absolute before:-left-3 before:top-1/2 before:h-6 before:w-[3px] before:-translate-y-1/2 " +
   "before:rounded-r-full before:transition-all before:duration-150";
 const rowActive = "bg-accent/[0.12] font-medium text-sidebar-foreground before:bg-accent";
 const rowIdle =
@@ -67,56 +63,35 @@ const rowIdle =
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-0.5">
-      <p className="px-3 pb-2 pt-1 text-xs font-medium uppercase tracking-wider text-sidebar-subtle">
+      <p className="px-3 pb-2.5 pt-1 text-small font-medium uppercase tracking-wider text-sidebar-subtle">
         Main menu
       </p>
 
-      {NAV.map(({ to, label, icon: Icon, end, children }) => (
-        <div key={to}>
-          <NavLink
-            to={to}
-            end={end}
-            onClick={onNavigate}
-            // The accent bar is a ::before pinned to the sidebar's left edge,
-            // which is why the row carries the negative inset rather than the
-            // pill doing it.
-            className={({ isActive }) => cn(rowBase, "text-body", isActive ? rowActive : rowIdle)}
-          >
-            {({ isActive }) => (
-              <>
-                <Icon
-                  size={16}
-                  strokeWidth={2}
-                  className={cn(
-                    "shrink-0 transition-colors duration-150",
-                    isActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
-                  )}
-                />
-                {label}
-              </>
-            )}
-          </NavLink>
-
-          {/* Sub-items stay visible rather than collapsing: there are only two,
-              and hiding them behind a chevron would bury the two catalog
-              screens that are otherwise hard to find. */}
-          {children && (
-            <div className="mt-0.5 flex flex-col gap-0.5">
-              {children.map((child) => (
-                <NavLink
-                  key={child.to}
-                  to={child.to}
-                  onClick={onNavigate}
-                  className={({ isActive }) =>
-                    cn(rowBase, "pl-[2.4rem] text-small", isActive ? rowActive : rowIdle)
-                  }
-                >
-                  {child.label}
-                </NavLink>
-              ))}
-            </div>
+      {NAV.map(({ to, label, icon: Icon, end }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={end}
+          onClick={onNavigate}
+          // The accent bar is a ::before pinned to the sidebar's left edge,
+          // which is why the row carries the negative inset rather than the
+          // pill doing it.
+          className={({ isActive }) => cn(rowBase, "text-body", isActive ? rowActive : rowIdle)}
+        >
+          {({ isActive }) => (
+            <>
+              <Icon
+                size={18}
+                strokeWidth={2}
+                className={cn(
+                  "shrink-0 transition-colors duration-150",
+                  isActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
+                )}
+              />
+              {label}
+            </>
           )}
-        </div>
+        </NavLink>
       ))}
 
       {/* Temporary: component-kit showcase (removed after verification). */}
@@ -133,7 +108,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
           )
         }
       >
-        <Palette size={16} strokeWidth={2} className="shrink-0" />
+        <Palette size={18} strokeWidth={2} className="shrink-0" />
         Component kit
       </NavLink>
     </nav>
@@ -165,29 +140,33 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       {/* Brand */}
-      <div className="px-4 py-4">
-        <NavLink to="/" onClick={onNavigate} className="flex items-center gap-2.5">
-          <img src={logoUrl} alt="SAEquip" className="h-9 w-auto shrink-0" />
-          <span className="text-body font-semibold text-sidebar-foreground">SAEquip Admin</span>
+      <div className="px-4 py-5">
+        <NavLink to="/" onClick={onNavigate} className="flex items-center gap-3">
+          <img src={logoUrl} alt="SAEquip" className="h-14 w-auto shrink-0" />
+          <span className="text-h3 font-semibold leading-tight text-sidebar-foreground">
+            SAEquip
+            <br />
+            Admin
+          </span>
         </NavLink>
       </div>
 
       {/* Nav */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      <div className="flex-1 overflow-y-auto px-3 py-3">
         <NavItems onNavigate={onNavigate} />
       </div>
 
       {/* Account */}
-      <div className={cn("border-t px-3 py-3", SIDEBAR_BORDER)}>
+      <div className={cn("border-t px-3 py-4", SIDEBAR_BORDER)}>
         <div className="flex items-center gap-2.5">
           <span
             aria-hidden="true"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-body font-semibold text-accent-foreground"
           >
             {initialsFrom(user?.email)}
           </span>
           <span
-            className="min-w-0 flex-1 truncate text-small text-sidebar-muted"
+            className="min-w-0 flex-1 truncate text-body text-sidebar-muted"
             title={user?.email ?? undefined}
           >
             {user?.email}
@@ -197,12 +176,12 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             title="Sign out"
             aria-label="Sign out"
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sidebar-subtle",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-subtle",
               "transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground outline-none",
               "focus-visible:ring-[3px] focus-visible:ring-ring/50",
             )}
           >
-            <LogOut size={16} strokeWidth={2} />
+            <LogOut size={18} strokeWidth={2} />
           </button>
         </div>
       </div>
@@ -219,7 +198,8 @@ export function Layout() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden w-64 border-r lg:block",
+          "fixed inset-y-0 left-0 z-30 hidden border-r lg:block",
+          SIDEBAR_W,
           SIDEBAR,
           SIDEBAR_BORDER,
         )}
@@ -236,7 +216,7 @@ export function Layout() {
         )}
       >
         <NavLink to="/" className="inline-flex items-center gap-2">
-          <img src={logoUrl} alt="SAEquip" className="h-8 w-auto" />
+          <img src={logoUrl} alt="SAEquip" className="h-10 w-auto" />
           <span className="text-body font-semibold text-sidebar-foreground">SAEquip Admin</span>
         </NavLink>
         <button
@@ -266,7 +246,7 @@ export function Layout() {
       )}
 
       {/* Main content */}
-      <main className="lg:pl-64">
+      <main className={MAIN_OFFSET}>
         <div className="mx-auto max-w-6xl px-5 py-6 lg:px-8">
           <Outlet />
         </div>
