@@ -6,7 +6,7 @@ import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
-import { publicImageUrl, signedFileUrl } from "../services/storage.js";
+import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
 import { sendQuoteNotification } from "../services/email.js";
 
 /**
@@ -122,6 +122,7 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
         specRows: { orderBy: { sortOrder: "asc" } },
         textItems: { orderBy: { sortOrder: "asc" } },
         downloads: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
+        glbAsset: true,
       },
     });
     console.timeEnd("[public/content] db");
@@ -171,6 +172,7 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       benefits: full.textItems.filter((t) => t.kind === "BENEFIT").map((t) => t.text),
       applications: full.textItems.filter((t) => t.kind === "APPLICATION").map((t) => t.text),
       downloads,
+      model3dUrl: full.glbAsset ? publicModelUrl(full.glbAsset.storagePath) : null,
     });
     console.log(`[public/content] ${key}=${value} total ${Date.now() - startedAt}ms`);
   } catch (err) {

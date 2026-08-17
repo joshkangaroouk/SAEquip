@@ -8,7 +8,7 @@ import { Badge, Card, Toggle, toast } from "../components/ui";
  * preview below is a byte-accurate match for what actually renders on Duda.
  */
 const WIDGET_CSS = `
-.saeh-root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;line-height:1.5;box-sizing:border-box}
+.saeh-root{font-family:inherit;color:#1a1a1a;line-height:1.5;box-sizing:border-box}
 .saeh-root *{box-sizing:border-box}
 .saeh-section{margin:22px 0}
 .saeh-section:first-child{margin-top:0}
@@ -16,25 +16,28 @@ const WIDGET_CSS = `
 .saeh-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}
 .saeh-logos{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
 .saeh-logos img{max-height:56px;max-width:150px;object-fit:contain;display:block}
-.saeh-table{width:100%;border-collapse:collapse;font-size:14px}
+.saeh-table{width:100%;border-collapse:collapse;font-size:18px;font-weight:400;font-style:normal}
 .saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}
 .saeh-table tr:nth-child(even){background:#fafafa}
 .saeh-table td.saeh-label{font-weight:600;width:40%;color:#333}
 .saeh-list{list-style:none;padding:0;margin:0}
-.saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:14px}
+.saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:18px;font-weight:400;font-style:normal}
 .saeh-check li:before{content:'\\2713';position:absolute;left:0;top:6px;color:#111;background:#ffd200;border-radius:50%;width:17px;height:17px;font-size:11px;line-height:17px;text-align:center;font-weight:700}
 .saeh-apps li:before{content:'';position:absolute;left:7px;top:12px;width:6px;height:6px;background:#111;border-radius:50%}
 .saeh-dl{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #ececec}
 .saeh-dl:last-child{border-bottom:0}
-.saeh-dl-title{flex:1 1 auto;font-size:14px;font-weight:500;min-width:140px}
-.saeh-btn{display:inline-block;background:#111;color:#fff;border:none;border-radius:5px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;line-height:1.2}
+.saeh-dl-title{flex:1 1 auto;font-size:18px;font-weight:400;font-style:normal;min-width:140px}
+.saeh-btn{display:inline-block;font-family:inherit;background:#111;color:#fff;border:none;border-radius:5px;padding:9px 18px;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;text-decoration:none;line-height:1.2}
 .saeh-btn:hover{background:#333}
 .saeh-form{flex-basis:100%;display:none;flex-wrap:wrap;gap:8px;margin-top:10px;padding:14px;background:#f7f7f7;border-radius:8px}
 .saeh-form.saeh-open{display:flex}
-.saeh-in{flex:1 1 180px;padding:9px;border:1px solid #ccc;border-radius:5px;font-size:14px}
-.saeh-msg{flex-basis:100%;font-size:13px;margin-top:2px}
+.saeh-in{flex:1 1 180px;font-family:inherit;padding:9px;border:1px solid #ccc;border-radius:5px;font-size:18px;font-weight:400;font-style:normal}
+.saeh-msg{flex-basis:100%;font-size:18px;font-weight:400;font-style:normal;margin-top:2px}
 .saeh-ok{color:#137333}
 .saeh-err{color:#c5221f}
+.saeh-3d-cta{border:1px solid #ececec;border-radius:10px;padding:32px 20px;text-align:center;background:linear-gradient(180deg,#fafafa,#f4f4f5)}
+.saeh-3d-icon{width:32px;height:32px;color:#111;display:block;margin:0 auto 12px}
+.saeh-3d-cta-title{font-size:16px;font-weight:700;color:#111;margin:0 0 16px}
 `;
 
 /** Small labelled-rectangle data-URI so logo previews render without real image assets. */
@@ -144,6 +147,26 @@ function ListPreview({ title, items, checklist }: { title: string; items: string
   );
 }
 
+/**
+ * Static mock of the CTA — clicking "View 3D Mode" on the live page opens a
+ * full-screen modal (40px margin, click-off or ✕ to close, spin/reset
+ * controls at the bottom). Not worth wiring a real modal + model-viewer +
+ * .glb into a docs preview, so this just shows what visitors see before they
+ * click. Renders nothing at all on the live page if no model is uploaded.
+ */
+function Model3DPreview() {
+  return (
+    <div className="saeh-section saeh-3d-cta">
+      <svg className="saeh-3d-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 2.5 21 7v10l-9 4.5L3 17V7z" />
+        <path d="M3 7l9 4.5L21 7M12 11.5V21" />
+      </svg>
+      <div className="saeh-3d-cta-title">View the product in 3D view!</div>
+      <span className="saeh-btn">View 3D Mode</span>
+    </div>
+  );
+}
+
 function DownloadsPreview() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [sentId, setSentId] = useState<string | null>(null);
@@ -217,6 +240,13 @@ export default function Widgets() {
       preview: <LogoPreview labels={DUMMY.certLogos} />,
     },
     {
+      key: "3d-viewer",
+      name: "3D Model Viewer",
+      description: "A CTA card that opens a full-screen 3D viewer modal (rotate/zoom, AR, spin toggle, reset). Renders nothing if the product has no model uploaded.",
+      section: "3d-viewer",
+      preview: <Model3DPreview />,
+    },
+    {
       key: "specs",
       name: "Technical Specs",
       description: "The product's spec table (label/value rows).",
@@ -256,6 +286,7 @@ export default function Widgets() {
         <>
           <LogoPreview labels={DUMMY.certLogos} />
           <LogoPreview labels={DUMMY.saLogos} />
+          <Model3DPreview />
           <SpecsPreview />
           <ListPreview title="Key Benefits" items={DUMMY.benefits} checklist />
           <ListPreview title="Applications" items={DUMMY.applications} checklist />

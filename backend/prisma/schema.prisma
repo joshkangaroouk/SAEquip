@@ -38,6 +38,12 @@ model HubProduct {
   specRows  SpecRow[]
   textItems ProductTextItem[]
   downloads Download[]
+
+  /// The product's interactive 3D model (.glb), if any. Per-product, unlike the
+  /// shared Logo catalog — one model belongs to exactly one product. Public and
+  /// ungated: the live widget's <model-viewer> loads it directly by URL.
+  glbAssetId String?
+  glbAsset   MediaAsset? @relation("HubProductGlbAsset", fields: [glbAssetId], references: [id])
 }
 
 /// An uploaded asset stored in the Supabase Storage bucket.
@@ -47,13 +53,14 @@ model MediaAsset {
   storagePath String   @unique // path/key in the Supabase Storage bucket
   mimeType    String
   sizeBytes   Int
-  kind        String // "image" | "file", derived from mimeType
+  kind        String // "image" | "file" | "model", derived from mimeType/extension
   alt         String?
   uploadedBy  String?
   createdAt   DateTime @default(now())
 
   logos     Logo[]
   downloads Download[]
+  glbFor    HubProduct[] @relation("HubProductGlbAsset")
 }
 
 /// Global logo catalog entry (shared across all products).

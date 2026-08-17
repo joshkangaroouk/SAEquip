@@ -23,11 +23,11 @@ export interface MediaAsset {
   storagePath: string;
   mimeType: string;
   sizeBytes: number;
-  kind: string; // "image" | "file"
+  kind: string; // "image" | "file" | "model"
   alt: string | null;
   uploadedBy: string | null;
   createdAt: string;
-  url: string; // public (image) or short-lived signed (file)
+  url: string; // public (image/model) or short-lived signed (file)
   usage: number;
 }
 
@@ -159,6 +159,13 @@ export interface DownloadItem {
   leadCount: number;
 }
 
+/** A product's attached 3D model (.glb), or null if none. */
+export interface HubModel3D {
+  mediaAssetId: string;
+  filename: string;
+  url: string;
+}
+
 export interface HubCustomPayload {
   hubProductId: string;
   dudaProductId: string;
@@ -169,6 +176,7 @@ export interface HubCustomPayload {
   benefits: HubTextItem[];
   applications: HubTextItem[];
   downloads: HubDownload[];
+  model3d: HubModel3D | null;
 }
 
 // --- Quote requests (public basket-page widget submissions) ---

@@ -18,8 +18,8 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 
 - **Monorepo**: npm workspaces (`backend`, `frontend`), root `npm run dev` runs both concurrently.
 - **Backend**: Node + TypeScript (ESM, `type: module`) + Express + Prisma. Zod for validation. `express-rate-limit` on public routes. `resend` for optional transactional email.
-- **Frontend**: Vite + React 18 + TypeScript + Tailwind. `react-router-dom` v7. `@dnd-kit` (core/sortable/utilities) for drag-reorder. `react-dropzone` for uploads. `sonner` for toasts. `dompurify` for rendering trusted-but-HTML content (specs/descriptions). Font: Montserrat (`@fontsource/montserrat`) — note: an earlier ClashGrotesk design pass was later reverted back to a standard rounded-corners look with this font; don't reintroduce ClashGrotesk assumptions without checking current `index.css`/`tailwind.config.js`.
-- **Database/Auth/Storage**: Supabase — Postgres (via Prisma, pooled `DATABASE_URL` + direct `DIRECT_URL` for migrations), Auth (email+password, public signup **disabled**, `ALLOWED_EMAIL_DOMAINS` allowlist, backend verifies JWTs via `supabase.auth.getUser`), Storage (two buckets: `product-media` public for logos/images, `product-files` private for gated download files, served via short-lived signed URLs).
+- **Frontend**: Vite + React 18 + TypeScript + Tailwind. `react-router-dom` v7. `@dnd-kit` (core/sortable/utilities) for drag-reorder. `react-dropzone` for uploads. `sonner` for toasts. `dompurify` for rendering trusted-but-HTML content (specs/descriptions). Font: **IBM Plex Sans** (`@fontsource/ibm-plex-sans`, weights 400/500/600, wired in `main.tsx`) with standard rounded corners — this project went through a dark/sharp/ClashGrotesk design pass that was later fully reverted; don't assume that look, or Montserrat, without checking current `index.css`/`tailwind.config.js`/`main.tsx` first, since the visual design has changed direction more than once.
+- **Database/Auth/Storage**: Supabase — Postgres (via Prisma, pooled `DATABASE_URL` + direct `DIRECT_URL` for migrations), Auth (email+password, public signup **disabled**, `ALLOWED_EMAIL_DOMAINS` allowlist, backend verifies JWTs via `supabase.auth.getUser`), Storage (three buckets: `product-media` public for logos/images, `product-files` private for gated download files served via short-lived signed URLs, `product-models` public for `.glb` 3D models — see the 3D Model Viewer section below).
 - **Hosting**: Both `backend` and `frontend` deployed on **Railway** (see gotchas below).
 - **External APIs**: Duda REST API (HTTP Basic auth), Resend (optional, email notifications).
 
@@ -32,7 +32,8 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 - `SpecRow` — ordered label/value technical spec rows.
 - `ProductTextItem` — ordered text items, `kind` `BENEFIT` or `APPLICATION`.
 - `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` (default) withholds the file URL until a visitor submits a lead form; `Lead` rows capture name/email/company per download.
-- `MediaAsset` — the shared "media centre" library backing both `Logo` and `Download`.
+- `MediaAsset` — the shared "media centre" library backing `Logo`, `Download`, and a product's 3D model. `kind` is `"image" | "file" | "model"`.
+- `HubProduct.glbAssetId` — a product's **interactive 3D model** (`.glb`), one per product (not a shared catalog like Logos). See "3D Model Viewer" below.
 - `CompatibleLink` — schema exists, **no editor built**, feature parked.
 - `QuoteRequest` + `QuoteRequestItem` — see Quote Requests section below.
 
@@ -50,6 +51,16 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 - **Full embed** (legacy/simple): `<div id="saequip-product-hub"></div>` — renders every section.
 - **Section-scoped embeds** (used in production, so sections can be placed independently anywhere on the Duda product template): `<div class="saequip-hub" data-section="sa-logos"></div>`, repeated per section (`sa-logos | cert-logos | specs | benefits | applications | downloads`). All mounts on a page share **one** memoized fetch per slug regardless of how many section-embeds/script copies exist. Renders inline (no iframe), so each mount auto-sizes — but note in Duda's **HTML/Embed element** you still need the **"auto height" toggle** enabled or Duda's own container clips it.
 - Vanilla JS, no framework, fails silently on any error (never breaks the host page). Gated downloads render an inline lead-capture form (name/email/company + honeypot) that posts to `/public/downloads/:id/lead` and returns a short-TTL signed URL on success.
+
+## 3D Model Viewer
+
+Each product may have one interactive `.glb` 3D model, uploaded per-product on the product editor (a `Model3DSection` in the unified save flow — see below), attached via `HubProduct.glbAssetId` → `MediaAsset` (kind `"model"`).
+
+- **Storage**: `product-models` bucket, PUBLIC (unlike gated downloads, a 3D model is never gated — the live widget needs to load it unauthenticated). `backend/src/routes/media.ts` classifies an upload as kind `"model"` by its **`.glb` file extension**, not mimetype — browsers report GLB inconsistently (often `application/octet-stream`), so extension is the only reliable signal. Models get a higher upload size ceiling (150MB vs. 25MB for images/files) since textured GLBs can be large.
+- **Admin write path**: `PUT /api/products/:id/model3d` body `{ mediaAssetId: string | null }` — validates the asset is kind `"model"`, sets/clears `HubProduct.glbAssetId`. Null clears it. Never touches the underlying `MediaAsset` (stays in the Media Centre, same pattern as Logos/Downloads). Included in `GET /api/products/:id/custom` as `model3d: {mediaAssetId, filename, url} | null`.
+- **Media Centre delete-guard**: `media.ts`'s usage/reference checks also treat a `MediaAsset` referenced by `HubProduct.glbAssetId` as in-use (409 on delete), alongside Logo/Download.
+- **Editor integration**: `model3d` is a full section in the unified save flow (`SectionKey`, `EditorSnapshot.model3d: Model3DDraft`, `project()` in `normalize.ts`) — **not** an immediate-apply pattern. Uploading/picking a file via `MediaPicker` (extended to accept `kind="model"`) stages the id into the draft; the actual PUT only fires on Save, like every other section. `Model3DSection.tsx` renders a live `<model-viewer>` preview (`Model3DPreview.tsx`, lazy-loads the `@google/model-viewer` web component from jsDelivr) so staff can confirm the right file was uploaded before saving.
+- **Public rendering**: `GET /public/products/content` includes `model3dUrl: string | null` (a plain public URL — no signing needed, unlike gated downloads). The widget's `3d-viewer` section (`ALL_SECTIONS`/`VALID` in `widget.js`) lazy-loads the same `model-viewer` script only when a mount actually needs it, and renders a **generic, de-branded** viewer (rotate/zoom, auto-spin toggle, AR button, reset view) — deliberately stripped of the bespoke per-model hotspot callouts/exact camera framing from the one-off Claude-generated `lev-3d-viewer.html` reference snippet this feature was built from, since those numbers (exact hotspot 3D coordinates, body bounding box) are measurements unique to one specific model and don't generalize to an arbitrary future GLB upload. `model-viewer`'s own default auto-framing is used instead of custom camera math.
 
 ## Quote Requests / basket flow (separate from product-content widgets)
 
@@ -95,7 +106,7 @@ See `backend/.env.example` and `frontend/.env.example` for the full annotated li
 
 ## The product editor (unified save)
 
-`frontend/src/pages/ProductDetail.tsx` is a full two-way editor: title, SKU, type, status, stock, price, SEO, description, images, plus all Hub content. `frontend/src/components/product/` holds the machinery:
+`frontend/src/pages/ProductDetail.tsx` is a full two-way editor: title, SKU, type, status, stock, price, SEO, description, images, the 3D model, plus all other Hub content. `frontend/src/components/product/` holds the machinery:
 
 - **Options & variations**: `OptionsSection` handles per-product attach/detach and choice selection (safe — can't affect another product); `VariationsSection` annotates the generated rows and **locks while Options are dirty**, because option ids regenerate on save so anything typed first would target dead ids. `VariationCountMeter` shows current → projected against `max_variations_per_product` and blocks over it client-side. Catalog creation is kept out of the unified save (`POST /ecommerce/options` isn't idempotent — a retried save would duplicate options and eat the 20-slot cap).
 - **`useProductEditor.ts`** owns two copies of one `EditorSnapshot` — `baseline` (last server-confirmed truth) and `draft` — loaded in one `Promise.all`. Every section is a controlled component; there are **no per-section Save buttons**, just `ProductSaveBar`.

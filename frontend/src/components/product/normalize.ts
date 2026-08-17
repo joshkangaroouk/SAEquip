@@ -1,4 +1,5 @@
 import type {
+  HubModel3D,
   HubSpecRow,
   HubTextItem,
   ProductDetail,
@@ -9,6 +10,7 @@ import type {
   ErrorMap,
   ImageDraft,
   LogoKind,
+  Model3DDraft,
   OptionRefDraft,
   NativeForm,
   SectionKey,
@@ -82,6 +84,11 @@ export const itemsFrom = (items: HubTextItem[]): TextItemDraft[] =>
 export const activeLogoIds = (entries: ProductLogoEntry[]): string[] =>
   entries.filter((e) => e.active).map((e) => e.id);
 
+export const model3dFrom = (m: HubModel3D | null): Model3DDraft =>
+  m
+    ? { mediaAssetId: m.mediaAssetId, filename: m.filename, url: m.url }
+    : { mediaAssetId: null, filename: null, url: null };
+
 /**
  * Strips cosmetic keys before comparison.
  *
@@ -120,6 +127,9 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
         SA_LOGO: [...snapshot.logos.SA_LOGO].sort(),
         CERT_LOGO: [...snapshot.logos.CERT_LOGO].sort(),
       };
+    case "model3d":
+      // filename/url are cosmetic (carried for the preview) — only the id matters.
+      return { mediaAssetId: snapshot.model3d.mediaAssetId };
   }
 }
 

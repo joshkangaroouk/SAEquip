@@ -7,12 +7,18 @@ import type { MediaAsset } from "../lib/types";
  * Reusable modal to pick an existing MediaAsset (filtered by kind) or upload a
  * new one. On selection it calls onPick with the asset and the caller closes it.
  */
+const KIND_LABEL: Record<"image" | "file" | "model", string> = {
+  image: "an image",
+  file: "a file",
+  model: "a 3D model",
+};
+
 export function MediaPicker({
   kind = "image",
   onPick,
   onClose,
 }: {
-  kind?: "image" | "file";
+  kind?: "image" | "file" | "model";
   onPick: (asset: MediaAsset) => void;
   onClose: () => void;
 }) {
@@ -66,9 +72,7 @@ export function MediaPicker({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-sm font-semibold text-text">
-            Choose {kind === "image" ? "an image" : "a file"}
-          </h2>
+          <h2 className="text-sm font-semibold text-text">Choose {KIND_LABEL[kind]}</h2>
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-text"
@@ -82,6 +86,7 @@ export function MediaPicker({
             <input
               ref={fileRef}
               type="file"
+              accept={kind === "model" ? ".glb" : kind === "image" ? "image/*" : undefined}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
             />

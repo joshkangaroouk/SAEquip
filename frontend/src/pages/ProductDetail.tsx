@@ -7,6 +7,7 @@ import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import { DangerZoneSection } from "../components/product/DangerZoneSection";
 import { DescriptionSection } from "../components/product/DescriptionSection";
 import { ImagesSection } from "../components/product/ImagesSection";
+import { Model3DSection } from "../components/product/Model3DSection";
 import { OptionsSection } from "../components/product/OptionsSection";
 import { VariationsSection } from "../components/product/VariationsSection";
 import { ProductDetailsSection } from "../components/product/ProductDetailsSection";
@@ -191,6 +192,13 @@ export default function ProductDetail() {
                 dirty={dirty.logos}
               />
             </div>
+
+            <Model3DSection
+              value={draft.model3d}
+              onChange={(next) => setSection("model3d", next)}
+              dirty={dirty.model3d}
+              error={saveErrors.model3d}
+            />
 
             <SpecTableEditor
               rows={draft.specs}

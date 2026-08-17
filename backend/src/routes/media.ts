@@ -6,7 +6,8 @@ import { uploadObject, removeObject, resolveUrl } from "../services/storage.js";
 
 export const mediaRouter = Router();
 
-const MAX_BYTES = 25 * 1024 * 1024; // 25MB
+const MAX_BYTES_DEFAULT = 25 * 1024 * 1024; // 25MB — images/files
+const MAX_BYTES_MODEL = 150 * 1024 * 1024; // 150MB — .glb models can carry large textures
 
 const IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
 const FILE_MIME = new Set([
@@ -16,15 +17,19 @@ const FILE_MIME = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
   "application/zip",
 ]);
+const MODEL_EXT = /\.glb$/i;
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES } });
+// multer's own cap is set to the largest kind's limit (models); the smaller
+// 25MB ceiling for images/files is enforced explicitly after classification,
+// once we know which kind was actually uploaded.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES_MODEL } });
 
 /** Wrap multer so its errors (e.g. file too large) become clean 400s. */
 function uploadSingle(req: Request, res: Response, next: NextFunction) {
   upload.single("file")(req, res, (err: unknown) => {
     if (err) {
       if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
-        res.status(400).json({ error: "file_too_large", detail: "Max upload size is 25MB" });
+        res.status(400).json({ error: "file_too_large", detail: "Max upload size is 25MB (150MB for 3D models)" });
         return;
       }
       res.status(400).json({ error: "upload_error", detail: err instanceof Error ? err.message : String(err) });
@@ -34,25 +39,34 @@ function uploadSingle(req: Request, res: Response, next: NextFunction) {
   });
 }
 
-function kindForMime(mime: string): "image" | "file" | null {
-  if (IMAGE_MIME.has(mime)) return "image";
-  if (FILE_MIME.has(mime)) return "file";
+/**
+ * GLB files have no reliable mimetype across browsers/OSes (commonly reported
+ * as application/octet-stream), so a model is identified by its .glb
+ * extension rather than mimetype sniffing.
+ */
+function kindForUpload(mimetype: string, filename: string): "image" | "file" | "model" | null {
+  if (IMAGE_MIME.has(mimetype)) return "image";
+  if (MODEL_EXT.test(filename)) return "model";
+  if (FILE_MIME.has(mimetype)) return "file";
   return null;
 }
 
-// A MediaAsset is "in use" if referenced by a catalog Logo OR a Download.
+// A MediaAsset is "in use" if referenced by a catalog Logo, a Download, or a
+// product's 3D model attachment.
 async function usageCount(mediaAssetId: string): Promise<number> {
-  const [logos, downloads] = await Promise.all([
+  const [logos, downloads, models] = await Promise.all([
     prisma.logo.count({ where: { mediaAssetId } }),
     prisma.download.count({ where: { mediaAssetId } }),
+    prisma.hubProduct.count({ where: { glbAssetId: mediaAssetId } }),
   ]);
-  return logos + downloads;
+  return logos + downloads + models;
 }
 
 async function mediaReferences(mediaAssetId: string) {
-  const [logos, downloads] = await Promise.all([
+  const [logos, downloads, models] = await Promise.all([
     prisma.logo.findMany({ where: { mediaAssetId }, select: { id: true, kind: true, label: true } }),
     prisma.download.findMany({ where: { mediaAssetId }, include: { hubProduct: true } }),
+    prisma.hubProduct.findMany({ where: { glbAssetId: mediaAssetId }, select: { id: true, name: true, sku: true } }),
   ]);
   return [
     ...logos.map((l) => ({ type: "logo" as const, id: l.id, kind: l.kind, label: l.label })),
@@ -62,6 +76,12 @@ async function mediaReferences(mediaAssetId: string) {
       title: d.title,
       hubProductId: d.hubProductId,
       sku: d.hubProduct.sku,
+    })),
+    ...models.map((m) => ({
+      type: "model3d" as const,
+      hubProductId: m.id,
+      name: m.name,
+      sku: m.sku,
     })),
   ];
 }
@@ -78,9 +98,13 @@ mediaRouter.post("/media", uploadSingle, async (req, res, next) => {
       return;
     }
 
-    const kind = kindForMime(file.mimetype);
+    const kind = kindForUpload(file.mimetype, file.originalname || "");
     if (!kind) {
       res.status(400).json({ error: "unsupported_type", detail: `Disallowed mimetype: ${file.mimetype}` });
+      return;
+    }
+    if (kind !== "model" && file.size > MAX_BYTES_DEFAULT) {
+      res.status(400).json({ error: "file_too_large", detail: "Max upload size is 25MB" });
       return;
     }
 
@@ -110,13 +134,14 @@ mediaRouter.post("/media", uploadSingle, async (req, res, next) => {
 });
 
 /**
- * GET /api/media?kind=image|file
+ * GET /api/media?kind=image|file|model
  * Newest first, each with a resolved url and a usage count.
  */
 mediaRouter.get("/media", async (req, res, next) => {
   try {
     const kindParam = req.query.kind;
-    const where = kindParam === "image" || kindParam === "file" ? { kind: kindParam } : {};
+    const where =
+      kindParam === "image" || kindParam === "file" || kindParam === "model" ? { kind: kindParam } : {};
 
     const assets = await prisma.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" } });
     const result = await Promise.all(
@@ -169,7 +194,8 @@ mediaRouter.delete("/media/:id", async (req, res, next) => {
       return;
     }
 
-    await removeObject(asset.kind === "image" ? "image" : "file", asset.storagePath);
+    const bucketKind = asset.kind === "image" || asset.kind === "model" ? asset.kind : "file";
+    await removeObject(bucketKind, asset.storagePath);
     await prisma.mediaAsset.delete({ where: { id: asset.id } });
     res.status(204).send();
   } catch (err) {

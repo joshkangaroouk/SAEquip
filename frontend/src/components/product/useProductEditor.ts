@@ -3,6 +3,7 @@ import { apiJson } from "../../lib/api";
 import { toast } from "../ui";
 import type {
   HubCustomPayload,
+  HubModel3D,
   HubSpecRow,
   HubTextItem,
   ProductDetail,
@@ -15,6 +16,7 @@ import {
   isSectionDirty,
   itemsFrom,
   logoDiff,
+  model3dFrom,
   nativeFromProduct,
   optionsFrom,
   specsFrom,
@@ -44,6 +46,7 @@ const SECTION_KEYS: SectionKey[] = [
   "benefits",
   "applications",
   "logos",
+  "model3d",
 ];
 
 const emptyDirty: DirtyMap = {
@@ -55,6 +58,7 @@ const emptyDirty: DirtyMap = {
   benefits: false,
   applications: false,
   logos: false,
+  model3d: false,
 };
 
 /** One unit of work in a save, plus the sections it banks on success. */
@@ -115,6 +119,7 @@ export function useProductEditor(
         benefits: itemsFrom(custom.benefits),
         applications: itemsFrom(custom.applications),
         logos: { SA_LOGO: activeLogoIds(sa), CERT_LOGO: activeLogoIds(cert) },
+        model3d: model3dFrom(custom.model3d),
       };
 
       setContext({
@@ -415,6 +420,20 @@ export function useProductEditor(
           ]);
           setContext((c) => (c ? { ...c, logoCatalog: { SA_LOGO: sa, CERT_LOGO: cert } } : c));
           return { logos: { SA_LOGO: activeLogoIds(sa), CERT_LOGO: activeLogoIds(cert) } };
+        },
+      });
+    }
+
+    if (dirty.model3d) {
+      tasks.push({
+        keys: ["model3d"],
+        label: "3D model",
+        run: async () => {
+          const res = await apiJson<{ model3d: HubModel3D | null }>(
+            `/api/products/${productId}/model3d`,
+            { method: "PUT", body: JSON.stringify({ mediaAssetId: draft.model3d.mediaAssetId }) },
+          );
+          return { model3d: model3dFrom(res.model3d) };
         },
       });
     }

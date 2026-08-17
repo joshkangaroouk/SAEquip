@@ -146,6 +146,9 @@ const textItemSchema = z
   .strict();
 const itemsBody = z.object({ items: z.array(textItemSchema).max(100, "max 100 items") }).strict();
 
+/** Attach/replace/clear the product's 3D model. Null clears it. */
+const model3dBody = z.object({ mediaAssetId: z.string().min(1).nullable() }).strict();
+
 export const dudaRouter = Router();
 
 /** "USD 400.0" from the first price, or null when there are none. */
@@ -534,6 +537,7 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
         specRows: { orderBy: { sortOrder: "asc" } },
         textItems: { orderBy: { sortOrder: "asc" } },
         downloads: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
+        glbAsset: true,
       },
     });
 
@@ -572,6 +576,14 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       })),
     );
 
+    const model3d = full.glbAsset
+      ? {
+          mediaAssetId: full.glbAsset.id,
+          filename: full.glbAsset.filename,
+          url: await resolveUrl(full.glbAsset.kind, full.glbAsset.storagePath),
+        }
+      : null;
+
     res.json({
       hubProductId: full.id,
       dudaProductId: full.dudaProductId,
@@ -585,7 +597,55 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       benefits: full.textItems.filter((t) => t.kind === TextItemKind.BENEFIT),
       applications: full.textItems.filter((t) => t.kind === TextItemKind.APPLICATION),
       downloads,
+      model3d,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /api/products/:id/model3d
+ * Attaches, replaces, or clears (mediaAssetId: null) the product's 3D model.
+ * mediaAssetId must reference a MediaAsset of kind "model". Never touches the
+ * underlying MediaAsset — only the HubProduct's pointer to it.
+ */
+dudaRouter.put("/products/:id/model3d", async (req, res, next) => {
+  const parsed = model3dBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const { mediaAssetId } = parsed.data;
+    if (mediaAssetId) {
+      const asset = await prisma.mediaAsset.findUnique({ where: { id: mediaAssetId } });
+      if (!asset || asset.kind !== "model") {
+        res.status(400).json({
+          error: "not_a_model",
+          detail: "mediaAssetId must reference a 3D model asset (.glb).",
+        });
+        return;
+      }
+    }
+
+    const hub = await ensureHubProduct(req.params.id);
+    const updated = await prisma.hubProduct.update({
+      where: { id: hub.id },
+      data: { glbAssetId: mediaAssetId },
+      include: { glbAsset: true },
+    });
+
+    const model3d = updated.glbAsset
+      ? {
+          mediaAssetId: updated.glbAsset.id,
+          filename: updated.glbAsset.filename,
+          url: await resolveUrl(updated.glbAsset.kind, updated.glbAsset.storagePath),
+        }
+      : null;
+
+    res.json({ model3d });
   } catch (err) {
     next(err);
   }

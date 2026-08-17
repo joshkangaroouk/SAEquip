@@ -4,7 +4,10 @@ import { supabase } from "../supabase.js";
 export const BUCKETS = {
   image: "product-media", // PUBLIC — logo/cert images, readable via public URL
   file: "product-files", // PRIVATE — download files, access only via signed URLs
+  model: "product-models", // PUBLIC — .glb 3D models; the live widget's <model-viewer> loads them unauthenticated
 } as const;
+
+type BucketKind = keyof typeof BUCKETS;
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
 
@@ -31,6 +34,7 @@ export async function ensureBuckets(): Promise<void> {
   const specs = [
     { id: BUCKETS.image, public: true },
     { id: BUCKETS.file, public: false },
+    { id: BUCKETS.model, public: true },
   ];
 
   for (const spec of specs) {
@@ -51,7 +55,7 @@ export async function ensureBuckets(): Promise<void> {
 
 /** Upload a buffer to the bucket for the given kind. Throws StorageError. */
 export async function uploadObject(
-  kind: "image" | "file",
+  kind: BucketKind,
   path: string,
   buffer: Buffer,
   contentType: string,
@@ -63,25 +67,34 @@ export async function uploadObject(
 }
 
 /** Remove an object from the bucket for the given kind. Throws StorageError. */
-export async function removeObject(kind: "image" | "file", path: string): Promise<void> {
+export async function removeObject(kind: BucketKind, path: string): Promise<void> {
   const { error } = await supabase.storage.from(BUCKETS[kind]).remove([path]);
   if (error) throw new StorageError(error.message);
 }
 
 /**
- * Resolve a usable URL for an asset: a public URL for images, a short-lived
- * signed URL for private files.
+ * Resolve a usable URL for an asset: a public URL for images/models, a
+ * short-lived signed URL for private files.
  */
 export async function resolveUrl(kind: string, storagePath: string): Promise<string> {
-  if (kind === "image") {
-    return publicImageUrl(storagePath);
-  }
+  if (kind === "image") return publicImageUrl(storagePath);
+  if (kind === "model") return publicModelUrl(storagePath);
   return signedFileUrl(storagePath, SIGNED_URL_TTL_SECONDS);
 }
 
-/** Public URL for an image in the public bucket. Constructed locally — no network. */
+/** Public URL for an object in a public bucket. Constructed locally — no network. */
+function publicUrlFor(kind: "image" | "model", storagePath: string): string {
+  return supabase.storage.from(BUCKETS[kind]).getPublicUrl(storagePath).data.publicUrl;
+}
+
+/** Public URL for an image in the public bucket. */
 export function publicImageUrl(storagePath: string): string {
-  return supabase.storage.from(BUCKETS.image).getPublicUrl(storagePath).data.publicUrl;
+  return publicUrlFor("image", storagePath);
+}
+
+/** Public URL for a 3D model in the public models bucket. */
+export function publicModelUrl(storagePath: string): string {
+  return publicUrlFor("model", storagePath);
 }
 
 /** Create a signed URL for a private file with a custom TTL (seconds). */

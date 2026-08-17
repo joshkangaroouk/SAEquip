@@ -9,7 +9,8 @@ export type SectionKey =
   | "specs"
   | "benefits"
   | "applications"
-  | "logos";
+  | "logos"
+  | "model3d";
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
   details: "Details",
@@ -20,6 +21,7 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   benefits: "Key Benefits",
   applications: "Applications",
   logos: "Logos",
+  model3d: "3D Model",
 };
 
 export type LogoKind = "SA_LOGO" | "CERT_LOGO";
@@ -97,6 +99,18 @@ export interface VariationDraft {
 /** Active catalog logo ids per kind. */
 export type LogosDraft = Record<LogoKind, string[]>;
 
+/**
+ * The product's 3D model attachment. `filename`/`url` are carried alongside
+ * `mediaAssetId` so the section can render itself right after an upload,
+ * without waiting on a reload — only `mediaAssetId` participates in dirty
+ * comparison (see normalize.ts `project()`).
+ */
+export interface Model3DDraft {
+  mediaAssetId: string | null;
+  filename: string | null;
+  url: string | null;
+}
+
 /** Everything editable on the product page, in one comparable shape. */
 export interface EditorSnapshot {
   details: NativeForm;
@@ -107,6 +121,7 @@ export interface EditorSnapshot {
   benefits: TextItemDraft[];
   applications: TextItemDraft[];
   logos: LogosDraft;
+  model3d: Model3DDraft;
 }
 
 /** A store-level option in the shared catalog, with its usage across products. */
