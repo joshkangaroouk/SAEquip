@@ -9,6 +9,7 @@ import { optionsRouter } from "./routes/options.js";
 import { categoriesRouter } from "./routes/categories.js";
 import { downloadsRouter } from "./routes/downloads.js";
 import { quotesRouter } from "./routes/quotes.js";
+import { websiteEditorRouter } from "./routes/websiteEditor.js";
 import { publicRouter, publicCors } from "./routes/public.js";
 import { DudaApiError } from "./services/duda.js";
 import { StorageError, ensureBuckets } from "./services/storage.js";
@@ -42,6 +43,7 @@ api.use(optionsRouter);
 api.use(categoriesRouter);
 api.use(downloadsRouter);
 api.use(quotesRouter);
+api.use(websiteEditorRouter);
 app.use("/api", requireAuth, api);
 
 /** Prisma known-request errors carry a string `code` like "P2002". */

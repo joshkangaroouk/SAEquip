@@ -35,6 +35,7 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 - `MediaAsset` — the shared "media centre" library backing `Logo`, `Download`, and a product's 3D model. `kind` is `"image" | "file" | "model"`.
 - `HubProduct.glbAssetId` — a product's **interactive 3D model** (`.glb`), one per product (not a shared catalog like Logos). See "3D Model Viewer" below.
 - `CompatibleLink` — schema exists, **no editor built**, feature parked.
+- `DudaEditorAccount` + `DudaEditorSiteAccess` + `DudaSsoAudit` — staff→Duda-account mapping, the per-site SSO allowlist, and an append-only audit of editor-access requests. See "Website Editor" below.
 - `QuoteRequest` + `QuoteRequestItem` — see Quote Requests section below.
 
 ## Product identity / widget-to-backend detection method (confirmed)
@@ -96,6 +97,39 @@ Run `npm run duda:spike-options -- --confirm` to re-derive any of this; `npm run
 - `quantity` is **write-only** — accepted on PATCH, never returned on read.
 - **`GET /products` clamps `limit` to 200** regardless of what you ask for, so paging is required now `max_products` is 1000 (`duda.listAllProducts()`).
 - Store limits live at `GET /ecommerce/store` → currently `max_products:1000, max_variations_per_product:300, max_options:20, max_choices_per_option:50`. **`max_options:20` is per-CATALOG and did NOT rise with the plan upgrade — it's the binding constraint across ~86 products.**
+
+## Website Editor — Duda editor SSO (security-sensitive)
+
+The `/website` page (top of the sidebar) lets a staff member SSO straight into the Duda **editor** for the live site. An SSO link **is a bearer credential** — whoever holds the URL becomes that Duda account — so the design is built around that:
+
+- **Only client accounts, never the agency account.** The API credentials belong to the agency-level partner account (`sharon@kangaroouk.com`), whose dashboard spans **~871 sites** across all Kangaroo clients. SSO'ing as that account would be a catastrophic blast radius. Each staff member gets their own Duda **customer** account granted access to one site.
+- **The DB mapping IS the authorization.** `requireAuth` only proves "valid Supabase token + allowed email domain", and `ALLOWED_EMAIL_DOMAINS` spans both kangaroouk.com and saequip.com — far too coarse to gate credential minting. `DudaEditorAccount` (staff→Duda account, keyed on Supabase `staffUserId`) + `DudaEditorSiteAccess` (per-user, per-site allowlist) decide access. No row → 403. Fail closed; never fall back to a shared account.
+- **Three things the client must never control**: `account_name` (derived server-side from the verified JWT), `target` (hardcoded `EDITOR` in `services/dudaSso.ts` — the API also accepts `RESET_SITE`/`RESET_BASIC`/`SWITCH_TEMPLATE`, so a client-supplied target would be a site-wipe vector), and the site (validated against that user's allowlist). The zod body schema is `.strict()`, so smuggled `accountName`/`target` keys are rejected outright, not ignored.
+- ⚠️ **Never `next(err)` a Duda error from the SSO route.** The shared error handler in `index.ts` echoes `DudaApiError.body.slice(0, 500)` to the caller and `console.error`s the whole object — and a Duda SSO response body contains a **live one-time login token**. `routes/websiteEditor.ts` catches `DudaApiError` locally and logs the status only. Same reason there is no url/token column on `DudaSsoAudit`.
+- **Rate limited per user, not per IP** — `app.set("trust proxy")` is never called, so behind Railway's proxy an IP-keyed limiter would bucket every staff member together. The limiter uses `keyGenerator: req => req.user?.id`.
+- **Provisioning is CLI-only, deliberately.** Creating Duda accounts and granting permissions are the privilege-escalating operations; as an HTTP route, any allowed-domain session could self-provision. Use `npm run duda:editor-provision --workspace=backend -- --email <staff> --supabase-user-id <uuid> --confirm` (also `--check` read-only, and `--revoke`). `GRANTABLE_SITES` in that script hard-limits which sites can be granted — `8a8f03b5` is deliberately absent.
+
+### Verified account-scoped Duda paths (probed live, `npm run duda:probe-sso`)
+
+| Path | Status |
+|---|---|
+| `GET /accounts/{name}` | ✅ works |
+| `GET /accounts/sso/{name}/link?target=EDITOR&site_name={site}` | ✅ works — returns `{url}` |
+| `GET\|POST\|PUT /accounts/{name}/sites/{site}/permissions` | ✅ works |
+| `DELETE /accounts/{name}/sites/{site}` | revoke |
+| `GET /sites/multiscreen/{site}` | ✅ works — site metadata for the page |
+| `GET /accounts/{name}/sites` | ❌ **404 `RESTEASY003210`** — no such route; ask per-site instead |
+
+### Permission set (least privilege)
+
+Granted: `EDIT`, `ADD_FLEX`, `LIMITED_EDITING`, `PUBLISH`, `REPUBLISH`, `BLOG`, `SEO`, `SEO_OVERVIEW`, `STATS_TAB`, `SITE_COMMENTS`, `CONTENT_LIBRARY`.
+
+Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a second source of truth would hit the no-optimistic-concurrency stale-overwrite problem), **`DEV_MODE`** (arbitrary JS injection into a live page; also how the widget embeds are managed, so Kangaroo keeps it), **`RESET`** (wipes the site), `CUSTOM_DOMAIN`, `BACKUPS`, `USE_APP`, `CLIENT_MANAGE_FREE_APPS`, `MANAGE_CONNECTED_DATA`, `EDIT_CONNECTED_DATA`, `CONTENT_LIBRARY_EXTERNAL_DATA_SYNC`, `INSITE`, `AI_ASSISTANT`. Duda requires `PUBLISH` to travel with `REPUBLISH` + `LIMITED_EDITING`; `update_site_permissions` is **full replacement**.
+
+### Two limits to remember
+
+- **The Duda session outlives the Hub session.** Once SSO'd, the user holds an independent Duda cookie; signing out of the Hub does not end it. This is why the permission set matters more than session hygiene.
+- **Offboarding is NOT automatic.** Deleting a Supabase user does *not* revoke Duda access — run `duda:editor-provision -- --email <staff> --revoke --confirm`, or you get orphaned editor access outliving the Hub account.
 
 ## Environment variables
 

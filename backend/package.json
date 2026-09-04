@@ -14,7 +14,9 @@
     "duda:test": "tsx src/scripts/dudaTest.ts",
     "duda:probe-customfields": "tsx src/scripts/dudaProbeCustomFields.ts",
     "duda:snapshot": "tsx src/scripts/dudaSnapshot.ts",
-    "duda:spike-options": "tsx src/scripts/dudaSpikeOptions.ts"
+    "duda:spike-options": "tsx src/scripts/dudaSpikeOptions.ts",
+    "duda:probe-sso": "tsx src/scripts/dudaProbeSso.ts",
+    "duda:editor-provision": "tsx src/scripts/dudaEditorProvision.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

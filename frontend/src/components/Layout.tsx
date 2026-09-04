@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   FolderTree,
+  Globe,
   Images,
   LayoutGrid,
   LogOut,
@@ -41,6 +42,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
+  { to: "/website", label: "Website Editor", icon: Globe },
   { to: "/", label: "Products", icon: Package, end: true },
   { to: "/categories", label: "Categories", icon: FolderTree },
   { to: "/options", label: "Product Options", icon: SlidersHorizontal },

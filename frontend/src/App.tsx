@@ -11,6 +11,7 @@ import Widgets from "./pages/Widgets";
 import Quotes from "./pages/Quotes";
 import Status from "./pages/Status";
 import UIShowcase from "./pages/UIShowcase";
+import WebsiteEditor from "./pages/WebsiteEditor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
+      { path: "/website", element: <WebsiteEditor /> },
       { path: "/", element: <Products /> },
       // Static segments outrank dynamic ones in v7's route ranking, so
       // /products/new wins over /products/:id regardless of declaration order.

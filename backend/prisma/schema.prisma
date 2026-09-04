@@ -175,3 +175,70 @@ model QuoteRequestItem {
   quantity       Int          @default(1)
   quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
 }
+
+/// Maps a Hub staff member (Supabase identity) to their own Duda CLIENT
+/// account, used to SSO them into the Duda site editor.
+///
+/// One account per person — never a shared account — so Duda's own site
+/// activity log attributes edits to a real individual, and revoking one
+/// person doesn't affect anyone else.
+///
+/// Rows are created ONLY by the provisioning script (`duda:editor-provision`),
+/// never by an HTTP route: creating Duda accounts and granting site
+/// permissions are privilege-escalating operations, so exposing them to an
+/// authenticated endpoint would let any allowed-domain session self-provision.
+model DudaEditorAccount {
+  id              String   @id @default(cuid())
+  /// Supabase auth user id. The SSO route resolves the Duda account from the
+  /// verified JWT via this column — the client never supplies an account name.
+  staffUserId     String   @unique
+  staffEmail      String
+  /// The account_name in Duda (the person's real email).
+  dudaAccountName String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  siteAccess DudaEditorSiteAccess[]
+}
+
+/// Per-user, per-site allowlist — this IS the authorization boundary for SSO.
+///
+/// A site is reachable only if it has an explicit row here, so any site in the
+/// Duda account that was never granted (e.g. the unpublished `8a8f03b5`
+/// rebuild) is unreachable by default rather than by omission of a check.
+model DudaEditorSiteAccess {
+  id                  String            @id @default(cuid())
+  dudaEditorAccountId String
+  /// Duda site_name, e.g. "099434f3".
+  siteName            String
+  /// Snapshot of the permission set granted in Duda at provisioning time, for
+  /// auditing. Duda remains the source of truth; this is a record of intent.
+  grantedPermissions  String[]
+  createdAt           DateTime          @default(now())
+  account             DudaEditorAccount @relation(fields: [dudaEditorAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([dudaEditorAccountId, siteName])
+}
+
+/// Append-only audit of every attempt to mint a Duda editor SSO link.
+///
+/// An SSO link is a bearer credential, so who requested editor access and
+/// when is security-relevant on its own. Identity is snapshotted (plain
+/// columns, no FK — Supabase owns identity) so rows stay self-describing after
+/// a mapping is revoked, the same rationale as the Lead model.
+///
+/// Deliberately has NO url/token column: the minted link must never be
+/// persisted, cached or logged anywhere.
+model DudaSsoAudit {
+  id              String   @id @default(cuid())
+  staffUserId     String
+  staffEmail      String
+  siteName        String
+  /// Null when the request was denied before an account was resolved.
+  dudaAccountName String?
+  /// "granted" | "denied_no_mapping" | "denied_site_not_granted" | "duda_error"
+  outcome         String
+  ip              String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+}

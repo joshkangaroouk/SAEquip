@@ -158,7 +158,20 @@ function authHeader(): string {
   return `Basic ${token}`;
 }
 
-async function dudaRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+/**
+ * Exported so account-scoped callers (services/dudaSso.ts) reuse this one
+ * Basic-auth helper instead of re-rolling it — the dev scripts in src/scripts
+ * each duplicated it, and that's the mistake not to repeat.
+ *
+ * `timeoutMs` is opt-in so existing call sites keep their current behaviour
+ * (no timeout) unchanged; only callers that need a bounded wait pass it.
+ */
+export async function dudaRequest<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  opts?: { timeoutMs?: number },
+): Promise<T> {
   const url = `${env.DUDA_API_BASE_URL}${path}`;
   const res = await fetch(url, {
     method,
@@ -168,6 +181,7 @@ async function dudaRequest<T>(method: string, path: string, body?: unknown): Pro
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: opts?.timeoutMs ? AbortSignal.timeout(opts.timeoutMs) : undefined,
   });
 
   if (!res.ok) {
