@@ -4,9 +4,8 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./App";
 import { AuthProvider } from "./auth/AuthContext";
 import { ConfirmProvider, Toaster } from "./components/ui";
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/500.css";
-import "@fontsource/ibm-plex-sans/600.css";
+// No font imports here: DIN 2014 comes from Adobe Fonts via the <link> in
+// index.html, since Adobe's licence forbids self-hosting the files.
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(

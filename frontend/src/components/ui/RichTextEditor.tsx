@@ -93,7 +93,15 @@ export function RichTextEditor({
       attributes: {
         class:
           "min-h-[10rem] max-h-[26rem] overflow-y-auto px-3 py-2.5 text-small leading-relaxed text-text focus:outline-none " +
-          "[&_p]:mb-2 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 " +
+          // ⚠ Paragraph spacing MUST mirror the CSS injected in Duda's Head
+          // HTML, scoped to the description element's wrapper class:
+          //     .productDescription p:not(:last-child) { margin-bottom: 16px }
+          // This is a WYSIWYG contract: the editor is only trustworthy if a
+          // paragraph break looks here exactly as it lands on the live product
+          // page. Absolute 16px (not 1em) on purpose — em would resolve to
+          // 18px on Duda and 16px here, i.e. guaranteed drift. If the Duda
+          // value changes, change it here and in RichHtml.tsx too.
+          "[&_p:not(:last-child)]:mb-[16px] [&_p]:mt-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 " +
           "[&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold " +
           "[&_h3]:mb-1.5 [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold " +
           "[&_h4]:mb-1.5 [&_h4]:mt-2 [&_h4]:text-sm [&_h4]:font-semibold " +

@@ -57,11 +57,16 @@ export default function ProductDetail() {
 
   const product = context?.product;
 
+  // ProductSaveBar is position:fixed, so it no longer reserves its own space.
+  // Reserve it here — but only while the bar is actually on screen (same
+  // condition the bar itself renders on), so a clean page has no dead gap.
+  const saveBarVisible = isDirty || Object.keys(saveErrors).length > 0;
+
   return (
     <>
       <UnsavedChangesModal blocker={blocker} onSave={save} dirtyLabels={dirtyLabels} />
 
-      <div className="pb-4">
+      <div className={saveBarVisible ? "pb-28" : "pb-4"}>
         <Link to="/" className="text-sm text-muted hover:text-text">
           ← Back to products
         </Link>

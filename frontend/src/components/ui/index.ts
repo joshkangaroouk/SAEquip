@@ -13,6 +13,7 @@ export { Toaster, toast } from "./Toast";
 export { FileDropzone, type FileDropzoneProps } from "./FileDropzone";
 export { SortableList, DragHandle, type DragHandleProps } from "./SortableList";
 export { EmptyState } from "./EmptyState";
+export { Highlight } from "./Highlight";
 export { FileIcon } from "./FileIcon";
 export { Spinner, Loader } from "./Spinner";
 export { PageHeader } from "./PageHeader";

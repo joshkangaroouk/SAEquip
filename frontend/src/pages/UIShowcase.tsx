@@ -66,10 +66,12 @@ export default function UIShowcase() {
           <h2 className="text-h2">Heading 2</h2>
           <h3 className="text-h3">Heading 3</h3>
           <p className="text-body">
-            Body text at 14px, weight 400 (Regular). IBM Plex Sans is the only typeface — only
-            Regular (400) and Semibold (600) are loaded — <span className="font-semibold">this span is semibold (600)</span>.
+            Body text at 16px, weight 400 (Regular). DIN 2014 is the only typeface, loaded from
+            Adobe Fonts — <span className="font-semibold">this span is semibold (600)</span>, and{" "}
+            <span className="font-bold">this one is bold (700)</span>. Note there is no 500, so{" "}
+            <span className="font-medium">font-medium</span> resolves to 400.
           </p>
-          <p className="text-small text-muted">Small / muted text at 15px.</p>
+          <p className="text-small text-muted">Small / muted text at 14px.</p>
         </Card>
       </section>
 

@@ -5,7 +5,9 @@
    radii, and soft focus rings instead of hard outlines.
    Brand yellow (#FED217) stays as the accent — shadcn's own primary is
    near-black, but the brand takes precedence.
-   Typeface: IBM Plex Sans (@fontsource in main.tsx, weights 400/500/600).
+   Typeface: DIN 2014 (Adobe Fonts, loaded via the <link> in index.html —
+   Adobe forbids self-hosting, so it is NOT vendored like previous typefaces).
+   Weights available: 200/300/400/600/700/800, normal only, no 500.
    ========================================================================== */
 
 @tailwind base;
@@ -76,8 +78,22 @@
 }
 
 @layer base {
-  /* Never synthesise the missing weights. */
   html {
+    /* Scales the whole UI to ~110%, which is where the layout was judged to
+       feel right. Deliberately on the ROOT and as a percentage: Tailwind's
+       spacing scale, the type scale and --radius are all rem-based, so this
+       lifts type AND layout together the way browser zoom does — rather than
+       only enlarging text and leaving the padding/gaps behind. A percentage
+       (not a px value) keeps it relative to the visitor's own browser font
+       setting instead of overriding it.
+
+       Note this supersedes the reasoning in the body rule below: the 16px grid
+       is now a 17.6px grid, on purpose. Fixed-px values don't follow (lucide
+       `size={n}` icons, the 200x160 site thumbnail), but those sit within ~2px
+       of proportional, so the mismatch isn't perceptible. */
+    font-size: 110%;
+
+    /* Never synthesise the missing weights. */
     font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -87,15 +103,15 @@
   body {
     background-color: rgb(var(--bg));
     color: rgb(var(--text));
-    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system,
+    font-family: "din-2014", ui-sans-serif, system-ui, -apple-system,
       "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-weight: 400;
-    /* 14px is shadcn's UI base, and the main reason the old 16px felt
-       oversized. Set on body rather than html so rem-based spacing stays on
-       the 16px grid — shrinking the root size would silently compress every
-       margin and padding in the app as a side effect. */
-    font-size: 0.875rem;
-    line-height: 1.4285714;
+    /* 16px paragraph/body text. Matches the `body` token in
+       tailwind.config.js — keep the two in step, since some text inherits
+       from here and some sets `text-body` explicitly. Expressed in rem
+       (16/17.6) so it tracks the 110% root above rather than being pinned. */
+    font-size: 0.909rem;
+    line-height: 1.5;
   }
 
   h1, h2, h3, h4, h5, h6 {

@@ -9,6 +9,14 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- DIN 2014 via Adobe Fonts. Adobe's licence forbids self-hosting the
+         files, so this must load from their CDN rather than being vendored
+         into public/fonts the way the previous typefaces were. The dashboard's
+         domain has to be listed in the Adobe Fonts web project, or the CSS
+         serves nothing and the app silently falls back to system sans. -->
+    <link rel="preconnect" href="https://use.typekit.net" crossorigin />
+    <link rel="stylesheet" href="https://use.typekit.net/mrd2ybk.css" />
   </head>
   <body>
     <div id="root"></div>

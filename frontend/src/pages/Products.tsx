@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { Button, Input, StatusBadge, Table, TBody, TD, TH, THead, TR } from "../components/ui";
+import {
+  Button,
+  Highlight,
+  Input,
+  StatusBadge,
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+} from "../components/ui";
 import type { ProductSummary, StoreInfo } from "../lib/types";
 
 export default function Products() {
@@ -170,18 +181,22 @@ export default function Products() {
                           <img
                             src={p.thumbnail}
                             alt={p.name}
-                            className="h-9 w-9 rounded border border-border object-cover"
+                            className="h-[100px] w-[100px] shrink-0 rounded border border-border object-cover"
                           />
                         ) : (
-                          <div className="h-9 w-9 rounded border border-border bg-surface-2" />
+                          <div className="h-[100px] w-[100px] shrink-0 rounded border border-border bg-surface-2" />
                         )}
                         <div>
-                          <div className="font-medium text-text">{p.name}</div>
+                          <div className="font-medium text-text">
+                            <Highlight text={p.name} query={query} />
+                          </div>
                           <div className="text-small text-subtle">{p.type}</div>
                         </div>
                       </div>
                     </TD>
-                    <TD className="text-muted">{p.sku || "—"}</TD>
+                    <TD className="text-muted">
+                      {p.sku ? <Highlight text={p.sku} query={query} /> : "—"}
+                    </TD>
                     <TD>
                       <StatusBadge status={p.status} />
                     </TD>
