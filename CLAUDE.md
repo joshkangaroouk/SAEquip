@@ -103,6 +103,7 @@ Run `npm run duda:spike-options -- --confirm` to re-derive any of this; `npm run
 - **Images**: `PATCH /products/{id}` with `images` re-hosts any publicly-reachable URL onto Duda's CDN (`irp.cdn-website.com`), so `/sites/multiscreen/resources/{site}/upload` is unnecessary. Already-hosted URLs come back byte-identical across repeat PATCHes. The array is **full replacement** and `images[0]` is the thumbnail.
 - **All product array fields are full replacement** ("must pass all data when making any changes to this property"). `services/duda.ts` therefore keeps `images`/`options`/`variations` out of `DudaProductUpdate` and gives each its own explicit method, so a scalar edit can never wipe a collection.
 - Create/delete: `POST /ecommerce/products` (minimum `{name, prices:[{price}]}`; `seo.product_url` is auto-slugged from the name) and `DELETE /ecommerce/products/{id}`.
+- ⚠️ **A catalogue enforces TWO case-insensitive uniqueness rules on products**, both discovered during the WordPress import: the **slug** (`400 {"message":"Duplicate product url …"}`) *and* the **title** (`400 {"message":"Products in catalog can't have duplicate titles"}`). So two products whose names differ only in case — "Compact Filtration Unit" vs "COMPACT FILTRATION UNIT" — genuinely cannot coexist; one must be renamed. `DudaProductCreate` has no `seo` field either, so the slug can't be pre-set at create time to dodge the first error. The workaround that does *not* work: creating under a suffixed name and then PATCHing the real title back with an explicit unique `seo.product_url` — that trips the title rule and leaves an orphan product behind.
 - **Categories** live at `/ecommerce/categories` (GET, POST) and `/ecommerce/categories/{id}` (GET, PATCH, DELETE). They come back **FLAT with a `parent_id`** — the tree is derived, not nested — and top-level rows use the sentinel string `"ROOT"`, not null. The list shape is only `{id, title, parent_id, products_count}`; `description`, `image` and `seo` come from the single-category GET. `backend/src/routes/categories.ts` derives depth/ordering server-side so every consumer agrees, and guards against re-parenting a category under its own descendant.
 - ⚠️ **A category's `seo` is FULL REPLACEMENT on PATCH**, exactly like a product's. PATCHing `seo` without `url` blanks the page URL and Duda rejects with `"Category page url cannot be blank"`. The categories route merges the incoming `seo` over the current value so partial edits work.
 - `GET /products?category_id=…` appears to **ignore the filter** (it returned a product whose `categories` array is empty). Don't rely on it for category membership.
@@ -187,12 +188,49 @@ The database had **no `_prisma_migrations` table** until 2026-07-28 (schema appl
 
 **Rule going forward: every verification/test must use a dedicated throwaway product (create hidden → test → delete), never the live EX Heater** — and never run a replace-whole-set write against real data without snapshotting first. Read-only checks against EX Heater are fine.
 
+## WordPress → Duda catalogue migration (started 2026-09-07)
+
+The ~96-product legacy catalogue is being moved off the WordPress/WooCommerce site in **stages**, driven by a WooCommerce CSV export rather than by hand.
+
+**Stage 1 (title + SKU + images) is the only stage built so far.** Deliberately nothing else: no descriptions, no SEO metadata, no options/variations, no Hub content. Later stages: 2) descriptions, 3) specs/benefits/applications/logos, then a Hire/Purchase option.
+
+- `npm run duda:import-products --workspace=backend` — **dry run by default**: parses, reports data defects, HEAD-checks every image URL, writes nothing. `--confirm` to import, `--verify` for read-only reconciliation, `--retry-failed` to resume, `--rollback --confirm` to undo, `--batch N` (default 10), `--limit`/`--only` to scope.
+- `backend/src/services/wooImport.ts` is the **pure** parse/map half (no network, DB or fs) so later stages reuse one source of truth; `backend/src/scripts/dudaImportProducts.ts` owns all side effects.
+- Working files live in the gitignored `migration/`: the export, `ledger.json`, `images/` (local archive), and per-run reports. **The export must never be committed** — it contains the private/draft products and pricing.
+
+### Facts that shaped it
+
+- **Published-only filter is `Type != "variation" AND Published == "1"`** → exactly 96 products (93 `simple` + 3 `variable`). WooCommerce encodes `Published` as `1`/`0`/`-1` = publish/draft/**private**, and the 386 `variation` rows are child rows of variable products, not products — importing them would create phantom duplicates.
+- **The idempotency key is the WordPress post `ID`, not SKU.** SKU is unusable as identity here: 3 of the 96 have none, and 4 SKUs are reused across 9 products (`SAFU/RF` ×3, `SAFD`, `SPTR`, `SAPVES` ×2 each — e.g. `SPTR` is on both "EX 3.8KVA Transformer" and "EX 400VA Transformer"). These import anyway and are reported as a fix-list.
+- ⚠️ **`POST /ecommerce/products` is not idempotent**, so `ledger.json` (WP id → Duda id) is written *immediately on create, before images* — a crash between the two must never leave a created product invisible to the next run, or it gets created twice.
+- ⚠️ **EX Heater is in the CSV** (wp#7481 / `SAPH18440`) and already existed in Duda, hand-curated with a 3D model. A deny-list alone can't protect it: a fresh run has no ledger entry for it, so it would create a *second* "EX Heater" and only notice afterwards. `adoptExisting()` therefore reconciles the CSV against `listAllProducts()` **by SKU before any create**, adopts matches into the ledger, and marks deny-listed ones done so their galleries are never overwritten. Same mechanism recovers a lost ledger without doubling the catalogue.
+- `--rollback` deletes only rows it **created** — never `adopted` ones, which point at products the migration didn't own.
+- **Name collisions are resolved by suffixing the SKU**, not by preserving the title. Duda forbids duplicate titles *and* duplicate slugs (see the Duda REST API section), so `COMPACT FILTRATION UNIT` (SAECFU) imported as `COMPACT FILTRATION UNIT (SAECFU)` / `compact-filtration-unit-saecfu` alongside `Compact Filtration Unit` (SACFU). `verify` recognises that shape as a deliberate, accepted difference rather than a defect, and reports it for a human to name properly. Only 1 of 96 products needed this.
+- **`--sync-hub --confirm` is the repair pass for `HubProduct` rows.** An *adopted* product skips the create branch that normally calls `syncHubProduct`, so it lands in Duda with no Hub row — and without one the public widget can't resolve it by slug and Stages 2-3 have nothing to attach content to. `verify` now checks every selected product has a Hub row *with a non-null slug* and names any that don't.
+
+### Images: Duda takes its own copy (verified)
+
+`duda.updateProductImages()` → `PATCH /products/{id}` with `{images:[{url}]}` makes **Duda fetch each URL server-side and re-host the file on its own CDN** (`irp.cdn-website.com/{site}/dms3rep/multi/…`, transcoded to `.webp`). Proven on EX Heater, whose gallery holds one image still carrying its original WordPress filename (ingested from a `saequip.com` URL) alongside one with our Supabase `images/{uuid}-{name}` shape.
+
+**Consequence: the source URL only has to be reachable at the instant of the PATCH.** Duda never hot-links, so after ingest the catalogue depends on neither WordPress nor our Supabase. Stage 1 therefore hands Duda the `saequip.com` URLs directly and lets it pull all 381 references (329 unique, ~29MB).
+
+- ⚠️ **Ingest must finish before `saequip.com` is repointed at Duda**, or every source URL dies. The importer HEAD-checks each URL immediately before use and refuses to write a product with a dead image rather than creating a gappy live gallery.
+- **The verification that matters is "no image still references a non-Duda host."** Every batch is re-read and asserted to be entirely on `irp.cdn-website.com`; a batch that wholly fails stops the run instead of pressing on through 96 products.
+- Product photos are deliberately **not** mirrored into `MediaAsset`/the Media Centre: `MediaPicker` and `POST /api/logos` filter on `kind === "image"`, so 329 product shots would bury the 9 real certification logos in the logo picker. `migration/images/` is the archive instead.
+- `updateProductImages` takes an opt-in `timeoutMs` because Duda fetches images *during* the request — the importer scales it to gallery size (a 14-image product is a genuinely slow call). `services/duda.ts` has no retry/backoff of its own, so the importer adds bounded retry on 429/5xx/timeout plus inter-product and inter-batch pacing.
+
+### Data waiting for later stages
+
+466 spec rows (50 products), 512 key benefits (59), 325 applications (56), 227 logo links across only **9 distinct** logo values (`madeinuk`, `zone-1-2`, `ATEX`, `UKEX`, `IECEx`, `zone-21-22`, `INMETRO`, `zone-0`, `zone-20`), 176 downloads. Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
+
+Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO is barely populated** (title on 4/96, meta description on 12/96), so SEO is authoring work, not migration. Per Josh, SEO metadata is off the table for now.
+
 ## Known gaps / backlog (as of 2026-07-28)
 
 - Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).
 - No admin UI to view captured `Lead` rows from gated downloads yet (they're stored and now survive product deletion, just not surfaced — unlike `QuoteRequest`, which has a `/quotes` page). More valuable now that retained leads can outlive their product.
 - Per-product **Downloads editor was removed**; the Downloads widget is parked as visibly disabled on `/widgets`. Backend routes, leads, `/custom` payload and the widget's downloads section all still work, so restoring it is a UI-only change (`git show d68e28b~1:frontend/src/components/DownloadsEditor.tsx` for the old implementation).
-- Only 1 of ~86 SAEquip products exists in the Duda store so far (EX Heater) — the rest are still on the legacy WordPress site. `/products/new` ("Create and add another") is the intended migration path.
+- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stage 1 (title/SKU/images for all 96 published products) is scripted; descriptions, Hub content and options are still to do, so most products in Duda currently have images and a name but no other content. `/products/new` remains the path for genuinely new one-off products.
 - `CompatibleLink` model exists with no editor/UI.
 - Widget visual styling is functional but not deeply brand-tuned.
 - No optimistic-concurrency check: because array writes are full replacement, a stale dashboard tab can overwrite edits made in Duda. Mitigated only by the "loaded HH:MM / refresh" control in the product header.

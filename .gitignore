@@ -1,6 +1,11 @@
 node_modules
 dist
 .env
+
+# Legacy-catalogue migration working files. The WooCommerce export carries
+# private/draft products and pricing, the image archive is ~29MB of binaries,
+# and the ledger is machine-local run state — none of it belongs in git.
+migration/
 *.db
 *.db-journal
 *.db-wal

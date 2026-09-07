@@ -16,13 +16,15 @@
     "duda:snapshot": "tsx src/scripts/dudaSnapshot.ts",
     "duda:spike-options": "tsx src/scripts/dudaSpikeOptions.ts",
     "duda:probe-sso": "tsx src/scripts/dudaProbeSso.ts",
-    "duda:editor-provision": "tsx src/scripts/dudaEditorProvision.ts"
+    "duda:editor-provision": "tsx src/scripts/dudaEditorProvision.ts",
+    "duda:import-products": "tsx src/scripts/dudaImportProducts.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.110.0",
     "@types/multer": "^2.2.0",
     "cors": "^2.8.5",
+    "csv-parse": "^7.0.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.2",

@@ -524,11 +524,23 @@ export const duda = {
    * already-hosted ones come back byte-identical.
    *
    * Order is array position, and images[0] is the product thumbnail.
+   *
+   * `timeoutMs` is opt-in: Duda fetches every URL server-side *during* this
+   * request, so a gallery of a dozen not-yet-hosted images is a genuinely slow
+   * call. The bulk importer scales a timeout to the image count; interactive
+   * callers keep the existing unbounded behaviour.
    */
-  async updateProductImages(productId: string, images: DudaImageInput[]): Promise<DudaProduct> {
-    await dudaRequest<unknown>("PATCH", PATHS.product(site(), productId), {
-      images: images.map((img) => ({ url: img.url, alt: img.alt ?? "" })),
-    });
+  async updateProductImages(
+    productId: string,
+    images: DudaImageInput[],
+    opts?: { timeoutMs?: number },
+  ): Promise<DudaProduct> {
+    await dudaRequest<unknown>(
+      "PATCH",
+      PATHS.product(site(), productId),
+      { images: images.map((img) => ({ url: img.url, alt: img.alt ?? "" })) },
+      opts,
+    );
     return this.getProduct(productId);
   },
 };
