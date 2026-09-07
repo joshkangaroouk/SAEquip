@@ -12,7 +12,8 @@
  * not found") means the path resolved and Duda simply rejected the argument —
  * which is what we want, since we probe with an account that doesn't exist.
  *
- * Safe to run: GETs only, no writes. Uses a deliberately nonexistent account.
+ * Safe to run: every probe targets a deliberately NONEXISTENT account, so even
+ * the DELETE probes have nothing to delete. Never point this at a real account.
  *
  *   npm run duda:probe-sso --workspace=backend
  */
@@ -20,18 +21,18 @@ import { env } from "../env.js";
 import { DUDA_SSO_PATHS } from "../services/dudaSso.js";
 
 const FAKE_ACCOUNT = "zz-nonexistent-probe-account@example.invalid";
-const REAL_SITE = "099434f3";
+const REAL_SITE = "8a8f03b5";
 
 function authHeader(): string {
   const token = Buffer.from(`${env.DUDA_API_USER}:${env.DUDA_API_PASS}`).toString("base64");
   return `Basic ${token}`;
 }
 
-async function probe(label: string, path: string): Promise<void> {
+async function probe(label: string, path: string, method = "GET"): Promise<void> {
   const url = `${env.DUDA_API_BASE_URL}${path}`;
   try {
     const res = await fetch(url, {
-      method: "GET",
+      method,
       headers: { Authorization: authHeader(), Accept: "application/json" },
       signal: AbortSignal.timeout(15_000),
     });
@@ -43,12 +44,12 @@ async function probe(label: string, path: string): Promise<void> {
         ? "*** WRONG PATH (route not found) ***"
         : "path resolved (argument rejected, as expected)";
     console.log(`\n[${label}]`);
-    console.log(`  GET ${path}`);
+    console.log(`  ${method} ${path}`);
     console.log(`  status: ${res.status}  -> ${verdict}`);
     console.log(`  body:   ${body || "(empty)"}`);
   } catch (err) {
     console.log(`\n[${label}]`);
-    console.log(`  GET ${path}`);
+    console.log(`  ${method} ${path}`);
     console.log(`  FETCH FAILED: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
@@ -72,6 +73,21 @@ async function main() {
   await probe(
     "sitePermissions (GET, to validate path shape)",
     DUDA_SSO_PATHS.sitePermissions(FAKE_ACCOUNT, REAL_SITE),
+  );
+  // Revoke is a DELETE on the SAME permissions path. Probed because the
+  // plausible-looking `/accounts/{name}/sites/{site}` 404s, and a revoke that
+  // silently 404s is far worse than one that errors: it reads as success while
+  // leaving the account fully permissioned. Safe to DELETE here — the account
+  // does not exist, so there is nothing to remove.
+  await probe(
+    "revokeSiteAccess (DELETE — must NOT be a wrong path)",
+    DUDA_SSO_PATHS.sitePermissions(FAKE_ACCOUNT, REAL_SITE),
+    "DELETE",
+  );
+  await probe(
+    "legacy revoke guess (expected WRONG PATH — kept as a regression marker)",
+    `/accounts/${encodeURIComponent(FAKE_ACCOUNT)}/sites/${REAL_SITE}`,
+    "DELETE",
   );
   // Real site, so this one should genuinely succeed and also gives us the
   // metadata shape the Website Editor page will render.

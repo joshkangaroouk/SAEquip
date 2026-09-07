@@ -37,7 +37,7 @@ const PATHS = {
  */
 const MAX_PAGE_SIZE = 200;
 
-// --- Types (verified against the live "099434f3" store) ---
+// --- Types (verified against the live SAEquip store) ---
 
 export interface DudaImage {
   alt: string;

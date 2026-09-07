@@ -34,7 +34,11 @@ const envSchema = z.object({
   DUDA_API_USER: z.string().min(1, "DUDA_API_USER is required (Duda API credentials)"),
   DUDA_API_PASS: z.string().min(1, "DUDA_API_PASS is required (Duda API credentials)"),
   DUDA_API_BASE_URL: z.string().url().default("https://api.duda.co/api"),
-  DUDA_SITE_NAME: z.string().default("099434f3"),
+  // 8a8f03b5 = saequip-2, the site in use from 2026-09-07. The previous site
+  // (099434f3 / saequip.multiscreensite.com) is retired. Product ids, SKUs and
+  // slugs carried over unchanged when the site was duplicated, so HubProduct
+  // rows keyed by dudaProductId still match — no re-keying was needed.
+  DUDA_SITE_NAME: z.string().default("8a8f03b5"),
 
   // --- Resend (OPTIONAL — quote-request email notifications).
   // The app must run fine with none of these set; email is inert until all

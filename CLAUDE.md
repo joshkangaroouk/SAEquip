@@ -78,7 +78,15 @@ Backend side (`backend/src/routes/quotes.ts`, `backend/src/services/email.ts`): 
 
 ## Duda REST API
 
-Base URL `https://api.duda.co/api`, HTTP Basic auth (`DUDA_API_USER`/`DUDA_API_PASS`). SAEquip's `site_name` is `099434f3`. **Path pattern includes a `multiscreen` segment that's easy to miss** — omitting it 404s (`RESTEASY003210`): `/sites/multiscreen/{site}/ecommerce/store`, `.../ecommerce/products`, `.../ecommerce/products/{id}` (see `backend/src/services/duda.ts`). Duda's product `custom_fields` are deliberately unused (see the Duda-vs-Hub split above) — don't reintroduce writes to them.
+Base URL `https://api.duda.co/api`, HTTP Basic auth (`DUDA_API_USER`/`DUDA_API_PASS`). SAEquip's `site_name` is **`8a8f03b5`** (`saequip-2.multiscreensite.com`) as of 2026-09-07 — see "Site migration" below; the former `099434f3` is retired and nothing should read from it. **Path pattern includes a `multiscreen` segment that's easy to miss** — omitting it 404s (`RESTEASY003210`): `/sites/multiscreen/{site}/ecommerce/store`, `.../ecommerce/products`, `.../ecommerce/products/{id}` (see `backend/src/services/duda.ts`). Duda's product `custom_fields` are deliberately unused (see the Duda-vs-Hub split above) — don't reintroduce writes to them.
+
+### Site migration: `099434f3` → `8a8f03b5` (2026-09-07)
+
+The Hub now reads and writes **only** `8a8f03b5`. The old site is retired; `GRANTABLE_SITES` in `dudaEditorProvision.ts` no longer allows it, and editor access on it was revoked.
+
+**The thing that made this cheap: `8a8f03b5` was DUPLICATED from `099434f3`, so product ids carried over byte-identically** — same `dudaProductId` (`01KW9R473XZGWZWC5206EPYAWB`), same SKU, same slug, same option ids. Products are normally per-site in Duda, so the obvious expectation was that every `HubProduct` row (keyed on `dudaProductId`) would need re-keying to new ids; **it didn't**, and the existing row kept its attached 3D model. Verify before assuming this holds for any *future* site move — a site created fresh rather than duplicated would genuinely need re-keying. **Variation ids DO differ** between the sites, but nothing persists those.
+
+Changing sites means `DUDA_SITE_NAME` in env (default in `backend/src/env.ts`) plus `PUBLIC_ALLOWED_ORIGINS` gaining the new domain — and, on Railway, both must be set on the backend service, not just locally. Everything configured *inside* Duda is per-site and does **not** carry over even in a duplicate: widget embeds on the product template, the `.productDescription` Head-HTML CSS, and the three quote/basket Widget Builder widgets all need re-doing on the new site.
 
 ### Verified write surface + behaviours (probed live, 2026-07-27/28)
 
@@ -111,7 +119,8 @@ The `/website` page (top of the sidebar) lets a staff member SSO straight into t
 - **Three things the client must never control**: `account_name` (derived server-side from the verified JWT), `target` (hardcoded `EDITOR` in `services/dudaSso.ts` — the API also accepts `RESET_SITE`/`RESET_BASIC`/`SWITCH_TEMPLATE`, so a client-supplied target would be a site-wipe vector), and the site (validated against that user's allowlist). The zod body schema is `.strict()`, so smuggled `accountName`/`target` keys are rejected outright, not ignored.
 - ⚠️ **Never `next(err)` a Duda error from the SSO route.** The shared error handler in `index.ts` echoes `DudaApiError.body.slice(0, 500)` to the caller and `console.error`s the whole object — and a Duda SSO response body contains a **live one-time login token**. `routes/websiteEditor.ts` catches `DudaApiError` locally and logs the status only. Same reason there is no url/token column on `DudaSsoAudit`.
 - **Rate limited per user, not per IP** — `app.set("trust proxy")` is never called, so behind Railway's proxy an IP-keyed limiter would bucket every staff member together. The limiter uses `keyGenerator: req => req.user?.id`.
-- **Provisioning is CLI-only, deliberately.** Creating Duda accounts and granting permissions are the privilege-escalating operations; as an HTTP route, any allowed-domain session could self-provision. Use `npm run duda:editor-provision --workspace=backend -- --email <staff> --supabase-user-id <uuid> --confirm` (also `--check` read-only, and `--revoke`). `GRANTABLE_SITES` in that script hard-limits which sites can be granted — `8a8f03b5` is deliberately absent.
+- **Provisioning is CLI-only, deliberately.** Creating Duda accounts and granting permissions are the privilege-escalating operations; as an HTTP route, any allowed-domain session could self-provision. Use `npm run duda:editor-provision --workspace=backend -- --email <staff> --supabase-user-id <uuid> --confirm` (also `--check` read-only, and `--revoke`). `GRANTABLE_SITES` in that script hard-limits which sites can be granted — the retired `099434f3` is deliberately absent. The allowlist check runs **after** the revoke branch on purpose: a retired site is exactly when you still need to take access away.
+- ⚠️ **A revoke must be verified, never assumed.** Revoke is `DELETE .../permissions`; the plausible-looking `DELETE /accounts/{name}/sites/{site}` 404s. The script originally logged a 404 as "may already be revoked", so a wrong path printed a success tick while the account kept all 11 permissions on the site — caught only by asking Duda directly. It now hard-fails on any 404 that isn't an explicit `ResourceNotExist`, then re-reads the permissions to confirm the grant is actually gone.
 
 ### Verified account-scoped Duda paths (probed live, `npm run duda:probe-sso`)
 
@@ -119,8 +128,8 @@ The `/website` page (top of the sidebar) lets a staff member SSO straight into t
 |---|---|
 | `GET /accounts/{name}` | ✅ works |
 | `GET /accounts/sso/{name}/link?target=EDITOR&site_name={site}` | ✅ works — returns `{url}` |
-| `GET\|POST\|PUT /accounts/{name}/sites/{site}/permissions` | ✅ works |
-| `DELETE /accounts/{name}/sites/{site}` | revoke |
+| `GET\|POST\|PUT\|DELETE /accounts/{name}/sites/{site}/permissions` | ✅ works — grant, read, replace **and revoke** all on this one path |
+| `DELETE /accounts/{name}/sites/{site}` | ❌ **404 `RESTEASY003210`** — no such route (see the revoke trap below) |
 | `GET /sites/multiscreen/{site}` | ✅ works — site metadata for the page |
 | `GET /accounts/{name}/sites` | ❌ **404 `RESTEASY003210`** — no such route; ask per-site instead |
 

@@ -19,10 +19,12 @@ import { DudaApiError, dudaRequest } from "./duda.js";
 const PATHS = {
   createAccount: () => `/accounts/create`,
   account: (accountName: string) => `/accounts/${encodeURIComponent(accountName)}`,
+  // Grant (POST), replace (PUT), read (GET) and REVOKE (DELETE) all hang off
+  // this one path. There is no `/accounts/{name}/sites/{site}` resource —
+  // it 404s with RESTEASY003210 (verified by `npm run duda:probe-sso`), which
+  // is how a wrong revoke path once masqueraded as "already revoked".
   sitePermissions: (accountName: string, site: string) =>
     `/accounts/${encodeURIComponent(accountName)}/sites/${encodeURIComponent(site)}/permissions`,
-  siteAccess: (accountName: string, site: string) =>
-    `/accounts/${encodeURIComponent(accountName)}/sites/${encodeURIComponent(site)}`,
   ssoLink: (accountName: string) =>
     `/accounts/sso/${encodeURIComponent(accountName)}/link`,
   site: (site: string) => `/sites/multiscreen/${encodeURIComponent(site)}`,
@@ -166,7 +168,7 @@ export const dudaSso = {
   },
 
   revokeSiteAccess(accountName: string, siteName: string): Promise<unknown> {
-    return dudaRequest("DELETE", PATHS.siteAccess(accountName, siteName), undefined, {
+    return dudaRequest("DELETE", PATHS.sitePermissions(accountName, siteName), undefined, {
       timeoutMs: ADMIN_TIMEOUT_MS,
     });
   },

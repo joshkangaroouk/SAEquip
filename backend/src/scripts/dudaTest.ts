@@ -11,7 +11,7 @@ async function main() {
   const list = await duda.listProducts({ limit: 100 });
   const total = list.total_responses ?? list.results.length;
 
-  console.log(`Duda store "${process.env.DUDA_SITE_NAME ?? "099434f3"}" — ${total} product(s):\n`);
+  console.log(`Duda store "${process.env.DUDA_SITE_NAME ?? "8a8f03b5"}" — ${total} product(s):\n`);
   for (const p of list.results) {
     console.log(`  ${p.name} / ${p.sku}`);
   }

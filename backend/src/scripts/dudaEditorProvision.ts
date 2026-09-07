@@ -10,11 +10,11 @@
  * Grant:
  *   npm run duda:editor-provision --workspace=backend -- \
  *     --email staff@saequip.com --supabase-user-id <uuid> \
- *     [--site 099434f3] [--first Jane] [--last Smith] --confirm
+ *     [--site 8a8f03b5] [--first Jane] [--last Smith] --confirm
  *
  * Revoke:
  *   npm run duda:editor-provision --workspace=backend -- \
- *     --email staff@saequip.com --revoke [--site 099434f3] --confirm
+ *     --email staff@saequip.com --revoke [--site 8a8f03b5] --confirm
  *
  * Inspect what Duda actually thinks (read-only, no --confirm needed):
  *   npm run duda:editor-provision --workspace=backend -- \
@@ -26,13 +26,14 @@ import { prisma } from "../prisma.js";
 import { DudaApiError } from "../services/duda.js";
 import { EDITOR_PERMISSIONS, dudaSso } from "../services/dudaSso.js";
 
-/** Only the live, published SAEquip site is grantable by default. */
-const DEFAULT_SITE = "099434f3";
+/** The SAEquip site in use (saequip-2). */
+const DEFAULT_SITE = "8a8f03b5";
 
 /**
- * Sites this script will ever touch. `8a8f03b5` (the unpublished saequip-2
- * rebuild) is intentionally absent — it must not be grantable until someone
- * makes that a deliberate decision and adds it here.
+ * Sites this script may GRANT access to. The retired site `099434f3` is
+ * deliberately absent so it can't be granted again — but note the check only
+ * gates grants, never revokes: you must always be able to revoke access on a
+ * site that's no longer grantable.
  */
 const GRANTABLE_SITES = new Set([DEFAULT_SITE]);
 
@@ -141,10 +142,41 @@ async function grant(email: string, supabaseUserId: string, site: string) {
 async function revoke(email: string, site: string) {
   try {
     await dudaSso.revokeSiteAccess(email, site);
-    console.log(`• revoked Duda site access for ${email} on ${site}`);
+    console.log(`• Duda accepted the revoke for ${email} on ${site}`);
   } catch (err) {
-    if (err instanceof DudaApiError) {
-      console.log(`• Duda revoke returned ${err.status} (may already be revoked)`);
+    if (!(err instanceof DudaApiError)) throw err;
+    // A 404 here is NOT "already revoked" — that's what a WRONG PATH looks
+    // like, and treating it as success once left a retired site fully granted
+    // while this script printed a tick. Only Duda explicitly saying the
+    // resource doesn't exist counts as nothing-to-do.
+    if (/ResourceNotExist|doesn't exist|not exist/i.test(err.body)) {
+      console.log(`• Duda reports no such grant (${err.status}) — nothing to revoke`);
+    } else {
+      fail(
+        `Duda refused the revoke: ${err.status} — ${err.body.slice(0, 200)}\n` +
+          `  Duda still holds this grant. Fix the API call before touching the Hub mapping,\n` +
+          `  or you'll leave access live with no local record of it.`,
+      );
+    }
+  }
+
+  // Verify against Duda rather than trusting the call above. Duda is the source
+  // of truth for permissions; the Hub row only gates minting a link.
+  try {
+    const perms = (await dudaSso.getSitePermissions(email, site)) as
+      | { permissions?: string[] }
+      | undefined;
+    const left = perms?.permissions ?? [];
+    if (left.length > 0) {
+      fail(
+        `Revoke did not take effect — Duda still reports ${left.length} permission(s) ` +
+          `on ${site}: ${left.join(", ")}`,
+      );
+    }
+    console.log(`• verified with Duda: no permissions remain on ${site}`);
+  } catch (err) {
+    if (err instanceof DudaApiError && /ResourceNotExist|doesn't exist|not exist/i.test(err.body)) {
+      console.log(`• verified with Duda: grant is gone (${err.status})`);
     } else {
       throw err;
     }
@@ -179,12 +211,6 @@ async function main() {
   const site = arg("site") ?? DEFAULT_SITE;
 
   if (!email) fail("--email is required");
-  if (!GRANTABLE_SITES.has(site)) {
-    fail(
-      `Site "${site}" is not grantable. Only ${[...GRANTABLE_SITES].join(", ")} is allowed — ` +
-        `add it to GRANTABLE_SITES in this script if that's genuinely intended.`,
-    );
-  }
 
   if (flag("check")) {
     await check(email!, site);
@@ -195,9 +221,18 @@ async function main() {
     fail("Refusing to run without --confirm (this changes live Duda permissions).");
   }
 
+  // Revoke deliberately skips the GRANTABLE_SITES check — a retired site is
+  // exactly the case where you still need to be able to take access away.
   if (flag("revoke")) {
     await revoke(email!, site);
     return;
+  }
+
+  if (!GRANTABLE_SITES.has(site)) {
+    fail(
+      `Site "${site}" is not grantable. Only ${[...GRANTABLE_SITES].join(", ")} is allowed — ` +
+        `add it to GRANTABLE_SITES in this script if that's genuinely intended.`,
+    );
   }
 
   const supabaseUserId = arg("supabase-user-id");
