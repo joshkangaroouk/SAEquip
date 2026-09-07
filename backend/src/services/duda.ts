@@ -103,7 +103,12 @@ export interface DudaProduct {
   description: string; // HTML
   seo: DudaSeo;
   status: DudaProductStatus | string;
-  sku: string;
+  /**
+   * Null when the product has no SKU — Duda doesn't default it to "".
+   * Was typed `string` until the WordPress import brought in 3 products with
+   * no SKU and crashed the dashboard's product list on `sku.toLowerCase()`.
+   */
+  sku: string | null;
   stock_status: string;
   images: DudaImage[];
   prices: DudaPrice[];

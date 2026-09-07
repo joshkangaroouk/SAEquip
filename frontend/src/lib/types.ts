@@ -8,7 +8,8 @@ export interface StoreInfo {
 export interface ProductSummary {
   id: string;
   name: string;
-  sku: string;
+  /** Null when the product has no SKU — Duda doesn't default it to "". */
+  sku: string | null;
   status: string;
   stock_status: string;
   type: string;
@@ -52,7 +53,8 @@ export interface VariationOption {
 
 export interface Variation {
   id: string;
-  sku: string;
+  /** Null on a freshly (re)generated variation — Duda doesn't default it to "". */
+  sku: string | null;
   price_difference: string;
   status: string;
   images: DudaImage[];
@@ -64,7 +66,8 @@ export interface ProductDetail {
   name: string;
   type: string;
   description: string;
-  sku: string;
+  /** Null when the product has no SKU — Duda doesn't default it to "". */
+  sku: string | null;
   status: string;
   stock_status: string;
   seo: { product_url: string; title: string; description: string };

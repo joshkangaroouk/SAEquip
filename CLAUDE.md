@@ -235,6 +235,14 @@ Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda a
 - Widget visual styling is functional but not deeply brand-tuned.
 - No optimistic-concurrency check: because array writes are full replacement, a stale dashboard tab can overwrite edits made in Duda. Mitigated only by the "loaded HH:MM / refresh" control in the product header.
 
+## ⚠️ Nullability drifts silently between backend and frontend
+
+`res.json()` accepts anything and `apiJson<T>()` **casts** rather than validates, so a frontend interface in `frontend/src/lib/types.ts` is only a *claim* about a payload — TypeScript cannot check it against the route that produces it. When the two disagree, nothing fails at build time; it fails at runtime in the browser.
+
+This bit for real: `sku` was typed `string` in `DudaProduct` (backend), `ProductSummary`/`ProductDetail` (frontend), `OptionUsage.products` and `DangerZoneSection`'s `DeletePreview` — but **Duda returns `sku: null` for a product without one**, exactly as it does for a freshly generated variation (`DudaVariation.sku` was already correctly `string | null`). It stayed hidden while EX Heater was the only product; the WordPress import brought in 3 SKU-less products and `p.sku.toLowerCase()` in the `/products` search filter crashed the whole page with *"Cannot read properties of null"*.
+
+So: when a route starts returning a value that can be null, **fix the type in every mirror, not just the crash site** — correcting the backend type is what surfaces the other call sites (it found the `optionUsage.ts` one). And prefer `(x ?? "")` over `x!` at the point of use, because these types can't be trusted to stay accurate.
+
 ## Working conventions
 
 - Ask before bundling unrelated pending changes into a commit the user has asked to be scoped narrowly — a batch of unrelated uncommitted UI tweaks sitting in the tree is not an invitation to sweep them into the next requested commit. Check `git status` before assuming recent chat history is fully reflected in `git log`.

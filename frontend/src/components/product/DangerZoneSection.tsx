@@ -5,7 +5,8 @@ import { apiJson } from "../../lib/api";
 
 interface DeletePreview {
   name: string;
-  sku: string;
+  /** Null when the product has no SKU — the dialog omits it in that case. */
+  sku: string | null;
   destroys: { specRows: number; textItems: number; activeLogos: number; downloads: number };
   retains: { leads: number };
 }

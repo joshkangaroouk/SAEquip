@@ -13,7 +13,8 @@ import { duda, type DudaProduct } from "./duda.js";
  */
 export interface OptionUsage {
   productCount: number;
-  products: { id: string; name: string; sku: string }[];
+  /** `sku` is null for products that don't have one — render a fallback. */
+  products: { id: string; name: string; sku: string | null }[];
   /** Per-choice usage, so deleting one choice can warn separately. */
   choiceUsage: Record<string, number>;
 }

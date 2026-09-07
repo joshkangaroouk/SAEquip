@@ -59,7 +59,14 @@ export default function Products() {
   const q = query.trim().toLowerCase();
   const filtered =
     products && q
-      ? products.filter((p) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
+      ? products.filter(
+          // sku is null for products that don't have one, and name is only
+          // guaranteed by Duda's create API — neither is safe to call a method
+          // on directly.
+          (p) =>
+            (p.name ?? "").toLowerCase().includes(q) ||
+            (p.sku ?? "").toLowerCase().includes(q),
+        )
       : products;
 
   const storeFull = store?.remaining != null && store.remaining <= 0;

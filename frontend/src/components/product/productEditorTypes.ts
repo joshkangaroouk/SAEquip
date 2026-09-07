@@ -131,7 +131,8 @@ export interface CatalogOption {
   type: string;
   choices: { id: string; value: string; usage: number }[];
   usage: number;
-  products: { id: string; name: string; sku: string }[];
+  /** `sku` is null for products that don't have one — render a fallback. */
+  products: { id: string; name: string; sku: string | null }[];
 }
 
 export interface OptionCatalog {
