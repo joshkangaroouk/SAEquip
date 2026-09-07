@@ -184,7 +184,9 @@ The database had **no `_prisma_migrations` table** until 2026-07-28 (schema appl
 
 ## Verification / testing policy — important, learned the hard way
 
-**EX Heater** (`dudaProductId 01KW9R473XZGWZWC5206EPYAWB`, slug `ex-heater`) is a **live product** Josh populates for real, not a fixture. Multiple early verification passes accidentally wrote test data to it or risked wiping it via replace-whole-set endpoints (specs/benefits/applications use delete-all-then-recreate semantics).
+⚠️ **EX Heater's `dudaProductId` changed on 2026-09-07.** The hand-built product was deliberately deleted and re-imported from the CSV (10 images instead of 2), so it is now **`01M1XRCFGGHYEJ0QGGXCJ3582N`**, not `01KW9R473XZGWZWC5206EPYAWB`. The slug (`ex-heater`) and SKU (`SAPH18440`) are unchanged. Its 3D model had to be re-attached by hand: `glbAssetId` lives on the `HubProduct` row, and deleting a product hard-deletes that row — the `MediaAsset` itself survives (no cascade), so the sequence is *record the asset id → delete → re-import → re-attach*. Anything quoting the old id is stale.
+
+**EX Heater** (slug `ex-heater`) is a **live product** Josh populates for real, not a fixture. Multiple early verification passes accidentally wrote test data to it or risked wiping it via replace-whole-set endpoints (specs/benefits/applications use delete-all-then-recreate semantics).
 
 **Rule going forward: every verification/test must use a dedicated throwaway product (create hidden → test → delete), never the live EX Heater** — and never run a replace-whole-set write against real data without snapshotting first. Read-only checks against EX Heater are fine.
 
@@ -215,6 +217,7 @@ The ~96-product legacy catalogue is being moved off the WordPress/WooCommerce si
 **Consequence: the source URL only has to be reachable at the instant of the PATCH.** Duda never hot-links, so after ingest the catalogue depends on neither WordPress nor our Supabase. Stage 1 therefore hands Duda the `saequip.com` URLs directly and lets it pull all 381 references (329 unique, ~29MB).
 
 - ⚠️ **Ingest must finish before `saequip.com` is repointed at Duda**, or every source URL dies. The importer HEAD-checks each URL immediately before use and refuses to write a product with a dead image rather than creating a gappy live gallery.
+- **Products with no image in WordPress get `frontend/public/saequip-no-image.jpg`** (5 of 96). Duda ingests by *fetching a URL*, so a repo file can't be handed over directly — it's uploaded once to the public `product-media` bucket at the fixed path `images/saequip-no-image.jpg` (the same Supabase staging route the dashboard's own uploader uses) and that URL is given to Duda, which re-hosts its own copy per product. Deliberately **no `MediaAsset` row**: the Media Centre's image list feeds the logo picker, and a placeholder is not a logo. `--no-fallback` opts out.
 - **The verification that matters is "no image still references a non-Duda host."** Every batch is re-read and asserted to be entirely on `irp.cdn-website.com`; a batch that wholly fails stops the run instead of pressing on through 96 products.
 - Product photos are deliberately **not** mirrored into `MediaAsset`/the Media Centre: `MediaPicker` and `POST /api/logos` filter on `kind === "image"`, so 329 product shots would bury the 9 real certification logos in the logo picker. `migration/images/` is the archive instead.
 - `updateProductImages` takes an opt-in `timeoutMs` because Duda fetches images *during* the request — the importer scales it to gallery size (a 14-image product is a genuinely slow call). `services/duda.ts` has no retry/backoff of its own, so the importer adds bounded retry on 429/5xx/timeout plus inter-product and inter-batch pacing.

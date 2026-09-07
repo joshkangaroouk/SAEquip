@@ -16,6 +16,12 @@
  * Retry only what failed last run:
  *   npm run duda:import-products --workspace=backend -- --confirm --retry-failed
  *
+ * Re-apply images to specific products already marked done (scope it — see --force):
+ *   npm run duda:import-products --workspace=backend -- --confirm --force --only 12880,13045
+ *
+ * Products with no image in WordPress get frontend/public/saequip-no-image.jpg,
+ * staged via Supabase so Duda can fetch and re-host it. --no-fallback opts out.
+ *
  * Undo (deletes only products THIS script created, per the ledger):
  *   npm run duda:import-products --workspace=backend -- --rollback --confirm
  *
@@ -32,6 +38,7 @@ import { Readable } from "node:stream";
 import path from "node:path";
 import { duda, DudaApiError } from "../services/duda.js";
 import { syncHubProduct } from "../services/hubProduct.js";
+import { publicImageUrl, uploadObject } from "../services/storage.js";
 import { prisma } from "../prisma.js";
 import {
   parsePublishedProducts,
@@ -41,12 +48,18 @@ import {
 } from "../services/wooImport.js";
 
 /**
- * EX Heater is live data Josh populated by hand and it has a 3D model attached.
- * `updateProductImages` is a FULL gallery replacement, so an unguarded run
- * would swap its 2 curated images for 10 from the CSV. Same deny-list pattern
- * as dudaSpikeOptions.ts.
+ * Products this script must never touch, by Duda id.
+ *
+ * Empty by design now: it originally held the hand-built EX Heater, whose 2
+ * curated images `updateProductImages` (a FULL gallery replacement) would have
+ * overwritten — but that product has since been deliberately replaced with the
+ * CSV's version, so the entry would only protect a dead id.
+ *
+ * Kept as a mechanism, not a leftover: add an id here before any run that
+ * could clobber a product someone has curated by hand. Note a deny-list alone
+ * is not enough for a product that is also IN the CSV — see adoptExisting().
  */
-const DENY_DUDA_IDS = new Set(["01KW9R473XZGWZWC5206EPYAWB"]);
+const DENY_DUDA_IDS = new Set<string>();
 
 /** Repo-root-relative working dir (script runs with cwd = backend/). */
 const MIGRATION_DIR = path.resolve(process.cwd(), "..", "migration");
@@ -56,6 +69,20 @@ const IMAGE_DIR = path.join(MIGRATION_DIR, "images");
 
 /** Duda's CDN host. An image only truly "lives in Duda" once it's here. */
 const DUDA_CDN = "irp.cdn-website.com";
+
+/**
+ * Placeholder for the 5 products WordPress has no image for. Duda ingests by
+ * fetching a URL, so the file is uploaded to the PUBLIC `product-media` bucket
+ * once and that URL is handed to Duda — the same staging route the dashboard's
+ * own image upload uses. Duda then re-hosts its own copy per product, so the
+ * gallery still ends up entirely on Duda's CDN.
+ *
+ * Deliberately no `MediaAsset` row: the Media Centre's image list feeds the
+ * logo picker, and a placeholder is not a logo.
+ */
+const FALLBACK_SOURCE = path.resolve(process.cwd(), "..", "frontend", "public", "saequip-no-image.jpg");
+/** Deterministic path so repeat runs reuse the same upload instead of piling up copies. */
+const FALLBACK_STORAGE_PATH = "images/saequip-no-image.jpg";
 
 /** Duda fetches each image during the PATCH, so scale the wait to gallery size. */
 const IMAGE_TIMEOUT_BASE_MS = 30_000;
@@ -100,6 +127,8 @@ interface LedgerEntry {
   hubSynced?: boolean;
   /** Set when Duda's title/slug constraints forced a suffixed name. */
   renamedTo?: string;
+  /** Set when WordPress had no image and the placeholder was used instead. */
+  usedFallbackImage?: boolean;
 }
 type Ledger = Record<string, LedgerEntry>;
 
@@ -155,6 +184,51 @@ async function archiveImage(url: string): Promise<void> {
   }
 }
 
+/**
+ * Upload the placeholder once and return its public URL.
+ *
+ * `uploadObject` uses `upsert: false`, so a second run throws "already
+ * exists" — which is success, not failure, since the path is deterministic and
+ * the file never changes. Memoised so 5 products cost one upload attempt.
+ */
+let fallbackUrlPromise: Promise<string> | null = null;
+function fallbackImageUrl(): Promise<string> {
+  fallbackUrlPromise ??= (async () => {
+    if (!existsSync(FALLBACK_SOURCE)) {
+      throw new Error(
+        `fallback image missing at ${FALLBACK_SOURCE} — add it, or pass --no-fallback to import image-less products with an empty gallery`,
+      );
+    }
+    try {
+      await uploadObject("image", FALLBACK_STORAGE_PATH, readFileSync(FALLBACK_SOURCE), "image/jpeg");
+      console.log(`  • uploaded fallback image → ${FALLBACK_STORAGE_PATH}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/already exists|duplicate/i.test(msg)) throw err;
+      console.log(`  • reusing existing fallback image at ${FALLBACK_STORAGE_PATH}`);
+    }
+    const url = publicImageUrl(FALLBACK_STORAGE_PATH);
+    // Duda will fetch this itself, so prove it's reachable before relying on it.
+    const { ok, detail } = await urlReachable(url);
+    if (!ok) throw new Error(`fallback image is not publicly reachable (${detail}): ${url}`);
+    return url;
+  })();
+  return fallbackUrlPromise;
+}
+
+/** Gallery URLs for a product: its own images, or the placeholder. */
+async function galleryFor(p: WooProduct): Promise<string[]> {
+  if (p.images.length > 0) return p.images;
+  if (flag("no-fallback")) return [];
+  return [await fallbackImageUrl()];
+}
+
+/** How many images this product should end up with in Duda. */
+function expectedImageCount(p: WooProduct): number {
+  if (p.images.length > 0) return p.images.length;
+  return flag("no-fallback") ? 0 : 1;
+}
+
 function isRetryable(err: unknown): boolean {
   if (err instanceof DudaApiError) return err.status === 429 || err.status >= 500;
   // AbortError (timeout) and network faults are worth another go.
@@ -189,7 +263,10 @@ async function dryRun(products: WooProduct[]): Promise<void> {
 
   console.log(`\n=== SOURCE DATA (${rep.total} published products) ===\n`);
   console.log(`  images: ${rep.totalImageRefs} references, ${rep.uniqueImageUrls.length} unique`);
-  console.log(`  products with no image: ${rep.noImages.length}`);
+  const fallbackNote = flag("no-fallback")
+    ? "will import with an empty gallery (--no-fallback)"
+    : `will get the placeholder ${FALLBACK_STORAGE_PATH}`;
+  console.log(`  products with no image: ${rep.noImages.length} — ${fallbackNote}`);
   for (const p of rep.noImages) console.log(`     ${p.sku || "(no sku)"} — ${p.name}`);
 
   console.log(`\n  malformed image URLs: ${rep.malformedImageUrls.length}`);
@@ -320,7 +397,12 @@ async function importProducts(products: WooProduct[], batchSize: number): Promis
   if (adopted) console.log(`\n  adopted ${adopted} product(s) that already exist in Duda (matched on SKU)`);
   for (const d of denied) console.log(`  ⊘ deny-listed, leaving untouched: ${d}`);
 
-  const todo = products.filter((p) => !ledger[p.wpId]?.imagesDone);
+  // --force re-runs the image PATCH for products already marked done. Scope it
+  // with --only: re-PATCHing a saequip.com URL makes Duda fetch and re-host the
+  // file AGAIN, leaving a duplicate on its CDN, so a blanket --force is waste.
+  const todo = flag("force")
+    ? products
+    : products.filter((p) => !ledger[p.wpId]?.imagesDone);
   if (existing.length + todo.length > max) {
     fail(`Would exceed max_products (${existing.length} existing + ${todo.length} to import > ${max}).`);
   }
@@ -490,32 +572,41 @@ async function importOne(p: WooProduct, ledger: Ledger): Promise<void> {
     saveLedger(ledger);
   }
 
-  if (flag("skip-images") || p.images.length === 0) {
+  const gallery = await galleryFor(p);
+
+  if (flag("skip-images") || gallery.length === 0) {
     entry.imagesDone = true;
-    entry.expectedImages = p.images.length;
+    entry.expectedImages = 0;
     delete entry.lastError;
     saveLedger(ledger);
     return;
   }
 
   // 4. Images: check reachability, archive, then hand the URLs to Duda.
-  for (const url of p.images) {
+  const usingFallback = p.images.length === 0;
+  for (const url of gallery) {
     if (!isIngestableUrl(url)) throw new Error(`malformed image URL: ${url}`);
     const { ok, detail } = await urlReachable(url);
     if (!ok) throw new Error(`image unreachable (${detail}): ${url}`);
-    await archiveImage(url);
+    // Only archive the WordPress originals; the placeholder already lives in
+    // the repo and in Supabase.
+    if (!usingFallback) await archiveImage(url);
+  }
+  if (usingFallback) {
+    console.log(`      ⓘ no image in WordPress — using the placeholder`);
+    entry.usedFallbackImage = true;
   }
 
-  const timeoutMs = IMAGE_TIMEOUT_BASE_MS + p.images.length * IMAGE_TIMEOUT_PER_IMAGE_MS;
+  const timeoutMs = IMAGE_TIMEOUT_BASE_MS + gallery.length * IMAGE_TIMEOUT_PER_IMAGE_MS;
   await withRetry("images", () =>
     duda.updateProductImages(
       entry!.dudaProductId,
-      p.images.map((url) => ({ url, alt: p.name })),
+      gallery.map((url) => ({ url, alt: p.name })),
       { timeoutMs },
     ),
   );
 
-  entry.expectedImages = p.images.length;
+  entry.expectedImages = gallery.length;
   delete entry.lastError;
   saveLedger(ledger);
 }
@@ -531,11 +622,12 @@ async function verifyBatch(batch: WooProduct[], ledger: Ledger): Promise<string[
     }
     try {
       const live = await duda.getProduct(entry.dudaProductId);
-      if (live.images.length !== p.images.length) {
-        bad.push(`${p.name}: Duda has ${live.images.length} image(s), CSV has ${p.images.length}`);
+      const expected = expectedImageCount(p);
+      if (live.images.length !== expected) {
+        bad.push(`${p.name}: Duda has ${live.images.length} image(s), expected ${expected}`);
         continue;
       }
-      if (p.images.length > 0 && !galleryLivesInDuda(live.images)) {
+      if (expected > 0 && !galleryLivesInDuda(live.images)) {
         const stragglers = live.images.filter((i) => !i.url.includes(DUDA_CDN)).length;
         bad.push(`${p.name}: ${stragglers} image(s) not re-hosted on ${DUDA_CDN} yet`);
         continue;
@@ -560,6 +652,7 @@ async function verify(products: WooProduct[]): Promise<void> {
   let ok = 0;
   const problems: string[] = [];
   const renamed: string[] = [];
+  const usedFallback: string[] = [];
   let notImported = 0;
   let hostedOnWordpress = 0;
 
@@ -595,8 +688,11 @@ async function verify(products: WooProduct[]): Promise<void> {
       issues.push(`name "${l.name}" != "${p.name}"`);
     }
     if ((l.sku ?? "") !== p.sku) issues.push(`sku "${l.sku ?? ""}" != "${p.sku}"`);
-    if (l.images.length !== p.images.length) {
-      issues.push(`${l.images.length} images != ${p.images.length} in CSV`);
+    const expected = expectedImageCount(p);
+    if (l.images.length !== expected) {
+      issues.push(`${l.images.length} images != ${expected} expected`);
+    } else if (p.images.length === 0 && expected === 1) {
+      usedFallback.push(`${p.sku || "(no sku)"} ${p.name}`);
     }
     const notDuda = l.images.filter((i) => !i.url.includes(DUDA_CDN));
     if (notDuda.length) {
@@ -610,6 +706,10 @@ async function verify(products: WooProduct[]): Promise<void> {
   console.log(`  fully correct: ${ok}/${products.length}`);
   console.log(`  not imported:  ${notImported}`);
   console.log(`  products still referencing a non-Duda host: ${hostedOnWordpress}`);
+  if (usedFallback.length) {
+    console.log(`\n  using the placeholder image (${usedFallback.length}) — no image in WordPress:`);
+    for (const f of usedFallback) console.log(`     ${f}`);
+  }
   if (renamed.length) {
     console.log(`\n  renamed to satisfy Duda's unique-title rule (${renamed.length}) — needs a final name choosing:`);
     for (const r of renamed) console.log(`     ${r}`);

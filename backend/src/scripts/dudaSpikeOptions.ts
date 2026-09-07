@@ -26,8 +26,15 @@ const site = env.DUDA_SITE_NAME;
 const base = env.DUDA_API_BASE_URL;
 const auth = "Basic " + Buffer.from(`${env.DUDA_API_USER}:${env.DUDA_API_PASS}`).toString("base64");
 
-/** Live products that must never be touched by this script. */
-const DENY = new Set(["01KW9R473XZGWZWC5206EPYAWB"]); // EX Heater
+/**
+ * Live products that must never be touched by this script.
+ *
+ * ⚠️ These are Duda ids, which are NOT stable across a delete/re-create: EX
+ * Heater was re-imported from the WooCommerce CSV on 2026-09-07 and changed
+ * id, which silently left this guard protecting a product that no longer
+ * existed. Re-check this list whenever a live product is recreated.
+ */
+const DENY = new Set(["01M1XRCFGGHYEJ0QGGXCJ3582N"]); // EX Heater (re-imported 2026-09-07)
 
 /** A real, stable, publicly-reachable external image for the ingest test (C). */
 const EXTERNAL_IMAGE = "https://saequip.com/wp-content/themes/saequip/images/black-check-box-with-white-check.png";

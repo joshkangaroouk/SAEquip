@@ -20,7 +20,7 @@ const auth = "Basic " + Buffer.from(`${env.DUDA_API_USER}:${env.DUDA_API_PASS}`)
 const productId = process.argv.slice(2).find((a) => !a.startsWith("-"));
 if (!productId) {
   console.error(`Usage: npm run duda:snapshot -- <productId>\n`);
-  console.error(`  e.g. npm run duda:snapshot -- 01KW9R473XZGWZWC5206EPYAWB   # EX Heater`);
+  console.error(`  e.g. npm run duda:snapshot -- 01M1XRCFGGHYEJ0QGGXCJ3582N   # EX Heater`);
   process.exit(1);
 }
 

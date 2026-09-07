@@ -9,7 +9,7 @@
 import { env } from "../env.js";
 
 const site = env.DUDA_SITE_NAME;
-const PRODUCT_ID = "01KW9R473XZGWZWC5206EPYAWB"; // EX Heater
+const PRODUCT_ID = "01M1XRCFGGHYEJ0QGGXCJ3582N"; // EX Heater (id changed when re-imported 2026-09-07)
 const auth = "Basic " + Buffer.from(`${env.DUDA_API_USER}:${env.DUDA_API_PASS}`).toString("base64");
 
 const candidates = [
