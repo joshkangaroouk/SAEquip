@@ -22,6 +22,10 @@
  * Products with no image in WordPress get frontend/public/saequip-no-image.jpg,
  * staged via Supabase so Duda can fetch and re-host it. --no-fallback opts out.
  *
+ * Put the imported images into the Media Centre as reusable originals
+ * (additive — does not touch Duda):
+ *   npm run duda:import-products --workspace=backend -- --media-centre --confirm
+ *
  * Undo (deletes only products THIS script created, per the ledger):
  *   npm run duda:import-products --workspace=backend -- --rollback --confirm
  *
@@ -77,8 +81,8 @@ const DUDA_CDN = "irp.cdn-website.com";
  * own image upload uses. Duda then re-hosts its own copy per product, so the
  * gallery still ends up entirely on Duda's CDN.
  *
- * Deliberately no `MediaAsset` row: the Media Centre's image list feeds the
- * logo picker, and a placeholder is not a logo.
+ * It also gets a `MediaAsset` row via --media-centre, so it can be re-attached
+ * from MediaPicker like any other image.
  */
 const FALLBACK_SOURCE = path.resolve(process.cwd(), "..", "frontend", "public", "saequip-no-image.jpg");
 /** Deterministic path so repeat runs reuse the same upload instead of piling up copies. */
@@ -745,6 +749,148 @@ async function verify(products: WooProduct[]): Promise<void> {
   );
 }
 
+/** Content type from the file extension — the CSV carries no mimetype. */
+function mimeForImage(name: string): string | null {
+  const ext = name.toLowerCase().split(".").pop() ?? "";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  return null;
+}
+
+/**
+ * Stable, collision-free storage path for a WordPress image.
+ *
+ * Uses the path under /wp-content/uploads/ (e.g. "2022/06/foo.png") rather
+ * than the bare filename: verified unique across all 329 images, traceable
+ * back to the source, and deterministic so a re-run reuses the same object
+ * instead of piling up copies under fresh UUIDs.
+ */
+function storagePathFor(url: string): string | null {
+  const m = /\/wp-content\/uploads\/(.+)$/.exec(url);
+  if (!m) return null;
+  const rel = decodeURIComponent(m[1]).replace(/[^a-zA-Z0-9._/-]/g, "_");
+  return `images/wp/${rel}`;
+}
+
+/**
+ * Populate the Media Centre with the imported product images.
+ *
+ * Why this exists: the dashboard's own gallery uploader posts to /api/media,
+ * which creates a MediaAsset row — so an image added through the product
+ * editor has always appeared in the Media Centre as a reusable original (see
+ * the comment in ImagesSection.tsx). The bulk import originally skipped that,
+ * handing Duda the WordPress URLs directly, which left 373 live images with no
+ * Media Centre presence and no way to reuse one via MediaPicker.
+ *
+ * Purely additive — it does NOT touch Duda. Duda already holds its own
+ * re-hosted copy of every image, so these rows are the reusable originals, and
+ * deleting one cannot break a live gallery (the documented design).
+ *
+ * Sourced from the local migration/images archive, so it keeps working after
+ * WordPress goes away; falls back to fetching if a file is missing.
+ */
+async function populateMediaCentre(products: WooProduct[]): Promise<void> {
+  const urls = [...new Set(products.flatMap((p) => p.images))].sort();
+  console.log(`\n${urls.length} unique image(s) across ${products.length} product(s)\n`);
+
+  let created = 0;
+  let skipped = 0;
+  const failed: string[] = [];
+
+  for (const url of urls) {
+    const storagePath = storagePathFor(url);
+    const filename = decodeURIComponent(url.split("/").pop() ?? "");
+    const mimeType = mimeForImage(filename);
+
+    if (!storagePath || !mimeType) {
+      failed.push(`${url} — ${!storagePath ? "not under /wp-content/uploads/" : "unsupported extension"}`);
+      continue;
+    }
+
+    if (await prisma.mediaAsset.findUnique({ where: { storagePath }, select: { id: true } })) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      // Prefer the local archive; fetch only if it's missing.
+      const archived = path.join(IMAGE_DIR, filename.replace(/[^a-zA-Z0-9._-]/g, "_"));
+      let buffer: Buffer;
+      if (existsSync(archived)) {
+        buffer = readFileSync(archived);
+      } else {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "SAEquip-migration/1.0" },
+          signal: AbortSignal.timeout(60_000),
+        });
+        if (!res.ok) throw new Error(`source returned HTTP ${res.status}`);
+        buffer = Buffer.from(await res.arrayBuffer());
+      }
+
+      try {
+        await uploadObject("image", storagePath, buffer, mimeType);
+      } catch (err) {
+        // upsert:false, so "already exists" means a previous run got this far
+        // without writing the row — carry on and create it.
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!/already exists|duplicate/i.test(msg)) throw err;
+      }
+
+      await prisma.mediaAsset.create({
+        data: {
+          filename,
+          storagePath,
+          mimeType,
+          sizeBytes: buffer.byteLength,
+          kind: "image",
+          alt: null,
+          uploadedBy: "wordpress-import",
+        },
+      });
+      created++;
+      if (created % 25 === 0) console.log(`  …${created} added`);
+    } catch (err) {
+      failed.push(`${filename} — ${err instanceof Error ? err.message.slice(0, 120) : "?"}`);
+    }
+    await sleep(80);
+  }
+
+  // The placeholder is a reusable original too, and it's already in the bucket.
+  if (!flag("no-fallback") && existsSync(FALLBACK_SOURCE)) {
+    const exists = await prisma.mediaAsset.findUnique({
+      where: { storagePath: FALLBACK_STORAGE_PATH },
+      select: { id: true },
+    });
+    if (!exists) {
+      await fallbackImageUrl(); // ensures the object is uploaded
+      await prisma.mediaAsset.create({
+        data: {
+          filename: "saequip-no-image.jpg",
+          storagePath: FALLBACK_STORAGE_PATH,
+          mimeType: "image/jpeg",
+          sizeBytes: readFileSync(FALLBACK_SOURCE).byteLength,
+          kind: "image",
+          alt: "No image available",
+          uploadedBy: "wordpress-import",
+        },
+      });
+      created++;
+      console.log(`  • registered the placeholder image`);
+    } else {
+      skipped++;
+    }
+  }
+
+  console.log(`\n=== MEDIA CENTRE ===`);
+  console.log(`  added   : ${created}`);
+  console.log(`  existing: ${skipped}`);
+  console.log(`  failed  : ${failed.length}`);
+  for (const f of failed) console.log(`     ${f}`);
+  const total = await prisma.mediaAsset.count({ where: { kind: "image" } });
+  console.log(`\n  MediaAsset rows of kind "image": ${total}\n`);
+}
+
 /**
  * Repair pass: guarantee a HubProduct row (with a slug) for every ledger entry.
  *
@@ -848,6 +994,12 @@ async function main(): Promise<void> {
   if (flag("rollback")) {
     if (!flag("confirm")) fail("--rollback requires --confirm (this DELETES live Duda products).");
     await rollback();
+    return;
+  }
+
+  if (flag("media-centre")) {
+    if (!flag("confirm")) fail("--media-centre requires --confirm (it uploads to Supabase and writes MediaAsset rows).");
+    await populateMediaCentre(products);
     return;
   }
 

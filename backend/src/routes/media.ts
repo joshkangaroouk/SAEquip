@@ -53,13 +53,33 @@ function kindForUpload(mimetype: string, filename: string): "image" | "file" | "
 
 // A MediaAsset is "in use" if referenced by a catalog Logo, a Download, or a
 // product's 3D model attachment.
-async function usageCount(mediaAssetId: string): Promise<number> {
+/**
+ * Usage counts for EVERY asset, in 3 grouped queries.
+ *
+ * Deliberately not "3 counts per asset": the WordPress import took the library
+ * from 5 assets to 335, which turned one Media Centre page load into ~1,000
+ * queries. Supabase is in eu-west-1, so per-query latency is the dominant cost
+ * (the same trap that once made the public content endpoint take ~5s).
+ */
+async function usageIndex(): Promise<Map<string, number>> {
   const [logos, downloads, models] = await Promise.all([
-    prisma.logo.count({ where: { mediaAssetId } }),
-    prisma.download.count({ where: { mediaAssetId } }),
-    prisma.hubProduct.count({ where: { glbAssetId: mediaAssetId } }),
+    prisma.logo.groupBy({ by: ["mediaAssetId"], _count: true }),
+    prisma.download.groupBy({ by: ["mediaAssetId"], _count: true }),
+    prisma.hubProduct.groupBy({
+      by: ["glbAssetId"],
+      _count: true,
+      where: { glbAssetId: { not: null } },
+    }),
   ]);
-  return logos + downloads + models;
+
+  const index = new Map<string, number>();
+  const add = (id: string | null, n: number) => {
+    if (id) index.set(id, (index.get(id) ?? 0) + n);
+  };
+  for (const l of logos) add(l.mediaAssetId, l._count);
+  for (const d of downloads) add(d.mediaAssetId, d._count);
+  for (const m of models) add(m.glbAssetId, m._count);
+  return index;
 }
 
 async function mediaReferences(mediaAssetId: string) {
@@ -143,12 +163,15 @@ mediaRouter.get("/media", async (req, res, next) => {
     const where =
       kindParam === "image" || kindParam === "file" || kindParam === "model" ? { kind: kindParam } : {};
 
-    const assets = await prisma.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" } });
+    const [assets, usage] = await Promise.all([
+      prisma.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" } }),
+      usageIndex(),
+    ]);
     const result = await Promise.all(
       assets.map(async (a) => ({
         ...a,
         url: await resolveUrl(a.kind, a.storagePath),
-        usage: await usageCount(a.id),
+        usage: usage.get(a.id) ?? 0,
       })),
     );
     res.json(result);
