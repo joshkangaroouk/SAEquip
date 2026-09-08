@@ -490,22 +490,76 @@
     return VALID[raw] ? [raw] : []; // unknown value → render nothing (fail-closed)
   }
 
+  /**
+   * True when `parent` contains nothing except `node` — no other elements and
+   * no non-whitespace text.
+   *
+   * This is the safety check that makes collapsing upwards acceptable: an
+   * ancestor is only ever hidden while our (empty) mount is the sole thing in
+   * it, so a container that also holds real page content is never touched.
+   */
+  function holdsOnly(parent, node) {
+    var kids = parent.childNodes;
+    for (var i = 0; i < kids.length; i++) {
+      var k = kids[i];
+      if (k === node) continue;
+      if (k.nodeType === 1) return false; // another element
+      if (k.nodeType === 3 && k.nodeValue && k.nodeValue.trim()) return false; // real text
+    }
+    return true;
+  }
+
+  /**
+   * Hide a mount that has nothing to show, and collapse the Duda container
+   * holding it.
+   *
+   * Hiding the mount alone is not enough: Duda's HTML/Embed element is a
+   * wrapper with its own padding and min-height, so an empty widget still
+   * leaves a visible gap on the product page. Duda gives no way to
+   * conditionally hide an element, so the widget removes its own footprint.
+   *
+   * Walks up at most COLLAPSE_MAX_DEPTH levels and stops the moment an
+   * ancestor contains anything besides our mount, so the worst case is a
+   * slightly smaller gap rather than missing page content. Set
+   * `data-collapse="false"` on a mount to opt out.
+   */
+  var COLLAPSE_MAX_DEPTH = 4;
+
+  function collapseMount(mount) {
+    try {
+      if ((mount.getAttribute("data-collapse") || "").toLowerCase() === "false") return;
+      mount.style.display = "none";
+      var node = mount;
+      for (var i = 0; i < COLLAPSE_MAX_DEPTH; i++) {
+        var parent = node.parentElement;
+        if (!parent || parent === document.body || parent === document.documentElement) break;
+        if (!holdsOnly(parent, node)) break;
+        parent.style.display = "none";
+        node = parent;
+      }
+    } catch (e) {
+      /* never break the host page */
+    }
+  }
+
   function renderMount(mount, slug) {
     if (mount.getAttribute(RENDERED_ATTR)) return; // idempotency: skip already-processed mounts
     mount.setAttribute(RENDERED_ATTR, "1"); // claim synchronously so re-exec skips it
-    if (!hub.api || !slug) return;
+    if (!hub.api || !slug) return collapseMount(mount);
     var sections = sectionsFor(mount);
-    if (!sections.length) return;
+    if (!sections.length) return collapseMount(mount); // unknown data-section
 
     fetchContent(slug).then(function (data) {
       try {
-        if (!data) return; // unknown product / error → render nothing
+        if (!data) return collapseMount(mount); // unknown product / fetch error
         var root = el("div", "saeh-root");
         for (var i = 0; i < sections.length; i++) {
           var node = buildSection(sections[i], data);
           if (node) root.appendChild(node);
         }
-        if (!root.childNodes.length) return; // section(s) empty → render nothing
+        // The common case: this product simply has no content for the
+        // requested section, so leave no trace on the page.
+        if (!root.childNodes.length) return collapseMount(mount);
         injectStyles();
         mount.innerHTML = "";
         mount.appendChild(root);
