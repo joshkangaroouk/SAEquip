@@ -24,7 +24,7 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 
 **Type/layout scale**: `html` is set to `font-size: 110%` in `index.css` — deliberately on the ROOT, because Tailwind's spacing scale, the type scale and `--radius` are all rem-based, so this scales layout *and* type together the way browser zoom does. That root is the single knob for scaling the whole UI. Body/paragraph text is 16px (`0.909rem` = 16/17.6, kept in rem so it tracks the root); the `body` rule in `index.css` and the `body` token in `tailwind.config.js` must stay in step.
 - **Database/Auth/Storage**: Supabase — Postgres (via Prisma, pooled `DATABASE_URL` + direct `DIRECT_URL` for migrations), Auth (email+password, public signup **disabled**, `ALLOWED_EMAIL_DOMAINS` allowlist, backend verifies JWTs via `supabase.auth.getUser`), Storage (three buckets: `product-media` public for logos/images, `product-files` private for gated download files served via short-lived signed URLs, `product-models` public for `.glb` 3D models — see the 3D Model Viewer section below).
-- **Hosting**: moving from **Railway** to **Vercel Pro** as a *single* project serving both surfaces from one origin — see the Vercel deployment section below. The Railway gotchas further down still apply until the cutover completes.
+- **Hosting**: **Vercel Pro**, a *single* project serving both surfaces from one origin — see the Vercel deployment section below. **Railway is gone** (deleted 2026-09-08); the Railway section further down is kept only as history.
 - **External APIs**: Duda REST API (HTTP Basic auth), Resend (optional, email notifications).
 
 ## Data model (Prisma) — source of truth split
@@ -78,15 +78,24 @@ Backend side (`backend/src/routes/quotes.ts`, `backend/src/services/email.ts`): 
 
 ## Duda REST API
 
-Base URL `https://api.duda.co/api`, HTTP Basic auth (`DUDA_API_USER`/`DUDA_API_PASS`). SAEquip's `site_name` is **`8a8f03b5`** (`saequip-2.multiscreensite.com`) as of 2026-09-07 — see "Site migration" below; the former `099434f3` is retired and nothing should read from it. **Path pattern includes a `multiscreen` segment that's easy to miss** — omitting it 404s (`RESTEASY003210`): `/sites/multiscreen/{site}/ecommerce/store`, `.../ecommerce/products`, `.../ecommerce/products/{id}` (see `backend/src/services/duda.ts`). Duda's product `custom_fields` are deliberately unused (see the Duda-vs-Hub split above) — don't reintroduce writes to them.
+Base URL `https://api.duda.co/api`, HTTP Basic auth (`DUDA_API_USER`/`DUDA_API_PASS`). SAEquip's `site_name` is **`8a8f03b5`**, live on **`saequip.multiscreensite.com`** — see "Site migration" below; the former `099434f3` is retired and nothing should read from it. **Path pattern includes a `multiscreen` segment that's easy to miss** — omitting it 404s (`RESTEASY003210`): `/sites/multiscreen/{site}/ecommerce/store`, `.../ecommerce/products`, `.../ecommerce/products/{id}` (see `backend/src/services/duda.ts`). Duda's product `custom_fields` are deliberately unused (see the Duda-vs-Hub split above) — don't reintroduce writes to them.
 
 ### Site migration: `099434f3` → `8a8f03b5` (2026-09-07)
 
 The Hub now reads and writes **only** `8a8f03b5`. The old site is retired; `GRANTABLE_SITES` in `dudaEditorProvision.ts` no longer allows it, and editor access on it was revoked.
 
+⚠️ **The DOMAIN moved with the migration, and this is a trap.** `saequip.multiscreensite.com` originally belonged to `099434f3`. After the cutover the new site was renamed in Duda from `saequip-2` to `saequip` and republished, so **`saequip.multiscreensite.com` now serves `8a8f03b5`** and the retired site sits on `saequip-3.undefined`, unpublished. Confirmed against the API (`GET /sites/multiscreen/{site}` → `site_default_domain`):
+
+| Duda site | Domain | Status |
+|---|---|---|
+| **`8a8f03b5`** (live, `DUDA_SITE_NAME`) | **`saequip.multiscreensite.com`** | PUBLISHED |
+| `099434f3` (retired) | `saequip-3.undefined` | UNPUBLISHED |
+
+**Never infer the domain from the site id, or vice versa** — this doc previously claimed `8a8f03b5` was `saequip-2.multiscreensite.com`, which was true only at creation. Acting on that stale pairing produced a recommendation to drop `saequip.multiscreensite.com` from `PUBLIC_ALLOWED_ORIGINS`, which would have broken the live widget on every product page. Ask the API.
+
 **The thing that made this cheap: `8a8f03b5` was DUPLICATED from `099434f3`, so product ids carried over byte-identically** — same `dudaProductId` (`01KW9R473XZGWZWC5206EPYAWB`), same SKU, same slug, same option ids. Products are normally per-site in Duda, so the obvious expectation was that every `HubProduct` row (keyed on `dudaProductId`) would need re-keying to new ids; **it didn't**, and the existing row kept its attached 3D model. Verify before assuming this holds for any *future* site move — a site created fresh rather than duplicated would genuinely need re-keying. **Variation ids DO differ** between the sites, but nothing persists those.
 
-Changing sites means `DUDA_SITE_NAME` in env (default in `backend/src/env.ts`) plus `PUBLIC_ALLOWED_ORIGINS` gaining the new domain — and, on Railway, both must be set on the backend service, not just locally. Everything configured *inside* Duda is per-site and does **not** carry over even in a duplicate: widget embeds on the product template, the `.productDescription` Head-HTML CSS, and the three quote/basket Widget Builder widgets all need re-doing on the new site.
+Changing sites means `DUDA_SITE_NAME` in env (default in `backend/src/env.ts`) plus `PUBLIC_ALLOWED_ORIGINS` gaining the new domain — and both must be set in the Vercel project's environment variables, not just locally. Everything configured *inside* Duda is per-site and does **not** carry over even in a duplicate: widget embeds on the product template, the `.productDescription` Head-HTML CSS, and the three quote/basket Widget Builder widgets all need re-doing on the new site.
 
 ### Verified write surface + behaviours (probed live, 2026-07-27/28)
 
@@ -119,7 +128,7 @@ The `/website` page (top of the sidebar) lets a staff member SSO straight into t
 - **The DB mapping IS the authorization.** `requireAuth` only proves "valid Supabase token + allowed email domain", and `ALLOWED_EMAIL_DOMAINS` spans both kangaroouk.com and saequip.com — far too coarse to gate credential minting. `DudaEditorAccount` (staff→Duda account, keyed on Supabase `staffUserId`) + `DudaEditorSiteAccess` (per-user, per-site allowlist) decide access. No row → 403. Fail closed; never fall back to a shared account.
 - **Three things the client must never control**: `account_name` (derived server-side from the verified JWT), `target` (hardcoded `EDITOR` in `services/dudaSso.ts` — the API also accepts `RESET_SITE`/`RESET_BASIC`/`SWITCH_TEMPLATE`, so a client-supplied target would be a site-wipe vector), and the site (validated against that user's allowlist). The zod body schema is `.strict()`, so smuggled `accountName`/`target` keys are rejected outright, not ignored.
 - ⚠️ **Never `next(err)` a Duda error from the SSO route.** The shared error handler in `index.ts` echoes `DudaApiError.body.slice(0, 500)` to the caller and `console.error`s the whole object — and a Duda SSO response body contains a **live one-time login token**. `routes/websiteEditor.ts` catches `DudaApiError` locally and logs the status only. Same reason there is no url/token column on `DudaSsoAudit`.
-- **Rate limited per user, not per IP** — `app.set("trust proxy")` is never called, so behind Railway's proxy an IP-keyed limiter would bucket every staff member together. The limiter uses `keyGenerator: req => req.user?.id`.
+- **Rate limited per user, not per IP** — a per-person budget is the right shape for credential minting, and it avoids depending on proxy headers at all. The limiter uses `keyGenerator: req => req.user?.id` and a **Postgres-backed store**, because an in-memory counter gives each serverless instance its own budget (see the Vercel section).
 - **Provisioning is CLI-only, deliberately.** Creating Duda accounts and granting permissions are the privilege-escalating operations; as an HTTP route, any allowed-domain session could self-provision. Use `npm run duda:editor-provision --workspace=backend -- --email <staff> --supabase-user-id <uuid> --confirm` (also `--check` read-only, and `--revoke`). `GRANTABLE_SITES` in that script hard-limits which sites can be granted — the retired `099434f3` is deliberately absent. The allowlist check runs **after** the revoke branch on purpose: a retired site is exactly when you still need to take access away.
 - ⚠️ **A revoke must be verified, never assumed.** Revoke is `DELETE .../permissions`; the plausible-looking `DELETE /accounts/{name}/sites/{site}` 404s. The script originally logged a 404 as "may already be revoked", so a wrong path printed a success tick while the account kept all 11 permissions on the site — caught only by asking Duda directly. It now hard-fails on any 404 that isn't an explicit `ResourceNotExist`, then re-reads the permissions to confirm the grant is actually gone.
 
@@ -150,7 +159,7 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 See `backend/.env.example` and `frontend/.env.example` for the full annotated list. Highlights:
 - Backend **requires**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL_DOMAINS`, `DUDA_API_USER`, `DUDA_API_PASS`. `PUBLIC_ALLOWED_ORIGINS` must include every domain allowed to call `/public/*` (Duda domains + the frontend origin + localhost for dev) — CORS rejects anything not listed, no trailing slashes.
 - Backend **optional**: `RESEND_API_KEY` + `QUOTE_NOTIFY_FROM` + `QUOTE_NOTIFY_TO` (all-or-nothing for email).
-- Frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL` (baked in at **build time** — changing it requires a rebuild/redeploy, not just a running-process restart).
+- Frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. ⚠️ **`VITE_API_BASE_URL` must stay UNSET in production** — that is what makes the API resolve same-origin. It only falls back to `http://localhost:4000` under `import.meta.env.DEV`. Setting it in Vercel silently points the dashboard elsewhere. (Any `VITE_*` value is baked in at build time, so a change needs a redeploy, not a restart.)
 
 ## The product editor (unified save)
 
@@ -180,7 +189,7 @@ The database had **no `_prisma_migrations` table** until 2026-07-28 (schema appl
 
 ## Deployment — moving to Vercel (in progress, 2026-09-08)
 
-Both surfaces are being moved from Railway to Vercel Pro. `frontend/vercel.json` and `backend/vercel.json` are committed; the Railway gotchas below still apply until the cutover completes.
+Live on Vercel Pro since 2026-09-08 at `https://sa-equip-backend.vercel.app` (a custom domain is still to be added). Config is the single root `vercel.json`; the per-workspace `frontend/vercel.json` and `backend/vercel.json` were removed when the projects were consolidated.
 
 **ONE Vercel project**, Root Directory = **repo root**, serving both surfaces from one origin:
 - `api/index.ts` (repo root, not `backend/` — Vercel only picks up functions from a root `api/`) re-exports the Express app. `vercel.json` rewrites `/api/*` and `/public/*` to it, so Express still owns all routing.
@@ -199,6 +208,14 @@ Nothing leaks today, and three things keep it that way: Vite only inlines `VITE_
 
 Related: **Preview deployments inherit the same env vars**, so anyone who can open a PR can run build scripts against production secrets. Prefer leaving `SUPABASE_SERVICE_ROLE_KEY` and `DUDA_API_PASS` unset on Preview (preview functions degrade, nothing leaks).
 
+### Live facts
+
+- URL: `https://sa-equip-backend.vercel.app` (project name is a leftover; it serves BOTH the dashboard and the API). Custom domain not yet added.
+- Widget script for Duda embeds: `https://sa-equip-backend.vercel.app/public/widget.js`
+- `PUBLIC_ALLOWED_ORIGINS` in Vercel is correct and tighter than `.env.example`: the three real domains only, no localhost. Verified by request — `saequip.multiscreensite.com`, `saequip.com`, `www.saequip.com` pass; everything else 403s.
+- **Bucket limits are no longer applied at startup.** Run `npm run storage:ensure --workspace=backend` after any deploy that changes `MAX_BYTES` or the mimetype allowlists. `npm run media:verify-upload --workspace=backend` checks the upload path still works.
+- ⚠️ **Still outstanding on the Duda side**: the widget embeds on the product template and the three quote/basket Widget Builder widgets still point at the deleted Railway backend, so the live product pages are missing their Hub content until those URLs are repointed. Add a custom domain first, or the `.vercel.app` hostname gets baked into Duda's templates.
+
 ### What the serverless model forced to change
 
 - ⚠️ **A request body cannot exceed 4.5MB on Vercel** — a platform limit, not a plan setting. That is far below the 25MB file ceiling, so **uploads no longer go through the API at all**: the browser mints a signed URL, PUTs straight to Supabase and then confirms. See the upload section in `services/storage.ts` / `lib/upload.ts`. This was the blocking issue for the whole move.
@@ -214,7 +231,9 @@ Related: **Preview deployments inherit the same env vars**, so anyone who can op
 - **The SSO limiter is Postgres-backed** (`middleware/pgRateLimitStore.ts`). `express-rate-limit`'s default store is in-process memory, which is useless on serverless: each of many short-lived instances keeps its own counter, so "10 per minute" becomes "10 per minute *per instance*" and resets on every recycle. That is unacceptable for the one route that **mints a live Duda credential**. The increment is a single atomic `INSERT … ON CONFLICT` because read-then-write loses hits under exactly the concurrency serverless makes normal (verified: 20 concurrent hits all counted).
 - **The three public limiters (content/lead/quote) stay in-memory**, and are best-effort only. A DB write per page view is the wrong trade on the one endpoint that has to stay fast. Real protection for those belongs at the edge — **Vercel Firewall rate-limit rules**, which run before the function is even invoked and are therefore both cheaper and actually effective.
 
-## Deployment gotchas (Railway) — read before touching build/deploy config
+## Deployment gotchas (Railway) — HISTORICAL, Railway was deleted 2026-09-08
+
+Kept because two of these are platform-independent and still bite: `prisma generate` must run before `tsc`, and the region must match Supabase's `eu-west-1`. The rest is Railway-specific and no longer applies.
 
 - **`prisma generate` must run before `tsc`.** Backend `package.json` has `postinstall: prisma generate` and `build: prisma generate && tsc` — without this, Railway's fresh install builds against an empty `@prisma/client` and every model type "doesn't exist."
 - **Migrations with warnings**: `prisma migrate dev` refuses to run non-interactively when a migration could be destructive (new `@@unique`, dropped column, etc.), and even `--create-only` bails. Workaround: `prisma migrate diff` → apply via `prisma migrate deploy`.
