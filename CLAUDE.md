@@ -306,9 +306,24 @@ Minor: **Duda normalises `<hr />` to `<hr>`** on write, so any exact-string comp
 
 ⚠️ **Never put a literal U+00A0 in source.** `normaliseWhitespaceChars` strips non-breaking spaces via a ` ` escape, deliberately: a literal one is invisible in review, indistinguishable from a normal space, and turns the line into a silent no-op if retyped. A verification regex written with a literal space instead of U+00A0 reported "non-breaking space" in all 94 live descriptions when the real count was zero.
 
+### Stage 3a — key benefits + applications (done 2026-09-08)
+
+`npm run duda:import-products --workspace=backend -- --lists --confirm` writes both into the Hub as `ProductTextItem` rows. **Hub-only — these never go to Duda.** Result: **512 benefits across 59 products, 325 applications across 56**, all 837 items verified to match the CSV exactly, in order, with dense `sortOrder` 0..n-1.
+
+⚠️ **The two ACF field names are ASYMMETRIC and it is not a typo.** Benefits repeat the plural (`key_benefits_repeat_N_key_benefits_repeat__value`); applications use a SINGULAR inner name (`applications_repeat_N_application_repeat__value`). Assuming symmetry silently yields zero applications.
+
+⚠️ **Both are replace-whole-set** (delete-all-by-kind then recreate), mirroring `PUT /api/products/:id/benefits`, so a blind re-run is destructive. The import therefore refuses two things: a product whose CSV list is **empty** is skipped rather than written (writing an empty set would delete what's there, and "the CSV is silent" ≠ "this product should have none"), and a product that **already has items** is skipped unless `--force`, so a second run cannot quietly overwrite a staff member's hand edits.
+
+Stored as **plain text, not HTML** — the widget renders them with `textContent` and never injects markup, so `sanitisePlainText()` decodes entities rather than escaping them. Two things it fixes that would otherwise have shipped:
+
+- **38 items contained `&amp;`**, which would have displayed literally as the five characters "&amp;" on the live page. Note the source is inconsistent — one SAF35 benefit has a raw `&` while its sibling is encoded — which is safe because sanitize-html normalises every ampersand first, so exactly one decode pass handles both. (No double-encoded `&amp;amp;` exists in the export.)
+- **6 items contained the `ﬁ` ligature** (U+FB01) from a PDF paste — `"Oil reﬁneries"` and `"Conﬁned spaces"` on SPTR, PNER and PNEL. A single codepoint that merely looks like "fi": it breaks text search, sorts oddly, and renders as a missing-glyph box in fonts without it. Normalised to real letters, along with the other ﬀ/ﬂ/ﬃ/ﬄ ligatures.
+
+`°`, `³`, en dashes and curly quotes are deliberately kept — this data is full of "-40°C" and "2560m3/hr".
+
 ### Data waiting for later stages
 
-466 spec rows (50 products), 512 key benefits (59), 325 applications (56), 227 logo links across only **9 distinct** logo values (`madeinuk`, `zone-1-2`, `ATEX`, `UKEX`, `IECEx`, `zone-21-22`, `INMETRO`, `zone-0`, `zone-20`), 176 downloads. Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
+466 spec rows (50 products), 227 logo links across only **9 distinct** logo values (`madeinuk`, `zone-1-2`, `ATEX`, `UKEX`, `IECEx`, `zone-21-22`, `INMETRO`, `zone-0`, `zone-20`), 176 downloads. Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
 
 Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO is barely populated** (title on 4/96, meta description on 12/96), so SEO is authoring work, not migration. Per Josh, SEO metadata is off the table for now.
 
@@ -317,7 +332,7 @@ Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda a
 - Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).
 - No admin UI to view captured `Lead` rows from gated downloads yet (they're stored and now survive product deletion, just not surfaced — unlike `QuoteRequest`, which has a `/quotes` page). More valuable now that retained leads can outlive their product.
 - Per-product **Downloads editor was removed**; the Downloads widget is parked as visibly disabled on `/widgets`. Backend routes, leads, `/custom` payload and the widget's downloads section all still work, so restoring it is a UI-only change (`git show d68e28b~1:frontend/src/components/DownloadsEditor.tsx` for the old implementation).
-- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images) and 2 (descriptions) are done for all 96 published products; **Stage 3 (specs, benefits, applications, logos) and options are still to do**, so products currently have a name, gallery and description but no spec table or certification logos. `/products/new` remains the path for genuinely new one-off products.
+- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions) and 3a (key benefits + applications) are done for all 96 published products; **still to do: spec rows, certification logos, downloads, and options**, so products currently have a name, gallery, description, benefits and applications but no spec table or logos. `/products/new` remains the path for genuinely new one-off products.
 - `CompatibleLink` model exists with no editor/UI.
 - Widget visual styling is functional but not deeply brand-tuned.
 - No optimistic-concurrency check: because array writes are full replacement, a stale dashboard tab can overwrite edits made in Duda. Mitigated only by the "loaded HH:MM / refresh" control in the product header.

@@ -433,6 +433,69 @@ export function stripAnchors(html: string): string {
   return html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, (_m, text: string) => text);
 }
 
+/**
+ * Typographic ligatures, which arrive via PDF/InDesign copy-paste.
+ *
+ * These are single codepoints that merely LOOK like letter pairs: "Oil
+ * reﬁneries" contains U+FB01, not "f" followed by "i". Left alone they break
+ * text search (a visitor searching "refineries" gets no match), sort oddly,
+ * and render as a missing-glyph box in fonts without the ligature. Three
+ * products carry them (SPTR, PNER, PNEL).
+ */
+const LIGATURES: [RegExp, string][] = [
+  [/ﬀ/g, "ff"],
+  [/ﬁ/g, "fi"],
+  [/ﬂ/g, "fl"],
+  [/ﬃ/g, "ffi"],
+  [/ﬄ/g, "ffl"],
+  [/ﬅ/g, "st"],
+  [/ﬆ/g, "st"],
+];
+
+/**
+ * Decode the handful of HTML entities that appear in this data.
+ *
+ * `&amp;` is decoded LAST on purpose: doing it first would turn a literal
+ * `&amp;lt;` into `<` rather than the intended visible text `&lt;`.
+ */
+function decodeBasicEntities(s: string): string {
+  return s
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+/**
+ * Normalise a WooCommerce value into clean PLAIN text.
+ *
+ * For `ProductTextItem` (key benefits, applications) and any other field
+ * stored as `text`, not HTML. The widget renders these with `textContent` and
+ * never injects markup, so anything left encoded here is shown literally — an
+ * `&amp;` would appear on the live page as the five characters "&amp;", which
+ * is exactly what 38 of these items would have done.
+ *
+ * Deliberately KEPT: `°`, `³`, en dashes and curly quotes. They are correct
+ * punctuation, and this data is full of things like "-40°C" and "2560m3/hr".
+ *
+ * The source is inconsistent about encoding — one SAF35 benefit has a raw `&`
+ * while its sibling has `&amp;` — which is fine here: sanitize-html normalises
+ * every ampersand to `&amp;` first, so exactly one decode pass afterwards
+ * handles both. (Verified: no double-encoded `&amp;amp;` exists in the export.)
+ */
+export function sanitisePlainText(raw: string | null | undefined): string {
+  if (!raw) return "";
+  let t = stripShortcodes(decodeExportEscapes(raw));
+  // Strips any tags and normalises entity encoding in one pass.
+  t = sanitizeHtml(t, { allowedTags: [], allowedAttributes: {} });
+  t = decodeBasicEntities(t);
+  t = normaliseWhitespaceChars(t);
+  for (const [re, replacement] of LIGATURES) t = t.replace(re, replacement);
+  return t.replace(/\s+/g, " ").trim();
+}
+
 /** Comparable words of a fragment, for measuring overlap between the two fields. */
 function comparableWords(html: string): string[] {
   return textContent(html)

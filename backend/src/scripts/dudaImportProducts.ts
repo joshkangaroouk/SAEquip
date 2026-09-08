@@ -29,6 +29,11 @@
  * Stage 2 — sanitised descriptions into Duda's native field and the Hub:
  *   npm run duda:import-products --workspace=backend -- --descriptions --confirm
  *
+ * Stage 3 — key benefits + applications into the Hub (never Duda). Products
+ * that already have items are skipped unless --force, since these are
+ * replace-whole-set and a re-run would otherwise clobber hand edits:
+ *   npm run duda:import-products --workspace=backend -- --lists --confirm
+ *
  * Undo (deletes only products THIS script created, per the ledger):
  *   npm run duda:import-products --workspace=backend -- --rollback --confirm
  *
@@ -48,6 +53,7 @@ import { syncHubProduct } from "../services/hubProduct.js";
 import { publicImageUrl, uploadObject } from "../services/storage.js";
 import { prisma } from "../prisma.js";
 import {
+  acfRepeater,
   parsePublishedProducts,
   reportIntegrity,
   isIngestableUrl,
@@ -56,6 +62,7 @@ import {
 import {
   composeDescription,
   extractShortcodeMedia,
+  sanitisePlainText,
   stripAnchors,
   textContent,
 } from "../services/descriptionHtml.js";
@@ -871,6 +878,130 @@ async function importDescriptions(products: WooProduct[]): Promise<void> {
   console.log("");
 }
 
+/**
+ * ACF repeater field names for the two list sections.
+ *
+ * ⚠️ The names are ASYMMETRIC and it is not a typo: benefits repeat the plural
+ * (`key_benefits_repeat_N_key_benefits_repeat__value`) while applications use a
+ * SINGULAR inner name (`applications_repeat_N_application_repeat__value`).
+ * Assuming symmetry silently yields zero applications.
+ */
+const LIST_SOURCES = [
+  {
+    kind: "BENEFIT" as const,
+    label: "benefits",
+    repeater: "key_benefits_repeat",
+    field: "key_benefits_repeat__value",
+  },
+  {
+    kind: "APPLICATION" as const,
+    label: "applications",
+    repeater: "applications_repeat",
+    field: "application_repeat__value",
+  },
+];
+
+/** Matches the cap the HTTP editor enforces, so nothing imports that the UI would reject. */
+const MAX_LIST_ITEMS = 100;
+const MAX_ITEM_CHARS = 500;
+
+/**
+ * Stage 3 (part): key benefits and applications into the Hub.
+ *
+ * Hub-only — these never go to Duda. They live as `ProductTextItem` rows and
+ * are rendered onto the live product page by the widget.
+ *
+ * ⚠️ These are REPLACE-WHOLE-SET (delete-all-by-kind then recreate), mirroring
+ * `PUT /api/products/:id/benefits`. That makes a blind re-run destructive, so:
+ *
+ *   - a product whose CSV list is EMPTY is skipped, never written. Writing an
+ *     empty set would delete whatever is there, and "the CSV has nothing to
+ *     say" is not the same as "this product should have nothing".
+ *   - a product that ALREADY has items is skipped unless `--force`, so a
+ *     second run cannot silently overwrite something a staff member edited by
+ *     hand in the dashboard.
+ *
+ * Text is stored as plain text, not HTML — see `sanitisePlainText`.
+ */
+async function importLists(products: WooProduct[]): Promise<void> {
+  const ledger = loadLedger();
+  const force = flag("force");
+  let written = 0;
+  let itemsWritten = 0;
+  let skippedEmpty = 0;
+  let skippedExisting = 0;
+  const truncated: string[] = [];
+  const failures: string[] = [];
+
+  console.log(`\nImporting benefits + applications for ${products.length} product(s)…`);
+  console.log(force ? "  --force: existing items WILL be replaced\n" : "  (products that already have items are skipped; --force to replace)\n");
+
+  for (const p of products) {
+    const entry = ledger[p.wpId];
+    if (!entry) continue;
+
+    const hub = await prisma.hubProduct.findUnique({
+      where: { dudaProductId: entry.dudaProductId },
+      select: { id: true },
+    });
+    if (!hub) {
+      failures.push(`${p.sku || "(no sku)"} ${p.name}: no HubProduct row (run --sync-hub)`);
+      continue;
+    }
+
+    for (const src of LIST_SOURCES) {
+      const raw = acfRepeater(p.raw, src.repeater, src.field);
+      const items = raw.map(sanitisePlainText).filter(Boolean);
+
+      if (!items.length) {
+        skippedEmpty++;
+        continue;
+      }
+
+      for (const t of items) {
+        if (t.length > MAX_ITEM_CHARS) truncated.push(`${p.sku}: ${src.label} item ${t.length} chars`);
+      }
+      const capped = items.slice(0, MAX_LIST_ITEMS).map((t) => t.slice(0, MAX_ITEM_CHARS));
+
+      const existing = await prisma.productTextItem.count({
+        where: { hubProductId: hub.id, kind: src.kind },
+      });
+      if (existing > 0 && !force) {
+        skippedExisting++;
+        console.log(`  ⊘ ${(p.sku || "(no sku)").padEnd(18)} ${src.label.padEnd(12)} already has ${existing} item(s) — skipped`);
+        continue;
+      }
+
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.productTextItem.deleteMany({ where: { hubProductId: hub.id, kind: src.kind } });
+          await tx.productTextItem.createMany({
+            data: capped.map((text, i) => ({ hubProductId: hub.id, kind: src.kind, text, sortOrder: i })),
+          });
+        });
+        written++;
+        itemsWritten += capped.length;
+        console.log(`  ✓ ${(p.sku || "(no sku)").padEnd(18)} ${src.label.padEnd(12)} ${capped.length} item(s)`);
+      } catch (err) {
+        failures.push(`${p.sku || "(no sku)"} ${src.label}: ${err instanceof Error ? err.message.slice(0, 120) : "?"}`);
+      }
+    }
+    await sleep(60);
+  }
+
+  console.log(`\n=== BENEFITS + APPLICATIONS ===`);
+  console.log(`  lists written    : ${written} (${itemsWritten} items)`);
+  console.log(`  skipped (empty in CSV)      : ${skippedEmpty}`);
+  console.log(`  skipped (already populated) : ${skippedExisting}`);
+  console.log(`  failed           : ${failures.length}`);
+  for (const f of failures) console.log(`     ${f}`);
+  if (truncated.length) {
+    console.log(`\n  ⚠ items over ${MAX_ITEM_CHARS} chars, truncated to match the editor's limit:`);
+    for (const t of truncated) console.log(`     ${t}`);
+  }
+  console.log("");
+}
+
 /** Content type from the file extension — the CSV carries no mimetype. */
 function mimeForImage(name: string): string | null {
   const ext = name.toLowerCase().split(".").pop() ?? "";
@@ -1116,6 +1247,12 @@ async function main(): Promise<void> {
   if (flag("rollback")) {
     if (!flag("confirm")) fail("--rollback requires --confirm (this DELETES live Duda products).");
     await rollback();
+    return;
+  }
+
+  if (flag("lists")) {
+    if (!flag("confirm")) fail("--lists requires --confirm (it writes ProductTextItem rows).");
+    await importLists(products);
     return;
   }
 
