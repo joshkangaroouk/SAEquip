@@ -1,6 +1,20 @@
 import { supabase } from "./supabase";
 
-export const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+/**
+ * Base URL for backend calls.
+ *
+ * Empty in production, i.e. relative: the dashboard and the API are one Vercel
+ * project on one origin, so `/api/...` resolves to the same deployment. That
+ * removes the CORS relationship between them entirely, and removes the old
+ * gotcha where this value was baked in at build time and any change to the API
+ * URL required a full rebuild.
+ *
+ * In dev the two really are separate origins (Vite on 5173, Express on 4000),
+ * so a base is needed. `VITE_API_BASE_URL` still overrides both, for pointing
+ * a local dashboard at a deployed API.
+ */
+export const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://localhost:4000" : "");
 
 /**
  * fetch wrapper for backend calls. Automatically attaches the current Supabase

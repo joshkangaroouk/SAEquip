@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node ../scripts/assert-no-secrets.mjs dist",
     "preview": "vite preview",
     "start": "serve -s dist -l tcp://0.0.0.0:${PORT:-4173}"
   },

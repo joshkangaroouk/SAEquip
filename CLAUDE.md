@@ -24,7 +24,7 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 
 **Type/layout scale**: `html` is set to `font-size: 110%` in `index.css` — deliberately on the ROOT, because Tailwind's spacing scale, the type scale and `--radius` are all rem-based, so this scales layout *and* type together the way browser zoom does. That root is the single knob for scaling the whole UI. Body/paragraph text is 16px (`0.909rem` = 16/17.6, kept in rem so it tracks the root); the `body` rule in `index.css` and the `body` token in `tailwind.config.js` must stay in step.
 - **Database/Auth/Storage**: Supabase — Postgres (via Prisma, pooled `DATABASE_URL` + direct `DIRECT_URL` for migrations), Auth (email+password, public signup **disabled**, `ALLOWED_EMAIL_DOMAINS` allowlist, backend verifies JWTs via `supabase.auth.getUser`), Storage (three buckets: `product-media` public for logos/images, `product-files` private for gated download files served via short-lived signed URLs, `product-models` public for `.glb` 3D models — see the 3D Model Viewer section below).
-- **Hosting**: Both `backend` and `frontend` deployed on **Railway** (see gotchas below).
+- **Hosting**: moving from **Railway** to **Vercel Pro** as a *single* project serving both surfaces from one origin — see the Vercel deployment section below. The Railway gotchas further down still apply until the cutover completes.
 - **External APIs**: Duda REST API (HTTP Basic auth), Resend (optional, email notifications).
 
 ## Data model (Prisma) — source of truth split
@@ -176,7 +176,22 @@ The database had **no `_prisma_migrations` table** until 2026-07-28 (schema appl
 
 Both surfaces are being moved from Railway to Vercel Pro. `frontend/vercel.json` and `backend/vercel.json` are committed; the Railway gotchas below still apply until the cutover completes.
 
-**Two Vercel projects from the one repo**, each with its Root Directory set to a workspace (`frontend` / `backend`). Vercel detects npm workspaces and installs from the repo root, so hoisted `node_modules` resolves.
+**ONE Vercel project**, Root Directory = **repo root**, serving both surfaces from one origin:
+- `api/index.ts` (repo root, not `backend/` — Vercel only picks up functions from a root `api/`) re-exports the Express app. `vercel.json` rewrites `/api/*` and `/public/*` to it, so Express still owns all routing.
+- `frontend/dist` is the static output; every other path rewrites to `index.html` for the client-side router.
+- The `.js` specifier in `api/index.ts` resolving to `backend/src/index.ts` is correct for this ESM TS setup and bundles cleanly (verified with esbuild, which Vercel's Node builder uses).
+
+Same-origin buys two things that were previously footguns: **no CORS between dashboard and API**, and **`VITE_API_BASE_URL` is no longer baked in at build time** — `API_BASE` is now empty (relative) in production and only falls back to `http://localhost:4000` under `import.meta.env.DEV`, where the two really are separate origins.
+
+### ⚠️ The security cost of one project, and what mitigates it
+
+Vercel has **no build-time/runtime split for environment variables**, so in a single project the *frontend build runs with the backend's secrets in scope* — the Supabase service-role key (which bypasses every RLS policy), the Duda credentials, the database URL.
+
+Nothing leaks today, and three things keep it that way: Vite only inlines `VITE_`-prefixed vars, no frontend file references `process.env`, and `envPrefix: ["VITE_"]` is pinned in `vite.config.ts` with a comment saying why. But that is three conventions deep, so **`scripts/assert-no-secrets.mjs` runs after every frontend build** and fails it if any non-`VITE_` secret value appears in `dist` (it reports the variable name and file, never the value, and also checks the password component of the DB URLs separately). Verified by deliberately leaking the service-role key via a `define:` block — the build failed as intended.
+
+⚠️ **Residual risk that cannot be mitigated in this shape**: a compromised package anywhere in the *frontend's* dependency tree could read `process.env` during the build and exfiltrate those secrets over the network. The scanner catches inlining, not exfiltration. Only running the frontend build in an environment that never holds those secrets prevents it — i.e. a separate Vercel project, or the "one domain, two projects" variant where the frontend project rewrites `/api/*` to the backend project's URL. Accepted deliberately in exchange for the simplicity above; revisit if the frontend dependency tree grows or the threat model changes.
+
+Related: **Preview deployments inherit the same env vars**, so anyone who can open a PR can run build scripts against production secrets. Prefer leaving `SUPABASE_SERVICE_ROLE_KEY` and `DUDA_API_PASS` unset on Preview (preview functions degrade, nothing leaks).
 
 ### What the serverless model forced to change
 
@@ -186,7 +201,7 @@ Both surfaces are being moved from Railway to Vercel Pro. `frontend/vercel.json`
 - ⚠️ **`trust proxy` is now conditional on `process.env.VERCEL`.** It must stay OFF anywhere the app is reachable directly, because there it lets a caller spoof `X-Forwarded-For` and walk past an IP-keyed limit; on Vercel the header is set by their proxy, and *not* trusting it makes every IP-keyed limiter bucket the whole internet together.
 - ⚠️ **`binaryTargets = ["native", "rhel-openssl-3.0.x"]`** in `schema.prisma`. Functions run on AWS Lambda; without the RHEL query engine in the bundle Prisma dies at cold start with "Query engine library for current platform could not be found".
 - **`regions: ["dub1"]`** (Dublin) — Supabase is `eu-west-1`. A US region reintroduces the transatlantic latency that once made the public content endpoint ~5s.
-- **`includeFiles: "src/public-widget/**"`** ships the widget assets into the function bundle. `routes/public.ts` no longer trusts a single relative path: Vercel's bundler need not preserve the `src/` layout next to the compiled module, so `resolveWidgetDir()` tries several candidates and logs loudly at startup if none has `widget.js` — a missing widget is a deploy fault and shouldn't first surface as a 500 when Duda asks for the script.
+- **`includeFiles: "backend/src/public-widget/**"`** ships the widget assets into the function bundle. `routes/public.ts` no longer trusts a single relative path: Vercel's bundler need not preserve the `src/` layout next to the compiled module, so `resolveWidgetDir()` tries several candidates and logs loudly at startup if none has `widget.js` — a missing widget is a deploy fault and shouldn't first surface as a 500 when Duda asks for the script.
 
 ### Rate limiting is split on purpose
 
