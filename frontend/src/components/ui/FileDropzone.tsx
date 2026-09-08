@@ -13,13 +13,6 @@ interface UploadItem {
 }
 
 export interface FileDropzoneProps {
-  /**
-   * Ignored. Uploads now always go via `uploadFile` (signed URL straight to
-   * Supabase, then a confirm call). Kept so existing call sites still compile.
-   *
-   * @deprecated the endpoint is no longer configurable per dropzone.
-   */
-  uploadUrl?: string;
   /** Called once per successfully-uploaded file with the created MediaAsset. */
   onUploaded?: (asset: any) => void;
   /** Restrict accepted types, e.g. { "image/*": [] }. */

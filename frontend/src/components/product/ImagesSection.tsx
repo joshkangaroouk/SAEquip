@@ -87,7 +87,6 @@ export function ImagesSection({
 
         <div className="mt-4">
           <FileDropzone
-            uploadUrl="/api/media"
             accept={{ "image/png": [], "image/jpeg": [], "image/webp": [] }}
             multiple
             label="Drop images here or click to browse"

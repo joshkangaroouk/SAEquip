@@ -262,7 +262,6 @@ export default function UIShowcase() {
           files — real uploads create Media assets.)
         </p>
         <FileDropzone
-          uploadUrl="/api/media"
           hint="Images or files up to 25MB"
           onUploaded={(asset) => toast.success(`Asset ${asset.id ?? ""} ready`)}
         />
