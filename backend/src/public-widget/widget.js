@@ -76,8 +76,22 @@
       ".saeh-root *{box-sizing:border-box}",
       ".saeh-section{margin:22px 0}",
       ".saeh-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}",
-      ".saeh-logos{display:flex;flex-wrap:wrap;gap:18px;align-items:center}",
-      ".saeh-logos img{max-height:56px;max-width:150px;object-fit:contain;display:block}",
+      // `gap` covers BOTH axes on a wrapping flex container, so one value gives
+      // 10px between logos in a row and 10px between wrapped rows.
+      ".saeh-logos{display:flex;flex-wrap:wrap;gap:10px;align-items:center}",
+      // Fixed height + auto width renders every logo at exactly the same
+      // height regardless of aspect ratio.
+      //
+      // This replaced `max-height:56px;max-width:150px`, which was the cause of
+      // logos appearing at different heights: a wide logo hit the 150px width
+      // cap before it ever reached 56px tall, so it rendered shorter than a
+      // square one. A max-* pair cannot produce a uniform height.
+      //
+      // `flex:0 0 auto` is load-bearing, not decoration: without
+      // `flex-shrink:0` a flex item is allowed to compress below its natural
+      // width, and since the height is pinned the image would squash
+      // horizontally instead of wrapping to the next line.
+      ".saeh-logos img{height:35px;width:auto;flex:0 0 auto;display:block}",
       ".saeh-table{width:100%;border-collapse:collapse;font-size:18px;font-weight:400;font-style:normal}",
       ".saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}",
       ".saeh-table tr:nth-child(even){background:#fafafa}",
