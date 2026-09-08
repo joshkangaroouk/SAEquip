@@ -72,9 +72,19 @@
     var s = document.createElement("style");
     s.id = STYLE_ID;
     s.textContent = [
-      ".saeh-root{font-family:inherit;color:#1a1a1a;max-width:920px;margin:24px 0;line-height:1.5;box-sizing:border-box}",
+      // No outer margin. In production each section is its OWN Duda HTML/Embed
+      // element, so Duda's element spacing already positions it — a margin here
+      // just adds space that can't be tuned from the Duda editor, on every
+      // embed. The widget contributes zero vertical space of its own.
+      ".saeh-root{font-family:inherit;color:#1a1a1a;max-width:920px;margin:0;line-height:1.5;box-sizing:border-box}",
       ".saeh-root *{box-sizing:border-box}",
-      ".saeh-section{margin:22px 0}",
+      // Sections are flush too, but keep separation BETWEEN them for the
+      // legacy full embed (`data-section="all"`), where several sections share
+      // one mount and would otherwise butt together. Using the adjacent-sibling
+      // selector rather than a blanket margin means the first and last section
+      // still contribute no outer space.
+      ".saeh-section{margin:0}",
+      ".saeh-section + .saeh-section{margin-top:22px}",
       ".saeh-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}",
       // `gap` covers BOTH axes on a wrapping flex container, so one value gives
       // 10px between logos in a row and 10px between wrapped rows.
