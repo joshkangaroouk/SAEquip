@@ -51,14 +51,34 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error("Invalid environment configuration:\n");
   const fieldErrors = parsed.error.flatten().fieldErrors;
-  for (const [key, messages] of Object.entries(fieldErrors)) {
-    if (messages && messages.length) console.error(`  - ${key}: ${messages.join("; ")}`);
+  const lines = Object.entries(fieldErrors)
+    .filter(([, messages]) => messages && messages.length)
+    .map(([key, messages]) => `  - ${key}: ${messages!.join("; ")}`);
+
+  const summary = `Invalid environment configuration:\n${lines.join("\n")}`;
+  console.error(summary);
+
+  /**
+   * ⚠️ Throw rather than `process.exit(1)` on a serverless platform.
+   *
+   * This module is evaluated when the function is imported, so exiting the
+   * process there kills the invocation before anything is flushed — the caller
+   * gets an opaque `FUNCTION_INVOCATION_FAILED` and the log may show nothing
+   * at all. A thrown Error carries the missing variable names into the
+   * platform's error reporting, which is the difference between "it's broken"
+   * and "DUDA_API_PASS isn't set".
+   *
+   * Locally, exiting is still the better behaviour: it stops `npm run dev`
+   * immediately with a readable message instead of a stack trace.
+   */
+  if (process.env.VERCEL) {
+    throw new Error(
+      `${summary}\n\nSet these in the Vercel project's Environment Variables (Production), then redeploy.`,
+    );
   }
-  console.error(
-    "\nCopy backend/.env.example to backend/.env and fill in the required values.",
-  );
+
+  console.error("\nCopy backend/.env.example to backend/.env and fill in the required values.");
   process.exit(1);
 }
 
