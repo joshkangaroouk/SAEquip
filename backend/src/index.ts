@@ -16,6 +16,21 @@ import { StorageError, ensureBuckets } from "./services/storage.js";
 
 const app = express();
 
+/**
+ * On Vercel every request arrives through their proxy, so `req.ip` is the
+ * proxy's address unless Express is told to trust the forwarding headers —
+ * which would make each IP-keyed rate limiter bucket the entire internet
+ * together.
+ *
+ * Deliberately conditional. `trust proxy` must stay OFF anywhere the app is
+ * reachable directly, because there it lets a caller spoof `X-Forwarded-For`
+ * and walk straight past an IP-keyed limit. `VERCEL` is set by the platform,
+ * so the header is only trusted where something trustworthy sets it.
+ */
+if (process.env.VERCEL) {
+  app.set("trust proxy", 1);
+}
+
 app.use(express.json());
 
 // --- PUBLIC widget API: own CORS allowlist + rate limits, NO auth ---
@@ -97,7 +112,21 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 };
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`[backend] listening on http://localhost:${env.PORT}`);
-  void ensureBuckets();
-});
+/**
+ * Serverless platforms import the app and drive it themselves, so binding a
+ * port must not happen at import time.
+ *
+ * `ensureBuckets()` is deliberately inside the local branch too: it's a
+ * several-call round trip to Supabase, and on serverless this module is
+ * evaluated on every cold start, so leaving it here would add that latency to
+ * a user's request for no benefit. Bucket setup is a deploy-time concern —
+ * run `npm run storage:ensure` instead.
+ */
+if (!process.env.VERCEL) {
+  app.listen(env.PORT, () => {
+    console.log(`[backend] listening on http://localhost:${env.PORT}`);
+    void ensureBuckets();
+  });
+}
+
+export default app;

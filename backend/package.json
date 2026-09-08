@@ -18,7 +18,8 @@
     "duda:probe-sso": "tsx src/scripts/dudaProbeSso.ts",
     "duda:editor-provision": "tsx src/scripts/dudaEditorProvision.ts",
     "duda:import-products": "tsx src/scripts/dudaImportProducts.ts",
-    "media:verify-upload": "tsx src/scripts/mediaVerifyUpload.ts"
+    "media:verify-upload": "tsx src/scripts/mediaVerifyUpload.ts",
+    "storage:ensure": "tsx src/scripts/storageEnsure.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
@@ -59,14 +59,45 @@ const quoteLimiter = rateLimit({
 
 export const publicRouter = Router();
 
-// Directory holding the widget assets, resolved relative to THIS module so it
-// works both in dev (tsx from src/routes) and prod (node from dist/routes).
-// postbuild copies src/public-widget -> dist/public-widget.
-const WIDGET_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "../public-widget");
+/**
+ * Locate the widget assets across all three ways this app runs.
+ *
+ * Tried in order rather than assuming one layout:
+ *   1. relative to this module — `src/public-widget` under tsx in dev, and
+ *      `dist/public-widget` in a normal build (postbuild copies it there)
+ *   2. relative to the working directory — Vercel bundles the function with
+ *      its own output layout, so `import.meta.url` need not sit beside `src`;
+ *      `includeFiles: "src/public-widget/**"` in vercel.json places the files
+ *      under the task root instead
+ *
+ * Resolved once at module load. A missing widget is a deploy fault, not a
+ * per-request one, so it's worth a loud log at startup rather than only
+ * surfacing as a 500 the first time Duda asks for the script.
+ */
+function resolveWidgetDir(): string | null {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.join(here, "../public-widget"),
+    path.join(process.cwd(), "src/public-widget"),
+    path.join(process.cwd(), "dist/public-widget"),
+    path.join(process.cwd(), "backend/src/public-widget"),
+  ];
+  const found = candidates.find((dir) => existsSync(path.join(dir, "widget.js")));
+  if (!found) {
+    console.error(
+      `[public] widget.js not found. Looked in:\n  ${candidates.join("\n  ")}\n` +
+        `  On Vercel this means includeFiles in backend/vercel.json is not shipping src/public-widget.`,
+    );
+  }
+  return found ?? null;
+}
+
+const WIDGET_DIR = resolveWidgetDir();
 
 /** GET /public/widget.js — the embeddable widget script. */
 publicRouter.get("/widget.js", (_req, res) => {
   try {
+    if (!WIDGET_DIR) throw new Error("widget assets not deployed");
     const js = readFileSync(path.join(WIDGET_DIR, "widget.js"), "utf8");
     res.setHeader("Content-Type", "application/javascript; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300");
@@ -79,6 +110,7 @@ publicRouter.get("/widget.js", (_req, res) => {
 /** GET /public/test.html — local test harness (open at http://localhost:4000/public/test.html). */
 publicRouter.get("/test.html", (_req, res) => {
   try {
+    if (!WIDGET_DIR) throw new Error("widget assets not deployed");
     const html = readFileSync(path.join(WIDGET_DIR, "test.html"), "utf8");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);

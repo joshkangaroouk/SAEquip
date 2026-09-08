@@ -6,12 +6,39 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" covers local dev (macOS). The RHEL target is required for
+  // Vercel's serverless runtime: functions run on AWS Lambda, and without a
+  // matching query-engine binary in the bundle Prisma fails at cold start
+  // with "Query engine library for current platform could not be found".
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL") // pooled (pgbouncer), used at runtime
   directUrl = env("DIRECT_URL") // direct connection, used for migrations
+}
+
+/// Shared counter for rate limiting that must hold across instances.
+///
+/// `express-rate-limit`'s default store is in-process memory, which is fine on
+/// a single long-lived container but useless on serverless: each of the many
+/// short-lived instances keeps its own counter, so the effective limit becomes
+/// (limit x concurrency) and resets constantly. That matters most for the Duda
+/// editor SSO route, where the thing being rate limited is the minting of a
+/// live credential.
+///
+/// Deliberately NOT used for the high-traffic public widget endpoints — a DB
+/// write per page view is the wrong trade on the one endpoint that has to stay
+/// fast. Those are rate limited at the edge instead (Vercel Firewall).
+model RateLimitCounter {
+  /// Limiter name + the value being limited, e.g. "sso:<supabase user id>".
+  key       String   @id
+  hits      Int      @default(0)
+  /// End of the current window. A row past this is treated as a fresh window.
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }
 
 enum LogoKind {

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
+import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { DudaApiError } from "../services/duda.js";
@@ -22,9 +23,16 @@ import { dudaSso } from "../services/dudaSso.js";
 export const websiteEditorRouter = Router();
 
 /**
- * Keyed on the authenticated user, not IP: `app.set("trust proxy", …)` is
- * never called, so behind Railway's proxy req.ip is the proxy address and an
- * IP-keyed limiter would bucket every staff member into one shared bucket.
+ * Keyed on the authenticated user, not IP — which is also the right key for a
+ * per-person credential budget, and avoids depending on proxy headers being
+ * trustworthy.
+ *
+ * ⚠️ Backed by Postgres rather than the default in-memory store. This is the
+ * one limiter where softness is a security problem: it guards the minting of a
+ * live Duda login. On serverless the app runs as many short-lived instances, so
+ * an in-memory counter would give each instance its own budget — turning "10
+ * per minute" into "10 per minute per instance" and resetting on every
+ * recycle. See middleware/pgRateLimitStore.ts.
  */
 const ssoLimiter = rateLimit({
   windowMs: 60_000,
@@ -33,6 +41,7 @@ const ssoLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "rate_limited" },
   keyGenerator: (req) => req.user?.id ?? "anonymous",
+  store: new PgRateLimitStore("sso"),
 });
 
 const ssoBody = z.object({ siteName: z.string().trim().min(1).max(64) }).strict();

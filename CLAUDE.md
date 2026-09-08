@@ -172,6 +172,27 @@ The database had **no `_prisma_migrations` table** until 2026-07-28 (schema appl
 
 `Lead` deliberately has a **nullable `downloadId` with `onDelete: SetNull`** plus `productName`/`productSku`/`downloadTitle` snapshot columns written at capture time, so deleting a product **preserves** captured leads (a null `downloadId` means "product since deleted"). Don't restore the cascade. `QuoteRequest`/`QuoteRequestItem` were never at risk — they hold denormalised snapshots with no FK to `HubProduct`.
 
+## Deployment — moving to Vercel (in progress, 2026-09-08)
+
+Both surfaces are being moved from Railway to Vercel Pro. `frontend/vercel.json` and `backend/vercel.json` are committed; the Railway gotchas below still apply until the cutover completes.
+
+**Two Vercel projects from the one repo**, each with its Root Directory set to a workspace (`frontend` / `backend`). Vercel detects npm workspaces and installs from the repo root, so hoisted `node_modules` resolves.
+
+### What the serverless model forced to change
+
+- ⚠️ **A request body cannot exceed 4.5MB on Vercel** — a platform limit, not a plan setting. That is far below the 25MB file ceiling, so **uploads no longer go through the API at all**: the browser mints a signed URL, PUTs straight to Supabase and then confirms. See the upload section in `services/storage.ts` / `lib/upload.ts`. This was the blocking issue for the whole move.
+- **`app.listen()` is skipped when `process.env.VERCEL` is set**, and `src/index.ts` exports the app; `backend/api/index.ts` re-exports it as the function handler and `vercel.json` rewrites every path to it, so Express still owns all routing. The same module runs unchanged as a normal server locally.
+- **`ensureBuckets()` moved out of startup** into `npm run storage:ensure`. On serverless the module is evaluated on every cold start, so leaving it there added several Supabase round trips to a user's request, forever re-doing idempotent work.
+- ⚠️ **`trust proxy` is now conditional on `process.env.VERCEL`.** It must stay OFF anywhere the app is reachable directly, because there it lets a caller spoof `X-Forwarded-For` and walk past an IP-keyed limit; on Vercel the header is set by their proxy, and *not* trusting it makes every IP-keyed limiter bucket the whole internet together.
+- ⚠️ **`binaryTargets = ["native", "rhel-openssl-3.0.x"]`** in `schema.prisma`. Functions run on AWS Lambda; without the RHEL query engine in the bundle Prisma dies at cold start with "Query engine library for current platform could not be found".
+- **`regions: ["dub1"]`** (Dublin) — Supabase is `eu-west-1`. A US region reintroduces the transatlantic latency that once made the public content endpoint ~5s.
+- **`includeFiles: "src/public-widget/**"`** ships the widget assets into the function bundle. `routes/public.ts` no longer trusts a single relative path: Vercel's bundler need not preserve the `src/` layout next to the compiled module, so `resolveWidgetDir()` tries several candidates and logs loudly at startup if none has `widget.js` — a missing widget is a deploy fault and shouldn't first surface as a 500 when Duda asks for the script.
+
+### Rate limiting is split on purpose
+
+- **The SSO limiter is Postgres-backed** (`middleware/pgRateLimitStore.ts`). `express-rate-limit`'s default store is in-process memory, which is useless on serverless: each of many short-lived instances keeps its own counter, so "10 per minute" becomes "10 per minute *per instance*" and resets on every recycle. That is unacceptable for the one route that **mints a live Duda credential**. The increment is a single atomic `INSERT … ON CONFLICT` because read-then-write loses hits under exactly the concurrency serverless makes normal (verified: 20 concurrent hits all counted).
+- **The three public limiters (content/lead/quote) stay in-memory**, and are best-effort only. A DB write per page view is the wrong trade on the one endpoint that has to stay fast. Real protection for those belongs at the edge — **Vercel Firewall rate-limit rules**, which run before the function is even invoked and are therefore both cheaper and actually effective.
+
 ## Deployment gotchas (Railway) — read before touching build/deploy config
 
 - **`prisma generate` must run before `tsc`.** Backend `package.json` has `postinstall: prisma generate` and `build: prisma generate && tsc` — without this, Railway's fresh install builds against an empty `@prisma/client` and every model type "doesn't exist."
