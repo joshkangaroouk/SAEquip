@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { apiJson, apiUpload } from "../lib/api";
+import { apiJson } from "../lib/api";
+import { uploadFile } from "../lib/upload";
 import { FileIcon } from "./ui";
 import type { MediaAsset } from "../lib/types";
 
@@ -52,12 +53,9 @@ export function MediaPicker({
     setUploading(true);
     setUploadError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await apiUpload("/api/media", fd);
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.detail || json.error || `Upload failed (${res.status})`);
-      onPick(json as MediaAsset);
+      // Straight to Supabase via a signed URL, then confirmed with the API —
+      // the file never passes through the backend. See lib/upload.ts.
+      onPick(await uploadFile(file));
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : "Upload failed");
     } finally {

@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { useDropzone, type Accept } from "react-dropzone";
-import { supabase } from "../../lib/supabase";
-import { API_BASE } from "../../lib/api";
+import { uploadFile } from "../../lib/upload";
 import { cn } from "../../lib/cn";
 import { toast } from "./Toast";
 
@@ -14,9 +13,14 @@ interface UploadItem {
 }
 
 export interface FileDropzoneProps {
-  /** Endpoint each file is POSTed to (multipart, field "file"). Path or absolute URL. */
-  uploadUrl: string;
-  /** Called once per successfully-uploaded file with the parsed response. */
+  /**
+   * Ignored. Uploads now always go via `uploadFile` (signed URL straight to
+   * Supabase, then a confirm call). Kept so existing call sites still compile.
+   *
+   * @deprecated the endpoint is no longer configurable per dropzone.
+   */
+  uploadUrl?: string;
+  /** Called once per successfully-uploaded file with the created MediaAsset. */
   onUploaded?: (asset: any) => void;
   /** Restrict accepted types, e.g. { "image/*": [] }. */
   accept?: Accept;
@@ -26,18 +30,16 @@ export interface FileDropzoneProps {
   className?: string;
 }
 
-/** Resolve a path against the API base; leave absolute URLs untouched. */
-function resolveUrl(url: string): string {
-  return /^https?:\/\//i.test(url) ? url : `${API_BASE}${url}`;
-}
-
 /**
- * Drag-and-drop uploader. Each file uploads independently via XMLHttpRequest so
- * we can show a per-file yellow progress bar. Fires success/error toasts and
- * calls onUploaded(asset) for each completed upload.
+ * Drag-and-drop uploader. Each file uploads independently, with a per-file
+ * progress bar. Fires success/error toasts and calls onUploaded(asset) for
+ * each completed upload.
+ *
+ * The bytes go browser → Supabase directly and never through the API; see
+ * `lib/upload.ts` for why (a serverless request body caps at 4.5MB, and a
+ * model can be up to 50MB).
  */
 export function FileDropzone({
-  uploadUrl,
   onUploaded,
   accept,
   multiple = true,
@@ -49,65 +51,25 @@ export function FileDropzone({
 
   const uploadOne = useCallback(
     async (file: File, id: string) => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const form = new FormData();
-      form.append("file", file);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", resolveUrl(uploadUrl));
-      if (session?.access_token) {
-        xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
-      }
-
-      xhr.upload.onprogress = (e) => {
-        if (!e.lengthComputable) return;
-        const progress = Math.round((e.loaded / e.total) * 100);
-        setItems((prev) => prev.map((it) => (it.id === id ? { ...it, progress } : it)));
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          let asset: any = null;
-          try {
-            asset = JSON.parse(xhr.responseText);
-          } catch {
-            /* non-JSON success — ignore */
-          }
-          setItems((prev) =>
-            prev.map((it) => (it.id === id ? { ...it, progress: 100, status: "done" } : it)),
-          );
-          toast.success(`Uploaded ${file.name}`);
-          if (asset) onUploaded?.(asset);
-        } else {
-          let detail = `HTTP ${xhr.status}`;
-          try {
-            const body = JSON.parse(xhr.responseText);
-            detail = body.detail || body.error || detail;
-          } catch {
-            /* keep default */
-          }
-          setItems((prev) =>
-            prev.map((it) => (it.id === id ? { ...it, status: "error", error: detail } : it)),
-          );
-          toast.error(`Failed to upload ${file.name}: ${detail}`);
-        }
-      };
-
-      xhr.onerror = () => {
+      try {
+        const asset = await uploadFile(file, {
+          onProgress: (progress) =>
+            setItems((prev) => prev.map((it) => (it.id === id ? { ...it, progress } : it))),
+        });
         setItems((prev) =>
-          prev.map((it) =>
-            it.id === id ? { ...it, status: "error", error: "Network error" } : it,
-          ),
+          prev.map((it) => (it.id === id ? { ...it, progress: 100, status: "done" } : it)),
         );
-        toast.error(`Failed to upload ${file.name}`);
-      };
-
-      xhr.send(form);
+        toast.success(`Uploaded ${file.name}`);
+        onUploaded?.(asset);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : "Upload failed";
+        setItems((prev) =>
+          prev.map((it) => (it.id === id ? { ...it, status: "error", error: detail } : it)),
+        );
+        toast.error(`Failed to upload ${file.name}: ${detail}`);
+      }
     },
-    [uploadUrl, onUploaded],
+    [onUploaded],
   );
 
   const onDrop = useCallback(

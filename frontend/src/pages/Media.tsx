@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { apiFetch, apiUpload } from "../lib/api";
+import { apiFetch } from "../lib/api";
+import { uploadFile } from "../lib/upload";
 import { FileIcon, useConfirm } from "../components/ui";
 import type { MediaAsset } from "../lib/types";
 
@@ -52,17 +53,12 @@ export default function Media() {
     setUploading(true);
     setUploadError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      if (alt.trim()) fd.append("alt", alt.trim());
-      const res = await apiUpload("/api/media", fd);
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(json.detail || json.error || `Upload failed (${res.status})`);
-      }
+      // Straight to Supabase via a signed URL, then confirmed with the API —
+      // the file never passes through the backend. See lib/upload.ts.
+      const asset = await uploadFile(file, { alt: alt.trim() || undefined });
       // Show newest first; respect the active filter.
-      if (!filter || json.kind === filter) {
-        setAssets((prev) => [json as MediaAsset, ...(prev ?? [])]);
+      if (!filter || asset.kind === filter) {
+        setAssets((prev) => [asset, ...(prev ?? [])]);
       }
       setFile(null);
       setAlt("");
