@@ -34,6 +34,15 @@ model HubProduct {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  /// Sanitised product description HTML, mirroring Duda's native `description`.
+  ///
+  /// Duda remains the field the product template renders, but a copy lives here
+  /// so the public widget can serve it too — `/public/products/content` is a
+  /// pure Supabase read and must never call Duda's API, so without this copy the
+  /// widget could not render an "Overview" tab alongside specs/benefits/
+  /// applications. Written by `duda:import-products -- --descriptions`.
+  descriptionHtml String?
+
   logos     ProductLogo[]
   specRows  SpecRow[]
   textItems ProductTextItem[]

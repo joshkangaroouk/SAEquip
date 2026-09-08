@@ -26,6 +26,9 @@
  * (additive — does not touch Duda):
  *   npm run duda:import-products --workspace=backend -- --media-centre --confirm
  *
+ * Stage 2 — sanitised descriptions into Duda's native field and the Hub:
+ *   npm run duda:import-products --workspace=backend -- --descriptions --confirm
+ *
  * Undo (deletes only products THIS script created, per the ledger):
  *   npm run duda:import-products --workspace=backend -- --rollback --confirm
  *
@@ -50,6 +53,12 @@ import {
   isIngestableUrl,
   type WooProduct,
 } from "../services/wooImport.js";
+import {
+  composeDescription,
+  extractShortcodeMedia,
+  stripAnchors,
+  textContent,
+} from "../services/descriptionHtml.js";
 
 /**
  * Products this script must never touch, by Duda id.
@@ -749,6 +758,119 @@ async function verify(products: WooProduct[]): Promise<void> {
   );
 }
 
+/**
+ * Stage 2: sanitised descriptions into Duda's native field AND the Hub.
+ *
+ * Both, deliberately. Duda's `description` is what the product template
+ * renders (with the `.productDescription` 16px paragraph CSS already in
+ * place), while the Hub copy is what `/public/products/content` can serve —
+ * that endpoint is a pure Supabase read and must never call Duda, so without
+ * the copy the widget could not render an Overview tab beside the specs,
+ * benefits and applications. Keeping both leaves the connected-data and
+ * widget rendering routes equally open.
+ *
+ * WooCommerce's two fields collapse into Duda's one via `composeDescription`,
+ * which is careful not to lose the sales disclaimers that live only in the
+ * short field. Every decision is reported.
+ */
+async function importDescriptions(products: WooProduct[]): Promise<void> {
+  const ledger = loadLedger();
+  const decisions = new Map<string, number>();
+  const prepended: string[] = [];
+  const media: string[] = [];
+  const linkStripped: string[] = [];
+  const failures: string[] = [];
+  let written = 0;
+  let unchanged = 0;
+  let skipped = 0;
+
+  console.log(`\nComposing descriptions for ${products.length} product(s)…\n`);
+
+  for (const p of products) {
+    const entry = ledger[p.wpId];
+    if (!entry) {
+      skipped++;
+      continue;
+    }
+
+    const composed = composeDescription(p.raw["Short description"], p.raw["Description"]);
+    decisions.set(composed.decision, (decisions.get(composed.decision) ?? 0) + 1);
+    if (composed.decision === "short-prepended") {
+      prepended.push(`${p.sku || "(no sku)"} ${p.name} (${Math.round((composed.coverage ?? 0) * 100)}% overlap)`);
+    }
+    for (const url of extractShortcodeMedia(p.raw["Description"] ?? "")) {
+      media.push(`${p.sku || "(no sku)"} ${p.name}: ${url}`);
+    }
+
+    if (!composed.html) {
+      skipped++;
+      continue;
+    }
+
+    // Duda's WAF rejects an anchor with an href (see stripAnchors), so Duda
+    // gets a link-free copy while the Hub keeps the linked original for the
+    // widget. Identical for all but the one product that has a link.
+    const dudaHtml = stripAnchors(composed.html);
+    if (dudaHtml !== composed.html) {
+      linkStripped.push(`${p.sku || "(no sku)"} ${p.name}`);
+    }
+
+    try {
+      const live = await duda.getProduct(entry.dudaProductId);
+      if ((live.description ?? "").trim() === dudaHtml.trim()) {
+        // Idempotent: nothing to write, and a no-op PATCH is still a live write.
+        await prisma.hubProduct.update({
+          where: { dudaProductId: entry.dudaProductId },
+          data: { descriptionHtml: composed.html },
+        });
+        unchanged++;
+        continue;
+      }
+
+      await withRetry("description", () =>
+        duda.updateProduct(entry.dudaProductId, { description: dudaHtml }),
+      );
+      await prisma.hubProduct.update({
+        where: { dudaProductId: entry.dudaProductId },
+        data: { descriptionHtml: composed.html },
+      });
+      written++;
+      console.log(`  ✓ ${(p.sku || "(no sku)").padEnd(18)} ${composed.decision.padEnd(28)} ${textContent(composed.html).length} chars`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message.slice(0, 150) : String(err);
+      failures.push(`${p.sku || "(no sku)"} ${p.name}: ${msg}`);
+      console.log(`  ✗ ${p.sku || "(no sku)"}: ${msg}`);
+    }
+    await sleep(DELAY_BETWEEN_PRODUCTS_MS);
+  }
+
+  console.log(`\n=== DESCRIPTIONS ===`);
+  console.log(`  written  : ${written}`);
+  console.log(`  unchanged: ${unchanged}`);
+  console.log(`  skipped  : ${skipped} (no description, or not in the ledger)`);
+  console.log(`  failed   : ${failures.length}`);
+  for (const f of failures) console.log(`     ${f}`);
+
+  console.log(`\n  how the two Woo fields were combined:`);
+  for (const [k, v] of [...decisions.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`     ${String(v).padStart(3)}  ${k}`);
+  }
+
+  if (prepended.length) {
+    console.log(`\n  short description KEPT as the opening paragraph (${prepended.length}) — it held copy the long text lacked:`);
+    for (const s of prepended) console.log(`     ${s}`);
+  }
+  if (media.length) {
+    console.log(`\n  ⚠ media removed with a WordPress shortcode — re-add these in Duda by hand:`);
+    for (const m of media) console.log(`     ${m}`);
+  }
+  if (linkStripped.length) {
+    console.log(`\n  ⚠ links removed from Duda's copy only (its WAF rejects <a href>) — the Hub keeps the linked version:`);
+    for (const l of linkStripped) console.log(`     ${l}`);
+  }
+  console.log("");
+}
+
 /** Content type from the file extension — the CSV carries no mimetype. */
 function mimeForImage(name: string): string | null {
   const ext = name.toLowerCase().split(".").pop() ?? "";
@@ -994,6 +1116,12 @@ async function main(): Promise<void> {
   if (flag("rollback")) {
     if (!flag("confirm")) fail("--rollback requires --confirm (this DELETES live Duda products).");
     await rollback();
+    return;
+  }
+
+  if (flag("descriptions")) {
+    if (!flag("confirm")) fail("--descriptions requires --confirm (it writes to Duda and the Hub).");
+    await importDescriptions(products);
     return;
   }
 

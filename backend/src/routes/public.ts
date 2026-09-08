@@ -167,6 +167,10 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       sku: full.sku,
       slug: full.slug,
       dudaProductId: full.dudaProductId,
+      // Mirrors Duda's native `description`. Served from here because this
+      // endpoint is a pure Supabase read by design and must never call Duda,
+      // so a widget-rendered "Overview" needs the Hub's own copy.
+      descriptionHtml: full.descriptionHtml ?? null,
       logos: { sa, cert },
       specs: full.specRows.map((s) => ({ label: s.label, value: s.value })),
       benefits: full.textItems.filter((t) => t.kind === "BENEFIT").map((t) => t.text),
