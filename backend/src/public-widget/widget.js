@@ -108,9 +108,18 @@
       ".saeh-table td.saeh-label{font-weight:600;width:40%;color:#333}",
       ".saeh-list{list-style:none;padding:0;margin:0}",
       ".saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:18px;font-weight:400;font-style:normal}",
-      ".saeh-check li:before{content:'\\2713';position:absolute;left:0;top:6px;color:#111;background:#ffd200;border-radius:50%;width:17px;height:17px;font-size:11px;line-height:17px;text-align:center;font-weight:700}",
+            // The tick is a real SVG, not the U+2713 glyph it used to be. That
+      // character's shape is whatever the host page's font decides, and most
+      // render it as a wavy, hand-drawn stroke — which is not something CSS
+      // can correct. A data-URI SVG is font-independent and crisp at any size,
+      // and keeps this a pure :before with no markup change.
+      ".saeh-check li:before{content:'';position:absolute;left:0;top:6px;width:17px;height:17px;border-radius:50%;background:#ffd200 url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E\") center/11px 11px no-repeat}",
       ".saeh-apps li:before{content:'';position:absolute;left:7px;top:12px;width:6px;height:6px;background:#111;border-radius:50%}",
       ".saeh-dl{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #ececec}",
+      // No divider under the final row. The dashboard's preview copy of this
+      // CSS had this rule while the real widget never did, so the live download
+      // list carried a trailing border the preview said it should not.
+      ".saeh-dl:last-child{border-bottom:0}",
       ".saeh-dl-title{flex:1 1 auto;font-size:18px;font-weight:400;font-style:normal;min-width:140px}",
       // font-family:inherit is required here even though .saeh-root already sets
       // it — browsers never inherit font into <button>/<input> from ancestors by

@@ -8,36 +8,48 @@ import { Badge, Card, Toggle, toast } from "../components/ui";
  * preview below is a byte-accurate match for what actually renders on Duda.
  */
 const WIDGET_CSS = `
-.saeh-root{font-family:inherit;color:#1a1a1a;line-height:1.5;box-sizing:border-box}
+.saeh-root{font-family:inherit;color:#1a1a1a;max-width:920px;margin:0;line-height:1.5;box-sizing:border-box}
 .saeh-root *{box-sizing:border-box}
-.saeh-section{margin:22px 0}
-.saeh-section:first-child{margin-top:0}
-.saeh-section:last-child{margin-bottom:0}
+.saeh-section{margin:0}
+.saeh-section + .saeh-section{margin-top:22px}
 .saeh-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}
-.saeh-logos{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
-.saeh-logos img{max-height:56px;max-width:150px;object-fit:contain;display:block}
+.saeh-logos{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.saeh-logos img{height:35px;width:auto;flex:0 0 auto;display:block}
 .saeh-table{width:100%;border-collapse:collapse;font-size:18px;font-weight:400;font-style:normal}
 .saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}
 .saeh-table tr:nth-child(even){background:#fafafa}
 .saeh-table td.saeh-label{font-weight:600;width:40%;color:#333}
 .saeh-list{list-style:none;padding:0;margin:0}
 .saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:18px;font-weight:400;font-style:normal}
-.saeh-check li:before{content:'\\2713';position:absolute;left:0;top:6px;color:#111;background:#ffd200;border-radius:50%;width:17px;height:17px;font-size:11px;line-height:17px;text-align:center;font-weight:700}
+.saeh-check li:before{content:'';position:absolute;left:0;top:6px;width:17px;height:17px;border-radius:50%;background:#ffd200 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/11px 11px no-repeat}
 .saeh-apps li:before{content:'';position:absolute;left:7px;top:12px;width:6px;height:6px;background:#111;border-radius:50%}
 .saeh-dl{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #ececec}
 .saeh-dl:last-child{border-bottom:0}
 .saeh-dl-title{flex:1 1 auto;font-size:18px;font-weight:400;font-style:normal;min-width:140px}
 .saeh-btn{display:inline-block;font-family:inherit;background:#111;color:#fff;border:none;border-radius:5px;padding:9px 18px;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;text-decoration:none;line-height:1.2}
 .saeh-btn:hover{background:#333}
+.saeh-btn:disabled{opacity:.6;cursor:default}
 .saeh-form{flex-basis:100%;display:none;flex-wrap:wrap;gap:8px;margin-top:10px;padding:14px;background:#f7f7f7;border-radius:8px}
 .saeh-form.saeh-open{display:flex}
 .saeh-in{flex:1 1 180px;font-family:inherit;padding:9px;border:1px solid #ccc;border-radius:5px;font-size:18px;font-weight:400;font-style:normal}
+.saeh-hp{position:absolute!important;left:-9999px!important;width:1px;height:1px;opacity:0}
 .saeh-msg{flex-basis:100%;font-size:18px;font-weight:400;font-style:normal;margin-top:2px}
 .saeh-ok{color:#137333}
 .saeh-err{color:#c5221f}
 .saeh-3d-cta{border:1px solid #ececec;border-radius:10px;padding:32px 20px;text-align:center;background:linear-gradient(180deg,#fafafa,#f4f4f5)}
 .saeh-3d-icon{width:32px;height:32px;color:#111;display:block;margin:0 auto 12px}
 .saeh-3d-cta-title{font-size:16px;font-weight:700;color:#111;margin:0 0 16px}
+.saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:inherit}
+.saeh-3d-sheet{position:relative;margin:40px;flex:1;min-width:0;background:#fff;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.saeh-3d-close{position:absolute;top:14px;right:14px;z-index:2;width:36px;height:36px;border-radius:50%;border:none;background:rgba(17,17,17,.06);color:#111;font-family:inherit;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.saeh-3d-close:hover{background:rgba(17,17,17,.12)}
+.saeh-3d-stage{flex:1;min-height:0;background:#f4f4f5}
+.saeh-3d-mv{width:100%;height:100%;display:block;--poster-color:transparent;outline:none}
+.saeh-3d-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:14px;border-top:1px solid #ececec;flex-shrink:0}
+@media(max-width:520px){.saeh-table td.saeh-label{width:auto}
+.saeh-dl{align-items:flex-start}
+.saeh-3d-sheet{margin:16px}
+}
 `;
 
 /** Small labelled-rectangle data-URI so logo previews render without real image assets. */
