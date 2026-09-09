@@ -8,7 +8,6 @@ import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
 import { sendQuoteNotification } from "../services/email.js";
-import { stripCruft } from "../services/descriptionHtml.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -213,7 +212,17 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       // it got there. `stripCruft` allows only the tag set the widget renders
       // (p/strong/em/h4-h6/ul/ol/li/a/hr/sup/sub) and no attributes beyond
       // href/target/rel.
-      descriptionHtml: full.descriptionHtml ? stripCruft(full.descriptionHtml) : null,
+      // ⚠️ TEMPORARILY UNSANITISED — see the note above. Sanitising here pulled
+      // sanitize-html into the serverless function's import graph for the
+      // first time and the whole function began failing at module load
+      // (FUNCTION_INVOCATION_FAILED on every route, including /api/health).
+      // Reverted to restore the API; the protection is re-added by escaping in
+      // the widget until the cause is identified.
+      //
+      // SAFE ONLY BECAUSE the widget currently escapes this field rather than
+      // injecting it. Do NOT render this with innerHTML until sanitisation is
+      // restored here.
+      descriptionHtml: full.descriptionHtml ?? null,
       logos: { sa, cert },
       specs: full.specRows.map((s) => ({ label: s.label, value: s.value })),
       benefits: full.textItems.filter((t) => t.kind === "BENEFIT").map((t) => t.text),
