@@ -30,7 +30,7 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "" } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40 } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
     url: "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
@@ -41,9 +41,13 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
     fetchedUrl = String(u);
     return Promise.resolve({ ok: payload !== null, status: payload ? 200 : 404, json: () => Promise.resolve(payload) });
   };
-  if (dmPageData !== undefined) {
+  if (dmPageData !== undefined || dmHangs) {
     w.dmAPI = {
-      dynamicPageApi: () => ({ isDynamicPage: () => dmPageData !== null, pageData: () => Promise.resolve(dmPageData) }),
+      dynamicPageApi: () => ({
+        isDynamicPage: () => dmHangs || dmPageData !== null,
+        // A promise that NEVER settles — the failure a try/catch cannot see.
+        pageData: () => (dmHangs ? new Promise(() => {}) : Promise.resolve(dmPageData)),
+      }),
     };
   }
   const tag = w.document.createElement("script");
@@ -56,7 +60,7 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
 
   if (viaInit) {
     w.SAEquipHubWidget.init({ container: w.document.getElementById("host"), props });
-    await new Promise((r) => setTimeout(r, 40));
+    await new Promise((r) => setTimeout(r, settleMs));
   }
   return { w, d: w.document, fetchedUrl };
 }
@@ -144,6 +148,16 @@ async function main() {
   {
     const { fetchedUrl } = await boot({ props: { section: "tabs", dudaId: "EXPLICIT" }, dmPageData: { identifier: "IGNORED" } });
     check(/dudaId=EXPLICIT/.test(fetchedUrl), "an explicit prop wins over pageData()");
+  }
+  {
+    // A pageData() that never settles must NOT strand the widget forever.
+    // Unguarded, this renders nothing at all and looks exactly like "no
+    // content for this product" — silent, and with no console trace.
+    const { fetchedUrl, w, d } = await boot({ props: { section: "tabs" }, dmHangs: true, settleMs: 1800 });
+    check(/slug=ex-heater/.test(fetchedUrl), "a hanging pageData() times out to the URL slug", fetchedUrl?.split("?")[1]);
+    check(w.__saequipHub.pageDataTimedOut === true, "the timeout is recorded for diagnosis");
+    check(w.__saequipHub.lastInit.refFrom === "url", "lastInit.refFrom reports the fallback", w.__saequipHub.lastInit.refFrom);
+    check(d.querySelectorAll(".saeh-tab-h").length === 4, "and it still renders all four tabs");
   }
 
   console.log("\n=== editor mode keeps the placeholder ===");

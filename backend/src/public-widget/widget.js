@@ -12,14 +12,21 @@
  *
  * DUDA WIDGET BUILDER (preferred — this is the only way the content also shows
  * inside Duda's editor, because a plain HTML/Embed element gets no product
- * context there). From the widget's JS:
+ * context there). The whole of the widget's JS:
  *
  *   api.scripts.renderExternalApp(
  *     'https://YOUR-BACKEND/public/widget.js?v=1',
  *     element,
- *     { section: 'tabs', dudaId: <id>, inEditor: data.inEditor },
+ *     { section: 'tabs', inEditor: data.inEditor },
  *     { amd: false, name: 'SAEquipHubWidget' }
  *   );
+ *
+ * ⚠️ The shim is SYNCHRONOUS on purpose — do not reintroduce an async
+ * wrapper. It used to `await dmAPI...pageData()` to pass a `dudaId` prop, and
+ * an await that never settles means renderExternalApp is never called at all:
+ * no init, no error, no content, nothing in the console. The product lookup
+ * belongs below in dudaPageProduct(), where it is time-boxed and falls back to
+ * the URL slug. Nothing the shim can await is worth that failure mode.
  *
  * - Sections: sa-logos | cert-logos | tabs | 3d-viewer | specs | benefits |
  *   applications | downloads | all
@@ -699,7 +706,35 @@
    *
    * Async, and resolves to null whenever dmAPI is absent (any non-Duda host,
    * or a plain HTML embed), so every caller must have a fallback.
+   *
+   * ⚠️ Always resolves, NEVER hangs. pageData() is Duda's promise, not ours,
+   * and a promise that simply never settles is the one failure a try/catch
+   * cannot see: the caller waits forever and the widget renders nothing, which
+   * on a fail-quiet widget is indistinguishable from "this product has no
+   * content". So it is raced against a timer and degrades to the URL slug —
+   * which is exactly what the live /product/<slug> page can supply anyway.
    */
+  var PAGE_DATA_TIMEOUT_MS = 1500;
+
+  function resolveWithin(promise, ms) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      function finish(value) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      }
+      var timer = setTimeout(function () {
+        hub.pageDataTimedOut = true;
+        finish(null);
+      }, ms);
+      promise.then(finish, function () {
+        finish(null);
+      });
+    });
+  }
+
   function dudaPageProduct() {
     try {
       if (typeof dmAPI === "undefined" || !dmAPI || typeof dmAPI.dynamicPageApi !== "function") {
@@ -709,13 +744,11 @@
       if (!dynPage || typeof dynPage.isDynamicPage !== "function" || !dynPage.isDynamicPage()) {
         return Promise.resolve(null);
       }
-      return Promise.resolve(dynPage.pageData()).then(
-        function (pd) {
+      return resolveWithin(
+        Promise.resolve(dynPage.pageData()).then(function (pd) {
           return pd || null;
-        },
-        function () {
-          return null;
-        },
+        }),
+        PAGE_DATA_TIMEOUT_MS,
       );
     } catch (e) {
       return Promise.resolve(null);
@@ -941,14 +974,17 @@
 
       var direct = refFrom(props);
       if (direct) {
+        hub.lastInit.ref = direct;
+        hub.lastInit.refFrom = "props";
         renderInto(container, sections, direct, onEmpty);
         return;
       }
 
       dudaPageProduct().then(function (pd) {
-        var ref =
-          refFrom({ dudaId: pd && pd.identifier, slug: pd && pd.seo_url }) ||
-          refFrom({ slug: pathSlug() });
+        var fromDuda = refFrom({ dudaId: pd && pd.identifier, slug: pd && pd.seo_url });
+        var ref = fromDuda || refFrom({ slug: pathSlug() });
+        hub.lastInit.ref = ref;
+        hub.lastInit.refFrom = fromDuda ? "dmAPI" : ref ? "url" : "none";
         renderInto(container, sections, ref, onEmpty);
       });
     } catch (e) {
@@ -975,7 +1011,7 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  window.SAEquipHubWidget = { init: init, clean: clean, version: "2026-09-09-tabs" };
+  window.SAEquipHubWidget = { init: init, clean: clean, version: "2026-09-09-sync-shim" };
 
   // ---------------------------------------------------------------------------
   // Entry point B — legacy HTML/Embed mounts, scanned from the DOM

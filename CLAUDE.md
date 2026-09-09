@@ -76,28 +76,36 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 
 ### The widget shim to paste into Duda
 
-Identical for all four widgets except `section`:
+Identical for all four widgets except `section` — and **synchronous, which is the whole point** (see the trap below):
 
 ```js
-(async function () {
-  var id = '';
-  try {
-    var dp = dmAPI.dynamicPageApi();
-    if (dp.isDynamicPage()) { var pd = await dp.pageData(); id = (pd && pd.identifier) || ''; }
-  } catch (e) {}
-  api.scripts.renderExternalApp(
-    'https://sa-equip-backend.vercel.app/public/widget.js?v=1',
-    element,
-    { section: 'tabs', dudaId: id, inEditor: data.inEditor },
-    { amd: false, name: 'SAEquipHubWidget' }
-  );
-})();
+api.scripts.renderExternalApp(
+  'https://sa-equip-backend.vercel.app/public/widget.js?v=2',
+  element,
+  { section: 'tabs', inEditor: data.inEditor },
+  { amd: false, name: 'SAEquipHubWidget' }
+);
 ```
 
-- `{amd:false, name:'SAEquipHubWidget'}` because the widget is plain vanilla JS with no bundler — it assigns `window.SAEquipHubWidget = { init, clean }` rather than being an AMD module.
+- `{amd:false, name:'SAEquipHubWidget'}` because the widget is plain vanilla JS with no bundler — it assigns `window.SAEquipHubWidget = { init, clean }` rather than being an AMD module. Duda then calls `init({container, props, ...additionalData})` and `clean()` on that global.
 - The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`.
 - The four sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`.
+- **No `dudaId` prop.** The widget resolves the product itself (`dudaPageProduct()` → `identifier`, falling back to the `/product/<slug>` URL), so the shim needs no product lookup and therefore no `await`.
 - `https://my.duda.co` must be in `WIDGET_ALLOWED_ORIGINS` or the editor's fetch 403s. Negligible exposure — that endpoint serves content already public on the site.
+
+⚠️ **Never wrap the shim in an `async` IIFE that awaits before `renderExternalApp`.** The first version did (`await dp.pageData()` to pass `dudaId`), and on the live product page that promise never settled — so `renderExternalApp` was never called, `init` never ran, and the widget rendered nothing with **no error anywhere**: the script had still been fetched, so `SAEquipHubWidget.version` read back correctly from the console and the chain looked healthy. A never-settling promise is the one failure a `try/catch` cannot catch. Any `await` before `renderExternalApp` converts a hang into a blank widget, and there is nothing worth awaiting there.
+
+The mirror of that rule inside the widget: `dudaPageProduct()` races `pageData()` against `PAGE_DATA_TIMEOUT_MS` (1.5s) and degrades to the URL slug, so the same hang can't strand the render path either. Covered by `widget:test`.
+
+**Console diagnostics** (this class of bug leaves no other trace):
+
+| Read | Tells you |
+|---|---|
+| `SAEquipHubWidget.version` | whether Duda is serving a cached copy — but **not** that `renderExternalApp` ran, since a legacy HTML/Embed on the page loads the same script |
+| `__saequipHub.lastInit` | `undefined` ⇒ Duda never called `init`, so the fault is in the shim, not the widget |
+| `__saequipHub.lastInit.argKeys` | what shape Duda actually passed |
+| `__saequipHub.lastInit.refFrom` | `props` / `dmAPI` / `url` / `none` — which identity source won |
+| `__saequipHub.pageDataTimedOut` | `true` ⇒ Duda's `pageData()` hung and the URL slug was used
 
 ### Both entry points are live at once, deliberately
 
