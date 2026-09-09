@@ -165,6 +165,61 @@ async function main() {
       "a standalone spec table keeps the cap");
   }
 
+  console.log("\n=== 3D call-to-action: flat, sharp, icon+text left / button right ===");
+  {
+    const { d, w } = await boot({
+      payload: { ...FULL, model3dUrl: "https://example.test/m.glb" },
+      props: { section: "3d-viewer", slug: "x" },
+    });
+    const cta = d.querySelector(".saeh-3d-cta");
+    check(!!cta, "the CTA renders");
+    // The icon and headline must be ONE grouped block, or space-between
+    // pushes the headline into the middle of the banner.
+    const kids = [...cta.children].map((c) => c.className);
+    check(kids.length === 2 && /saeh-3d-cta-main/.test(kids[0]) && /saeh-3d-btn/.test(kids[1]),
+      "two children: grouped icon+title, then the button", kids.join(" + "));
+    const main = cta.querySelector(".saeh-3d-cta-main");
+    check(!!main.querySelector(".saeh-3d-icon") && !!main.querySelector(".saeh-3d-cta-title"),
+      "icon and title are both inside the left group");
+    check(cta.querySelector(".saeh-btn") === null,
+      "does NOT reuse the black .saeh-btn pill");
+    const css = w.document.getElementById("saeh-styles").textContent;
+    const rule = css.match(/\.saeh-3d-cta\{[^}]*\}/)[0];
+    check(/background:#eceef1/.test(rule), "banner background is #eceef1");
+    check(!/border(?!-)/.test(rule) && !/border-radius/.test(rule), "no border and no radius", rule);
+    const btn = css.match(/\.saeh-3d-btn\{[^}]*\}/)[0];
+    check(/background:#fed217/.test(btn) && /color:#000/.test(btn), "button is #fed217 with black text");
+    check(/border-radius:0/.test(btn), "button is sharp");
+    check(/min-height:44px/.test(btn), "button keeps a 44px tap target");
+    check(/font-family:var\(--saeh-head\)/.test(css.match(/\.saeh-3d-cta-title\{[^}]*\}/)[0]),
+      "headline uses the Barlow heading family");
+    check(/clamp\(19px,3\.2vw,30px\)/.test(css), "headline scales fluidly up to the 30px asked for");
+    check(/@media\(max-width:520px\)[^@]*\.saeh-3d-btn\{flex:1 1 100%/.test(css),
+      "button goes full width on narrow screens");
+  }
+
+  console.log("\n=== typography: Barlow headings, Inter 16 body ===");
+  {
+    const { w } = await boot({ props: { section: "tabs", slug: "x" } });
+    const css = w.document.getElementById("saeh-styles").textContent;
+    check(/--saeh-head:'Barlow'/.test(css) && /--saeh-body:'Inter'/.test(css), "both families are declared");
+    check(/\.saeh-root\{font-family:var\(--saeh-body\);font-size:16px/.test(css), "body is Inter 16px");
+    for (const sel of [".saeh-h", ".saeh-tab-h", ".saeh-3d-cta-title", ".saeh-btn"]) {
+      const r = css.match(new RegExp(sel.replace(".", "\\.") + "\\{[^}]*\\}"))[0];
+      check(/font-family:var\(--saeh-head\)/.test(r), `${sel} uses the heading family`);
+    }
+    // Per-selector rather than a blanket "no 18px anywhere": .saeh-prose h4-h6
+    // is legitimately 18px, being a heading.
+    for (const sel of [".saeh-prose", ".saeh-table", ".saeh-list li", ".saeh-dl-title", ".saeh-in", ".saeh-msg"]) {
+      const r = css.match(new RegExp(sel.replace(/[.\s]/g, (c) => (c === "." ? "\\." : "\\s")) + "\\{[^}]*\\}"))[0];
+      check(/font-size:16px/.test(r), `${sel} is 16px`, r.match(/font-size:[^;}]*/)?.[0]);
+    }
+    // The modal is appended to <body>, outside .saeh-root, so it inherits none
+    // of the custom properties unless they are declared on it directly.
+    check(/\.saeh-root,\.saeh-3d-overlay\{--saeh-head/.test(css),
+      "the 3D modal declares the families too (it lives outside .saeh-root)");
+  }
+
   console.log("\n=== switching tabs ===");
   {
     const { d } = await boot({ props: { section: "tabs", slug: "x" } });

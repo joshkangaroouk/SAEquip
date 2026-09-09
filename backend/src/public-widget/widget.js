@@ -120,11 +120,34 @@
     var s = document.createElement("style");
     s.id = STYLE_ID;
     s.textContent = [
+      /*
+       * TYPOGRAPHY — Barlow for headings, Inter 16px for body.
+       *
+       * ⚠️ This deliberately REPLACES `font-family:inherit`, which every rule
+       * here used to carry so the widget silently adopted whatever font the
+       * Duda page used. Inheriting is normally the right instinct for an
+       * embedded widget, so it needs a reason to have changed: the sections are
+       * now specified to a fixed pair rather than to "whatever the page does".
+       *
+       * ⚠️ It also makes the widget depend on the HOST page loading these two
+       * families — the widget must never inject a third-party stylesheet onto
+       * a client's public site. Checked against the live product page: Duda's
+       * own font stylesheet already serves Inter (variable, 100..900) and
+       * Barlow (100-900), so nothing is needed. But if the site's theme fonts
+       * are ever changed in Duda, these families may stop being served and the
+       * widget will quietly fall back to the stack below — no error, just a
+       * different-looking widget. Re-check the page's font stylesheet after any
+       * theme change.
+       *
+       * Declared on .saeh-3d-overlay too, because that modal is appended to
+       * <body> outside .saeh-root and so inherits nothing from it.
+       */
+      ".saeh-root,.saeh-3d-overlay{--saeh-head:'Barlow','Barlow Fallback',system-ui,sans-serif;--saeh-body:'Inter','Inter Fallback',system-ui,sans-serif}",
       // No outer margin. In production each section is its OWN Duda HTML/Embed
       // element, so Duda's element spacing already positions it — a margin here
       // just adds space that can't be tuned from the Duda editor, on every
       // embed. The widget contributes zero vertical space of its own.
-      ".saeh-root{font-family:inherit;color:#1a1a1a;max-width:920px;margin:0;line-height:1.5;box-sizing:border-box}",
+      ".saeh-root{font-family:var(--saeh-body);font-size:16px;color:#1a1a1a;max-width:920px;margin:0;line-height:1.5;box-sizing:border-box}",
       ".saeh-root *{box-sizing:border-box}",
       // The tabbed accordion fills its Duda element instead of honouring the
       // 920px cap above. It is the product page's MAIN widget and usually sits
@@ -141,7 +164,7 @@
       // still contribute no outer space.
       ".saeh-section{margin:0}",
       ".saeh-section + .saeh-section{margin-top:22px}",
-      ".saeh-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}",
+      ".saeh-h{font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}",
       // `gap` covers BOTH axes on a wrapping flex container, so one value gives
       // 10px between logos in a row and 10px between wrapped rows.
       ".saeh-logos{display:flex;flex-wrap:wrap;gap:10px;align-items:center}",
@@ -162,7 +185,7 @@
       // Mobile-first: the DOM is header,panel,header,panel… so with no layout
       // rules at all it already reads and behaves as an accordion.
       ".saeh-tabs{border:1px solid #ececec;border-radius:10px;overflow:hidden}",
-      ".saeh-tab-h{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;margin:0;font-family:inherit;text-align:left;background:#fafafa;border:0;border-top:1px solid #ececec;padding:14px 16px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#111;cursor:pointer}",
+      ".saeh-tab-h{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;margin:0;font-family:var(--saeh-head);text-align:left;background:#fafafa;border:0;border-top:1px solid #ececec;padding:14px 16px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#111;cursor:pointer}",
       ".saeh-tab-h:first-child{border-top:0}",
       ".saeh-tab-h:hover{background:#f2f2f2}",
       ".saeh-tab-h[aria-expanded='true']{background:#fff}",
@@ -174,21 +197,21 @@
       ".saeh-tab-p{padding:18px 16px;background:#fff;border-top:1px solid #ececec}",
       // Prose inside the Overview panel. Paragraphs are flush to match how
       // Duda renders the description natively (see CLAUDE.md).
-      ".saeh-prose{font-size:18px;font-weight:400}",
+      ".saeh-prose{font-size:16px;font-weight:400}",
       ".saeh-prose p{margin:0}",
       ".saeh-prose p + p{margin-top:12px}",
       ".saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px}",
-      ".saeh-prose h4,.saeh-prose h5,.saeh-prose h6{margin:14px 0 6px;font-size:16px;font-weight:700}",
+      ".saeh-prose h4,.saeh-prose h5,.saeh-prose h6{font-family:var(--saeh-head);margin:14px 0 6px;font-size:16px;font-weight:700}",
       ".saeh-prose a{color:inherit;text-decoration:underline}",
       ".saeh-prose hr{border:0;border-top:1px solid #ececec;margin:16px 0}",
       ".saeh-prose > *:first-child{margin-top:0}",
       ".saeh-prose > *:last-child{margin-bottom:0}",
-      ".saeh-table{width:100%;border-collapse:collapse;font-size:18px;font-weight:400;font-style:normal}",
+      ".saeh-table{width:100%;border-collapse:collapse;font-size:16px;font-weight:400;font-style:normal}",
       ".saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}",
       ".saeh-table tr:nth-child(even){background:#fafafa}",
       ".saeh-table td.saeh-label{font-weight:600;width:40%;color:#333}",
       ".saeh-list{list-style:none;padding:0;margin:0}",
-      ".saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:18px;font-weight:400;font-style:normal}",
+      ".saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:16px;font-weight:400;font-style:normal}",
             // The tick is a real SVG, not the U+2713 glyph it used to be. That
       // character's shape is whatever the host page's font decides, and most
       // render it as a wavy, hand-drawn stroke — which is not something CSS
@@ -200,35 +223,74 @@
       // CSS had this rule while the real widget never did, so the live download
       // list carried a trailing border the preview said it should not.
       ".saeh-dl:last-child{border-bottom:0}",
-      ".saeh-dl-title{flex:1 1 auto;font-size:18px;font-weight:400;font-style:normal;min-width:140px}",
-      // font-family:inherit is required here even though .saeh-root already sets
-      // it — browsers never inherit font into <button>/<input> from ancestors by
-      // default (a longstanding UA-stylesheet quirk), so every form control in
-      // this widget needs it declared explicitly or it falls back to the OS UI font.
-      ".saeh-btn{display:inline-block;font-family:inherit;background:#111;color:#fff;border:none;border-radius:5px;padding:9px 18px;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;text-decoration:none;line-height:1.2}",
+      ".saeh-dl-title{flex:1 1 auto;font-size:16px;font-weight:400;font-style:normal;min-width:140px}",
+      // An explicit font-family is required here even though .saeh-root already
+      // sets one — browsers never inherit font into <button>/<input> from
+      // ancestors by default (a longstanding UA-stylesheet quirk), so every
+      // form control and button in this widget must declare it or it falls back
+      // to the OS UI font. Buttons take the heading family: they are display
+      // type, not prose.
+      ".saeh-btn{display:inline-block;font-family:var(--saeh-head);background:#111;color:#fff;border:none;border-radius:5px;padding:9px 18px;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;text-decoration:none;line-height:1.2}",
       ".saeh-btn:hover{background:#333}",
       ".saeh-btn:disabled{opacity:.6;cursor:default}",
       ".saeh-form{flex-basis:100%;display:none;flex-wrap:wrap;gap:8px;margin-top:10px;padding:14px;background:#f7f7f7;border-radius:8px}",
       ".saeh-form.saeh-open{display:flex}",
-      ".saeh-in{flex:1 1 180px;font-family:inherit;padding:9px;border:1px solid #ccc;border-radius:5px;font-size:18px;font-weight:400;font-style:normal}",
+      ".saeh-in{flex:1 1 180px;font-family:var(--saeh-body);padding:9px;border:1px solid #ccc;border-radius:5px;font-size:16px;font-weight:400;font-style:normal}",
       ".saeh-hp{position:absolute!important;left:-9999px!important;width:1px;height:1px;opacity:0}",
-      ".saeh-msg{flex-basis:100%;font-size:18px;font-weight:400;font-style:normal;margin-top:2px}",
+      ".saeh-msg{flex-basis:100%;font-size:16px;font-weight:400;font-style:normal;margin-top:2px}",
       ".saeh-ok{color:#137333}",
       ".saeh-err{color:#c5221f}",
-      ".saeh-3d-cta{border:1px solid #ececec;border-radius:10px;padding:32px 20px;text-align:center;background:linear-gradient(180deg,#fafafa,#f4f4f5)}",
-      ".saeh-3d-icon{width:32px;height:32px;color:#111;display:block;margin:0 auto 12px}",
-      ".saeh-3d-cta-title{font-size:16px;font-weight:700;color:#111;margin:0 0 16px}",
+      /*
+       * 3D call-to-action banner — flat and sharp: no border, no radius, no
+       * gradient. `flex-wrap` plus a `flex-basis` on the left block is what
+       * makes it responsive without a breakpoint: while the headline and the
+       * button both fit, they sit on one row with the button pushed right; when
+       * they don't, the button wraps beneath. The one media query below only
+       * stretches the wrapped button to full width, which flex alone can't do.
+       */
+      ".saeh-3d-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px 24px;background:#eceef1;padding:24px 26px}",
+      ".saeh-3d-cta-main{display:flex;align-items:center;gap:16px;flex:1 1 260px;min-width:0}",
+      ".saeh-3d-icon{width:34px;height:34px;color:#111;display:block;flex:0 0 auto}",
+      /*
+       * clamp() rather than a fixed 30px: at 30px a headline of this length
+       * overflows a phone's width, and dropping to a breakpoint-switched size
+       * leaves it awkward in between. The middle term is vw-based so it scales
+       * continuously, floored at 19px to stay readable and capped at the 30px
+       * asked for. `overflow-wrap` stops a long product word forcing sideways
+       * scroll on the narrowest screens.
+       */
+      ".saeh-3d-cta-title{font-family:var(--saeh-head);font-size:clamp(19px,3.2vw,30px);font-weight:500;line-height:1.15;color:#111;margin:0;min-width:0;overflow-wrap:break-word}",
+      /*
+       * Its own class, not a .saeh-btn modifier — .saeh-btn is the black pill
+       * used by downloads and the 3D modal's own controls, and this one shares
+       * none of its colour, radius or weight. min-height keeps it a 44px tap
+       * target, which the padding alone doesn't guarantee once the font falls
+       * back.
+       */
+      ".saeh-3d-btn{flex:0 0 auto;font-family:var(--saeh-head);background:#fed217;color:#000;border:0;border-radius:0;padding:13px 26px;min-height:44px;font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;line-height:1.2;cursor:pointer}",
+      ".saeh-3d-btn:hover{background:#f0c400}",
+      ".saeh-3d-btn:focus-visible{outline:2px solid #111;outline-offset:2px}",
       // Appended straight to <body>, OUTSIDE .saeh-root — an explicit inherit
       // here (rather than relying on the cascade reaching body) is what makes
       // this modal pick up Duda's page font too, not just the in-page sections.
-      ".saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:inherit}",
+      ".saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:var(--saeh-body)}",
       ".saeh-3d-sheet{position:relative;margin:40px;flex:1;min-width:0;background:#fff;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}",
-      ".saeh-3d-close{position:absolute;top:14px;right:14px;z-index:2;width:36px;height:36px;border-radius:50%;border:none;background:rgba(17,17,17,.06);color:#111;font-family:inherit;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}",
+      ".saeh-3d-close{position:absolute;top:14px;right:14px;z-index:2;width:36px;height:36px;border-radius:50%;border:none;background:rgba(17,17,17,.06);color:#111;font-family:var(--saeh-head);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}",
       ".saeh-3d-close:hover{background:rgba(17,17,17,.12)}",
       ".saeh-3d-stage{flex:1;min-height:0;background:#f4f4f5}",
       ".saeh-3d-mv{width:100%;height:100%;display:block;--poster-color:transparent;outline:none}",
       ".saeh-3d-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:14px;border-top:1px solid #ececec;flex-shrink:0}",
-      "@media(max-width:520px){.saeh-table td.saeh-label{width:auto}.saeh-dl{align-items:flex-start}.saeh-3d-sheet{margin:16px}}",
+      // Narrow screens: a wrapped CTA button spans the full width (a comfortable
+      // thumb target) rather than sitting as a small tab under the headline,
+      // and the banner's side padding tightens so the headline gets the space.
+      "@media(max-width:520px){" +
+        ".saeh-table td.saeh-label{width:auto}" +
+        ".saeh-dl{align-items:flex-start}" +
+        ".saeh-3d-sheet{margin:16px}" +
+        ".saeh-3d-cta{padding:20px 18px;gap:16px}" +
+        ".saeh-3d-cta-main{flex-basis:100%}" +
+        ".saeh-3d-btn{flex:1 1 100%;width:100%}" +
+      "}",
       // Wider screens: lift every header into a row above the panels using
       // flex `order`, turning the accordion into tabs WITHOUT duplicating the
       // headers in the DOM. The panel is flex-basis:100% so it always drops to
@@ -678,11 +740,25 @@
   // The inline section is now just a CTA — the actual viewer only loads (and
   // model-viewer's JS only downloads) once someone clicks through, so visitors
   // who never open it pay no cost at all.
+  /**
+   * The 3D call-to-action banner: icon + headline on the left, button right.
+   *
+   * The icon and headline are wrapped in their own flex row rather than being
+   * three siblings of the outer container. With three siblings and
+   * `justify-content:space-between`, the headline would be pushed to the
+   * middle of the banner and the gap either side of it would change with the
+   * text length; grouping them means the pair stays left-aligned as one block
+   * however long the headline is, and wraps as one block on narrow screens.
+   */
   function model3dSection(url) {
     var sec = el("div", "saeh-section saeh-3d-cta");
-    sec.appendChild(cubeIcon());
-    sec.appendChild(el("div", "saeh-3d-cta-title", "View the product in 3D view!"));
-    var btn = el("button", "saeh-btn", "View 3D Mode");
+
+    var main = el("div", "saeh-3d-cta-main");
+    main.appendChild(cubeIcon());
+    main.appendChild(el("div", "saeh-3d-cta-title", "View the product in 3D view!"));
+    sec.appendChild(main);
+
+    var btn = el("button", "saeh-3d-btn", "View 3D Mode");
     btn.type = "button";
     btn.addEventListener("click", function () {
       openModel3dModal(url);

@@ -17,6 +17,20 @@
          serves nothing and the app silently falls back to system sans. -->
     <link rel="preconnect" href="https://use.typekit.net" crossorigin />
     <link rel="stylesheet" href="https://use.typekit.net/mrd2ybk.css" />
+
+    <!-- Barlow + Inter are for the WIDGET PREVIEWS on /widgets only, never for
+         the dashboard's own UI (that is DIN 2014, above). The public widget
+         renders headings in Barlow and body text in Inter 16, and those
+         previews are documented as byte-accurate reproductions of it — without
+         these they would silently fall back to DIN 2014 and stop matching what
+         Duda actually shows, which is the one thing the previews exist for.
+         The live Duda site loads both families itself; this is the dashboard
+         catching up, not a new dependency for the widget. -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>
