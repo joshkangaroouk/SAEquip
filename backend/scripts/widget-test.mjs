@@ -179,6 +179,34 @@ async function main() {
     check(!!d.querySelector(".saeh-table") && !!d.querySelector(".saeh-check"), 'but "all" still renders the flat sections');
   }
 
+
+  console.log("\n=== init() tolerates every plausible renderExternalApp shape ===");
+  {
+    const shapes = [
+      ["documented  {container, props}", (w, host) => w.SAEquipHubWidget.init({ container: host, props: { section: "benefits", slug: "x" } })],
+      ["{element, props}             ", (w, host) => w.SAEquipHubWidget.init({ element: host, props: { section: "benefits", slug: "x" } })],
+      ["positional (el, props)      ", (w, host) => w.SAEquipHubWidget.init(host, { section: "benefits", slug: "x" })],
+      ["props spread at top level   ", (w, host) => w.SAEquipHubWidget.init({ container: host, section: "benefits", slug: "x" })],
+    ];
+    for (const [label, call] of shapes) {
+      const { w, d } = await boot({ viaInit: false });
+      call(w, d.getElementById("host"));
+      await new Promise((r) => setTimeout(r, 40));
+      check(!!d.querySelector(".saeh-check li"), label);
+    }
+  }
+
+  console.log("\n=== lastInit records what Duda passed (console diagnostics) ===");
+  {
+    const { w, d } = await boot({ viaInit: false });
+    w.SAEquipHubWidget.init({ container: d.getElementById("host"), props: { section: "benefits", slug: "x" } });
+    await new Promise((r) => setTimeout(r, 30));
+    const li = w.__saequipHub.lastInit;
+    check(li && li.resolvedSection === "benefits", "records the section it resolved", String(li && li.resolvedSection));
+    check(li && li.gotContainer === true, "records whether it got a container");
+    check(typeof w.SAEquipHubWidget.version === "string", "exposes a version marker", w.SAEquipHubWidget.version);
+  }
+
   console.log(`\n${fail === 0 ? "✓" : "✗"} ${pass} passed, ${fail} failed\n`);
   if (fail) process.exit(1);
 }

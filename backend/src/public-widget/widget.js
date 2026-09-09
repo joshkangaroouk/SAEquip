@@ -882,10 +882,51 @@
    * selectable and positionable. On the live site an empty widget hides
    * itself, matching the section embeds.
    */
-  function init(opts) {
-    opts = opts || {};
-    var container = opts.container || opts.element;
-    var props = opts.props || {};
+  /**
+   * Normalise whatever renderExternalApp hands us.
+   *
+   * The documented shape is `init({ container, props, ...additionalData })`,
+   * but this is called by Duda's runtime rather than by us, so it is not worth
+   * betting the whole widget on one shape. Accepts, in order:
+   *   init({ container, props })      documented
+   *   init({ element, props })        element rather than container
+   *   init(element, props)            positional
+   *   init({ container, ...props })   props spread at the top level
+   *
+   * Getting this wrong fails SILENTLY — an unrecognised section renders
+   * nothing, fail-closed — which is indistinguishable from "no data". Hence
+   * the tolerance, and hence `hub.lastInit` below.
+   */
+  function normaliseInitArgs(a, b) {
+    var container = null;
+    var props = {};
+    if (a && a.nodeType === 1) {
+      container = a;
+      props = b || {};
+    } else if (a && typeof a === "object") {
+      container = a.container || a.element || a.el || null;
+      props = a.props || a.data || {};
+      // Props spread onto the top-level object rather than nested.
+      if (!props.section && a.section) props = a;
+    }
+    return { container: container, props: props || {} };
+  }
+
+  function init(a, b) {
+    var norm = normaliseInitArgs(a, b);
+    var container = norm.container;
+    var props = norm.props;
+
+    // Inspect from the browser console with __saequipHub.lastInit — the only
+    // way to see what Duda passed, since a wrong shape is otherwise silent.
+    hub.lastInit = {
+      at: new Date().toISOString(),
+      argKeys: a && typeof a === "object" && a.nodeType !== 1 ? Object.keys(a) : typeof a,
+      resolvedSection: props.section || null,
+      resolvedId: props.dudaId || props.slug || props.sku || null,
+      gotContainer: !!container,
+    };
+
     if (!container) return;
 
     try {
@@ -934,7 +975,7 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  window.SAEquipHubWidget = { init: init, clean: clean };
+  window.SAEquipHubWidget = { init: init, clean: clean, version: "2026-09-09-tabs" };
 
   // ---------------------------------------------------------------------------
   // Entry point B — legacy HTML/Embed mounts, scanned from the DOM
