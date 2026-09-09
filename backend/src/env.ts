@@ -28,14 +28,16 @@ const envSchema = z.object({
     .min(1, 'ALLOWED_EMAIL_DOMAINS is required (e.g. "kangaroouk.com,saequip.com")'),
 
   // Comma-separated list of origins allowed to call the PUBLIC widget API.
-  PUBLIC_ALLOWED_ORIGINS: z.string().default(""),
+  WIDGET_ALLOWED_ORIGINS: z.string().default(""),
 
   // --- Duda API (now required for the product read-layer) ---
   DUDA_API_USER: z.string().min(1, "DUDA_API_USER is required (Duda API credentials)"),
   DUDA_API_PASS: z.string().min(1, "DUDA_API_PASS is required (Duda API credentials)"),
   DUDA_API_BASE_URL: z.string().url().default("https://api.duda.co/api"),
-  // 8a8f03b5 = saequip-2, the site in use from 2026-09-07. The previous site
-  // (099434f3 / saequip.multiscreensite.com) is retired. Product ids, SKUs and
+  // 8a8f03b5 is the site in use from 2026-09-07, live on
+  // saequip.multiscreensite.com — the domain MOVED with the migration: it used
+  // to belong to 099434f3, which is now retired on saequip-3.undefined.
+  // Product ids, SKUs and
   // slugs carried over unchanged when the site was duplicated, so HubProduct
   // rows keyed by dudaProductId still match — no re-keying was needed.
   DUDA_SITE_NAME: z.string().default("8a8f03b5"),
@@ -90,7 +92,7 @@ const allowedEmailDomains = raw.ALLOWED_EMAIL_DOMAINS.split(",")
   .filter(Boolean);
 
 /** Origins allowed to call the public widget API (exact-match). */
-const publicAllowedOrigins = raw.PUBLIC_ALLOWED_ORIGINS.split(",")
+const publicAllowedOrigins = raw.WIDGET_ALLOWED_ORIGINS.split(",")
   .map((o) => o.trim())
   .filter(Boolean);
 

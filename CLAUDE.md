@@ -97,7 +97,7 @@ Identical for all four widgets except `section`:
 - `{amd:false, name:'SAEquipHubWidget'}` because the widget is plain vanilla JS with no bundler — it assigns `window.SAEquipHubWidget = { init, clean }` rather than being an AMD module.
 - The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`.
 - The four sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`.
-- `https://my.duda.co` must be in `PUBLIC_ALLOWED_ORIGINS` or the editor's fetch 403s. Negligible exposure — that endpoint serves content already public on the site.
+- `https://my.duda.co` must be in `WIDGET_ALLOWED_ORIGINS` or the editor's fetch 403s. Negligible exposure — that endpoint serves content already public on the site.
 
 ### Both entry points are live at once, deliberately
 
@@ -151,11 +151,11 @@ The Hub now reads and writes **only** `8a8f03b5`. The old site is retired; `GRAN
 | **`8a8f03b5`** (live, `DUDA_SITE_NAME`) | **`saequip.multiscreensite.com`** | PUBLISHED |
 | `099434f3` (retired) | `saequip-3.undefined` | UNPUBLISHED |
 
-**Never infer the domain from the site id, or vice versa** — this doc previously claimed `8a8f03b5` was `saequip-2.multiscreensite.com`, which was true only at creation. Acting on that stale pairing produced a recommendation to drop `saequip.multiscreensite.com` from `PUBLIC_ALLOWED_ORIGINS`, which would have broken the live widget on every product page. Ask the API.
+**Never infer the domain from the site id, or vice versa** — this doc previously claimed `8a8f03b5` was `saequip-2.multiscreensite.com`, which was true only at creation. Acting on that stale pairing produced a recommendation to drop `saequip.multiscreensite.com` from `WIDGET_ALLOWED_ORIGINS`, which would have broken the live widget on every product page. Ask the API.
 
 **The thing that made this cheap: `8a8f03b5` was DUPLICATED from `099434f3`, so product ids carried over byte-identically** — same `dudaProductId` (`01KW9R473XZGWZWC5206EPYAWB`), same SKU, same slug, same option ids. Products are normally per-site in Duda, so the obvious expectation was that every `HubProduct` row (keyed on `dudaProductId`) would need re-keying to new ids; **it didn't**, and the existing row kept its attached 3D model. Verify before assuming this holds for any *future* site move — a site created fresh rather than duplicated would genuinely need re-keying. **Variation ids DO differ** between the sites, but nothing persists those.
 
-Changing sites means `DUDA_SITE_NAME` in env (default in `backend/src/env.ts`) plus `PUBLIC_ALLOWED_ORIGINS` gaining the new domain — and both must be set in the Vercel project's environment variables, not just locally. Everything configured *inside* Duda is per-site and does **not** carry over even in a duplicate: widget embeds on the product template, the `.productDescription` Head-HTML CSS, and the three quote/basket Widget Builder widgets all need re-doing on the new site.
+Changing sites means `DUDA_SITE_NAME` in env (default in `backend/src/env.ts`) plus `WIDGET_ALLOWED_ORIGINS` gaining the new domain — and both must be set in the Vercel project's environment variables, not just locally. Everything configured *inside* Duda is per-site and does **not** carry over even in a duplicate: widget embeds on the product template, the `.productDescription` Head-HTML CSS, and the three quote/basket Widget Builder widgets all need re-doing on the new site.
 
 ### Verified write surface + behaviours (probed live, 2026-07-27/28)
 
@@ -217,7 +217,7 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 ## Environment variables
 
 See `backend/.env.example` and `frontend/.env.example` for the full annotated list. Highlights:
-- Backend **requires**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL_DOMAINS`, `DUDA_API_USER`, `DUDA_API_PASS`. `PUBLIC_ALLOWED_ORIGINS` must include every domain allowed to call `/public/*` (Duda domains + the frontend origin + localhost for dev) — CORS rejects anything not listed, no trailing slashes.
+- Backend **requires**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL_DOMAINS`, `DUDA_API_USER`, `DUDA_API_PASS`. `WIDGET_ALLOWED_ORIGINS` must include every domain allowed to call `/public/*` (Duda domains + the frontend origin + localhost for dev) — CORS rejects anything not listed, no trailing slashes.
 - Backend **optional**: `RESEND_API_KEY` + `QUOTE_NOTIFY_FROM` + `QUOTE_NOTIFY_TO` (all-or-nothing for email).
 - Frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. ⚠️ **`VITE_API_BASE_URL` must stay UNSET in production** — that is what makes the API resolve same-origin. It only falls back to `http://localhost:4000` under `import.meta.env.DEV`. Setting it in Vercel silently points the dashboard elsewhere. (Any `VITE_*` value is baked in at build time, so a change needs a redeploy, not a restart.)
 
@@ -272,7 +272,9 @@ Related: **Preview deployments inherit the same env vars**, so anyone who can op
 
 - URL: `https://sa-equip-backend.vercel.app` (project name is a leftover; it serves BOTH the dashboard and the API). Custom domain not yet added.
 - Widget script for Duda embeds: `https://sa-equip-backend.vercel.app/public/widget.js`
-- `PUBLIC_ALLOWED_ORIGINS` in Vercel is correct and tighter than `.env.example`: the three real domains only, no localhost. Verified by request — `saequip.multiscreensite.com`, `saequip.com`, `www.saequip.com` pass; everything else 403s.
+- ⚠️ **`WIDGET_ALLOWED_ORIGINS` gates the live widget, and getting it wrong is a silent outage**: the script still loads, but its data fetch 403s and every product page renders no Hub content. It must list the Duda EDITOR origin *and* every domain the site is served on. Current value:
+  `https://my.duda.co,https://saequip.multiscreensite.com,https://saequip.com,https://www.saequip.com`
+  Verify after any change by sending each origin as a request header — a rename once left only `my.duda.co` in place, which took the live widget down while the dashboard looked fine.
 - **Bucket limits are no longer applied at startup.** Run `npm run storage:ensure --workspace=backend` after any deploy that changes `MAX_BYTES` or the mimetype allowlists. `npm run media:verify-upload --workspace=backend` checks the upload path still works.
 - ⚠️ **Still outstanding on the Duda side**: the widget embeds on the product template and the three quote/basket Widget Builder widgets still point at the deleted Railway backend, so the live product pages are missing their Hub content until those URLs are repointed. Add a custom domain first, or the `.vercel.app` hostname gets baked into Duda's templates.
 
