@@ -93,20 +93,27 @@ export function RichTextEditor({
       attributes: {
         class:
           "min-h-[10rem] max-h-[26rem] overflow-y-auto px-3 py-2.5 text-small leading-relaxed text-text focus:outline-none " +
-          // ⚠ Paragraph spacing MUST mirror how the live Duda product page
-          // renders the description. Duda styles `<p>` FLUSH — no margin — so
-          // paragraphs are flush here too (`my-0`).
+          // ⚠ Paragraph spacing MUST mirror how the description actually
+          // renders on the product page — which since 2026-09-09 is the
+          // WIDGET's Overview tab, not Duda's native description element.
+          // `.saeh-prose p + p` in widget.js is `margin-top:12px`, so this is
+          // 12px. Change one, change all three (editor, RichHtml preview,
+          // widget) in the same edit.
           //
           // This is a WYSIWYG contract: the editor is only trustworthy if a
           // paragraph break looks here exactly as it lands on the live page.
           //
-          // Consequence to be aware of, accepted deliberately: with no margin,
-          // a paragraph break is visually identical to a line break, so staff
-          // cannot see the difference while editing. That is the honest
-          // representation of what Duda actually renders. Adding a gap back
-          // means adding the CSS on Duda's side FIRST — see CLAUDE.md — and
-          // then changing it here and in RichHtml.tsx in the same edit.
-          "[&_p]:my-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 " +
+          // It used to be `my-0` with no gap, mirroring Duda's own CSS
+          // (`p.rteBlock{margin:0}`), which was accurate but meant a paragraph
+          // break was indistinguishable from a line break while editing —
+          // staff worked around it by typing blank lines, which would have
+          // shipped real empty <p> elements to the live page. Now the widget
+          // renders the description, we set the spacing ourselves and the
+          // editor can show paragraph structure honestly.
+          //
+          // ⚠ `mt-[12px]`, NOT `mt-3` — see the note in RichHtml.tsx: the
+          // 110% root font-size makes rem-based spacing resolve to 13.2px.
+          "[&_p]:my-0 [&_p+p]:mt-[12px] [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 " +
           "[&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold " +
           "[&_h3]:mb-1.5 [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold " +
           "[&_h4]:mb-1.5 [&_h4]:mt-2 [&_h4]:text-sm [&_h4]:font-semibold " +
