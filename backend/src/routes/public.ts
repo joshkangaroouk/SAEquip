@@ -8,6 +8,7 @@ import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
 import { sendQuoteNotification } from "../services/email.js";
+import { stripCruft } from "../services/descriptionHtml.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -202,7 +203,17 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       // Mirrors Duda's native `description`. Served from here because this
       // endpoint is a pure Supabase read by design and must never call Duda,
       // so a widget-rendered "Overview" needs the Hub's own copy.
-      descriptionHtml: full.descriptionHtml ?? null,
+      //
+      // ⚠️ Sanitised on the way OUT, not trusted from the database. This is the
+      // only field the widget injects as HTML rather than as textContent, and
+      // the dashboard's description editor is a raw-HTML textarea whose save
+      // schema is a bare `z.string()` — so a `<script>` typed there reaches
+      // this row intact. Sanitising at the public boundary means the stored
+      // value cannot become an XSS on the live product page regardless of how
+      // it got there. `stripCruft` allows only the tag set the widget renders
+      // (p/strong/em/h4-h6/ul/ol/li/a/hr/sup/sub) and no attributes beyond
+      // href/target/rel.
+      descriptionHtml: full.descriptionHtml ? stripCruft(full.descriptionHtml) : null,
       logos: { sa, cert },
       specs: full.specRows.map((s) => ({ label: s.label, value: s.value })),
       benefits: full.textItems.filter((t) => t.kind === "BENEFIT").map((t) => t.text),

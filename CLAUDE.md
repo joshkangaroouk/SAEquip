@@ -58,6 +58,65 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 - Vanilla JS, no framework, fails silently on any error (never breaks the host page).
 - **An empty section removes its own footprint.** Duda offers no way to hide an element conditionally, and hiding just the mount is not enough — Duda's HTML/Embed element is a wrapper with its own padding and min-height, so an empty widget still left a visible gap. `collapseMount()` hides the mount and then walks UP at most 4 levels, hiding each ancestor **only while that ancestor contains nothing but our mount** — so a column that also holds a heading is never touched, and the worst case is a smaller gap rather than missing page content. It fires on all four empty paths: no API/slug, an unknown `data-section`, an unknown product or failed fetch, and (the common one) a product with no content for the requested section. `data-collapse="false"` on a mount opts out. Gated downloads render an inline lead-capture form (name/email/company + honeypot) that posts to `/public/downloads/:id/lead` and returns a short-TTL signed URL on success.
 
+## Duda Widget Builder widgets (the preferred embed route)
+
+⚠️ **A plain HTML/Embed element cannot show real content inside Duda's editor.** Its script gets no product context there — `dmAPI` is unreachable and the editor URL (`my.duda.co/site/<id>/product`) has no slug to parse — so the editor shows an empty shell and layout work is blind. **Widget Builder widgets do** run in the editor, which is why `data.inEditor` exists.
+
+**Verified live in the editor** (throwaway diagnostic widget, 2026-09-09): `data.inEditor === true`, `dmAPI.dynamicPageApi().isDynamicPage() === true` on a store product page, and `pageData()` returns the whole product. So the editor genuinely has a product context.
+
+**`pageData().identifier` IS `HubProduct.dudaProductId`** — confirmed by lookup (`01M1XPJT6CCYYW1QPNW4HS39GW` → Trolley for EX Heater). Use it in preference to everything else:
+
+| Key | Unique across the 96 products? |
+|---|---|
+| `identifier` → `dudaId` | **yes** — the stable primary key |
+| `seo_url` → `slug` | yes, but changes whenever SEO is edited |
+| `sku` | **no** — 4 duplicated, 3 missing |
+
+`pageData()` also carries `name`, `description`, `price`, `variations`, `images`, `stock_status`, `category_ids` — so a widget can read native fields without calling our API at all. Note it reports **`"currency": "USD"`**, which is the store's actual setting.
+
+### The widget shim to paste into Duda
+
+Identical for all four widgets except `section`:
+
+```js
+(async function () {
+  var id = '';
+  try {
+    var dp = dmAPI.dynamicPageApi();
+    if (dp.isDynamicPage()) { var pd = await dp.pageData(); id = (pd && pd.identifier) || ''; }
+  } catch (e) {}
+  api.scripts.renderExternalApp(
+    'https://sa-equip-backend.vercel.app/public/widget.js?v=1',
+    element,
+    { section: 'tabs', dudaId: id, inEditor: data.inEditor },
+    { amd: false, name: 'SAEquipHubWidget' }
+  );
+})();
+```
+
+- `{amd:false, name:'SAEquipHubWidget'}` because the widget is plain vanilla JS with no bundler — it assigns `window.SAEquipHubWidget = { init, clean }` rather than being an AMD module.
+- The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`.
+- The four sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`.
+- `https://my.duda.co` must be in `PUBLIC_ALLOWED_ORIGINS` or the editor's fetch 403s. Negligible exposure — that endpoint serves content already public on the site.
+
+### Both entry points are live at once, deliberately
+
+`widget.js` exports `init`/`clean` for `renderExternalApp` **and** still scans the DOM for `.saequip-hub` mounts, so the existing HTML/Embed placements keep working until the Widget Builder route is proven on real product pages. Both funnel through one `renderInto()`, so they cannot drift.
+
+The one behavioural difference: **an empty widget collapses on the live site but NOT when `inEditor` is true**, where the container is left exactly as Duda rendered it so any placeholder stays visible and the element stays selectable.
+
+## The tabbed accordion (`section: "tabs"`)
+
+The product page's main widget: Overview / Technical Specs / Key Benefits / Applications.
+
+- **One set of buttons serves both layouts.** DOM order is header,panel,header,panel… — accordion-native — and a `min-width:721px` media query uses flex `order` to lift the headers into a tab row above the panels. This avoids the usual trick of duplicating headers (a tablist for desktop plus per-panel headers for mobile), which ships every label twice to assistive tech and to search engines.
+- ⚠️ **Disclosure semantics (`aria-expanded` + `aria-controls`), NOT `role="tab"`.** Tab roles promise keyboard and layout behaviour that would be a lie in accordion mode, and one element cannot honestly be both.
+- **A panel with no content is never built, so its button never exists** — an empty tab is impossible rather than merely hidden. All four empty ⇒ returns null ⇒ the mount collapses.
+- Content reuses the standalone designs exactly: `specsTable()` and `itemList()` were split out of `specsSection()`/`listSection()` so the tab bodies are the same markup minus the redundant `.saeh-h` heading.
+- ⚠️ **The Overview panel is the ONLY place this widget injects HTML** rather than `textContent`. That is safe *because* `/public/products/content` runs `descriptionHtml` through `stripCruft` on the way out — the dashboard's description editor is a raw-HTML textarea saved with a bare `z.string()`, so a `<script>` typed there reaches the row intact and must be neutralised at the public boundary. Verified against 8 XSS vectors. **Do not point `innerHTML` at any other field.**
+
+`npm run widget:test --workspace=backend` covers 32 behaviours of this (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
+
 ## 3D Model Viewer
 
 Each product may have one interactive `.glb` 3D model, uploaded per-product on the product editor (a `Model3DSection` in the unified save flow — see below), attached via `HubProduct.glbAssetId` → `MediaAsset` (kind `"model"`).

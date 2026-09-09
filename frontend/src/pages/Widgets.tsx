@@ -15,6 +15,24 @@ const WIDGET_CSS = `
 .saeh-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}
 .saeh-logos{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .saeh-logos img{height:35px;width:auto;flex:0 0 auto;display:block}
+.saeh-tabs{border:1px solid #ececec;border-radius:10px;overflow:hidden}
+.saeh-tab-h{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;margin:0;font-family:inherit;text-align:left;background:#fafafa;border:0;border-top:1px solid #ececec;padding:14px 16px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#111;cursor:pointer}
+.saeh-tab-h:first-child{border-top:0}
+.saeh-tab-h:hover{background:#f2f2f2}
+.saeh-tab-h[aria-expanded='true']{background:#fff}
+.saeh-tab-h:after{content:'';flex:0 0 auto;width:8px;height:8px;border-right:2px solid #111;border-bottom:2px solid #111;transform:rotate(45deg);margin-top:-4px;transition:transform .15s ease}
+.saeh-tab-h[aria-expanded='true']:after{transform:rotate(225deg);margin-top:2px}
+.saeh-tab-h:focus-visible{outline:2px solid #111;outline-offset:-2px}
+.saeh-tab-p{padding:18px 16px;background:#fff;border-top:1px solid #ececec}
+.saeh-prose{font-size:18px;font-weight:400}
+.saeh-prose p{margin:0}
+.saeh-prose p + p{margin-top:12px}
+.saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px}
+.saeh-prose h4,.saeh-prose h5,.saeh-prose h6{margin:14px 0 6px;font-size:16px;font-weight:700}
+.saeh-prose a{color:inherit;text-decoration:underline}
+.saeh-prose hr{border:0;border-top:1px solid #ececec;margin:16px 0}
+.saeh-prose > *:first-child{margin-top:0}
+.saeh-prose > *:last-child{margin-bottom:0}
 .saeh-table{width:100%;border-collapse:collapse;font-size:18px;font-weight:400;font-style:normal}
 .saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}
 .saeh-table tr:nth-child(even){background:#fafafa}
@@ -49,6 +67,14 @@ const WIDGET_CSS = `
 @media(max-width:520px){.saeh-table td.saeh-label{width:auto}
 .saeh-dl{align-items:flex-start}
 .saeh-3d-sheet{margin:16px}
+}
+@media(min-width:721px){.saeh-tabs{display:flex;flex-wrap:wrap;border:0;border-radius:0;overflow:visible}
+.saeh-tab-h{order:1;width:auto;flex:0 0 auto;border:0;border-bottom:3px solid transparent;background:none;padding:12px 20px 10px;font-size:13px}
+.saeh-tab-h:hover{background:none;color:#000}
+.saeh-tab-h[aria-expanded='true']{background:none;border-bottom-color:#ffd200}
+.saeh-tab-h:after{display:none}
+.saeh-tab-h:first-child{padding-left:0}
+.saeh-tab-p{order:2;flex-basis:100%;padding:22px 0 0;background:none}
 }
 `;
 

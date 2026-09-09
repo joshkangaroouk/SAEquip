@@ -10,10 +10,27 @@
  *   <div class="saequip-hub" data-section="downloads" data-slug="ex-heater"></div>
  *   <script src="https://YOUR-BACKEND/public/widget.js" defer></script>
  *
- * - Mount selector: #saequip-product-hub | .saequip-hub | [data-saequip-hub]
- * - data-section ∈ sa-logos | cert-logos | 3d-viewer | specs | benefits | applications | downloads | all
- *   (missing or "all" renders every section — the original behavior).
- * - Slug: a data-slug on any mount, else parsed from /product/<slug>.
+ * DUDA WIDGET BUILDER (preferred — this is the only way the content also shows
+ * inside Duda's editor, because a plain HTML/Embed element gets no product
+ * context there). From the widget's JS:
+ *
+ *   api.scripts.renderExternalApp(
+ *     'https://YOUR-BACKEND/public/widget.js?v=1',
+ *     element,
+ *     { section: 'tabs', dudaId: <id>, inEditor: data.inEditor },
+ *     { amd: false, name: 'SAEquipHubWidget' }
+ *   );
+ *
+ * - Sections: sa-logos | cert-logos | tabs | 3d-viewer | specs | benefits |
+ *   applications | downloads | all
+ * - "tabs" is the tabbed accordion (Overview / Technical Specs / Key Benefits
+ *   / Applications). "all" EXCLUDES it, since the accordion already contains
+ *   those sections and rendering both would duplicate every one.
+ * - Mount selector (legacy embeds): #saequip-product-hub | .saequip-hub | [data-saequip-hub]
+ * - Product identity, in order: props.dudaId/slug/sku -> Duda's
+ *   dmAPI.dynamicPageApi().pageData() -> the /product/<slug> URL. The Duda API
+ *   is preferred because `identifier` is the stable product id, whereas a slug
+ *   changes when SEO is edited and a SKU is neither unique nor always present.
  * - The content API is fetched ONCE per slug (memoized on a window global), even
  *   with many mounts or several copies of this script on the page.
  * - Renders inline into each mount, so the mount auto-sizes to its content
@@ -25,8 +42,8 @@
   var STYLE_ID = "saeh-styles";
   var RENDERED_ATTR = "data-saeh-rendered";
   var MOUNT_SELECTOR = "#saequip-product-hub, .saequip-hub, [data-saequip-hub]";
-  var ALL_SECTIONS = ["cert-logos", "sa-logos", "3d-viewer", "specs", "benefits", "applications", "downloads"];
-  var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1 };
+  var ALL_SECTIONS = ["cert-logos", "sa-logos", "3d-viewer", "tabs", "specs", "benefits", "applications", "downloads"];
+  var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "tabs": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1 };
   var MODEL_VIEWER_SRC = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js";
 
   // Capture the executing script NOW — currentScript is null inside async
@@ -102,6 +119,31 @@
       // width, and since the height is pinned the image would squash
       // horizontally instead of wrapping to the next line.
       ".saeh-logos img{height:35px;width:auto;flex:0 0 auto;display:block}",
+      // --- tabbed accordion ---
+      // Mobile-first: the DOM is header,panel,header,panel… so with no layout
+      // rules at all it already reads and behaves as an accordion.
+      ".saeh-tabs{border:1px solid #ececec;border-radius:10px;overflow:hidden}",
+      ".saeh-tab-h{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;margin:0;font-family:inherit;text-align:left;background:#fafafa;border:0;border-top:1px solid #ececec;padding:14px 16px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#111;cursor:pointer}",
+      ".saeh-tab-h:first-child{border-top:0}",
+      ".saeh-tab-h:hover{background:#f2f2f2}",
+      ".saeh-tab-h[aria-expanded='true']{background:#fff}",
+      // Chevron drawn from two borders — no glyph, so it can't be reshaped by
+      // the host page's font (the same trap the U+2713 tick fell into).
+      ".saeh-tab-h:after{content:'';flex:0 0 auto;width:8px;height:8px;border-right:2px solid #111;border-bottom:2px solid #111;transform:rotate(45deg);margin-top:-4px;transition:transform .15s ease}",
+      ".saeh-tab-h[aria-expanded='true']:after{transform:rotate(225deg);margin-top:2px}",
+      ".saeh-tab-h:focus-visible{outline:2px solid #111;outline-offset:-2px}",
+      ".saeh-tab-p{padding:18px 16px;background:#fff;border-top:1px solid #ececec}",
+      // Prose inside the Overview panel. Paragraphs are flush to match how
+      // Duda renders the description natively (see CLAUDE.md).
+      ".saeh-prose{font-size:18px;font-weight:400}",
+      ".saeh-prose p{margin:0}",
+      ".saeh-prose p + p{margin-top:12px}",
+      ".saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px}",
+      ".saeh-prose h4,.saeh-prose h5,.saeh-prose h6{margin:14px 0 6px;font-size:16px;font-weight:700}",
+      ".saeh-prose a{color:inherit;text-decoration:underline}",
+      ".saeh-prose hr{border:0;border-top:1px solid #ececec;margin:16px 0}",
+      ".saeh-prose > *:first-child{margin-top:0}",
+      ".saeh-prose > *:last-child{margin-bottom:0}",
       ".saeh-table{width:100%;border-collapse:collapse;font-size:18px;font-weight:400;font-style:normal}",
       ".saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}",
       ".saeh-table tr:nth-child(even){background:#fafafa}",
@@ -149,6 +191,20 @@
       ".saeh-3d-mv{width:100%;height:100%;display:block;--poster-color:transparent;outline:none}",
       ".saeh-3d-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:14px;border-top:1px solid #ececec;flex-shrink:0}",
       "@media(max-width:520px){.saeh-table td.saeh-label{width:auto}.saeh-dl{align-items:flex-start}.saeh-3d-sheet{margin:16px}}",
+      // Wider screens: lift every header into a row above the panels using
+      // flex `order`, turning the accordion into tabs WITHOUT duplicating the
+      // headers in the DOM. The panel is flex-basis:100% so it always drops to
+      // its own line, and its top border doubles as the tab strip's baseline.
+      "@media(min-width:721px){" +
+        ".saeh-tabs{display:flex;flex-wrap:wrap;border:0;border-radius:0;overflow:visible}" +
+        ".saeh-tab-h{order:1;width:auto;flex:0 0 auto;border:0;border-bottom:3px solid transparent;background:none;padding:12px 20px 10px;font-size:13px}" +
+        ".saeh-tab-h:hover{background:none;color:#000}" +
+        ".saeh-tab-h[aria-expanded='true']{background:none;border-bottom-color:#ffd200}" +
+        // The chevron only means something in accordion mode.
+        ".saeh-tab-h:after{display:none}" +
+        ".saeh-tab-h:first-child{padding-left:0}" +
+        ".saeh-tab-p{order:2;flex-basis:100%;padding:22px 0 0;background:none}" +
+      "}",
     ].join("");
     (document.head || document.documentElement).appendChild(s);
   }
@@ -169,9 +225,11 @@
     return sec;
   }
 
-  function specsSection(specs) {
-    var sec = el("div", "saeh-section");
-    sec.appendChild(el("div", "saeh-h", "Technical Specifications"));
+  // The bare table / list, with no section heading. Split out so the tabbed
+  // accordion reuses the EXACT same markup and styling as the standalone
+  // sections — inside a tab the heading is redundant, since the tab label
+  // already says "Technical Specs".
+  function specsTable(specs) {
     var table = el("table", "saeh-table");
     var tbody = el("tbody");
     specs.forEach(function (s) {
@@ -181,18 +239,141 @@
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
-    sec.appendChild(table);
+    return table;
+  }
+
+  function itemList(items, checklist) {
+    var ul = el("ul", "saeh-list " + (checklist ? "saeh-check" : "saeh-apps"));
+    items.forEach(function (t) {
+      ul.appendChild(el("li", null, t));
+    });
+    return ul;
+  }
+
+  /**
+   * The product page's main widget: Overview / Technical Specs / Key Benefits
+   * / Applications as a tabbed accordion.
+   *
+   * ONE set of buttons serves both layouts. The DOM order is
+   * header,panel,header,panel… — i.e. accordion-native — and on wider screens
+   * CSS flex `order` lifts every header into a row above the panels. That
+   * avoids the usual approach of duplicating the headers (a tablist for
+   * desktop plus per-panel headers for mobile), which ships the same labels
+   * twice to assistive tech and to search engines.
+   *
+   * ⚠️ Deliberately the DISCLOSURE pattern (`aria-expanded` + `aria-controls`)
+   * rather than `role="tab"`/`role="tablist"`. Tab roles carry a promise about
+   * keyboard behaviour and layout that would be a lie in accordion mode, and
+   * the same element cannot honestly be both. Disclosure is truthful in both.
+   *
+   * A panel with no content is never built, so its button never exists — an
+   * empty tab is impossible rather than merely hidden. If every panel is empty
+   * this returns null and the caller collapses the mount entirely.
+   */
+  function tabsSection(data) {
+    var panels = [];
+
+    if (data.descriptionHtml && String(data.descriptionHtml).trim()) {
+      panels.push({ id: "overview", label: "Overview", build: function () {
+        var body = el("div", "saeh-prose");
+        // The ONLY place this widget injects HTML rather than textContent.
+        // Safe because /public/products/content sanitises descriptionHtml on
+        // the way out through the same allowlist the widget renders, so a
+        // <script> typed into the dashboard's raw-HTML description editor
+        // cannot arrive here. Do not point this at any other field.
+        body.innerHTML = data.descriptionHtml;
+        return body;
+      } });
+    }
+    if (data.specs && data.specs.length) {
+      panels.push({ id: "specs", label: "Technical Specs", build: function () { return specsTable(data.specs); } });
+    }
+    if (data.benefits && data.benefits.length) {
+      panels.push({ id: "benefits", label: "Key Benefits", build: function () { return itemList(data.benefits, true); } });
+    }
+    if (data.applications && data.applications.length) {
+      panels.push({ id: "applications", label: "Applications", build: function () { return itemList(data.applications, false); } });
+    }
+
+    if (!panels.length) return null;
+
+    var sec = el("div", "saeh-section");
+    var wrap = el("div", "saeh-tabs");
+    // Unique per instance, so several accordions on one page cannot collide on
+    // the aria-controls / id pairing.
+    var uid = "saeh-t" + Math.random().toString(36).slice(2, 9);
+    var headers = [];
+
+    panels.forEach(function (p, i) {
+      var panelId = uid + "-" + p.id;
+
+      var h = document.createElement("button");
+      h.type = "button"; // never submit a surrounding Duda form
+      h.className = "saeh-tab-h";
+      h.id = panelId + "-h";
+      h.setAttribute("aria-expanded", i === 0 ? "true" : "false");
+      h.setAttribute("aria-controls", panelId);
+      h.appendChild(el("span", null, p.label));
+
+      var panel = el("div", "saeh-tab-p");
+      panel.id = panelId;
+      panel.setAttribute("role", "region");
+      panel.setAttribute("aria-labelledby", h.id);
+      panel.appendChild(p.build());
+      if (i !== 0) panel.hidden = true;
+
+      headers.push(h);
+      wrap.appendChild(h);
+      wrap.appendChild(panel);
+    });
+
+    function select(index) {
+      panels.forEach(function (_p, i) {
+        var open = i === index;
+        headers[i].setAttribute("aria-expanded", open ? "true" : "false");
+        // `hidden` rather than a class: it keeps the panel out of the
+        // accessibility tree and out of in-page find, which display:none via a
+        // class would also do but less explicitly.
+        wrap.children[i * 2 + 1].hidden = !open;
+      });
+    }
+
+    headers.forEach(function (h, i) {
+      h.addEventListener("click", function () {
+        select(i);
+      });
+      // Arrow keys move between headers. Home/End jump to the ends. Buttons
+      // already handle Enter/Space natively.
+      h.addEventListener("keydown", function (ev) {
+        var k = ev.key;
+        var next =
+          k === "ArrowRight" || k === "ArrowDown" ? i + 1
+          : k === "ArrowLeft" || k === "ArrowUp" ? i - 1
+          : k === "Home" ? 0
+          : k === "End" ? headers.length - 1
+          : -1;
+        if (next === -1) return;
+        ev.preventDefault();
+        var target = headers[(next + headers.length) % headers.length];
+        target.focus();
+      });
+    });
+
+    sec.appendChild(wrap);
+    return sec;
+  }
+
+  function specsSection(specs) {
+    var sec = el("div", "saeh-section");
+    sec.appendChild(el("div", "saeh-h", "Technical Specifications"));
+    sec.appendChild(specsTable(specs));
     return sec;
   }
 
   function listSection(title, items, checklist) {
     var sec = el("div", "saeh-section");
     sec.appendChild(el("div", "saeh-h", title));
-    var ul = el("ul", "saeh-list " + (checklist ? "saeh-check" : "saeh-apps"));
-    items.forEach(function (t) {
-      ul.appendChild(el("li", null, t));
-    });
-    sec.appendChild(ul);
+    sec.appendChild(itemList(items, checklist));
     return sec;
   }
 
@@ -468,6 +649,7 @@
     if (name === "cert-logos") return logos.cert && logos.cert.length ? logoSection("", logos.cert) : null;
     if (name === "sa-logos") return logos.sa && logos.sa.length ? logoSection("", logos.sa) : null;
     if (name === "3d-viewer") return data.model3dUrl ? model3dSection(data.model3dUrl) : null;
+    if (name === "tabs") return tabsSection(data);
     if (name === "specs") return data.specs && data.specs.length ? specsSection(data.specs) : null;
     if (name === "benefits") return data.benefits && data.benefits.length ? listSection("Key Benefits", data.benefits, true) : null;
     if (name === "applications") return data.applications && data.applications.length ? listSection("Applications", data.applications, true) : null;
@@ -476,9 +658,21 @@
   }
 
   // ---- fetch (memoized once per slug across all mounts + script copies) ----
-  function fetchContent(slug) {
-    if (!hub.fetches[slug]) {
-      hub.fetches[slug] = fetch(hub.api + "/public/products/content?slug=" + encodeURIComponent(slug), { credentials: "omit" })
+  /**
+   * Fetch a product's content, memoized per identifier across every mount and
+   * every copy of this script on the page.
+   *
+   * `ref` is {key, value} where key is "dudaId" | "slug" | "sku". Keying the
+   * cache on both means a page using dudaId and a page using slug can't
+   * collide, and it lets the endpoint's three lookup modes all be used.
+   */
+  function fetchContent(ref) {
+    var cacheKey = ref.key + ":" + ref.value;
+    if (!hub.fetches[cacheKey]) {
+      hub.fetches[cacheKey] = fetch(
+        hub.api + "/public/products/content?" + ref.key + "=" + encodeURIComponent(ref.value),
+        { credentials: "omit" },
+      )
         .then(function (res) {
           return res.ok ? res.json() : null;
         })
@@ -486,7 +680,54 @@
           return null;
         });
     }
-    return hub.fetches[slug];
+    return hub.fetches[cacheKey];
+  }
+
+  /**
+   * Ask Duda which product this page represents.
+   *
+   * Strongly preferred over parsing the URL: `identifier` is the Duda product
+   * id — the same value stored as HubProduct.dudaProductId — so it is unique
+   * and stable, whereas the slug changes whenever someone edits a product's
+   * SEO URL and the SKU is neither unique (4 are duplicated) nor always
+   * present (3 products have none).
+   *
+   * It also works INSIDE the Duda editor, which URL parsing cannot: the editor
+   * URL is my.duda.co/site/<id>/product, with no product in it. Verified
+   * against a live store page — isDynamicPage() is true and pageData() returns
+   * the full product, in the editor as well as on the published site.
+   *
+   * Async, and resolves to null whenever dmAPI is absent (any non-Duda host,
+   * or a plain HTML embed), so every caller must have a fallback.
+   */
+  function dudaPageProduct() {
+    try {
+      if (typeof dmAPI === "undefined" || !dmAPI || typeof dmAPI.dynamicPageApi !== "function") {
+        return Promise.resolve(null);
+      }
+      var dynPage = dmAPI.dynamicPageApi();
+      if (!dynPage || typeof dynPage.isDynamicPage !== "function" || !dynPage.isDynamicPage()) {
+        return Promise.resolve(null);
+      }
+      return Promise.resolve(dynPage.pageData()).then(
+        function (pd) {
+          return pd || null;
+        },
+        function () {
+          return null;
+        },
+      );
+    } catch (e) {
+      return Promise.resolve(null);
+    }
+  }
+
+  /** Turn whatever identifier we have into the {key, value} the API expects. */
+  function refFrom(opts) {
+    if (opts.dudaId) return { key: "dudaId", value: String(opts.dudaId) };
+    if (opts.slug) return { key: "slug", value: String(opts.slug) };
+    if (opts.sku) return { key: "sku", value: String(opts.sku) };
+    return null;
   }
 
   function pathSlug() {
@@ -503,10 +744,22 @@
     return pathSlug();
   }
 
+  // "all" deliberately EXCLUDES "tabs": the accordion contains the description,
+  // specs, benefits and applications, so rendering both would duplicate every
+  // one of them on the page. "all" stays the legacy flat layout; "tabs" is the
+  // new grouped one, and they are alternatives rather than additive.
+  var ALL_EXCLUDES = { tabs: 1 };
+
+  function sectionsForName(raw) {
+    var name = (raw || "").trim().toLowerCase();
+    if (!name || name === "all") {
+      return ALL_SECTIONS.filter(function (n) { return !ALL_EXCLUDES[n]; });
+    }
+    return VALID[name] ? [name] : []; // unknown value → render nothing (fail-closed)
+  }
+
   function sectionsFor(mount) {
-    var raw = (mount.getAttribute("data-section") || "").trim().toLowerCase();
-    if (!raw || raw === "all") return ALL_SECTIONS.slice();
-    return VALID[raw] ? [raw] : []; // unknown value → render nothing (fail-closed)
+    return sectionsForName(mount.getAttribute("data-section"));
   }
 
   /**
@@ -561,31 +814,45 @@
     }
   }
 
+  /**
+   * Render `sections` for `ref` into `container`. The single place content is
+   * built, shared by the legacy DOM-scanned mounts and by the Widget Builder
+   * entry point, so the two can never drift apart.
+   *
+   * `onEmpty` decides what "nothing to show" means for the caller: the DOM
+   * mounts collapse the Duda element, while a Widget Builder widget hands
+   * control back so it can leave an editor placeholder in place.
+   */
+  function renderInto(container, sections, ref, onEmpty) {
+    if (!hub.api || !ref || !sections.length) return onEmpty();
+    return fetchContent(ref)
+      .then(function (data) {
+        try {
+          if (!data) return onEmpty(); // unknown product / fetch error
+          var root = el("div", "saeh-root");
+          for (var i = 0; i < sections.length; i++) {
+            var node = buildSection(sections[i], data);
+            if (node) root.appendChild(node);
+          }
+          if (!root.childNodes.length) return onEmpty();
+          injectStyles();
+          container.innerHTML = "";
+          container.appendChild(root);
+        } catch (e) {
+          /* never break the host page */
+        }
+      })
+      .catch(function () {});
+  }
+
   function renderMount(mount, slug) {
     if (mount.getAttribute(RENDERED_ATTR)) return; // idempotency: skip already-processed mounts
     mount.setAttribute(RENDERED_ATTR, "1"); // claim synchronously so re-exec skips it
-    if (!hub.api || !slug) return collapseMount(mount);
-    var sections = sectionsFor(mount);
-    if (!sections.length) return collapseMount(mount); // unknown data-section
-
-    fetchContent(slug).then(function (data) {
-      try {
-        if (!data) return collapseMount(mount); // unknown product / fetch error
-        var root = el("div", "saeh-root");
-        for (var i = 0; i < sections.length; i++) {
-          var node = buildSection(sections[i], data);
-          if (node) root.appendChild(node);
-        }
-        // The common case: this product simply has no content for the
-        // requested section, so leave no trace on the page.
-        if (!root.childNodes.length) return collapseMount(mount);
-        injectStyles();
-        mount.innerHTML = "";
-        mount.appendChild(root);
-      } catch (e) {
-        /* never break the host page */
-      }
-    }).catch(function () {});
+    renderInto(mount, sectionsFor(mount), refFrom({ slug: slug }), function () {
+      // The common case: this product has no content for the requested
+      // section, so leave no trace on the page.
+      collapseMount(mount);
+    });
   }
 
   function processMounts() {
@@ -598,7 +865,83 @@
     }
   }
 
-  function init() {
+  // ---------------------------------------------------------------------------
+  // Entry point A — Duda Widget Builder, via api.scripts.renderExternalApp
+  // ---------------------------------------------------------------------------
+  /**
+   * Called by Duda with the widget's container and props.
+   *
+   * Product identity is resolved in this order:
+   *   1. props.dudaId / props.slug / props.sku, if the widget shim supplied one
+   *   2. Duda's own dynamic-page API (works in the EDITOR as well as live)
+   *   3. the /product/<slug> URL, as a last resort
+   *
+   * Empty behaviour differs from the DOM-mount path on purpose. In the editor
+   * we leave the container exactly as Duda rendered it, so whatever
+   * placeholder is configured stays visible and the element remains
+   * selectable and positionable. On the live site an empty widget hides
+   * itself, matching the section embeds.
+   */
+  function init(opts) {
+    opts = opts || {};
+    var container = opts.container || opts.element;
+    var props = opts.props || {};
+    if (!container) return;
+
+    try {
+      if (props.apiBase) hub.api = String(props.apiBase);
+      var sections = sectionsForName(props.section);
+      var inEditor = props.inEditor === true || props.inEditor === "true";
+
+      var onEmpty = function () {
+        if (inEditor) return; // keep the editor placeholder and the element's box
+        collapseMount(container);
+      };
+
+      var direct = refFrom(props);
+      if (direct) {
+        renderInto(container, sections, direct, onEmpty);
+        return;
+      }
+
+      dudaPageProduct().then(function (pd) {
+        var ref =
+          refFrom({ dudaId: pd && pd.identifier, slug: pd && pd.seo_url }) ||
+          refFrom({ slug: pathSlug() });
+        renderInto(container, sections, ref, onEmpty);
+      });
+    } catch (e) {
+      /* never break the host page */
+    }
+  }
+
+  /**
+   * Called by Duda before re-rendering or removing the widget.
+   *
+   * Only empties the container — the injected <style> and the memoized fetches
+   * are page-level and shared by every instance, so tearing them down here
+   * would break sibling widgets that are still on the page.
+   */
+  function clean(opts) {
+    try {
+      var container = (opts && (opts.container || opts.element)) || null;
+      if (container) container.innerHTML = "";
+    } catch (e) {
+      /* never break the host page */
+    }
+  }
+
+  // The global renderExternalApp looks up when called with {amd:false,
+  // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
+  // script simply refreshes the same interface.
+  window.SAEquipHubWidget = { init: init, clean: clean };
+
+  // ---------------------------------------------------------------------------
+  // Entry point B — legacy HTML/Embed mounts, scanned from the DOM
+  // ---------------------------------------------------------------------------
+  // Kept working alongside the Widget Builder path so the live site never
+  // depends on the new path until it has been proven on real product pages.
+  function bootstrapDomMounts() {
     try {
       processMounts();
     } catch (e) {
@@ -607,8 +950,8 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", bootstrapDomMounts);
   } else {
-    init();
+    bootstrapDomMounts();
   }
 })();
