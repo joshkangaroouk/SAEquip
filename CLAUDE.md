@@ -76,26 +76,46 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 
 ### The widget shim to paste into Duda
 
-Identical for all four widgets except `section` — and **synchronous, which is the whole point** (see the trap below):
+⚠️ **`api.scripts.renderExternalApp` does NOT work for this widget — the shim loads the script and calls `init` itself.** Identical for all four widgets except `section`:
 
 ```js
-api.scripts.renderExternalApp(
-  'https://sa-equip-backend.vercel.app/public/widget.js?v=2',
-  element,
-  { section: 'tabs', inEditor: data.inEditor },
-  { amd: false, name: 'SAEquipHubWidget' }
-);
+(function () {
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=4';
+  var PROPS = { section: 'tabs', inEditor: data.inEditor };
+  var el = element;
+  var L = window.__saehLoader || (window.__saehLoader = {});
+  if (!L.p) L.p = new Promise(function (res, rej) {
+    var s = document.createElement('script');
+    s.src = SRC; s.async = true; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  L.p.then(function () {
+    window.SAEquipHubWidget.init({ container: el, props: PROPS });
+  }).catch(function () {});
+})();
 ```
 
-- `{amd:false, name:'SAEquipHubWidget'}` because the widget is plain vanilla JS with no bundler — it assigns `window.SAEquipHubWidget = { init, clean }` rather than being an AMD module. Duda then calls `init({container, props, ...additionalData})` and `clean()` on that global.
-- The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`.
 - The four sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`.
+- The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`. **Bump it whenever the widget changes** or Duda serves the cached copy.
+- The shared promise on `window.__saehLoader` means all four widgets on a page fetch the script **once** between them.
 - **No `dudaId` prop.** The widget resolves the product itself (`dudaPageProduct()` → `identifier`, falling back to the `/product/<slug>` URL), so the shim needs no product lookup and therefore no `await`.
 - `https://my.duda.co` must be in `WIDGET_ALLOWED_ORIGINS` or the editor's fetch 403s. Negligible exposure — that endpoint serves content already public on the site.
 
-⚠️ **Never wrap the shim in an `async` IIFE that awaits before `renderExternalApp`.** The first version did (`await dp.pageData()` to pass `dudaId`), and on the live product page that promise never settled — so `renderExternalApp` was never called, `init` never ran, and the widget rendered nothing with **no error anywhere**: the script had still been fetched, so `SAEquipHubWidget.version` read back correctly from the console and the chain looked healthy. A never-settling promise is the one failure a `try/catch` cannot catch. Any `await` before `renderExternalApp` converts a hang into a blank widget, and there is nothing worth awaiting there.
+### Why not `renderExternalApp` (diagnosed 2026-09-09, don't re-litigate)
 
-The mirror of that rule inside the widget: `dudaPageProduct()` races `pageData()` against `PAGE_DATA_TIMEOUT_MS` (1.5s) and degrades to the URL slug, so the same hang can't strand the render path either. Covered by `widget:test`.
+Called as documented — `renderExternalApp(src, element, props, {amd:false, name:'SAEquipHubWidget'})` — it **fetched the script and then never called `init()`**, silently. Proven from the console on the live `/product/ex-heater`:
+
+| Evidence | Reading |
+|---|---|
+| `scriptTags: [".../widget.js?v=3"]` | the shim ran and `renderExternalApp` DID load us — that `?v=` exists nowhere else |
+| `SAEquipHubWidget.version` correct | the current script executed and assigned its global |
+| `__saequipHub.lastInit` `undefined` | `init` was never called — nothing downstream of it ever ran |
+| manual `init({container, props})` | rendered 461 chars correctly — widget, API, CORS and identity all fine |
+| `legacyMounts: 0`, `requirejs: false` | no legacy embed and no require.js muddying it |
+
+That pattern is a loader consuming the script's **module value** instead of `window[name]`: a bare IIFE evaluates to `undefined`, so `undefined.init(...)` is never reached and nothing is logged. Rather than keep guessing at an invocation contract we can't see, the shim now loads the script itself — four deterministic lines. widget.js **also** publishes an AMD module (`define(function(){ return iface })`) so it satisfies either contract; `widget:test` asserts the AMD and global paths expose the same object.
+
+⚠️ **Don't wrap the shim in an `async` IIFE that awaits before rendering.** An earlier version awaited `dmAPI…pageData()` to pass `dudaId`; a never-settling await renders nothing with no error at all. Measured since, `pageData()` resolves in **~1ms** live, so that wasn't this outage — but the failure mode is real and there's nothing here worth awaiting. Inside the widget, `dudaPageProduct()` races `pageData()` against `PAGE_DATA_TIMEOUT_MS` (1.5s) and degrades to the URL slug, so the same hang can't strand the render path either.
 
 **Console diagnostics** (this class of bug leaves no other trace):
 

@@ -30,7 +30,7 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40 } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
     url: "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
@@ -49,6 +49,11 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
         pageData: () => (dmHangs ? new Promise(() => {}) : Promise.resolve(dmPageData)),
       }),
     };
+  }
+  if (amdLoader) {
+    // Minimal AMD loader: capture whatever the script defines as its module.
+    w.define = (factory) => { w.__amdModule = factory(); };
+    w.define.amd = {};
   }
   const tag = w.document.createElement("script");
   tag.src = "https://sa-equip-backend.vercel.app/public/widget.js";
@@ -75,6 +80,17 @@ async function main() {
     check(typeof w.SAEquipHubWidget === "object", "exposes the global");
     check(typeof w.SAEquipHubWidget.init === "function", "exports init()");
     check(typeof w.SAEquipHubWidget.clean === "function", "exports clean()");
+  }
+  {
+    // A loader that takes the script's MODULE VALUE, not window[name], gets
+    // undefined from a bare IIFE — which is how renderExternalApp loaded this
+    // script and then never called init(), silently. Both contracts must hold.
+    const { w } = await boot({ viaInit: false, amdLoader: true });
+    const mod = w.__amdModule;
+    check(!!mod, "defines an AMD module when define.amd is present");
+    check(mod && typeof mod.init === "function" && typeof mod.clean === "function",
+      "the AMD module exposes init() and clean()");
+    check(mod === w.SAEquipHubWidget, "AMD and global expose the SAME interface");
   }
 
   console.log("\n=== all four tabs, in order ===");

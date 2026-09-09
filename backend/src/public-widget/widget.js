@@ -14,19 +14,43 @@
  * inside Duda's editor, because a plain HTML/Embed element gets no product
  * context there). The whole of the widget's JS:
  *
- *   api.scripts.renderExternalApp(
- *     'https://YOUR-BACKEND/public/widget.js?v=1',
- *     element,
- *     { section: 'tabs', inEditor: data.inEditor },
- *     { amd: false, name: 'SAEquipHubWidget' }
- *   );
+ *   (function () {
+ *     var SRC = 'https://YOUR-BACKEND/public/widget.js?v=4';
+ *     var PROPS = { section: 'tabs', inEditor: data.inEditor };
+ *     var el = element;
+ *     var L = window.__saehLoader || (window.__saehLoader = {});
+ *     if (!L.p) L.p = new Promise(function (res, rej) {
+ *       var s = document.createElement('script');
+ *       s.src = SRC; s.async = true; s.onload = res; s.onerror = rej;
+ *       document.head.appendChild(s);
+ *     });
+ *     L.p.then(function () {
+ *       window.SAEquipHubWidget.init({ container: el, props: PROPS });
+ *     }).catch(function () {});
+ *   })();
  *
- * ⚠️ The shim is SYNCHRONOUS on purpose — do not reintroduce an async
- * wrapper. It used to `await dmAPI...pageData()` to pass a `dudaId` prop, and
- * an await that never settles means renderExternalApp is never called at all:
- * no init, no error, no content, nothing in the console. The product lookup
- * belongs below in dudaPageProduct(), where it is time-boxed and falls back to
- * the URL slug. Nothing the shim can await is worth that failure mode.
+ * ⚠️ It calls init() ITSELF rather than going through
+ * api.scripts.renderExternalApp. That API was observed, on a live product
+ * page, fetching this script and then never calling init() — proven from the
+ * console: the ?v= query string showed the shim had run and loaded us,
+ * window.SAEquipHubWidget.version read back correctly, a manual
+ * init({container, props}) rendered perfectly, yet __saequipHub.lastInit was
+ * undefined. Loading a script is four lines and fully deterministic, so it is
+ * not worth depending on a loader whose invocation contract we cannot see. The
+ * AMD export at the bottom of this file covers renderExternalApp anyway, for
+ * anyone who prefers it.
+ *
+ * The shared promise on window.__saehLoader means the four widgets on a
+ * product page fetch this script ONCE between them, not four times.
+ *
+ * ⚠️ The shim is SYNCHRONOUS on purpose — do not wrap it in an async IIFE that
+ * awaits before rendering. An earlier version awaited dmAPI...pageData() to
+ * pass a `dudaId` prop; an await that never settles renders nothing at all,
+ * with no error anywhere. (Measured since: pageData() actually resolves in
+ * ~1ms on the live page, so that was not the outage — but the failure mode is
+ * real and there is nothing here worth awaiting.) The product lookup belongs
+ * below in dudaPageProduct(), where it is time-boxed and falls back to the
+ * URL slug.
  *
  * - Sections: sa-logos | cert-logos | tabs | 3d-viewer | specs | benefits |
  *   applications | downloads | all
@@ -1011,7 +1035,24 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  window.SAEquipHubWidget = { init: init, clean: clean, version: "2026-09-09-sync-shim" };
+  var iface = { init: init, clean: clean, version: "2026-09-09-self-init" };
+  window.SAEquipHubWidget = iface;
+
+  /**
+   * Also expose the interface as an AMD module.
+   *
+   * Duda's renderExternalApp was observed loading this script and then never
+   * calling init(), with no error — the signature of a loader that uses the
+   * script's MODULE VALUE rather than reading window[name]. A plain IIFE
+   * evaluates to undefined, so `undefined.init(...)` is never reached and
+   * nothing is logged. Two lines make the script work under either contract,
+   * which is cheaper than depending on which one Duda actually applies.
+   */
+  if (typeof define === "function" && define.amd) {
+    define(function () {
+      return iface;
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // Entry point B — legacy HTML/Embed mounts, scanned from the DOM
