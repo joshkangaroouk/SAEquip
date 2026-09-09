@@ -123,7 +123,21 @@ async function main() {
     check(!!d.querySelector(".saeh-prose p"), "Overview renders description HTML");
     check(d.querySelectorAll(".saeh-tab-p")[1].querySelector("table.saeh-table") !== null, "Specs uses .saeh-table");
     check(d.querySelectorAll(".saeh-tab-p")[2].querySelector("ul.saeh-check") !== null, "Benefits uses .saeh-check (tick design)");
-    check(d.querySelectorAll(".saeh-tab-p")[3].querySelector("ul.saeh-apps") !== null, "Applications uses .saeh-apps (dot design)");
+    check(d.querySelectorAll(".saeh-tab-p")[3].querySelector("ul.saeh-check") !== null,
+      "Applications uses .saeh-check too — one list design, no per-path drift");
+    check(d.querySelector("ul.saeh-apps") === null, "the dot-bullet variant is gone entirely");
+  }
+
+  console.log("\n=== the accordion is full width, the narrow sections are not ===");
+  {
+    const { d } = await boot({ props: { section: "tabs", slug: "x" } });
+    check(d.querySelector(".saeh-root").classList.contains("saeh-wide"),
+      "tabs opt out of the 920px cap via .saeh-wide");
+  }
+  {
+    const { d } = await boot({ props: { section: "specs", slug: "x" } });
+    check(!d.querySelector(".saeh-root").classList.contains("saeh-wide"),
+      "a standalone spec table keeps the cap");
   }
 
   console.log("\n=== switching tabs ===");

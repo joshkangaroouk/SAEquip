@@ -126,6 +126,14 @@
       // embed. The widget contributes zero vertical space of its own.
       ".saeh-root{font-family:inherit;color:#1a1a1a;max-width:920px;margin:0;line-height:1.5;box-sizing:border-box}",
       ".saeh-root *{box-sizing:border-box}",
+      // The tabbed accordion fills its Duda element instead of honouring the
+      // 920px cap above. It is the product page's MAIN widget and usually sits
+      // in a full-width row, where a cap leaves dead space on the right that
+      // cannot be tuned from the Duda editor — whereas the narrow sections
+      // (logo rows, spec tables) are placed in columns that already constrain
+      // them. Applied via a class set in renderInto() rather than
+      // `:has(.saeh-tabs)`, so support doesn't depend on the visitor's browser.
+      ".saeh-root.saeh-wide{max-width:none}",
       // Sections are flush too, but keep separation BETWEEN them for the
       // legacy full embed (`data-section="all"`), where several sections share
       // one mount and would otherwise butt together. Using the adjacent-sibling
@@ -187,7 +195,6 @@
       // can correct. A data-URI SVG is font-independent and crisp at any size,
       // and keeps this a pure :before with no markup change.
       ".saeh-check li:before{content:'';position:absolute;left:0;top:6px;width:17px;height:17px;border-radius:50%;background:#ffd200 url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E\") center/11px 11px no-repeat}",
-      ".saeh-apps li:before{content:'';position:absolute;left:7px;top:12px;width:6px;height:6px;background:#111;border-radius:50%}",
       ".saeh-dl{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #ececec}",
       // No divider under the final row. The dashboard's preview copy of this
       // CSS had this rule while the real widget never did, so the live download
@@ -273,8 +280,18 @@
     return table;
   }
 
-  function itemList(items, checklist) {
-    var ul = el("ul", "saeh-list " + (checklist ? "saeh-check" : "saeh-apps"));
+  /**
+   * Benefits and Applications share ONE design — the yellow tick.
+   *
+   * There used to be a `checklist` flag selecting a plain dot instead, and the
+   * accordion's Applications panel was the only caller anywhere that passed
+   * false: the standalone Applications section and both dashboard previews
+   * already used ticks. So the flag's only effect was to make the same content
+   * look different depending on which widget rendered it. Removed rather than
+   * corrected, so the two render paths cannot drift again.
+   */
+  function itemList(items) {
+    var ul = el("ul", "saeh-list saeh-check");
     items.forEach(function (t) {
       ul.appendChild(el("li", null, t));
     });
@@ -320,10 +337,10 @@
       panels.push({ id: "specs", label: "Technical Specs", build: function () { return specsTable(data.specs); } });
     }
     if (data.benefits && data.benefits.length) {
-      panels.push({ id: "benefits", label: "Key Benefits", build: function () { return itemList(data.benefits, true); } });
+      panels.push({ id: "benefits", label: "Key Benefits", build: function () { return itemList(data.benefits); } });
     }
     if (data.applications && data.applications.length) {
-      panels.push({ id: "applications", label: "Applications", build: function () { return itemList(data.applications, false); } });
+      panels.push({ id: "applications", label: "Applications", build: function () { return itemList(data.applications); } });
     }
 
     if (!panels.length) return null;
@@ -401,10 +418,10 @@
     return sec;
   }
 
-  function listSection(title, items, checklist) {
+  function listSection(title, items) {
     var sec = el("div", "saeh-section");
     sec.appendChild(el("div", "saeh-h", title));
-    sec.appendChild(itemList(items, checklist));
+    sec.appendChild(itemList(items));
     return sec;
   }
 
@@ -682,8 +699,8 @@
     if (name === "3d-viewer") return data.model3dUrl ? model3dSection(data.model3dUrl) : null;
     if (name === "tabs") return tabsSection(data);
     if (name === "specs") return data.specs && data.specs.length ? specsSection(data.specs) : null;
-    if (name === "benefits") return data.benefits && data.benefits.length ? listSection("Key Benefits", data.benefits, true) : null;
-    if (name === "applications") return data.applications && data.applications.length ? listSection("Applications", data.applications, true) : null;
+    if (name === "benefits") return data.benefits && data.benefits.length ? listSection("Key Benefits", data.benefits) : null;
+    if (name === "applications") return data.applications && data.applications.length ? listSection("Applications", data.applications) : null;
     if (name === "downloads") return data.downloads && data.downloads.length ? downloadsSection(data.downloads) : null;
     return null;
   }
@@ -889,7 +906,10 @@
           var root = el("div", "saeh-root");
           for (var i = 0; i < sections.length; i++) {
             var node = buildSection(sections[i], data);
-            if (node) root.appendChild(node);
+            if (!node) continue;
+            // The accordion opts out of the 920px cap — see .saeh-wide.
+            if (node.querySelector(".saeh-tabs")) root.className = "saeh-root saeh-wide";
+            root.appendChild(node);
           }
           if (!root.childNodes.length) return onEmpty();
           injectStyles();

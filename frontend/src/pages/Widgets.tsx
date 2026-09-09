@@ -10,6 +10,7 @@ import { Badge, Card, Toggle, toast } from "../components/ui";
 const WIDGET_CSS = `
 .saeh-root{font-family:inherit;color:#1a1a1a;max-width:920px;margin:0;line-height:1.5;box-sizing:border-box}
 .saeh-root *{box-sizing:border-box}
+.saeh-root.saeh-wide{max-width:none}
 .saeh-section{margin:0}
 .saeh-section + .saeh-section{margin-top:22px}
 .saeh-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}
@@ -40,7 +41,6 @@ const WIDGET_CSS = `
 .saeh-list{list-style:none;padding:0;margin:0}
 .saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:18px;font-weight:400;font-style:normal}
 .saeh-check li:before{content:'';position:absolute;left:0;top:6px;width:17px;height:17px;border-radius:50%;background:#ffd200 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/11px 11px no-repeat}
-.saeh-apps li:before{content:'';position:absolute;left:7px;top:12px;width:6px;height:6px;background:#111;border-radius:50%}
 .saeh-dl{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #ececec}
 .saeh-dl:last-child{border-bottom:0}
 .saeh-dl-title{flex:1 1 auto;font-size:18px;font-weight:400;font-style:normal;min-width:140px}
@@ -172,11 +172,11 @@ function SpecsPreview() {
   );
 }
 
-function ListPreview({ title, items, checklist }: { title: string; items: string[]; checklist: boolean }) {
+function ListPreview({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="saeh-section">
       <div className="saeh-h">{title}</div>
-      <ul className={`saeh-list ${checklist ? "saeh-check" : "saeh-apps"}`}>
+      <ul className="saeh-list saeh-check">
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
@@ -296,14 +296,14 @@ export default function Widgets() {
       name: "Key Benefits",
       description: "Checklist-style list of benefits.",
       section: "benefits",
-      preview: <ListPreview title="Key Benefits" items={DUMMY.benefits} checklist />,
+      preview: <ListPreview title="Key Benefits" items={DUMMY.benefits} />,
     },
     {
       key: "applications",
       name: "Applications",
       description: "Checklist-style list of typical applications.",
       section: "applications",
-      preview: <ListPreview title="Applications" items={DUMMY.applications} checklist />,
+      preview: <ListPreview title="Applications" items={DUMMY.applications} />,
     },
     {
       key: "downloads",
@@ -326,8 +326,8 @@ export default function Widgets() {
           <LogoPreview labels={DUMMY.saLogos} />
           <Model3DPreview />
           <SpecsPreview />
-          <ListPreview title="Key Benefits" items={DUMMY.benefits} checklist />
-          <ListPreview title="Applications" items={DUMMY.applications} checklist />
+          <ListPreview title="Key Benefits" items={DUMMY.benefits} />
+          <ListPreview title="Applications" items={DUMMY.applications} />
           <DownloadsPreview />
         </>
       ),
