@@ -898,6 +898,16 @@
    * control back so it can leave an editor placeholder in place.
    */
   function renderInto(container, sections, ref, onEmpty) {
+    // Stamp the requested section onto the container, so the wiring between
+    // Duda's four widgets and the sections they render is visible in the DOM
+    // itself — `$$('[data-saeh-section]')` in the console reads back the
+    // mapping in document order. Set before the early return, so a section
+    // that renders nothing is still identifiable.
+    try {
+      container.setAttribute("data-saeh-section", sections.join(",") || "(none)");
+    } catch (e) {
+      /* never break the host page */
+    }
     if (!hub.api || !ref || !sections.length) return onEmpty();
     return fetchContent(ref)
       .then(function (data) {
@@ -996,13 +1006,23 @@
 
     // Inspect from the browser console with __saequipHub.lastInit — the only
     // way to see what Duda passed, since a wrong shape is otherwise silent.
-    hub.lastInit = {
+    //
+    // Recorded as a LIST as well, because a product page runs four widgets and
+    // a single `lastInit` slot is overwritten by whichever initialised last.
+    // That hid a real wiring question — "is each Duda widget actually asking
+    // for the section it is named after?" — which the console could not answer
+    // for anything but the final widget.
+    var record = {
       at: new Date().toISOString(),
       argKeys: a && typeof a === "object" && a.nodeType !== 1 ? Object.keys(a) : typeof a,
       resolvedSection: props.section || null,
       resolvedId: props.dudaId || props.slug || props.sku || null,
       gotContainer: !!container,
     };
+    hub.lastInit = record;
+    if (!hub.inits) hub.inits = [];
+    hub.inits.push(record);
+    if (hub.inits.length > 20) hub.inits.shift(); // bounded: Duda re-inits on edit
 
     if (!container) return;
 

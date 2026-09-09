@@ -128,6 +128,31 @@ async function main() {
     check(d.querySelector("ul.saeh-apps") === null, "the dot-bullet variant is gone entirely");
   }
 
+  console.log("\n=== four widgets on one page keep their own wiring ===");
+  {
+    // The report that prompted this: "cert-logos is showing tabs, 3d-viewer is
+    // showing cert-logos". Nothing here indexes or orders sections, so prove
+    // that four inits on one page each render exactly what they asked for.
+    const { w, d } = await boot({ viaInit: false });
+    const wanted = ["sa-logos", "cert-logos", "tabs", "specs"];
+    const hosts = wanted.map((name) => {
+      const div = d.createElement("div");
+      div.id = "w-" + name;
+      d.body.appendChild(div);
+      w.SAEquipHubWidget.init({ container: div, props: { section: name, slug: "x" } });
+      return div;
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const stamped = hosts.map((h) => h.getAttribute("data-saeh-section"));
+    check(stamped.join("|") === wanted.join("|"), "each container renders its OWN section", stamped.join("|"));
+    check(d.querySelector("#w-tabs .saeh-tabs") !== null, "only the tabs widget builds an accordion");
+    check(d.querySelector("#w-cert-logos .saeh-tabs") === null, "cert-logos does NOT build an accordion");
+    check(w.__saequipHub.inits.length === 4, "all four inits are recorded, not just the last",
+      String(w.__saequipHub.inits.length));
+    check(w.__saequipHub.inits.map((i) => i.resolvedSection).join("|") === wanted.join("|"),
+      "and each records the section it was asked for");
+  }
+
   console.log("\n=== the accordion is full width, the narrow sections are not ===");
   {
     const { d } = await boot({ props: { section: "tabs", slug: "x" } });

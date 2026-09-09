@@ -123,6 +123,8 @@ That pattern is a loader consuming the script's **module value** instead of `win
 |---|---|
 | `SAEquipHubWidget.version` | whether Duda is serving a cached copy — but **not** that `renderExternalApp` ran, since a legacy HTML/Embed on the page loads the same script |
 | `__saequipHub.lastInit` | `undefined` ⇒ Duda never called `init`, so the fault is in the shim, not the widget |
+| `__saequipHub.inits` | every init on the page, in order — `lastInit` alone is overwritten by whichever of the four widgets ran last |
+| `$$('[data-saeh-section]').map(e => e.getAttribute('data-saeh-section'))` | which section each widget container actually asked for, in document order. This is how you check a widget is wired to the section it's named after — `buildSection` is a plain string switch, so a widget showing another widget's content means the wrong `section` string is in that widget's JS |
 | `__saequipHub.lastInit.argKeys` | what shape Duda actually passed |
 | `__saequipHub.lastInit.refFrom` | `props` / `dmAPI` / `url` / `none` — which identity source won |
 | `__saequipHub.pageDataTimedOut` | `true` ⇒ Duda's `pageData()` hung and the URL slug was used
