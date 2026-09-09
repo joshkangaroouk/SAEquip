@@ -193,7 +193,29 @@ async function main() {
     check(/min-height:44px/.test(btn), "button keeps a 44px tap target");
     check(/font-family:var\(--saeh-head\)/.test(css.match(/\.saeh-3d-cta-title\{[^}]*\}/)[0]),
       "headline uses the Barlow heading family");
-    check(/clamp\(19px,3\.2vw,30px\)/.test(css), "headline scales fluidly up to the 30px asked for");
+    check(/\.saeh-3d-cta-title\{[^}]*font-size:20px/.test(css), "headline is 20px");
+    // The label must be its own element, or the chevron would sit inside the
+    // button's accessible name and read as part of "View 3D Mode".
+    const label = cta.querySelector(".saeh-3d-btn > span");
+    check(label && label.textContent === "View 3D Mode", "button label is a separate span", label?.textContent);
+    const ico = cta.querySelector(".saeh-3d-btn-icon");
+    check(!!ico && ico.tagName === "IMG", "the chevron renders as an <img>");
+    check(/^https:\/\/irp\.cdn-website\.com\/8a8f03b5\/icon\/chevron\+right_8187511\.svg$/.test(ico.getAttribute("src")),
+      "points at the Duda-hosted chevron", ico.getAttribute("src"));
+    check(ico.getAttribute("alt") === "" && ico.getAttribute("aria-hidden") === "true",
+      "the chevron is decorative, not part of the button's name");
+    check(ico.getAttribute("width") === "20" && ico.getAttribute("height") === "20",
+      "width/height attributes reserve the box before it loads");
+    check(ico.nextSibling === null && label.nextSibling === ico, "the chevron sits AFTER the label");
+    const iconCss = css.match(/\.saeh-3d-btn-icon\{[^}]*\}/)[0];
+    check(/width:20px/.test(iconCss) && /height:20px/.test(iconCss), "and is 20x20 in CSS too");
+    check(/font-family:var\(--saeh-body\)/.test(btn), "button label is Inter, not Barlow");
+    check(/text-transform:none/.test(btn), "button is NOT uppercase");
+    // A dead CDN URL must leave a text-only button, never a broken-image glyph
+    // on a live product page.
+    ico.dispatchEvent(new w.Event("error"));
+    check(ico.style.display === "none", "a failed icon load hides the image");
+    check(cta.querySelector(".saeh-3d-btn").textContent === "View 3D Mode", "leaving the label intact");
     check(/@media\(max-width:520px\)[^@]*\.saeh-3d-btn\{flex:1 1 100%/.test(css),
       "button goes full width on narrow screens");
   }

@@ -58,8 +58,9 @@ const WIDGET_CSS = `
 .saeh-3d-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px 24px;background:#eceef1;padding:24px 26px}
 .saeh-3d-cta-main{display:flex;align-items:center;gap:16px;flex:1 1 260px;min-width:0}
 .saeh-3d-icon{width:34px;height:34px;color:#111;display:block;flex:0 0 auto}
-.saeh-3d-cta-title{font-family:var(--saeh-head);font-size:clamp(19px,3.2vw,30px);font-weight:500;line-height:1.15;color:#111;margin:0;min-width:0;overflow-wrap:break-word}
-.saeh-3d-btn{flex:0 0 auto;font-family:var(--saeh-head);background:#fed217;color:#000;border:0;border-radius:0;padding:13px 26px;min-height:44px;font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;line-height:1.2;cursor:pointer}
+.saeh-3d-cta-title{font-family:var(--saeh-head);font-size:20px;font-weight:500;line-height:1.25;color:#111;margin:0;min-width:0;overflow-wrap:break-word}
+.saeh-3d-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;border-radius:0;padding:12px 22px;min-height:44px;font-size:16px;font-weight:500;text-transform:none;letter-spacing:normal;line-height:1.25;cursor:pointer}
+.saeh-3d-btn-icon{width:20px;height:20px;flex:0 0 auto;display:block}
 .saeh-3d-btn:hover{background:#f0c400}
 .saeh-3d-btn:focus-visible{outline:2px solid #111;outline-offset:2px}
 .saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:var(--saeh-body)}
@@ -210,7 +211,17 @@ function Model3DPreview() {
         </svg>
         <div className="saeh-3d-cta-title">View the product in 3D view!</div>
       </div>
-      <span className="saeh-3d-btn">View 3D Mode</span>
+      <span className="saeh-3d-btn">
+        <span>View 3D Mode</span>
+        <img
+          className="saeh-3d-btn-icon"
+          src="https://irp.cdn-website.com/8a8f03b5/icon/chevron+right_8187511.svg"
+          alt=""
+          aria-hidden="true"
+          width={20}
+          height={20}
+        />
+      </span>
     </div>
   );
 }

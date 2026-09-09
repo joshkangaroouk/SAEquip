@@ -77,6 +77,17 @@
   var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "tabs": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1 };
   var MODEL_VIEWER_SRC = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js";
 
+  /**
+   * Chevron on the 3D button, hosted in Duda's own media library.
+   *
+   * ⚠️ The path contains the Duda SITE ID (8a8f03b5), so it dies if the site
+   * is ever migrated again — the asset library is per-site. That is survivable
+   * rather than fatal: the <img> hides itself on error, leaving a text-only
+   * button instead of a broken-image glyph. Keeping it in Duda is deliberate
+   * so staff can swap the icon without a deploy.
+   */
+  var CHEVRON_ICON_SRC = "https://irp.cdn-website.com/8a8f03b5/icon/chevron+right_8187511.svg";
+
   // Capture the executing script NOW — currentScript is null inside async
   // callbacks and on deferred re-execution.
   var thisScript = document.currentScript;
@@ -251,23 +262,21 @@
       ".saeh-3d-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px 24px;background:#eceef1;padding:24px 26px}",
       ".saeh-3d-cta-main{display:flex;align-items:center;gap:16px;flex:1 1 260px;min-width:0}",
       ".saeh-3d-icon{width:34px;height:34px;color:#111;display:block;flex:0 0 auto}",
+      // 20px flat — small enough to need no fluid scaling, so the clamp() that
+      // was here for a 30px headline is gone. `overflow-wrap` stays: it stops a
+      // long product word forcing sideways scroll on the narrowest screens.
+      ".saeh-3d-cta-title{font-family:var(--saeh-head);font-size:20px;font-weight:500;line-height:1.25;color:#111;margin:0;min-width:0;overflow-wrap:break-word}",
       /*
-       * clamp() rather than a fixed 30px: at 30px a headline of this length
-       * overflows a phone's width, and dropping to a breakpoint-switched size
-       * leaves it awkward in between. The middle term is vw-based so it scales
-       * continuously, floored at 19px to stay readable and capped at the 30px
-       * asked for. `overflow-wrap` stops a long product word forcing sideways
-       * scroll on the narrowest screens.
+       * Its own class, not a .saeh-btn modifier — .saeh-btn is the black
+       * UPPERCASE pill used by downloads and the 3D modal's own controls, and
+       * this one shares none of its colour, radius, case or family. min-height
+       * keeps it a 44px tap target, which the padding alone doesn't guarantee
+       * once the font falls back. inline-flex + gap is what puts the chevron
+       * beside the label and keeps the two vertically centred on each other
+       * whatever the label wraps to.
        */
-      ".saeh-3d-cta-title{font-family:var(--saeh-head);font-size:clamp(19px,3.2vw,30px);font-weight:500;line-height:1.15;color:#111;margin:0;min-width:0;overflow-wrap:break-word}",
-      /*
-       * Its own class, not a .saeh-btn modifier — .saeh-btn is the black pill
-       * used by downloads and the 3D modal's own controls, and this one shares
-       * none of its colour, radius or weight. min-height keeps it a 44px tap
-       * target, which the padding alone doesn't guarantee once the font falls
-       * back.
-       */
-      ".saeh-3d-btn{flex:0 0 auto;font-family:var(--saeh-head);background:#fed217;color:#000;border:0;border-radius:0;padding:13px 26px;min-height:44px;font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;line-height:1.2;cursor:pointer}",
+      ".saeh-3d-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;border-radius:0;padding:12px 22px;min-height:44px;font-size:16px;font-weight:500;text-transform:none;letter-spacing:normal;line-height:1.25;cursor:pointer}",
+      ".saeh-3d-btn-icon{width:20px;height:20px;flex:0 0 auto;display:block}",
       ".saeh-3d-btn:hover{background:#f0c400}",
       ".saeh-3d-btn:focus-visible{outline:2px solid #111;outline-offset:2px}",
       // Appended straight to <body>, OUTSIDE .saeh-root — an explicit inherit
@@ -758,8 +767,27 @@
     main.appendChild(el("div", "saeh-3d-cta-title", "View the product in 3D view!"));
     sec.appendChild(main);
 
-    var btn = el("button", "saeh-3d-btn", "View 3D Mode");
+    var btn = el("button", "saeh-3d-btn");
     btn.type = "button";
+    btn.appendChild(el("span", null, "View 3D Mode"));
+
+    // Decorative: alt="" plus aria-hidden keeps it out of the accessible name,
+    // which the label alone should carry. The width/height ATTRIBUTES (not
+    // just CSS) reserve the box before the file arrives, so the button doesn't
+    // reflow as it loads — and it hides itself if the URL ever dies, leaving a
+    // text-only button rather than a broken-image glyph on a live page.
+    var icon = document.createElement("img");
+    icon.className = "saeh-3d-btn-icon";
+    icon.src = CHEVRON_ICON_SRC;
+    icon.alt = "";
+    icon.setAttribute("aria-hidden", "true");
+    icon.width = 20;
+    icon.height = 20;
+    icon.addEventListener("error", function () {
+      icon.style.display = "none";
+    });
+    btn.appendChild(icon);
+
     btn.addEventListener("click", function () {
       openModel3dModal(url);
     });
