@@ -643,25 +643,36 @@
     hub.mvPromise.then(cb);
   }
 
-  // Small cube/box glyph (same shape as the AR icon convention) — built via
-  // createElementNS rather than innerHTML, matching the "textContent only,
-  // never inject HTML" rule the rest of this file follows.
+  /**
+   * Open-cube 3D glyph — one path holding every edge as separate subpaths.
+   *
+   * Built via createElementNS rather than innerHTML, matching the
+   * "textContent only, never inject HTML" rule the rest of this file follows.
+   *
+   * The source asset strokes #000000; this uses currentColor instead so the
+   * colour stays in CSS (`.saeh-3d-icon{color:#111}`) — a hardcoded black
+   * would silently ignore the stylesheet and be unfixable from there.
+   * stroke-width 2 and the round caps are the asset's own values: the caps
+   * matter here because the edges are open subpaths rather than a closed
+   * outline, so butt ends would leave visible notches at every corner.
+   */
+  var CUBE_ICON_PATH =
+    "M4 7.5L11.6078 3.22062C11.7509 3.14014 11.8224 3.09991 11.8982 3.08414C11.9654 3.07019 12.0346 3.07019 12.1018 3.08414C12.1776 3.09991 12.2491 3.14014 12.3922 3.22062L20 7.5M4 7.5V16.0321C4 16.2025 4 16.2876 4.02499 16.3637C4.04711 16.431 4.08326 16.4928 4.13106 16.545C4.1851 16.6041 4.25933 16.6459 4.40779 16.7294L12 21M4 7.5L12 11.5M12 21L19.5922 16.7294C19.7407 16.6459 19.8149 16.6041 19.8689 16.545C19.9167 16.4928 19.9529 16.431 19.975 16.3637C20 16.2876 20 16.2025 20 16.0321V7.5M12 21V11.5M20 7.5L12 11.5";
+
   function cubeIcon() {
     var NS = "http://www.w3.org/2000/svg";
     var svg = document.createElementNS(NS, "svg");
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.setAttribute("fill", "none");
     svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "1.6");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke-linecap", "round");
     svg.setAttribute("stroke-linejoin", "round");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("class", "saeh-3d-icon");
-    var p1 = document.createElementNS(NS, "path");
-    p1.setAttribute("d", "M12 2.5 21 7v10l-9 4.5L3 17V7z");
-    var p2 = document.createElementNS(NS, "path");
-    p2.setAttribute("d", "M3 7l9 4.5L21 7M12 11.5V21");
-    svg.appendChild(p1);
-    svg.appendChild(p2);
+    var path = document.createElementNS(NS, "path");
+    path.setAttribute("d", CUBE_ICON_PATH);
+    svg.appendChild(path);
     return svg;
   }
 

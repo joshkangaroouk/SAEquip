@@ -181,6 +181,18 @@ async function main() {
     const main = cta.querySelector(".saeh-3d-cta-main");
     check(!!main.querySelector(".saeh-3d-icon") && !!main.querySelector(".saeh-3d-cta-title"),
       "icon and title are both inside the left group");
+    const cube = main.querySelector(".saeh-3d-icon");
+    check(cube.querySelectorAll("path").length === 1, "the cube glyph is a single path",
+      String(cube.querySelectorAll("path").length));
+    // currentColor, not the asset's #000000 — otherwise `.saeh-3d-icon{color:}`
+    // is silently ignored and the colour can't be changed from CSS at all.
+    check(cube.getAttribute("stroke") === "currentColor", "cube strokes currentColor, not a hardcoded black");
+    check(cube.getAttribute("stroke-width") === "2", "stroke-width 2, as the asset specifies");
+    // The edges are open subpaths, so butt caps leave visible notches at every
+    // corner. round is load-bearing here, not decoration.
+    check(cube.getAttribute("stroke-linecap") === "round" && cube.getAttribute("stroke-linejoin") === "round",
+      "round caps AND joins (open subpaths would notch at the corners)");
+    check(cube.getAttribute("fill") === "none", "unfilled");
     check(cta.querySelector(".saeh-btn") === null,
       "does NOT reuse the black .saeh-btn pill");
     const css = w.document.getElementById("saeh-styles").textContent;
@@ -218,6 +230,19 @@ async function main() {
     check(cta.querySelector(".saeh-3d-btn").textContent === "View 3D Mode", "leaving the label intact");
     check(/@media\(max-width:520px\)[^@]*\.saeh-3d-btn\{flex:1 1 100%/.test(css),
       "button goes full width on narrow screens");
+  }
+
+  console.log("\n=== the dashboard preview's copy of the cube glyph ===");
+  {
+    // Widgets.tsx hand-maintains a duplicate of this markup so /widgets is a
+    // byte-accurate preview. The CSS copy silently drifted twice before
+    // widget:sync-css existed; the SVG has no generator, so pin it here.
+    const tsx = readFileSync(path.join(HERE, "../../frontend/src/pages/Widgets.tsx"), "utf8");
+    const inWidget = SRC.match(/var CUBE_ICON_PATH =\s*\n\s*"(.*?)";/s)?.[1];
+    const inPreview = tsx.match(/<path d="(M4 7\.5.*?)" \/>/s)?.[1];
+    check(!!inWidget && !!inPreview, "found the path in both files");
+    check(inWidget === inPreview, "widget.js and Widgets.tsx render the SAME cube path",
+      inWidget === inPreview ? `${inWidget.length} chars` : "DRIFTED");
   }
 
   console.log("\n=== typography: Barlow headings, Inter 16 body ===");
