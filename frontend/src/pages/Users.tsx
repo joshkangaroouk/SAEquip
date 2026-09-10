@@ -30,17 +30,14 @@ function when(iso: string | null): string {
  */
 export default function Users() {
   const [users, setUsers] = useState<StaffUser[] | null>(null);
-  const [domains, setDomains] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    apiJson<{ users: StaffUser[]; allowedDomains: string[] }>("/api/users")
+    apiJson<{ users: StaffUser[] }>("/api/users")
       .then((d) => {
-        if (cancelled) return;
-        setUsers(d.users);
-        setDomains(d.allowedDomains);
+        if (!cancelled) setUsers(d.users);
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load users");
@@ -72,31 +69,6 @@ export default function Users() {
         Staff accounts that can sign into this dashboard.
       </p>
 
-      <Card className="mt-6">
-        <h2 className="text-body font-semibold text-text">Who can sign in</h2>
-        <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-muted">
-          <li>
-            Public sign-up is <strong className="font-semibold text-text">disabled</strong>. An account has
-            to be created for someone before they can log in.
-          </li>
-          <li>
-            Only these email domains are accepted:{" "}
-            {domains.map((d) => (
-              <code key={d} className="mr-1 rounded bg-surface-2 px-1 py-0.5 text-xs text-text">
-                @{d}
-              </code>
-            ))}
-          </li>
-          <li>
-            <strong className="font-semibold text-text">Everyone here has the same access.</strong> There is
-            no admin/editor split yet — any signed-in user can change any product. Ask if you want roles.
-          </li>
-          <li>
-            New accounts are created from the command line, on purpose — a button here would let anyone
-            already signed in create more accounts for themselves.
-          </li>
-        </ul>
-      </Card>
 
       {error && (
         <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">

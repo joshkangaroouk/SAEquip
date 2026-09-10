@@ -214,17 +214,6 @@ export default function Security() {
         )}
       </Card>
 
-      <Card className="mt-6">
-        <h2 className="text-body font-semibold text-text">If you lose your phone</h2>
-        <p className="mt-2 text-sm text-muted">
-          There is no bypass code — deliberately, because a bypass is a second password. Someone with
-          server access has to clear your two-factor with{" "}
-          <code className="rounded bg-surface-2 px-1 py-0.5 text-xs text-text">
-            npm run users:mfa -- --email {user?.email} --reset --confirm
-          </code>
-          , then you set it up again. Add a second device above if you'd rather not depend on that.
-        </p>
-      </Card>
     </>
   );
 }
