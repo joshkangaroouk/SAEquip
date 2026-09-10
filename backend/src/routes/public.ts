@@ -147,8 +147,19 @@ publicRouter.get("/widget.js", (_req, res) => {
   }
 });
 
-/** GET /public/test.html — local test harness (open at http://localhost:4000/public/test.html). */
+/**
+ * GET /public/test.html — local test harness (http://localhost:4000/public/test.html).
+ *
+ * ⚠️ 404s in production. It is a development artifact — a fake product page
+ * that exercises the widget mounts — and it carries no secrets, but there is
+ * no reason for an internal harness to be reachable on the client's live
+ * domain, where it is one more thing to find and one more thing to explain.
+ */
 publicRouter.get("/test.html", (_req, res) => {
+  if (process.env.VERCEL_ENV === "production") {
+    res.status(404).type("text/plain").send("not found");
+    return;
+  }
   try {
     if (!WIDGET_DIR) throw new Error("widget assets not deployed");
     const html = readFileSync(path.join(WIDGET_DIR, "test.html"), "utf8");

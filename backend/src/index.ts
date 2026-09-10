@@ -32,6 +32,10 @@ if (process.env.VERCEL) {
   app.set("trust proxy", 1);
 }
 
+// Free reconnaissance otherwise — it advertises the framework (and so the
+// class of CVEs worth trying) on every response, including 401s.
+app.disable("x-powered-by");
+
 app.use(express.json());
 
 // --- PUBLIC widget API: own CORS allowlist + rate limits, NO auth ---
