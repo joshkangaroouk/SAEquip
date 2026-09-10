@@ -532,9 +532,46 @@ Both blank is invalid, and **the first row can never have a blank label** (nothi
 
 Also fixed: 10 `&amp;` entities (values render with `textContent`, so they would have shown literally) and 81 untrimmed cells. Zero ligatures, non-breaking spaces, newlines or HTML tags — and **zero angle brackets anywhere in the 691 cells**, checked before running them through `sanitize-html`, which would otherwise have silently eaten a value like `<40dBa`.
 
+### Logos — surveyed 2026-09-10, NOT yet imported
+
+⚠️ **The two logo kinds come from completely different places in the export, and only one of them is a logo field at all.**
+
+**Certification logos** — the `associated_logos` ACF repeater (`Meta: associated_logos_<n>_associated_logos_name`). **227 links across 53/96 products, 9 distinct values.** The other 43 products are accessories (trolleys, brackets, chargers, temperature limiters) with no certification of their own, which is correct rather than missing data.
+
+| CSV value | Products |
+|---|---|
+| `madeinuk` | 47 |
+| `zone-1-2` | 39 |
+| `ATEX` | 38 |
+| `UKEX` | 26 |
+| `IECEx` | 26 |
+| `zone-21-22` | 24 |
+| `INMETRO` | 23 |
+| `zone-0` | 3 |
+| `zone-20` | 1 |
+
+**SA range logos are NOT in that field — they are NOT in any logo field.** They have to be derived from the **`Categories`** column, which mixes SA ranges in with industry sectors. Verified per field: `Name` carries the range for only 3 of 96 products and `Tags` never does (tags are sectors only). **139 links across 94/96 products:**
+
+| SA logo | Products | Derived from these exact categories |
+|---|---|---|
+| Rental | 51 | `Rental`, or any category ending `Rental` |
+| Lumin | 34 | `SA Lumin` |
+| Cyclone | 24 | `SA Cyclone`, `SA Cyclone Rental` |
+| Endure | 14 | `SA ENDURE` |
+| Powernet | 9 | `SA Powernet`, `SA Powernet Rental` |
+| Flexiheat | 7 | `SA Flexiheat` |
+
+⚠️ **Match categories EXACTLY, not by substring** — `SA Cyclone Rental` contains `SA Cyclone`, so a substring match double-counts Cyclone and silently inflates every range. Rental is orthogonal to the ranges (a product is both `SA Cyclone` and `Rental`), which is why 139 links cover 94 products.
+
+Cross-check that the derivation is right: EX Heater derives `Flexiheat` + `Rental`, which is exactly the two SA logos on its live page.
+
+**The 2 products with no SA range** are `SA LUMIN Tasklight Base Unit` and `SA LUMIN Tasklight Adjustable Floor Stand` — both named LUMIN but absent from the `SA Lumin` category. They are also the two SKU-less products on the fix-list, so the same pair needs a data decision either way.
+
+**Catalogue status**: all **6** SA logos exist in the Hub. Of the 9 certification marks, 3 map cleanly (`Made in Britan` [sic] → `madeinuk`, `Zone 1-2`, `Zone 21-22`), **4 are missing** (`IECEx`, `INMETRO`, `zone-0`, `zone-20`) and **2 need a naming decision**: is `EX logo` meant to be `ATEX`, and is `UKCA` standing in for `UKEX`? Those are different marks — UKCA is the UK conformity marking, UKEX the UK explosive-atmospheres scheme — so the import must not assume they are the same.
+
 ### Data waiting for later stages
 
-227 logo links across only **9 distinct** logo values (`madeinuk`, `zone-1-2`, `ATEX`, `UKEX`, `IECEx`, `zone-21-22`, `INMETRO`, `zone-0`, `zone-20`), 176 downloads. Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
+176 downloads. **Logos are surveyed in the section below.** Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
 
 Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO is barely populated** (title on 4/96, meta description on 12/96), so SEO is authoring work, not migration. Per Josh, SEO metadata is off the table for now.
 
