@@ -50,11 +50,24 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-async function check(email: string, site: string) {
-  const mapping = await prisma.dudaEditorAccount.findUnique({
-    where: { dudaAccountName: email },
+/**
+ * Find the mapping for a staff LOGIN address.
+ *
+ * ⚠️ Looks up `staffEmail`, not `dudaAccountName`. Those are different columns
+ * for a reason — anyone who is already a Duda STAFF user needs a separately
+ * named CUSTOMER account (see the guard in `grant`) — and querying the name
+ * column with a login address silently returns nothing, which reads
+ * identically to "this person has no access".
+ */
+async function findMapping(email: string) {
+  return prisma.dudaEditorAccount.findFirst({
+    where: { staffEmail: email },
     include: { siteAccess: true },
   });
+}
+
+async function check(email: string, site: string) {
+  const mapping = await findMapping(email);
 
   console.log("\n--- Hub mapping (this DB) ---");
   if (!mapping) {
@@ -67,8 +80,11 @@ async function check(email: string, site: string) {
   }
 
   console.log("\n--- Duda's view (source of truth for permissions) ---");
+  // Ask about the DUDA account name, which is what actually holds the grant.
+  const dudaAccount = mapping?.dudaAccountName ?? email;
+  if (dudaAccount !== email) console.log(`  (querying Duda account ${dudaAccount})`);
   try {
-    const perms = await dudaSso.getSitePermissions(email, site);
+    const perms = await dudaSso.getSitePermissions(dudaAccount, site);
     console.log(`  ${site}: ${JSON.stringify(perms)}`);
   } catch (err) {
     if (err instanceof DudaApiError) {
@@ -81,38 +97,99 @@ async function check(email: string, site: string) {
 }
 
 async function grant(email: string, supabaseUserId: string, site: string) {
+  /*
+   * The Duda account name is NOT necessarily the staff member's login.
+   *
+   * `DudaEditorAccount` has always had separate `staffEmail` and
+   * `dudaAccountName` columns; this script used to pass the login for both,
+   * which works only while the two coincide. They don't for anyone who is
+   * already a Duda STAFF user — see the account_type guard below — so
+   * `--duda-account` lets the Duda side use a distinct name (plus-addressing
+   * like josh+saequip@kangaroouk.com delivers to the same mailbox) while the
+   * Hub still keys the mapping on the Supabase user.
+   */
+  const dudaAccount = arg("duda-account") ?? email;
+  if (dudaAccount !== email) {
+    console.log(`• Duda account name: ${dudaAccount}  (Hub login stays ${email})`);
+  }
+
   // 1. Duda account (idempotent-ish: reuse it if it already exists).
   let accountExists = false;
   try {
-    await dudaSso.getAccount(email);
+    const existing = (await dudaSso.getAccount(dudaAccount)) as { account_type?: string };
     accountExists = true;
-    console.log(`• Duda account "${email}" already exists — reusing it`);
+    console.log(`• Duda account "${dudaAccount}" already exists — reusing it`);
+
+    /*
+     * ⚠️ REFUSE anything that isn't a CUSTOMER account.
+     *
+     * Duda rejects a per-site grant to a STAFF account with
+     * `"Only customers may be granted access to specific sites"` — because a
+     * STAFF account belongs to the agency-level partner account and already
+     * reaches every site in the portfolio (~871 of them). SSO'ing as it would
+     * hand out exactly the blast radius this whole feature exists to avoid,
+     * and the permission set we so carefully withhold (E_COMMERCE, DEV_MODE,
+     * RESET) would be meaningless.
+     *
+     * Checked here rather than left to Duda's 400, so the reason is stated
+     * once, in the place someone reads when it fails.
+     */
+    const type = String(existing.account_type ?? "").toUpperCase();
+    if (type && type !== "CUSTOMER") {
+      fail(
+        `Duda account "${dudaAccount}" is account_type ${type}, not CUSTOMER.\n` +
+          "  Duda refuses per-site grants to non-customer accounts, and rightly so: a STAFF\n" +
+          "  account sits under the agency partner account and already reaches every site in\n" +
+          "  the portfolio, so an SSO link for it would not be scoped to this site at all.\n\n" +
+          "  Create a separate CUSTOMER account instead, e.g.:\n" +
+          `    npm run duda:editor-provision --workspace=backend -- \\\n` +
+          `      --email ${email} --duda-account ${email.replace("@", "+saequip@")} \\\n` +
+          `      --supabase-user-id ${supabaseUserId} --first Josh --last Wright --confirm`,
+      );
+    }
   } catch (err) {
     if (!(err instanceof DudaApiError)) throw err;
-    console.log(`• Duda account "${email}" not found — creating`);
+    console.log(`• Duda account "${dudaAccount}" not found — creating`);
   }
 
   if (!accountExists) {
     await dudaSso.createAccount({
-      account_name: email,
+      account_name: dudaAccount,
+      // The mailbox stays the real one even when the account NAME is
+      // plus-addressed, so Duda's own mail reaches the person.
       email,
       first_name: arg("first"),
       last_name: arg("last"),
       lang: "en",
     });
-    console.log(`• created Duda account "${email}"`);
+    console.log(`• created Duda account "${dudaAccount}"`);
   }
 
   // 2. Site permissions (least privilege — see EDITOR_PERMISSIONS).
   try {
-    await dudaSso.grantSiteAccess(email, site, EDITOR_PERMISSIONS);
+    await dudaSso.grantSiteAccess(dudaAccount, site, EDITOR_PERMISSIONS);
     console.log(`• granted ${EDITOR_PERMISSIONS.length} permissions on ${site}`);
   } catch (err) {
     if (err instanceof DudaApiError) {
-      // Already had access → replace the set so it matches our intent exactly.
-      console.log(`• grant returned ${err.status}; trying full permission replacement instead`);
-      await dudaSso.updateSitePermissions(email, site, EDITOR_PERMISSIONS);
-      console.log(`• replaced permissions on ${site}`);
+      /*
+       * ⚠️ Print Duda's MESSAGE, not just the status. This used to log only
+       * the code, so a grant failing for a reason Duda spelled out plainly
+       * looked like an unexplained 400 and the fallback fired blindly —
+       * which then failed with its own opaque status. The body is the
+       * difference between "already has access" and something that needs a
+       * human.
+       */
+      console.log(`• grant returned ${err.status}: ${String(err.body).slice(0, 300)}`);
+      console.log("  trying full permission replacement instead…");
+      try {
+        await dudaSso.updateSitePermissions(dudaAccount, site, EDITOR_PERMISSIONS);
+        console.log(`• replaced permissions on ${site}`);
+      } catch (err2) {
+        if (err2 instanceof DudaApiError) {
+          console.error(`• replacement ALSO failed: ${err2.status} ${String(err2.body).slice(0, 300)}`);
+        }
+        throw err2;
+      }
     } else {
       throw err;
     }
@@ -121,8 +198,8 @@ async function grant(email: string, supabaseUserId: string, site: string) {
   // 3. Hub mapping — this is what actually authorizes SSO.
   const account = await prisma.dudaEditorAccount.upsert({
     where: { staffUserId: supabaseUserId },
-    create: { staffUserId: supabaseUserId, staffEmail: email, dudaAccountName: email },
-    update: { staffEmail: email, dudaAccountName: email },
+    create: { staffUserId: supabaseUserId, staffEmail: email, dudaAccountName: dudaAccount },
+    update: { staffEmail: email, dudaAccountName: dudaAccount },
   });
 
   await prisma.dudaEditorSiteAccess.upsert({
@@ -140,9 +217,23 @@ async function grant(email: string, supabaseUserId: string, site: string) {
 }
 
 async function revoke(email: string, site: string) {
+  /*
+   * ⚠️ Resolve the DUDA account name FIRST. Revoking against the login
+   * address would ask Duda about an account that never held the grant, get
+   * `ResourceNotExist`, report "nothing to revoke" and then delete the Hub
+   * mapping — leaving the real customer account with full editor permissions
+   * on a live site and no record of it. That is the same silent-revoke failure
+   * that once left an account holding all 11 permissions behind a success
+   * tick, reached through a different door.
+   */
+  const mapping = await findMapping(email);
+  const dudaAccount = mapping?.dudaAccountName ?? email;
+  if (dudaAccount !== email) {
+    console.log(`• revoking Duda account ${dudaAccount} (login ${email})`);
+  }
   try {
-    await dudaSso.revokeSiteAccess(email, site);
-    console.log(`• Duda accepted the revoke for ${email} on ${site}`);
+    await dudaSso.revokeSiteAccess(dudaAccount, site);
+    console.log(`• Duda accepted the revoke for ${dudaAccount} on ${site}`);
   } catch (err) {
     if (!(err instanceof DudaApiError)) throw err;
     // A 404 here is NOT "already revoked" — that's what a WRONG PATH looks
@@ -163,7 +254,7 @@ async function revoke(email: string, site: string) {
   // Verify against Duda rather than trusting the call above. Duda is the source
   // of truth for permissions; the Hub row only gates minting a link.
   try {
-    const perms = (await dudaSso.getSitePermissions(email, site)) as
+    const perms = (await dudaSso.getSitePermissions(dudaAccount, site)) as
       | { permissions?: string[] }
       | undefined;
     const left = perms?.permissions ?? [];
@@ -182,10 +273,7 @@ async function revoke(email: string, site: string) {
     }
   }
 
-  const account = await prisma.dudaEditorAccount.findUnique({
-    where: { dudaAccountName: email },
-    include: { siteAccess: true },
-  });
+  const account = mapping;
 
   if (!account) {
     console.log("• no Hub mapping to remove");
