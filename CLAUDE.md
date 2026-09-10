@@ -166,6 +166,26 @@ SAEquip has **no native pricing/checkout** for these products — instead there'
 
 Backend side (`backend/src/routes/quotes.ts`, `backend/src/services/email.ts`): stores every submission (`QuoteRequest`/`QuoteRequestItem`) regardless of email config, so nothing is ever lost. Email notification via Resend is **fully optional** — `isEmailConfigured()` requires all three of `RESEND_API_KEY`, `QUOTE_NOTIFY_FROM`, `QUOTE_NOTIFY_TO`; until set, `emailSent` stays `false` and the admin `/quotes` page shows a banner explaining notifications aren't active yet. A send failure never blocks/fails the visitor's submission. Honeypot (`website` field) and a bot-timing check (`elapsedMs < 1500ms`) are checked before validation, matching the legacy script's anti-spam behavior.
 
+## Quote-request abuse surface (audited 2026-09-10)
+
+`POST /public/quotes` is one of only three unauthenticated endpoints. What holds, and what does not:
+
+**Holds**
+- Every string is `.max()`-bounded; `items` caps at 100. Prisma parameterises, so no SQL injection. The notification is `text:` only, so no HTML injection into the email, and `/quotes` renders as text, so no stored XSS into the dashboard.
+- Storage happens **before and independently of** email, and a send failure is caught — a broken mailer cannot lose a submission. Verified: 7 stored requests, all `emailSent: false`, none lost.
+- Both form-post limiters are **Postgres-backed** (see the note in `public.ts`). Measured before: 30 concurrent posts let **12** through a nominal 10/min, because more than one serverless instance served the burst. After: 9. A second **hourly** cap (30) catches the slow drip a per-minute window is blind to.
+- `options` is a bounded flat map (string keys, scalar values, ≤40 pairs). It was `z.any()` — unbounded JSON into a JSON column, ×100 items.
+- `name`/`company`/`phone` are stripped of CR/LF and control characters, so switching the mailer to SMTP cannot reintroduce header injection.
+
+**Does NOT hold — know these**
+- ⚠️ **The `elapsedMs` timing check is skipped when the field is ABSENT.** `Number(undefined)` is `NaN`, `Number.isFinite(NaN)` is false, so the guard passes. It only catches a bot that bothers to send a small value. Making it required would need confirmation that the live basket widget sends it — the widget lives in Duda, not this repo.
+- ⚠️ **The honeypot only catches bots that fill it in.** A cheap filter, not a control.
+- ⚠️ **Origin filtering is bypassed by omitting the header.** `publicCors` 403s a *disallowed* Origin, but the check is `if (origin && …)` — no Origin at all skips it, which is the default for curl and every non-browser client. It stops a malicious website posting on a visitor's behalf; it is no barrier to a script.
+- ⚠️ **Rate limits are IP-keyed**, so a distributed source defeats them. **Vercel Firewall** rate-limit rules run before the function is invoked and are the right layer for that; application code cannot solve it.
+- **No CAPTCHA and no duplicate detection.** The same person can submit the same basket repeatedly.
+
+**If spam becomes real**, in order of effort: a Vercel Firewall rule per IP; then requiring `elapsedMs` and the honeypot field to be *present* (needs the widget confirmed); then Turnstile/hCaptcha in the basket widget, which is the only one that actually distinguishes a human.
+
 ## Duda REST API
 
 Base URL `https://api.duda.co/api`, HTTP Basic auth (`DUDA_API_USER`/`DUDA_API_PASS`). SAEquip's `site_name` is **`8a8f03b5`**, live on **`saequip.multiscreensite.com`** — see "Site migration" below; the former `099434f3` is retired and nothing should read from it. **Path pattern includes a `multiscreen` segment that's easy to miss** — omitting it 404s (`RESTEASY003210`): `/sites/multiscreen/{site}/ecommerce/store`, `.../ecommerce/products`, `.../ecommerce/products/{id}` (see `backend/src/services/duda.ts`). Duda's product `custom_fields` are deliberately unused (see the Duda-vs-Hub split above) — don't reintroduce writes to them.
