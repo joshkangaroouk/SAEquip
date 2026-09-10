@@ -92,26 +92,31 @@ export function MediaPicker({
             <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
               Or choose existing
             </p>
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <Input
-                type="search"
-                value={lib.q}
-                onChange={(e) => lib.setQ(e.target.value)}
-                placeholder="Search…"
-                className="w-40"
-                aria-label="Search media"
-              />
-              <Select
-                value={lib.sort}
-                onChange={(e) => lib.setSort(e.target.value as typeof lib.sort)}
-                aria-label="Sort media"
-              >
-                {MEDIA_SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
+            {/* One row — see the note in pages/Media.tsx on why the widths
+                sit on the wrappers rather than on the controls. */}
+            <div className="ml-auto flex items-center gap-2">
+              <div className="w-32 min-w-0 sm:w-40">
+                <Input
+                  type="search"
+                  value={lib.q}
+                  onChange={(e) => lib.setQ(e.target.value)}
+                  placeholder="Search…"
+                  aria-label="Search media"
+                />
+              </div>
+              <div className="w-40 shrink-0">
+                <Select
+                  value={lib.sort}
+                  onChange={(e) => lib.setSort(e.target.value as typeof lib.sort)}
+                  aria-label="Sort media"
+                >
+                  {MEDIA_SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
           </div>
 

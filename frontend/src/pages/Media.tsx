@@ -180,26 +180,40 @@ export default function Media() {
           ))}
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Input
-            type="search"
-            value={lib.q}
-            onChange={(e) => lib.setQ(e.target.value)}
-            placeholder="Search filename or alt text…"
-            className="w-56"
-            aria-label="Search media"
-          />
-          <Select
-            value={lib.sort}
-            onChange={(e) => lib.setSort(e.target.value as typeof lib.sort)}
-            aria-label="Sort media"
-          >
-            {MEDIA_SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
+        {/*
+          Search and sort stay on ONE row: no `flex-wrap` here, and each
+          control is sized by its own wrapper.
+
+          ⚠️ The width goes on the WRAPPERS, not on the controls. `cn()` is a
+          plain string join rather than tailwind-merge, so a `w-56` passed to
+          <Input> lands alongside the component's own `w-full` and the
+          stylesheet's ordering decides which wins — which is how the sort
+          dropdown ended up wrapping under the search box. Sizing the flex
+          items is deterministic; the controls are `w-full` inside them.
+        */}
+        <div className="ml-auto flex items-center gap-2">
+          <div className="w-40 min-w-0 sm:w-56">
+            <Input
+              type="search"
+              value={lib.q}
+              onChange={(e) => lib.setQ(e.target.value)}
+              placeholder="Search filename or alt text…"
+              aria-label="Search media"
+            />
+          </div>
+          <div className="w-44 shrink-0">
+            <Select
+              value={lib.sort}
+              onChange={(e) => lib.setSort(e.target.value as typeof lib.sort)}
+              aria-label="Sort media"
+            >
+              {MEDIA_SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </div>
 
