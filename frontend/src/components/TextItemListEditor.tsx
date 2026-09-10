@@ -75,7 +75,7 @@ export function TextItemListEditor({
 
       <div className="mt-4">
         <Button variant="secondary" size="sm" onClick={add}>
-          + Add item
+          + Add Row
         </Button>
       </div>
     </Card>

@@ -22,7 +22,12 @@ import {
  * `flattenSpecGroups`, which round-trips exactly.
  *
  * A group with no lines is a sub-heading inside the table ("SYSTEM INCLUDES"),
- * which the source catalogue uses and which is why a blank value is valid.
+ * which the source catalogue uses on 4 rows and which is why a blank value is
+ * valid. There is deliberately NO button for it — clearing a spec's last value
+ * produces one (the line's remove button says so), which is enough for a shape
+ * this rare, and a dedicated button read as clutter next to "+ Add Row".
+ * Removing the button did not remove the kind: the imported ones still render
+ * and still round-trip through this editor.
  */
 export function SpecTableEditor({
   rows,
@@ -65,9 +70,6 @@ export function SpecTableEditor({
       ...groups,
       { id: crypto.randomUUID(), label: "", lines: [{ id: crypto.randomUUID(), value: "" }] },
     ]);
-
-  // A heading carries a label and no lines — the blank-value row kind.
-  const addHeading = () => commit([...groups, { id: crypto.randomUUID(), label: "", lines: [] }]);
 
   const inputCls =
     "w-full rounded-md border bg-surface px-3 py-2 text-xs font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent";
@@ -163,12 +165,9 @@ export function SpecTableEditor({
         />
       )}
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4">
         <Button variant="secondary" size="sm" onClick={addGroup}>
-          + Add spec
-        </Button>
-        <Button variant="secondary" size="sm" onClick={addHeading}>
-          + Add sub-heading
+          + Add Row
         </Button>
       </div>
     </Card>
