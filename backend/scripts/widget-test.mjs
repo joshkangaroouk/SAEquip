@@ -194,7 +194,7 @@ async function main() {
     // currentColor, not the asset's #000000 — otherwise `.saeh-3d-icon{color:}`
     // is silently ignored and the colour can't be changed from CSS at all.
     check(cube.getAttribute("stroke") === "currentColor", "cube strokes currentColor, not a hardcoded black");
-    check(cube.getAttribute("stroke-width") === "2", "stroke-width 2, as the asset specifies");
+    check(cube.getAttribute("stroke-width") === "1.6", "stroke-width 1.6 — heavier crowds the faces at 34px");
     // The edges are open subpaths, so butt caps leave visible notches at every
     // corner. round is load-bearing here, not decoration.
     check(cube.getAttribute("stroke-linecap") === "round" && cube.getAttribute("stroke-linejoin") === "round",
@@ -284,7 +284,7 @@ async function main() {
     // widget:sync-css existed; the SVG has no generator, so pin it here.
     const tsx = readFileSync(path.join(HERE, "../../frontend/src/pages/Widgets.tsx"), "utf8");
     const inWidget = SRC.match(/var CUBE_ICON_PATH =\s*\n\s*"(.*?)";/s)?.[1];
-    const inPreview = tsx.match(/<path d="(M4 7\.5.*?)" \/>/s)?.[1];
+    const inPreview = tsx.match(/<path d="(M12 2\.75.*?)" \/>/s)?.[1];
     check(!!inWidget && !!inPreview, "found the path in both files");
     check(inWidget === inPreview, "widget.js and Widgets.tsx render the SAME cube path",
       inWidget === inPreview ? `${inWidget.length} chars` : "DRIFTED");

@@ -724,20 +724,27 @@
   }
 
   /**
-   * Open-cube 3D glyph — one path holding every edge as separate subpaths.
+   * Cube glyph for the 3D banner — one path, three closed-ish subpaths.
+   *
+   * ⚠️ Replaced a supplied asset that drew every edge as a separate OPEN
+   * subpath with small bezier corners. That geometry is fine at the 800px the
+   * file was authored for and muddy at 34px: the curves collapse into blobs
+   * and the doubled corners read as thick smudges once the 24-unit viewBox is
+   * scaled up ~1.4x. This is the plain isometric cube instead — a closed
+   * hexagonal outline plus the three interior edges meeting at the centre —
+   * which stays legible because every line is straight and no two strokes
+   * overlap.
+   *
+   * stroke-width 1.6, chosen by rendering 1.4/1.6/1.75/2 at the real 34px:
+   * from 1.75 up the interior corners crowd and the three faces start closing
+   * into a blob. Don't raise it without looking at it that size.
    *
    * Built via createElementNS rather than innerHTML, matching the
    * "textContent only, never inject HTML" rule the rest of this file follows.
-   *
-   * The source asset strokes #000000; this uses currentColor instead so the
-   * colour stays in CSS (`.saeh-3d-icon{color:#111}`) — a hardcoded black
-   * would silently ignore the stylesheet and be unfixable from there.
-   * stroke-width 2 and the round caps are the asset's own values: the caps
-   * matter here because the edges are open subpaths rather than a closed
-   * outline, so butt ends would leave visible notches at every corner.
+   * currentColor keeps the colour in CSS (`.saeh-3d-icon{color:#111}`).
    */
   var CUBE_ICON_PATH =
-    "M4 7.5L11.6078 3.22062C11.7509 3.14014 11.8224 3.09991 11.8982 3.08414C11.9654 3.07019 12.0346 3.07019 12.1018 3.08414C12.1776 3.09991 12.2491 3.14014 12.3922 3.22062L20 7.5M4 7.5V16.0321C4 16.2025 4 16.2876 4.02499 16.3637C4.04711 16.431 4.08326 16.4928 4.13106 16.545C4.1851 16.6041 4.25933 16.6459 4.40779 16.7294L12 21M4 7.5L12 11.5M12 21L19.5922 16.7294C19.7407 16.6459 19.8149 16.6041 19.8689 16.545C19.9167 16.4928 19.9529 16.431 19.975 16.3637C20 16.2876 20 16.2025 20 16.0321V7.5M12 21V11.5M20 7.5L12 11.5";
+    "M12 2.75L20.5 7.375V16.625L12 21.25L3.5 16.625V7.375ZM3.5 7.375L12 12L20.5 7.375M12 12V21.25";
 
   function cubeIcon() {
     var NS = "http://www.w3.org/2000/svg";
@@ -745,7 +752,7 @@
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.setAttribute("fill", "none");
     svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke-width", "1.6");
     svg.setAttribute("stroke-linecap", "round");
     svg.setAttribute("stroke-linejoin", "round");
     svg.setAttribute("aria-hidden", "true");
@@ -855,7 +862,7 @@
 
     var main = el("div", "saeh-3d-cta-main");
     main.appendChild(cubeIcon());
-    main.appendChild(el("div", "saeh-3d-cta-title", "View the product in 3D view!"));
+    main.appendChild(el("div", "saeh-3d-cta-title", "View the product in 3D Mode!"));
     sec.appendChild(main);
 
     var btn = el("button", "saeh-3d-btn");
