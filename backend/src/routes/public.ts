@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
+import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
@@ -41,11 +42,33 @@ const contentLimiter = rateLimit({
   message: { error: "rate_limited" },
 });
 
+/*
+ * ⚠️ The two FORM-POST limiters are Postgres-backed; the content limiter above
+ * is not, deliberately.
+ *
+ * express-rate-limit's default store is in-process memory, which on serverless
+ * gives every short-lived instance its own counter — so "10 per minute"
+ * becomes "10 per minute PER INSTANCE". Measured against production: 30
+ * concurrent posts to /public/quotes let 12 through rather than 10, because
+ * more than one instance served the burst. Under sustained load Vercel spins
+ * up more instances, each with a fresh budget, so the cap is soft exactly when
+ * it matters.
+ *
+ * The reason the content limiter stays in memory does NOT apply here: that one
+ * is hit on every product page view, where a DB write per request is the wrong
+ * trade. A quote submission or a gated-download lead is a rare, deliberate
+ * action, so one INSERT to count it costs nothing measurable and buys a limit
+ * that actually holds across instances.
+ *
+ * Still IP-keyed, so a distributed source defeats it. Edge rules (Vercel
+ * Firewall) are the answer to that, not application code.
+ */
 const leadLimiter = rateLimit({
   windowMs: 60_000,
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PgRateLimitStore("public-lead"),
   message: { error: "rate_limited" },
 });
 
@@ -54,7 +77,24 @@ const quoteLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PgRateLimitStore("public-quote"),
   message: { ok: false, error: "Too many requests, please try again shortly." },
+});
+
+/**
+ * A second, tighter window on top of the per-minute one.
+ *
+ * Ten submissions a minute is a reasonable ceiling for a human who mistypes an
+ * email and retries, but sustained over an hour it is 600 rows of junk. This
+ * catches the slow drip that a per-minute limit is blind to by design.
+ */
+const quoteHourlyLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  standardHeaders: false,
+  legacyHeaders: false,
+  store: new PgRateLimitStore("public-quote-hourly"),
+  message: { ok: false, error: "Too many requests, please try again later." },
 });
 
 export const publicRouter = Router();
@@ -293,19 +333,50 @@ publicRouter.post("/downloads/:downloadId/lead", leadLimiter, async (req, res, n
   }
 });
 
+/**
+ * A basket line's selected variation options, e.g. `{ Voltage: "240V" }`.
+ *
+ * ⚠️ Was `z.any()`, which accepted anything at all — a deeply nested or
+ * enormous object went straight into a JSON column, and with up to 100 items
+ * per request that is a storage-amplification vector bounded only by the body
+ * size limit. Duda's basket sends a flat map of option name to chosen value,
+ * so that is exactly what is allowed: string keys, scalar values, both capped,
+ * and at most 40 pairs.
+ */
+const quoteOptionsSchema = z
+  .record(z.string().trim().max(200), z.union([z.string().trim().max(500), z.number(), z.boolean()]))
+  .refine((o) => Object.keys(o).length <= 40, "too many options on one item");
+
 const quoteItemSchema = z.object({
   name: z.string().trim().min(1, "each item needs a name").max(200),
   sku: z.string().trim().max(200).optional(),
-  options: z.any().optional(),
+  options: quoteOptionsSchema.optional(),
   price: z.string().trim().max(100).optional(),
   quantity: z.coerce.number().int().positive().max(100_000).optional(),
 });
 
+/**
+ * Trim, then strip CR/LF and other control characters.
+ *
+ * ⚠️ `name` is interpolated into the notification's Subject line. Resend's
+ * JSON API is immune to header injection, but the moment this is switched to
+ * SMTP a newline in a header value is the classic way to inject extra headers
+ * (a Bcc, say). Stripping at the boundary means that switch cannot reintroduce
+ * the hole, and it keeps the stored data clean either way.
+ */
+const headerSafe = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    // eslint-disable-next-line no-control-regex
+    .transform((v) => v.replace(/[\u0000-\u001f\u007f]/g, " ").trim());
+
 const quoteSchema = z.object({
-  name: z.string().trim().min(1, "name is required").max(200),
+  name: headerSafe(200).pipe(z.string().min(1, "name is required")),
   email: z.string().trim().email("a valid email is required").max(320),
-  company: z.string().trim().max(200).optional(),
-  phone: z.string().trim().max(50).optional(),
+  company: headerSafe(200).optional(),
+  phone: headerSafe(50).optional(),
   message: z.string().trim().max(5000).optional(),
   items: z.array(quoteItemSchema).min(1, "at least one item is required").max(100, "too many items"),
 });
@@ -319,7 +390,7 @@ const quoteSchema = z.object({
  * run on the raw body BEFORE schema validation, so a bot that omits/garbles
  * real fields still gets trapped silently rather than surfacing a 400.
  */
-publicRouter.post("/quotes", quoteLimiter, async (req, res) => {
+publicRouter.post("/quotes", quoteLimiter, quoteHourlyLimiter, async (req, res) => {
   try {
     const body = (req.body ?? {}) as Record<string, unknown>;
 
