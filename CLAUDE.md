@@ -283,11 +283,20 @@ None of the above is secure until these are set, and none of them can be done fr
 
    ⚠️ **A recovery link is effectively a one-time login**: whoever opens it holds a real session. That is why it must land on `/reset-password`, which changes the password and then signs out, rather than on the app root where the holder is simply logged in.
 
-### 2FA — NOT yet built, and the enforcement half is the part that matters
+### 2FA (TOTP) — built 2026-09-10
 
-Supabase MFA is enrolled client-side (`supabase.auth.mfa.enroll/challenge/verify`) against the user's own session, so enrolment is frontend work. **The security depends on a server-side check that does not exist yet**: a user who has enrolled a factor can still hold a valid `aal1` token, so `requireAuth` must reject `aal1` for any user with a verified factor. `supabase.auth.getUser()` validates the token but does not surface the `aal` claim — it has to be read from the (already-verified) JWT payload. Without that check, 2FA is decorative.
+Four parts, and the last is the one that makes it real:
 
-Also unresolved before shipping it: **the recovery path**. Losing an authenticator locks a user out, and clearing a factor (`auth.admin.mfa.deleteFactor`) is privilege-escalating, so it belongs in the CLI alongside `users:create` — not on the `/users` page.
+1. **`/security`** — the signed-in user enrols their own authenticator (`mfa.enroll` → QR + secret → `mfa.challenge` → `mfa.verify`). Enrolment can only happen in the browser against that user's session: there is no admin API to enrol on someone's behalf, and there shouldn't be, since the secret must reach their app and nobody else's. Cancelling mid-enrolment unenrols the half-finished factor.
+2. **Login challenge** — `signIn()` returns `mfaRequired` by reading `mfa.getAuthenticatorAssuranceLevel()` (`nextLevel === "aal2"` only when a verified factor exists), and `Login.tsx` collects the code. ⚠️ The `if (user) <Navigate to="/">` guard is suppressed while the code is outstanding: the password step already creates a real session, so the redirect would otherwise fire and skip the challenge.
+3. **`mfa_required` handling** — `apiJson` signs out and returns to `/login` on that response, because every request will fail identically until a code is entered.
+4. ⚠️ **Server-side enforcement in `requireAuth`** — a user with a **verified** factor must present an `aal2` token, or the API returns `403 mfa_required`. Supabase challenges factors entirely in the browser and an unchallenged session still carries a valid `aal1` token, so **without this check 2FA is decorative** — a caller could enrol, ignore the prompt and keep using the API. `getUser()` validates the token but does not expose `aal`, so it is read from the already-verified JWT payload; `assuranceLevel()` decodes without verifying and is only safe because verification has already happened. Never point it at an unvalidated token.
+
+**Opt-in per user, deliberately.** Only an enrolled *and verified* factor raises the bar, so this cannot lock out staff who haven't set MFA up. An `unverified` factor is ignored — enrolment leaves one behind until the first code is confirmed, and honouring it would lock the user out mid-enrolment. Requiring MFA for everyone would be a separate, announced change.
+
+⚠️ **The lockout escape hatch is CLI-only**: `npm run users:mfa --workspace=backend -- --email <addr> --check | --reset --confirm`. There is no bypass code, because a bypass is a second password. This is the most privilege-escalating operation in the repo — it removes a security control from someone else's account — so it must never become an HTTP route, and the request should be confirmed out-of-band. Encourage a second enrolled device instead.
+
+**Dashboard prerequisite**: MFA/TOTP must be enabled under Authentication → Multi-Factor, or `mfa.enroll()` fails.
 
 ## Environment variables
 

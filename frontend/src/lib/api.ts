@@ -88,6 +88,19 @@ export async function apiJson<T = unknown>(path: string, init: RequestInit = {})
     : {};
 
   if (!res.ok) {
+    /*
+     * ⚠️ `mfa_required` means the session is valid but only aal1, and the
+     * account has a confirmed authenticator (see requireAuth). Every request
+     * will fail this way until a code is entered, so the only useful move is
+     * to end the session and let the login screen run the challenge properly.
+     * Left alone, the dashboard sits there looking signed in and loading
+     * nothing.
+     */
+    if (res.status === 403 && json.error === "mfa_required") {
+      await supabase.auth.signOut();
+      window.location.assign("/login");
+    }
+
     const details = json.details as { fieldErrors?: Record<string, string[]> } | undefined;
     const fieldErrors = details?.fieldErrors;
     const message = details

@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   Package,
+  KeyRound,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -51,6 +52,7 @@ const NAV: NavItem[] = [
   { to: "/widgets", label: "Widgets", icon: LayoutGrid },
   { to: "/quotes", label: "Quote Requests", icon: BarChart3 },
   { to: "/users", label: "Users", icon: Users },
+  { to: "/security", label: "Security", icon: KeyRound },
   { to: "/status", label: "Status", icon: Sparkles },
 ];
 

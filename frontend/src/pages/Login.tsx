@@ -41,16 +41,25 @@ function EyeOffIcon() {
 }
 
 export default function Login() {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn, verifyMfa, signOut } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  /** Second step: the account has a verified authenticator. */
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState("");
 
-  // Already signed in → send home.
-  if (!loading && user) return <Navigate to="/" replace />;
+  /*
+   * ⚠️ Already signed in → home, EXCEPT while the code is outstanding.
+   * The password step creates a real (aal1) session, so `user` is already set
+   * and this redirect would fire and skip the challenge — leaving a session
+   * the API refuses with `mfa_required`, i.e. a dashboard that looks logged in
+   * and loads nothing.
+   */
+  if (!loading && user && !needsCode) return <Navigate to="/" replace />;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -62,7 +71,35 @@ export default function Login() {
       setError(result.error);
       return;
     }
+    if (result.mfaRequired) {
+      setNeedsCode(true);
+      return;
+    }
     navigate("/", { replace: true });
+  }
+
+  async function onSubmitCode(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    const result = await verifyMfa(code);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+      setCode("");
+      return;
+    }
+    setNeedsCode(false);
+    navigate("/", { replace: true });
+  }
+
+  /** Abandoning the challenge must end the half-finished session. */
+  async function cancelCode() {
+    setNeedsCode(false);
+    setCode("");
+    setError(null);
+    setPassword("");
+    await signOut();
   }
 
   return (
@@ -93,6 +130,54 @@ export default function Login() {
           {/* Compact logo for small screens, where the brand panel is hidden. */}
           <img src={logoUrl} alt="SAEquip" className="mx-auto mb-8 h-28 w-auto lg:hidden" />
 
+          {needsCode ? (
+            <form
+              onSubmit={onSubmitCode}
+              className="rounded-xl border border-border bg-surface p-8 shadow-sm"
+            >
+              <h1 className="text-h2 font-semibold text-text">Enter your code</h1>
+              <p className="mt-1 text-small text-muted">
+                Open your authenticator app and type the 6-digit code for SAEquip.
+              </p>
+
+              <div className="mt-6">
+                <Field label="Authentication code" htmlFor="code">
+                  <Input
+                    id="code"
+                    // A one-time-code field: numeric keypad on mobile, and it
+                    // lets password managers and iOS autofill offer the code.
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    required
+                    placeholder="123456"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
+                </Field>
+              </div>
+
+              {error && (
+                <p
+                  role="alert"
+                  className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-small text-danger"
+                >
+                  {error}
+                </p>
+              )}
+
+              <Button type="submit" loading={submitting} className="mt-6 w-full" disabled={code.length < 6}>
+                {submitting ? "Checking…" : "Verify"}
+              </Button>
+              <button
+                type="button"
+                onClick={cancelCode}
+                className="mt-4 w-full text-small text-muted hover:text-text"
+              >
+                Cancel and sign out
+              </button>
+            </form>
+          ) : (
           <form
             onSubmit={onSubmit}
             className="rounded-xl border border-border bg-surface p-8 shadow-sm"
@@ -160,6 +245,7 @@ export default function Login() {
               Accounts are created by invitation only.
             </p>
           </form>
+          )}
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import Status from "./pages/Status";
 // routed: it was a temporary reference for building the UI and is hidden from
 // the app. The file is kept for reference rather than deleted.
 import UsersPage from "./pages/Users";
+import Security from "./pages/Security";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import WebsiteEditor from "./pages/WebsiteEditor";
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
       { path: "/widgets", element: <Widgets /> },
       { path: "/quotes", element: <Quotes /> },
       { path: "/users", element: <UsersPage /> },
+      { path: "/security", element: <Security /> },
       { path: "/status", element: <Status /> },
     ],
   },

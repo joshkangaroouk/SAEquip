@@ -12,7 +12,11 @@ type AuthContextValue = {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null; mfaRequired: boolean }>;
+  verifyMfa: (code: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -46,8 +50,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /**
+   * Password sign-in. Resolves with `mfaRequired` when the account has a
+   * verified factor, so the caller can collect a code before treating the user
+   * as signed in.
+   *
+   * ⚠️ The session that exists at this point is real but `aal1`, and the API
+   * rejects it with `mfa_required` (see requireAuth). So "signed in" is not
+   * the same as "usable" for these accounts — the challenge is not cosmetic,
+   * and skipping it leaves the dashboard authenticated but unable to load
+   * anything.
+   */
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message, mfaRequired: false };
+
+    const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalError) return { error: aalError.message, mfaRequired: false };
+
+    // nextLevel is aal2 only when a verified factor exists.
+    const mfaRequired = aal.nextLevel === "aal2" && aal.currentLevel !== "aal2";
+    return { error: null, mfaRequired };
+  }
+
+  /** Complete the second factor with a TOTP code from the user's app. */
+  async function verifyMfa(code: string): Promise<{ error: string | null }> {
+    const { data: list, error: listError } = await supabase.auth.mfa.listFactors();
+    if (listError) return { error: listError.message };
+    const factor = (list.totp ?? []).find((f) => f.status === "verified");
+    if (!factor) return { error: "No confirmed authenticator on this account." };
+
+    const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id });
+    if (challenge.error) return { error: challenge.error.message };
+
+    const { error } = await supabase.auth.mfa.verify({
+      factorId: factor.id,
+      challengeId: challenge.data.id,
+      code: code.trim(),
+    });
     return { error: error ? error.message : null };
   }
 
@@ -60,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     loading,
     signIn,
+    verifyMfa,
     signOut,
   };
 
