@@ -130,9 +130,29 @@ usersRouter.post("/users/password-reset", resetLimiter, async (req, res, next) =
   }
 
   try {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${req.header("origin") ?? ""}/reset-password`,
-    });
+    /*
+     * ⚠️ `redirectTo` must be an ABSOLUTE URL that is also in Supabase's
+     * redirect allowlist. This used to interpolate the Origin header
+     * unchecked, so a request without one produced the relative
+     * "/reset-password" — Supabase silently discards an unusable redirect and
+     * falls back to the project's Site URL, which is how a reset link ended up
+     * pointing at http://localhost:3000/. Omitting it is the honest fallback:
+     * the Site URL is then a deliberate choice rather than the result of a
+     * malformed value.
+     */
+    const origin = req.header("origin") ?? "";
+    const redirectTo = /^https?:\/\/[^/]+$/.test(origin) ? `${origin}/reset-password` : undefined;
+    if (!redirectTo) {
+      console.warn(
+        `[users] no usable Origin header (${JSON.stringify(origin)}) — letting Supabase use the project Site URL. ` +
+          "The reset link will only land on /reset-password if the Site URL points there.",
+      );
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo ? { redirectTo } : {},
+    );
     if (error) {
       // Logged without the address's token/link — there is none in this flow,
       // but keep the habit.

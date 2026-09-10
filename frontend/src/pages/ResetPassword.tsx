@@ -27,15 +27,38 @@ export default function ResetPassword() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  /*
+   * ⚠️ Both a listener AND a getSession() call, because the recovery token
+   * arrives in the URL FRAGMENT and the Supabase client exchanges it
+   * asynchronously on load. A lone getSession() races that exchange and
+   * usually loses — reporting "this link has expired" on a link that is
+   * perfectly good. onAuthStateChange fires PASSWORD_RECOVERY once the
+   * exchange completes; getSession() covers the case where it already had.
+   */
   useEffect(() => {
-    let cancelled = false;
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      setReady(data.session ? "ok" : "no-session");
+    let settled = false;
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+        settled = true;
+        setReady("ok");
+      }
     });
-    return () => {
-      cancelled = true;
-    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (settled) return;
+      if (data.session) {
+        settled = true;
+        setReady("ok");
+        return;
+      }
+      // Give the fragment exchange a moment before declaring the link dead.
+      setTimeout(() => {
+        if (!settled) setReady("no-session");
+      }, 1500);
+    });
+
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   const verdict = assessPassword(password);

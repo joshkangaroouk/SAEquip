@@ -275,7 +275,13 @@ None of the above is secure until these are set, and none of them can be done fr
 2. **Leaked-password protection** and a **minimum length of 12+** (Authentication → Policies). This is the real enforcement point; the client-side checks are cosmetic.
 3. **Enable MFA / TOTP** (Authentication → Multi-Factor). Nothing in the app can enrol a factor until this is on.
 4. **Reduce the access-token TTL** from the default hour if the threat model warrants it, and keep refresh-token rotation on.
-5. **Redirect allowlist** (Authentication → URL Configuration) must contain the deployed origin's `/reset-password`, or the emailed link bounces.
+5. ⚠️ **Site URL and the redirect allowlist** (Authentication → URL Configuration). Both matter, and getting them wrong fails *silently*:
+   - **Site URL** must be the deployed origin (`https://sa-equip-backend.vercel.app`), not the `http://localhost:3000` default. Supabase discards a `redirectTo` it cannot use and falls back to the Site URL — observed symptom: a reset link landing on `http://localhost:3000/#access_token=…`.
+   - **Redirect URLs** must include `https://sa-equip-backend.vercel.app/reset-password` (add `http://localhost:5173/reset-password` for local work). A `redirectTo` outside the allowlist is not an error; it is ignored.
+
+   Two related traps, both fixed in code but worth knowing: `POST /api/users/password-reset` used to interpolate the `Origin` header unchecked, so a request without one produced the *relative* `/reset-password` — unusable, hence the Site URL fallback; it now validates the origin and omits `redirectTo` rather than sending a malformed one. And `/reset-password` needs `onAuthStateChange` as well as `getSession()`, because the recovery token arrives in the URL **fragment** and is exchanged asynchronously — a lone `getSession()` races that and reports "link expired" on a good link.
+
+   ⚠️ **A recovery link is effectively a one-time login**: whoever opens it holds a real session. That is why it must land on `/reset-password`, which changes the password and then signs out, rather than on the app root where the holder is simply logged in.
 
 ### 2FA — NOT yet built, and the enforcement half is the part that matters
 
