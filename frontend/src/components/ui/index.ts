@@ -17,5 +17,6 @@ export { Highlight } from "./Highlight";
 export { FileIcon } from "./FileIcon";
 export { Spinner, Loader } from "./Spinner";
 export { PageHeader } from "./PageHeader";
+export { Pagination } from "./Pagination";
 export { DropdownMenu, type MenuAction } from "./DropdownMenu";
 export { RichTextEditor } from "./RichTextEditor";

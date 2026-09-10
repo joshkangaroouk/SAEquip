@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { apiFetch } from "../lib/api";
 import { uploadFile } from "../lib/upload";
-import { FileIcon, useConfirm } from "../components/ui";
+import { FileIcon, Input, Pagination, Select, useConfirm } from "../components/ui";
+import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
 function formatBytes(n: number): string {
@@ -10,14 +11,53 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-type Filter = "" | "image" | "file";
+/**
+ * Kind tabs.
+ *
+ * ⚠️ "3D Models" used to be missing: the filter type was `"" | "image" |
+ * "file"` and the label fell through to "Files" for anything that wasn't an
+ * image, so the three .glb models had no tab of their own and the Files tab —
+ * which matches 0 assets, since the library is all images and models —
+ * looked like the place everything had landed.
+ */
+const KIND_TABS: { value: "" | MediaKind; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "image", label: "Images" },
+  { value: "file", label: "Files" },
+  { value: "model", label: "3D Models" },
+];
+
+/**
+ * What `usage` can and cannot tell us.
+ *
+ * It counts logos, downloads and 3D-model attachments — the three places a
+ * Hub URL IS the live reference. Product gallery images are NOT counted and
+ * cannot be: an image is uploaded only to give Duda a URL to fetch, and once
+ * Duda re-hosts it the product points at `irp.cdn-website.com` with nothing
+ * linking back. So "used 0×" on a product photo was actively misleading —
+ * it read as "unused" for images that are on live product pages.
+ */
+function UsageNote({ asset }: { asset: MediaAsset }) {
+  if (asset.usage > 0) {
+    return <span>· used {asset.usage}×</span>;
+  }
+  if (asset.kind === "image") {
+    return (
+      <span
+        className="cursor-help underline decoration-dotted"
+        title="Product galleries aren't tracked here: Duda re-hosts each image on its own CDN, so nothing links a product back to this original. Logos, downloads and 3D models ARE tracked. Deleting this cannot break a live gallery — Duda holds its own copy."
+      >
+        · no Hub links
+      </span>
+    );
+  }
+  return <span>· unused</span>;
+}
 
 export default function Media() {
   const confirm = useConfirm();
-  const [assets, setAssets] = useState<MediaAsset[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("");
+  const [kind, setKind] = useState<"" | MediaKind>("");
+  const lib = useMediaLibrary({ kind: kind || undefined, pageSize: 24 });
 
   const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("");
@@ -27,26 +67,6 @@ export default function Media() {
 
   const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    apiFetch(`/api/media${filter ? `?kind=${filter}` : ""}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: MediaAsset[]) => {
-        if (!cancelled) setAssets(data);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load media");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [filter]);
-
   async function onUpload(e: FormEvent) {
     e.preventDefault();
     if (!file || uploading) return;
@@ -55,14 +75,14 @@ export default function Media() {
     try {
       // Straight to Supabase via a signed URL, then confirmed with the API —
       // the file never passes through the backend. See lib/upload.ts.
-      const asset = await uploadFile(file, { alt: alt.trim() || undefined });
-      // Show newest first; respect the active filter.
-      if (!filter || asset.kind === filter) {
-        setAssets((prev) => [asset, ...(prev ?? [])]);
-      }
+      await uploadFile(file, { alt: alt.trim() || undefined });
       setFile(null);
       setAlt("");
       if (fileInputRef.current) fileInputRef.current.value = "";
+      // Clears any search and jumps to newest-first page 1, so the upload is
+      // actually on screen rather than buried by the active filter.
+      setKind("");
+      lib.showNewest();
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -88,7 +108,9 @@ export default function Media() {
     });
     const res = await apiFetch(`/api/media/${id}`, { method: "DELETE" });
     if (res.status === 204) {
-      setAssets((prev) => prev?.filter((a) => a.id !== id) ?? null);
+      // Re-fetch rather than splicing: the page is a window onto a sorted
+      // query, so removing one item should pull the next one up into it.
+      lib.reload();
       return;
     }
     if (res.status === 409) {
@@ -103,77 +125,113 @@ export default function Media() {
   return (
     <>
       <h1 className="text-xl font-semibold text-text">Media Centre</h1>
-        <p className="mt-1 text-sm text-muted">
-          Reusable library of images and files, stored in Supabase.
-        </p>
+      <p className="mt-1 text-sm text-muted">
+        Reusable library of images and files, stored in Supabase.
+      </p>
 
-        {/* Upload */}
-        <form
-          onSubmit={onUpload}
-          className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4"
+      {/* Upload */}
+      <form
+        onSubmit={onUpload}
+        className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4"
+      >
+        <label className="text-sm font-semibold text-text">
+          File
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="mt-1 block text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
+          />
+        </label>
+        <label className="text-sm font-semibold text-text">
+          Alt text (optional)
+          <input
+            value={alt}
+            onChange={(e) => setAlt(e.target.value)}
+            placeholder="describe the image"
+            className="mt-1 block rounded-md border border-border px-3 py-2 text-sm focus:border-text focus:outline-none placeholder:text-subtle"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={!file || uploading}
+          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
         >
-          <label className="text-sm font-semibold text-text">
-            File
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="mt-1 block text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
-            />
-          </label>
-          <label className="text-sm font-semibold text-text">
-            Alt text (optional)
-            <input
-              value={alt}
-              onChange={(e) => setAlt(e.target.value)}
-              placeholder="describe the image"
-              className="mt-1 block rounded-md border border-border px-3 py-2 text-sm focus:border-text focus:outline-none placeholder:text-subtle"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={!file || uploading}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
-          >
-            {uploading ? "Uploading…" : "Upload"}
-          </button>
-          {uploadError && <span className="text-sm text-danger">{uploadError}</span>}
-        </form>
+          {uploading ? "Uploading…" : "Upload"}
+        </button>
+        {uploadError && <span className="text-sm text-danger">{uploadError}</span>}
+      </form>
 
-        {/* Filter */}
-        <div className="mt-6 flex gap-2 text-sm">
-          {(["", "image", "file"] as Filter[]).map((f) => (
+      {/* Kind tabs + search + sort */}
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap gap-2 text-sm">
+          {KIND_TABS.map((t) => (
             <button
-              key={f || "all"}
-              onClick={() => setFilter(f)}
+              key={t.value || "all"}
+              onClick={() => setKind(t.value)}
               className={`rounded-full px-3 py-1 font-semibold ${
-                filter === f ? "bg-accent text-accent-foreground" : "border border-border text-muted hover:bg-surface-2"
+                kind === t.value
+                  ? "bg-accent text-accent-foreground"
+                  : "border border-border text-muted hover:bg-surface-2"
               }`}
             >
-              {f === "" ? "All" : f === "image" ? "Images" : "Files"}
+              {t.label}
             </button>
           ))}
         </div>
 
-        {/* States */}
-        {loading && <p className="mt-8 text-muted">Loading media…</p>}
-        {error && (
-          <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-            {error}
-          </div>
-        )}
-        {!loading && !error && assets && assets.length === 0 && (
-          <p className="mt-8 text-muted">No media yet. Upload a file to get started.</p>
-        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Input
+            type="search"
+            value={lib.q}
+            onChange={(e) => lib.setQ(e.target.value)}
+            placeholder="Search filename or alt text…"
+            className="w-56"
+            aria-label="Search media"
+          />
+          <Select
+            value={lib.sort}
+            onChange={(e) => lib.setSort(e.target.value as typeof lib.sort)}
+            aria-label="Sort media"
+          >
+            {MEDIA_SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
 
-        {/* Grid */}
-        {!loading && !error && assets && assets.length > 0 && (
+      {/* States */}
+      {lib.loading && <p className="mt-8 text-muted">Loading media…</p>}
+      {lib.error && (
+        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+          {lib.error}
+        </div>
+      )}
+      {lib.isEmpty && (
+        <p className="mt-8 text-muted">
+          {lib.isFiltered
+            ? "Nothing matches that search."
+            : "No media yet. Upload a file to get started."}
+        </p>
+      )}
+
+      {/* Grid */}
+      {!lib.loading && !lib.error && lib.items.length > 0 && (
+        <>
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {assets.map((a) => (
+            {lib.items.map((a) => (
               <div key={a.id} className="flex flex-col rounded-xl border border-border bg-surface p-3">
                 <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
                   {a.kind === "image" ? (
-                    <img src={a.url} alt={a.alt || a.filename} className="max-h-32 max-w-full object-contain" />
+                    <img
+                      src={a.url}
+                      alt={a.alt || a.filename}
+                      loading="lazy"
+                      className="max-h-32 max-w-full object-contain"
+                    />
                   ) : (
                     <a
                       href={a.url}
@@ -182,7 +240,9 @@ export default function Media() {
                       className="flex flex-col items-center text-muted hover:text-text"
                     >
                       <FileIcon className="h-10 w-10" />
-                      <span className="mt-1 text-xs">Open file</span>
+                      <span className="mt-1 text-xs">
+                        {a.kind === "model" ? "Open model" : "Open file"}
+                      </span>
                     </a>
                   )}
                 </div>
@@ -193,7 +253,7 @@ export default function Media() {
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted">
                     <span>{formatBytes(a.sizeBytes)}</span>
-                    <span>· used {a.usage}×</span>
+                    <UsageNote asset={a} />
                   </div>
                   {a.alt && <p className="mt-1 truncate text-xs text-subtle">alt: {a.alt}</p>}
                 </div>
@@ -204,13 +264,20 @@ export default function Media() {
                 >
                   Delete
                 </button>
-                {deleteErrors[a.id] && (
-                  <p className="mt-1 text-xs text-danger">{deleteErrors[a.id]}</p>
-                )}
+                {deleteErrors[a.id] && <p className="mt-1 text-xs text-danger">{deleteErrors[a.id]}</p>}
               </div>
             ))}
           </div>
-        )}
+
+          <Pagination
+            page={lib.page}
+            pageCount={lib.pageCount}
+            total={lib.total}
+            onChange={lib.setPage}
+            label="assets"
+          />
+        </>
+      )}
     </>
   );
 }

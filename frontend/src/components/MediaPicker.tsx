@@ -1,12 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import { apiJson } from "../lib/api";
+import { useRef, useState } from "react";
 import { uploadFile } from "../lib/upload";
-import { FileIcon } from "./ui";
+import { FileIcon, Input, Pagination, Select } from "./ui";
+import { MEDIA_SORT_OPTIONS, useMediaLibrary } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
 /**
  * Reusable modal to pick an existing MediaAsset (filtered by kind) or upload a
  * new one. On selection it calls onPick with the asset and the caller closes it.
+ *
+ * ⚠️ Searched and paginated via the same `useMediaLibrary` hook as the Media
+ * Centre page, so the two cannot drift. This dialog previously fetched
+ * `/api/media?kind=…` unpaginated and rendered every result — 341 images after
+ * the WordPress import, each with a resolved URL and an <img> — which made
+ * picking one image cost the whole library. 12 per page here rather than the
+ * page's 24, because the grid sits inside a max-h-[85vh] dialog.
  */
 const KIND_LABEL: Record<"image" | "file" | "model", string> = {
   image: "an image",
@@ -23,30 +30,11 @@ export function MediaPicker({
   onPick: (asset: MediaAsset) => void;
   onClose: () => void;
 }) {
-  const [assets, setAssets] = useState<MediaAsset[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const lib = useMediaLibrary({ kind, pageSize: 12 });
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiJson<MediaAsset[]>(`/api/media?kind=${kind}`)
-      .then((d) => {
-        if (!cancelled) setAssets(d);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load media");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [kind]);
 
   async function onUpload() {
     if (!file || uploading) return;
@@ -100,35 +88,78 @@ export function MediaPicker({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-subtle">
-            Or choose existing
-          </p>
-          {loading && <p className="text-sm text-muted">Loading…</p>}
-          {error && <p className="text-sm text-danger">{error}</p>}
-          {!loading && !error && assets && assets.length === 0 && (
-            <p className="text-sm text-subtle">No {kind}s in the library yet — upload one above.</p>
-          )}
-          {!loading && !error && assets && assets.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {assets.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => onPick(a)}
-                  className="flex flex-col items-center rounded-lg border border-border p-2 hover:border-text"
-                >
-                  {a.kind === "image" ? (
-                    <img src={a.url} alt={a.alt || a.filename} className="h-16 w-full object-contain" />
-                  ) : (
-                    <span className="flex h-16 items-center">
-                      <FileIcon className="h-8 w-8" />
-                    </span>
-                  )}
-                  <span className="mt-1 w-full truncate text-center text-xs text-muted" title={a.filename}>
-                    {a.filename}
-                  </span>
-                </button>
-              ))}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
+              Or choose existing
+            </p>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Input
+                type="search"
+                value={lib.q}
+                onChange={(e) => lib.setQ(e.target.value)}
+                placeholder="Search…"
+                className="w-40"
+                aria-label="Search media"
+              />
+              <Select
+                value={lib.sort}
+                onChange={(e) => lib.setSort(e.target.value as typeof lib.sort)}
+                aria-label="Sort media"
+              >
+                {MEDIA_SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
             </div>
+          </div>
+
+          {lib.loading && <p className="text-sm text-muted">Loading…</p>}
+          {lib.error && <p className="text-sm text-danger">{lib.error}</p>}
+          {lib.isEmpty && (
+            <p className="text-sm text-subtle">
+              {lib.isFiltered
+                ? "Nothing matches that search."
+                : `No ${kind}s in the library yet — upload one above.`}
+            </p>
+          )}
+          {!lib.loading && !lib.error && lib.items.length > 0 && (
+            <>
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {lib.items.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => onPick(a)}
+                    className="flex flex-col items-center rounded-lg border border-border p-2 hover:border-text"
+                  >
+                    {a.kind === "image" ? (
+                      <img
+                        src={a.url}
+                        alt={a.alt || a.filename}
+                        loading="lazy"
+                        className="h-16 w-full object-contain"
+                      />
+                    ) : (
+                      <span className="flex h-16 items-center">
+                        <FileIcon className="h-8 w-8" />
+                      </span>
+                    )}
+                    <span className="mt-1 w-full truncate text-center text-xs text-muted" title={a.filename}>
+                      {a.filename}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <Pagination
+                page={lib.page}
+                pageCount={lib.pageCount}
+                total={lib.total}
+                onChange={lib.setPage}
+                label={`${kind}s`}
+              />
+            </>
           )}
         </div>
       </div>

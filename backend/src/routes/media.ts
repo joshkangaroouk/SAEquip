@@ -62,6 +62,22 @@ function safeName(filename: string): string {
  * queries. Supabase is in eu-west-1, so per-query latency is the dominant cost
  * (the same trap that once made the public content endpoint take ~5s).
  */
+/**
+ * How many Hub records reference each asset: logos, downloads and 3D models.
+ *
+ * ⚠️ PRODUCT GALLERY IMAGES ARE NOT COUNTED, and cannot be. There is no local
+ * `ProductImage` mirror by design: an image is uploaded to Supabase only to
+ * give Duda a public URL to fetch, and once Duda re-hosts it on its own CDN
+ * the product references `irp.cdn-website.com` and nothing links back. So an
+ * imported product photo legitimately reads 0 here even though it is on a live
+ * product page.
+ *
+ * That is safe rather than merely tolerable — deleting such an asset cannot
+ * break a live gallery, precisely because Duda holds its own copy. The count
+ * exists to guard the three kinds where the Hub's URL *is* the live reference,
+ * and those are exactly the three counted here. The UI must not present 0 as
+ * "unused" for an image, or it implies a certainty this data cannot carry.
+ */
 async function usageIndex(): Promise<Map<string, number>> {
   const [logos, downloads, models] = await Promise.all([
     prisma.logo.groupBy({ by: ["mediaAssetId"], _count: true }),
@@ -226,28 +242,93 @@ mediaRouter.post("/media", async (req, res, next) => {
   }
 });
 
+/** Sort orders the Media Centre and the picker offer. */
+const MEDIA_SORTS = {
+  recent: { createdAt: "desc" },
+  oldest: { createdAt: "asc" },
+  name: { filename: "asc" },
+  "name-desc": { filename: "desc" },
+  largest: { sizeBytes: "desc" },
+  smallest: { sizeBytes: "asc" },
+} as const;
+
+type MediaSort = keyof typeof MEDIA_SORTS;
+
+const DEFAULT_PAGE_SIZE = 24;
+const MAX_PAGE_SIZE = 100;
+
+const listQuery = z.object({
+  kind: z.enum(["image", "file", "model"]).optional(),
+  q: z.string().trim().max(200).optional(),
+  sort: z.enum(Object.keys(MEDIA_SORTS) as [MediaSort, ...MediaSort[]]).default("recent"),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+});
+
 /**
- * GET /api/media?kind=image|file|model
- * Newest first, each with a resolved url and a usage count.
+ * GET /api/media?kind=&q=&sort=&page=&pageSize=
+ *
+ * Returns a PAGE, not the whole library: `{ items, total, page, pageSize,
+ * pageCount }`.
+ *
+ * ⚠️ Deliberately paginated rather than returning everything. The WordPress
+ * import took the library from 5 assets to 344, and every asset costs a
+ * `resolveUrl()` — a signed-URL round trip for private files — so an
+ * unpaginated list grew a per-asset cost on a page nobody had noticed was
+ * O(n). This is the same class of problem as the 3-counts-per-asset N+1 that
+ * made this endpoint take 7.1s; that one was fixed with a usage index, and
+ * capping the page size is what stops the remaining per-row work from growing
+ * with the catalogue.
+ *
+ * `q` matches filename OR alt text, case-insensitively.
  */
 mediaRouter.get("/media", async (req, res, next) => {
-  try {
-    const kindParam = req.query.kind;
-    const where =
-      kindParam === "image" || kindParam === "file" || kindParam === "model" ? { kind: kindParam } : {};
+  const parsed = listQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  const { kind, q, sort, page, pageSize } = parsed.data;
 
-    const [assets, usage] = await Promise.all([
-      prisma.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" } }),
+  try {
+    const where = {
+      ...(kind ? { kind } : {}),
+      ...(q
+        ? {
+            OR: [
+              { filename: { contains: q, mode: "insensitive" as const } },
+              { alt: { contains: q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, assets, usage] = await Promise.all([
+      prisma.mediaAsset.count({ where }),
+      prisma.mediaAsset.findMany({
+        where,
+        orderBy: MEDIA_SORTS[sort],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
       usageIndex(),
     ]);
-    const result = await Promise.all(
+
+    const items = await Promise.all(
       assets.map(async (a) => ({
         ...a,
         url: await resolveUrl(a.kind, a.storagePath),
         usage: usage.get(a.id) ?? 0,
       })),
     );
-    res.json(result);
+
+    res.json({
+      items,
+      total,
+      page,
+      pageSize,
+      pageCount: Math.max(1, Math.ceil(total / pageSize)),
+    });
   } catch (err) {
     next(err);
   }
