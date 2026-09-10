@@ -309,3 +309,71 @@ export function titleCaseSpecLabel(label: string): string {
     })
     .join("");
 }
+
+
+/**
+ * The SA range logos a product carries, derived from its `Categories`.
+ *
+ * ⚠️ SA range logos are in NO logo field in the export. `associated_logos`
+ * holds certification marks only, and the ranges have to come from the
+ * Categories column — which mixes them in with industry sectors. Verified per
+ * field before relying on it: `Name` carries the range for 3 of 96 products
+ * and `Tags` never does (tags are sectors).
+ *
+ * ⚠️ Categories are matched EXACTLY, never by substring. "SA Cyclone Rental"
+ * contains "SA Cyclone", so a substring match double-counts Cyclone and
+ * silently inflates every range.
+ *
+ * Rental is orthogonal to the ranges — a product is both `SA Cyclone` and
+ * `Rental` — which is why 139 links cover 94 products rather than 139.
+ */
+const SA_RANGE_CATEGORIES: Record<string, readonly string[]> = {
+  Cyclone: ["SA Cyclone", "SA Cyclone Rental"],
+  Endure: ["SA ENDURE"],
+  Flexiheat: ["SA Flexiheat"],
+  Lumin: ["SA Lumin"],
+  Powernet: ["SA Powernet", "SA Powernet Rental"],
+};
+
+/**
+ * Products whose SA range cannot be derived, with the range to use instead.
+ *
+ * Both are named LUMIN but sit outside the `SA Lumin` category, so the
+ * derivation correctly finds nothing. Confirmed by Josh (2026-09-10) that
+ * both are Lumin. Keyed on WordPress id because neither has a SKU — they are
+ * the same two products on the SKU fix-list.
+ */
+const SA_RANGE_OVERRIDES: Record<string, readonly string[]> = {
+  "13045": ["Lumin"], // SA LUMIN Tasklight Base Unit
+  "13050": ["Lumin"], // SA LUMIN Tasklight Adjustable Floor Stand
+};
+
+export function productCategories(raw: Record<string, string>): string[] {
+  return (raw["Categories"] ?? "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+}
+
+export function saRangeLogos(product: WooProduct): string[] {
+  const override = SA_RANGE_OVERRIDES[product.wpId];
+  if (override) return [...override];
+
+  const cats = new Set(productCategories(product.raw));
+  const found: string[] = [];
+  for (const [range, matches] of Object.entries(SA_RANGE_CATEGORIES)) {
+    if (matches.some((m) => cats.has(m))) found.push(range);
+  }
+  // Any rental category at all earns the Rental logo.
+  if ([...cats].some((c) => c === "Rental" || c.endsWith("Rental"))) found.push("Rental");
+  return found;
+}
+
+/**
+ * The certification marks a product carries, from the `associated_logos`
+ * repeater. Values are the raw CSV tokens (`ATEX`, `zone-1-2`, `madeinuk`…),
+ * which the import maps onto Logo rows.
+ */
+export function certLogoValues(product: WooProduct): string[] {
+  return acfRepeater(product.raw, "associated_logos", "associated_logos_name");
+}

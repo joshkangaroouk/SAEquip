@@ -52,12 +52,15 @@ import path from "node:path";
 import { duda, DudaApiError } from "../services/duda.js";
 import { syncHubProduct } from "../services/hubProduct.js";
 import { publicImageUrl, uploadObject } from "../services/storage.js";
+import { LogoKind } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import {
   acfRepeater,
+  certLogoValues,
   parsePublishedProducts,
   reportIntegrity,
   isIngestableUrl,
+  saRangeLogos,
   specRows,
   type WooProduct,
 } from "../services/wooImport.js";
@@ -904,6 +907,164 @@ const LIST_SOURCES = [
 ];
 
 /** Matches the cap the HTTP editor enforces, so nothing imports that the UI would reject. */
+/**
+ * CSV logo token → the Logo row it means, matched on the attached MediaAsset's
+ * FILENAME rather than the label.
+ *
+ * ⚠️ Filenames, not labels, on purpose. `Logo.label` is nullable and the API
+ * accepts it as optional, so two of these arrived with a NULL label and were
+ * identifiable only by their file; labels also carry typos ("Made in Britan")
+ * and get renamed in the UI. The filename is what someone actually chose when
+ * uploading, and it is stable. A label fallback is tried second, and anything
+ * that resolves to zero or to more than one Logo is a hard failure — a
+ * mis-resolved mark would silently badge products with the wrong
+ * certification, which on hazardous-area equipment is the worst possible
+ * class of error to guess at.
+ *
+ * ATEX → "EX logo" and UKEX → "UKCA" are Josh's explicit confirmations
+ * (2026-09-10). They are NOT the same marks by definition — UKCA is the UK
+ * conformity marking, UKEX the UK explosive-atmospheres scheme — so this
+ * mapping is a decision, not an inference, and must not be re-derived.
+ */
+const CERT_LOGO_FILES: Record<string, { file: string; label: string }> = {
+  ATEX: { file: "ex-logo.png", label: "EX logo" },
+  UKEX: { file: "ukca.png", label: "UKCA" },
+  IECEx: { file: "IECEx_Logo.png", label: "IECEx" },
+  INMETRO: { file: "Inmetro.png", label: "Inmetro" },
+  madeinuk: { file: "made-in-britan.jpg", label: "Made in Britan" },
+  "zone-0": { file: "zone-0.png", label: "Zone 0" },
+  "zone-1-2": { file: "zone-1-2.png", label: "Zone 1-2" },
+  "zone-20": { file: "zone-20.png", label: "Zone 20" },
+  "zone-21-22": { file: "zone-21-22.png", label: "Zone 21-22" },
+};
+
+const SA_LOGO_FILES: Record<string, { file: string; label: string }> = {
+  Cyclone: { file: "cyclone.jpg", label: "SA Cyclone Logo" },
+  Endure: { file: "endure.jpg", label: "SA Endure Logo" },
+  Flexiheat: { file: "flexiheat.jpg", label: "SA Flexiheat Logo" },
+  Lumin: { file: "lumin.jpg", label: "SA Lumin Logo" },
+  Powernet: { file: "powernet.jpg", label: "SA Powernet Logo" },
+  Rental: { file: "rental.jpg", label: "SA Rental Logo" },
+};
+
+/** Resolve every token to exactly one Logo id, or fail before writing. */
+async function resolveLogoCatalogue(): Promise<Map<string, string>> {
+  const logos = await prisma.logo.findMany({
+    include: { mediaAsset: { select: { filename: true } } },
+  });
+  const resolved = new Map<string, string>();
+  const problems: string[] = [];
+
+  const pairs: { token: string; file: string; label: string; kind: LogoKind }[] = [
+    ...Object.entries(SA_LOGO_FILES).map(([token, v]) => ({ token, ...v, kind: LogoKind.SA_LOGO })),
+    ...Object.entries(CERT_LOGO_FILES).map(([token, v]) => ({ token, ...v, kind: LogoKind.CERT_LOGO })),
+  ];
+
+  for (const p of pairs) {
+    const ofKind = logos.filter((l) => l.kind === p.kind);
+    let hits = ofKind.filter((l) => l.mediaAsset?.filename === p.file);
+    if (hits.length === 0) {
+      hits = ofKind.filter((l) => (l.label ?? "").trim().toLowerCase() === p.label.toLowerCase());
+    }
+    if (hits.length === 1) {
+      resolved.set(p.token, hits[0].id);
+    } else if (hits.length === 0) {
+      problems.push(`${p.token}: no ${p.kind} matches file "${p.file}" or label "${p.label}"`);
+    } else {
+      problems.push(`${p.token}: ${hits.length} ${p.kind}s match — ambiguous, rename one`);
+    }
+  }
+
+  if (problems.length) {
+    console.error("\n✗ Cannot map the catalogue — refusing to write:");
+    for (const pr of problems) console.error(`    ${pr}`);
+    console.error("\n  Upload the missing logo(s) in the dashboard, then re-run.");
+    process.exit(1);
+  }
+  return resolved;
+}
+
+/**
+ * Stage 3c: SA range + certification logos into the Hub.
+ *
+ * Hub-only. `ProductLogo` is a JOIN table — a row's existence means "this
+ * catalogue logo is active for this product" — so unlike specs and lists this
+ * is not a replace-whole-set of content, just of the link set for one product.
+ *
+ * Same two refusals as the other stages: a product the CSV says nothing about
+ * is skipped rather than cleared, and a product that already has links is
+ * skipped unless --force.
+ */
+async function importLogos(products: WooProduct[]): Promise<void> {
+  const ledger = loadLedger();
+  const force = flag("force");
+  const catalogue = await resolveLogoCatalogue();
+
+  let written = 0, saLinks = 0, certLinks = 0, skippedEmpty = 0, skippedExisting = 0;
+  const failures: string[] = [];
+
+  console.log(`\nImporting logos for ${products.length} product(s)…`);
+  console.log(`  catalogue resolved: ${catalogue.size} tokens`);
+  console.log(force ? "  --force: existing links WILL be replaced\n" : "  (products that already have links are skipped; --force to replace)\n");
+
+  for (const p of products) {
+    const entry = ledger[p.wpId];
+    if (!entry) continue;
+
+    const sa = saRangeLogos(p);
+    const cert = certLogoValues(p);
+    if (!sa.length && !cert.length) {
+      skippedEmpty++;
+      continue;
+    }
+
+    const hub = await prisma.hubProduct.findUnique({
+      where: { dudaProductId: entry.dudaProductId },
+      select: { id: true },
+    });
+    if (!hub) {
+      failures.push(`${p.sku || "(no sku)"} ${p.name}: no HubProduct row (run --sync-hub)`);
+      continue;
+    }
+
+    const ids = [...sa, ...cert].map((t) => catalogue.get(t)!).filter(Boolean);
+    const unique = [...new Set(ids)];
+
+    const existing = await prisma.productLogo.count({ where: { hubProductId: hub.id } });
+    if (existing > 0 && !force) {
+      skippedExisting++;
+      console.log(`  ⊘ ${(p.sku || "(no sku)").padEnd(18)} already has ${existing} link(s) — skipped`);
+      continue;
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.productLogo.deleteMany({ where: { hubProductId: hub.id } });
+        await tx.productLogo.createMany({
+          data: unique.map((logoId) => ({ hubProductId: hub.id, logoId })),
+        });
+      });
+      written++;
+      saLinks += sa.length;
+      certLinks += cert.length;
+      console.log(
+        `  ✓ ${(p.sku || "(no sku)").padEnd(18)} SA:${sa.join(",") || "-"}  CERT:${cert.join(",") || "-"}`,
+      );
+    } catch (err) {
+      failures.push(`${p.sku || "(no sku)"}: ${err instanceof Error ? err.message.slice(0, 120) : "?"}`);
+    }
+  }
+
+  console.log(`\n=== LOGOS ===`);
+  console.log(`  products written : ${written}`);
+  console.log(`  SA links         : ${saLinks}`);
+  console.log(`  cert links       : ${certLinks}`);
+  console.log(`  skipped (none in CSV)       : ${skippedEmpty}`);
+  console.log(`  skipped (already populated) : ${skippedExisting}`);
+  console.log(`  failed           : ${failures.length}`);
+  for (const f of failures) console.log(`     ${f}`);
+}
+
 const MAX_SPEC_ROWS = 100;
 const MAX_SPEC_LABEL = 200;
 const MAX_SPEC_VALUE = 500;
@@ -1372,6 +1533,12 @@ async function main(): Promise<void> {
   if (flag("rollback")) {
     if (!flag("confirm")) fail("--rollback requires --confirm (this DELETES live Duda products).");
     await rollback();
+    return;
+  }
+
+  if (flag("logos")) {
+    if (!flag("confirm")) fail("--logos requires --confirm (it writes ProductLogo rows).");
+    await importLogos(products);
     return;
   }
 

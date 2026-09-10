@@ -532,7 +532,9 @@ Both blank is invalid, and **the first row can never have a blank label** (nothi
 
 Also fixed: 10 `&amp;` entities (values render with `textContent`, so they would have shown literally) and 81 untrimmed cells. Zero ligatures, non-breaking spaces, newlines or HTML tags — and **zero angle brackets anywhere in the 691 cells**, checked before running them through `sanitize-html`, which would otherwise have silently eaten a value like `<40dBa`.
 
-### Logos — surveyed 2026-09-10, NOT yet imported
+### Stage 3c — logos (done 2026-09-10)
+
+`npm run duda:import-products --workspace=backend -- --logos --confirm` writes `ProductLogo` links. **Hub-only.** Result: **368 links across 96/96 products — 141 SA + 227 certification — all verified against the CSV with 0 mismatches.**
 
 ⚠️ **The two logo kinds come from completely different places in the export, and only one of them is a logo field at all.**
 
@@ -567,7 +569,11 @@ Cross-check that the derivation is right: EX Heater derives `Flexiheat` + `Renta
 
 **The 2 products with no SA range** are `SA LUMIN Tasklight Base Unit` and `SA LUMIN Tasklight Adjustable Floor Stand` — both named LUMIN but absent from the `SA Lumin` category. They are also the two SKU-less products on the fix-list, so the same pair needs a data decision either way.
 
-**Catalogue status**: all **6** SA logos exist in the Hub. Of the 9 certification marks, 3 map cleanly (`Made in Britan` [sic] → `madeinuk`, `Zone 1-2`, `Zone 21-22`), **4 are missing** (`IECEx`, `INMETRO`, `zone-0`, `zone-20`) and **2 need a naming decision**: is `EX logo` meant to be `ATEX`, and is `UKCA` standing in for `UKEX`? Those are different marks — UKCA is the UK conformity marking, UKEX the UK explosive-atmospheres scheme — so the import must not assume they are the same.
+⚠️ **The CSV token → Logo mapping is resolved on the MediaAsset FILENAME, not the label** (`CERT_LOGO_FILES` / `SA_LOGO_FILES` in the import script), with a label match only as a fallback. `Logo.label` is nullable and the API takes it as optional, so two logos arrived with a **NULL label** and were identifiable only by their file; labels also carry typos (`Made in Britan`) and get renamed in the UI. Anything resolving to zero or to more than one Logo is a **hard failure before any write** — a mis-resolved mark would badge products with the wrong certification, which on hazardous-area equipment is the worst thing to guess at.
+
+⚠️ **`ATEX` → "EX logo" and `UKEX` → "UKCA" are Josh's explicit decisions (2026-09-10), not inferences.** They are not the same marks by definition — UKCA is the UK conformity marking, UKEX the UK explosive-atmospheres scheme — so do not "correct" this mapping by re-deriving it.
+
+**The two Tasklight products** (`SA LUMIN Tasklight Base Unit`, `Adjustable Floor Stand`, wpId 13045/13050) are named LUMIN but sit outside the `SA Lumin` category, so derivation correctly finds nothing. `SA_RANGE_OVERRIDES` in `wooImport.ts` assigns them Lumin, per Josh. They are also the two SKU-less products on the fix-list.
 
 ### Data waiting for later stages
 
@@ -580,7 +586,7 @@ Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda a
 - Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).
 - No admin UI to view captured `Lead` rows from gated downloads yet (they're stored and now survive product deletion, just not surfaced — unlike `QuoteRequest`, which has a `/quotes` page). More valuable now that retained leads can outlive their product.
 - Per-product **Downloads editor was removed**; the Downloads widget is parked as visibly disabled on `/widgets`. Backend routes, leads, `/custom` payload and the widget's downloads section all still work, so restoring it is a UI-only change (`git show d68e28b~1:frontend/src/components/DownloadsEditor.tsx` for the old implementation).
-- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications) and 3b (technical specs) are done for all 96 published products; **still to do: certification logos, downloads, and options**, so products currently have a name, gallery, description, benefits, applications and a spec table but no logos. `/products/new` remains the path for genuinely new one-off products.
+- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs) and 3c (logos) are done for all 96 published products; **still to do: downloads (176 rows) and options**, so products now have a name, gallery, description, benefits, applications, a spec table and their logos. `/products/new` remains the path for genuinely new one-off products.
 - `CompatibleLink` model exists with no editor/UI.
 - Widget visual styling is functional but not deeply brand-tuned.
 - No optimistic-concurrency check: because array writes are full replacement, a stale dashboard tab can overwrite edits made in Duda. Mitigated only by the "loaded HH:MM / refresh" control in the product header.
