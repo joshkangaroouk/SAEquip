@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BarChart3,
@@ -177,7 +177,12 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 /** App shell: fixed dark sidebar on desktop; dark top bar + drawer on mobile. */
-export function Layout() {
+/**
+ * `children` overrides the routed <Outlet/>, so the error boundary can render
+ * inside the normal shell — the sidebar stays usable when a page throws
+ * instead of the whole tree being replaced.
+ */
+export function Layout({ children }: { children?: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -235,7 +240,7 @@ export function Layout() {
       {/* Main content */}
       <main className={MAIN_OFFSET}>
         <div className="mx-auto max-w-6xl px-5 py-6 lg:px-8">
-          <Outlet />
+          {children ?? <Outlet />}
         </div>
       </main>
     </div>

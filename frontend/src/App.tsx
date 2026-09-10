@@ -20,6 +20,7 @@ import ResetPassword from "./pages/ResetPassword";
 import WebsiteEditor from "./pages/WebsiteEditor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
+import { RouteError } from "./components/RouteError";
 
 /**
  * Data router (createBrowserRouter), NOT <BrowserRouter>.
@@ -41,6 +42,17 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Layout />
+      </ProtectedRoute>
+    ),
+    // On the layout route, so a page that throws keeps the sidebar and the
+    // rest of the app reachable. Without it, React Router's default fallback
+    // replaces the whole tree — which is how one null SKU once made every
+    // page unreachable.
+    errorElement: (
+      <ProtectedRoute>
+        <Layout>
+          <RouteError />
+        </Layout>
       </ProtectedRoute>
     ),
     children: [
