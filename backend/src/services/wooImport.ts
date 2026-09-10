@@ -176,3 +176,77 @@ export function acfRepeater(
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/**
+ * One row of a product's technical-spec table, as stored in `SpecRow`.
+ *
+ * Either side may be empty — never both — and each combination means
+ * something different on the rendered table:
+ *
+ * | label | value | meaning |
+ * |---|---|---|
+ * | set | set | an ordinary spec |
+ * | **empty** | set | ANOTHER LINE of the spec above (e.g. PROTECTION's six) |
+ * | set | **empty** | a sub-heading inside the table ("SYSTEM INCLUDES") |
+ *
+ * The multi-line shape is how the source data already encodes it, not a
+ * convention invented here — 225 of the 691 exported rows have a blank title.
+ */
+export interface WooSpecRow {
+  label: string;
+  value: string;
+}
+
+/**
+ * Reads the `technical_specs` ACF repeater into ordered label/value rows.
+ *
+ * ⚠️ Cannot use `acfRepeater()`: that reads ONE field and drops blanks, which
+ * is right for the single-column benefit/application repeaters but destroys
+ * this one. Here a blank title is *meaningful* (it continues the row above)
+ * and the two columns must stay index-aligned, so dropping blanks would
+ * silently re-parent every continuation line to the wrong spec.
+ *
+ * Both sides go through `sanitise` — the caller passes `sanitisePlainText`,
+ * keeping this module free of the sanitiser's `sanitize-html` dependency, and
+ * therefore free of the import-graph weight that once broke a serverless
+ * deploy. Values are stored as plain text and rendered with `textContent`.
+ *
+ * Rows blank on BOTH sides are ACF's trailing empties and are dropped. A
+ * leading continuation row would have nothing to attach to, so it is reported
+ * via `orphans` rather than silently kept or dropped (none exist today, and a
+ * future re-export should say so loudly rather than shift a table by one).
+ */
+export function specRows(
+  raw: Record<string, string>,
+  sanitise: (s: string) => string,
+): { rows: WooSpecRow[]; orphans: WooSpecRow[] } {
+  const prefix = "technical_specs_repeat";
+  const inner = "technical_specs_repeat_";
+  const re = new RegExp(`^Meta: ${escapeRegExp(prefix)}_(\\d+)_${escapeRegExp(inner)}_(title|value)$`);
+
+  const byIndex = new Map<number, { title: string; value: string }>();
+  for (const [key, cell] of Object.entries(raw)) {
+    const m = key.match(re);
+    if (!m) continue;
+    const i = Number(m[1]);
+    const slot = byIndex.get(i) ?? { title: "", value: "" };
+    if (m[2] === "title") slot.title = cell ?? "";
+    else slot.value = cell ?? "";
+    byIndex.set(i, slot);
+  }
+
+  const rows: WooSpecRow[] = [];
+  const orphans: WooSpecRow[] = [];
+  for (const i of [...byIndex.keys()].sort((a, b) => a - b)) {
+    const slot = byIndex.get(i)!;
+    const label = sanitise(slot.title);
+    const value = sanitise(slot.value);
+    if (!label && !value) continue; // ACF trailing empty
+    if (!label && rows.length === 0) {
+      orphans.push({ label, value });
+      continue;
+    }
+    rows.push({ label, value });
+  }
+  return { rows, orphans };
+}

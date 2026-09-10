@@ -133,13 +133,47 @@ const imagesBody = z
 
 // --- Hub content editors (replace-whole-set) ---
 
+/**
+ * A spec row. Either side may be blank — never both — because the table has
+ * three kinds of row and the blanks are what distinguish them:
+ *
+ *   label + value   an ordinary spec
+ *   ""    + value   another LINE of the spec above (PROTECTION has six)
+ *   label + ""      a sub-heading inside the table ("SYSTEM INCLUDES")
+ *
+ * This used to require both sides, which made the multi-line and sub-heading
+ * shapes unrepresentable — so relaxing it is what allows the imported tables
+ * to round-trip through the editor at all.
+ */
 const specRowSchema = z
   .object({
-    label: z.string().trim().min(1, "label must not be blank").max(200, "label max 200 chars"),
-    value: z.string().trim().min(1, "value must not be blank").max(500, "value max 500 chars"),
+    label: z.string().trim().max(200, "label max 200 chars"),
+    value: z.string().trim().max(500, "value max 500 chars"),
   })
   .strict();
-const specsBody = z.object({ rows: z.array(specRowSchema).max(100, "max 100 rows") }).strict();
+const specsBody = z
+  .object({ rows: z.array(specRowSchema).max(100, "max 100 rows") })
+  .strict()
+  .superRefine(({ rows }, ctx) => {
+    rows.forEach((r, i) => {
+      if (!r.label && !r.value) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["rows", i],
+          message: "a row needs a label or a value",
+        });
+      }
+    });
+    // A blank label means "continue the row above", so the first row cannot
+    // have one — there is nothing above it to continue.
+    if (rows.length > 0 && !rows[0].label) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rows", 0],
+        message: "the first row must have a label (a blank label continues the row above)",
+      });
+    }
+  });
 
 const textItemSchema = z
   .object({ text: z.string().trim().min(1, "text must not be blank").max(500, "text max 500 chars") })

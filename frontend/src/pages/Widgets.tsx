@@ -37,8 +37,9 @@ const WIDGET_CSS = `
 .saeh-prose > *:last-child{margin-bottom:0}
 .saeh-table{width:100%;border-collapse:collapse;font-size:16px;font-weight:400;font-style:normal}
 .saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}
-.saeh-table tr:nth-child(even){background:#fafafa}
+.saeh-table tr.saeh-alt{background:#fafafa}
 .saeh-table td.saeh-label{font-weight:600;width:40%;color:#333}
+.saeh-table tr.saeh-sub td.saeh-label{width:auto;color:#111;font-weight:700;letter-spacing:.02em}
 .saeh-list{list-style:none;padding:0;margin:0}
 .saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:16px;font-weight:400;font-style:normal}
 .saeh-check li:before{content:'';position:absolute;left:0;top:6px;width:17px;height:17px;border-radius:50%;background:#ffd200 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/11px 11px no-repeat}
@@ -97,12 +98,19 @@ function placeholderLogo(label: string): string {
 const DUMMY = {
   saLogos: ["SA Rental", "SA Lumin", "SA Flexiheat", "SA Endure"],
   certLogos: ["ISO 9001", "CE Mark"],
+  // Deliberately includes all three row kinds, so the preview shows what a
+  // real imported table looks like rather than only the simple case.
   specs: [
-    { label: "Power Rating", value: "2.4 kW" },
-    { label: "Voltage", value: "220–240V AC" },
-    { label: "IP Rating", value: "IP66" },
-    { label: "Weight", value: "18.5 kg" },
-    { label: "Certification", value: "ATEX Zone 1" },
+    { label: "CERTIFICATION", value: "Ex II 2 G D" },
+    { label: "", value: "Ex db eb ib mb pb IIB T4 Gb" },
+    { label: "", value: "db ib mb tb pb IIIC T135°C Db" },
+    { label: "FREE AIRFLOW", value: "690m³/h (406cfm) @ 50Hz" },
+    { label: "OPERATING TEMPERATURE", value: "-20°C to +50°C" },
+    { label: "PROTECTION", value: "" },
+    { label: "Refrigerant", value: "Overpressure and leak protection" },
+    { label: "Mechanical", value: "Tipping protection" },
+    { label: "", value: "Vibration protection" },
+    { label: "INGRESS PROTECTION", value: "IP65" },
   ],
   benefits: [
     "Explosion-proof housing rated for hazardous zones",
@@ -163,18 +171,32 @@ function LogoPreview({ title, labels }: { title?: string; labels: string[] }) {
   );
 }
 
+/**
+ * Mirrors specsTable() in widget.js, including the three row kinds — a plain
+ * spec, a sub-heading (label, no value) and continuation lines (blank label).
+ * Striping is per GROUP, set here as it is there, which is why the widget's
+ * CSS uses `.saeh-alt` and not `tr:nth-child(even)`.
+ */
 function SpecsPreview() {
+  let group = -1;
   return (
     <div className="saeh-section">
       <div className="saeh-h">Technical Specifications</div>
       <table className="saeh-table">
         <tbody>
-          {DUMMY.specs.map((s) => (
-            <tr key={s.label}>
-              <td className="saeh-label">{s.label}</td>
-              <td>{s.value}</td>
-            </tr>
-          ))}
+          {DUMMY.specs.map((s, i) => {
+            const cont = !s.label;
+            if (!cont) group += 1;
+            const alt = group % 2 === 1 ? " saeh-alt" : "";
+            const sub = !cont && !s.value;
+            const cls = `${sub ? "saeh-sub" : cont ? "saeh-cont" : ""}${alt}`.trim();
+            return (
+              <tr key={i} className={cls || undefined}>
+                <td className="saeh-label">{s.label}</td>
+                <td>{s.value}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

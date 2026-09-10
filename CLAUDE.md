@@ -145,7 +145,7 @@ The product page's main widget: Overview / Technical Specs / Key Benefits / Appl
 - Content reuses the standalone designs exactly: `specsTable()` and `itemList()` were split out of `specsSection()`/`listSection()` so the tab bodies are the same markup minus the redundant `.saeh-h` heading.
 - ⚠️ **The Overview panel is the ONLY place this widget injects HTML** rather than `textContent`. That is safe *because* `/public/products/content` runs `descriptionHtml` through `stripCruft` on the way out — the dashboard's description editor is a raw-HTML textarea saved with a bare `z.string()`, so a `<script>` typed there reaches the row intact and must be neutralised at the public boundary. Verified against 8 XSS vectors. **Do not point `innerHTML` at any other field.**
 
-`npm run widget:test --workspace=backend` covers 32 behaviours of this (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
+`npm run widget:test --workspace=backend` covers 109 checks across the widgets, including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
 
 ## 3D Model Viewer
 
@@ -417,9 +417,37 @@ Stored as **plain text, not HTML** — the widget renders them with `textContent
 
 `°`, `³`, en dashes and curly quotes are deliberately kept — this data is full of "-40°C" and "2560m3/hr".
 
+### Stage 3b — technical specs (done 2026-09-10)
+
+`npm run duda:import-products --workspace=backend -- --specs --confirm` writes `SpecRow` rows into the Hub. **Hub-only — specs never go to Duda.** Result: **691 rows across 50 products**, every row verified against the CSV in order, with dense `sortOrder` 0..n-1.
+
+⚠️ **A spec table has THREE row kinds, and the blanks are what distinguish them.** This is how the source catalogue already encodes it, not a convention invented here:
+
+| `label` | `value` | Renders as |
+|---|---|---|
+| set | set | an ordinary spec |
+| **blank** | set | another LINE of the spec above — 225 of the 691 rows (EX Dehumidifier's PROTECTION has six) |
+| set | **blank** | a sub-heading inside the table — 4 rows ("SYSTEM INCLUDES", "Filter System") |
+
+Both blank is invalid, and **the first row can never have a blank label** (nothing above it to continue) — enforced in the zod body and mirrored client-side. The previous schema required *both* sides, which made the multi-line and sub-heading shapes unrepresentable; relaxing it is what lets the imported tables round-trip through the editor.
+
+⚠️ **`specRows()` cannot use `acfRepeater()`.** That helper reads ONE field and drops blanks, which is right for the single-column benefit/application repeaters and destroys this one: here a blank title is *meaningful* and the two columns must stay index-aligned, so dropping blanks silently re-parents every continuation line to the wrong spec. Note the field names are symmetric here (`technical_specs_repeat_N_technical_specs_repeat__title|value`), unlike the asymmetric applications repeater.
+
+**The editor renders GROUPS, the API stores FLAT rows.** `SpecTableEditor` derives groups on every render via `groupSpecRows()` and rebuilds the flat list through `flattenSpecGroups()` on every edit — one source of truth, no local state to drift from the baseline after a save, and the two functions round-trip exactly (a group keeps the id of the row that carried its label). "+ Add line" adds a value line to a spec; "+ Add sub-heading" adds the blank-value kind; drag reorders whole groups, so a continuation line can never be orphaned by dragging.
+
+⚠️ **`SpecRowDraft.cont` is a frontend-only flag and must not be inferred from an empty label.** If grouping keyed off emptiness, a user clearing a label would silently merge that whole group into the one above and their lines would jump up the page. `cont` carries the boundary explicitly, so a blank label stays an ordinary validation error. It is excluded from `project()`, so it cannot affect dirty detection, and the save maps `label: r.cont ? "" : r.label.trim()`.
+
+**Rendering** (`specsTable()` in `widget.js`): one `<tr>` per LINE with the label cell filled only on a group's first line — the shape printed spec sheets use, and what the front end showed on WordPress. ⚠️ **Striping is per GROUP via an explicit `.saeh-alt` class, NOT `tr:nth-child(even)`.** Row-parity striping predates multi-line specs and turns a six-line group into alternating bands that read as six unrelated specs; parity has to follow the data, and CSS cannot see where a group starts. Continuation rows need no border special-casing — the default per-cell bottom border already draws the full-width rule under every line. A leading blank label starts its own group rather than being dropped: showing the value beats deleting content on a page nobody is watching.
+
+**Two source defects fixed** (`sanitisePlainText` now strips both):
+- **32 spec values began with an apostrophe** — the spreadsheet text guard, typed so Excel doesn't read `-40°C` as a formula. `stripSpreadsheetTextGuard()` removes it, deliberately narrowly: only `'` followed by `-` or a digit, which is every one of the real cases. A blanket "strip a leading quote" would eat real punctuation from `'best in class' rating`.
+- ⚠️ **The same guard had already shipped in Stage 3a** — `'-50°C to +50°C operating temperature` was live on EX LED Area Light and EX LED Tower Light. Repaired with `--lists --confirm --force --only 7993,8015`, snapshotted before and diffed after: exactly two lines changed, item counts unchanged. **A defect found in one stage's data is worth re-checking against the stages already imported.**
+
+Also fixed: 10 `&amp;` entities (values render with `textContent`, so they would have shown literally) and 81 untrimmed cells. Zero ligatures, non-breaking spaces, newlines or HTML tags — and **zero angle brackets anywhere in the 691 cells**, checked before running them through `sanitize-html`, which would otherwise have silently eaten a value like `<40dBa`.
+
 ### Data waiting for later stages
 
-466 spec rows (50 products), 227 logo links across only **9 distinct** logo values (`madeinuk`, `zone-1-2`, `ATEX`, `UKEX`, `IECEx`, `zone-21-22`, `INMETRO`, `zone-0`, `zone-20`), 176 downloads. Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
+227 logo links across only **9 distinct** logo values (`madeinuk`, `zone-1-2`, `ATEX`, `UKEX`, `IECEx`, `zone-21-22`, `INMETRO`, `zone-0`, `zone-20`), 176 downloads. Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
 
 Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO is barely populated** (title on 4/96, meta description on 12/96), so SEO is authoring work, not migration. Per Josh, SEO metadata is off the table for now.
 
@@ -428,7 +456,7 @@ Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda a
 - Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).
 - No admin UI to view captured `Lead` rows from gated downloads yet (they're stored and now survive product deletion, just not surfaced — unlike `QuoteRequest`, which has a `/quotes` page). More valuable now that retained leads can outlive their product.
 - Per-product **Downloads editor was removed**; the Downloads widget is parked as visibly disabled on `/widgets`. Backend routes, leads, `/custom` payload and the widget's downloads section all still work, so restoring it is a UI-only change (`git show d68e28b~1:frontend/src/components/DownloadsEditor.tsx` for the old implementation).
-- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions) and 3a (key benefits + applications) are done for all 96 published products; **still to do: spec rows, certification logos, downloads, and options**, so products currently have a name, gallery, description, benefits and applications but no spec table or logos. `/products/new` remains the path for genuinely new one-off products.
+- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications) and 3b (technical specs) are done for all 96 published products; **still to do: certification logos, downloads, and options**, so products currently have a name, gallery, description, benefits, applications and a spec table but no logos. `/products/new` remains the path for genuinely new one-off products.
 - `CompatibleLink` model exists with no editor/UI.
 - Widget visual styling is functional but not deeply brand-tuned.
 - No optimistic-concurrency check: because array writes are full replacement, a stale dashboard tab can overwrite edits made in Duda. Mitigated only by the "loaded HH:MM / refresh" control in the product header.

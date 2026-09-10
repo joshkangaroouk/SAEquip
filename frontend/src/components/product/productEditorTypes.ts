@@ -52,6 +52,18 @@ export interface SpecRowDraft {
   id: string;
   label: string;
   value: string;
+  /**
+   * True when this row is another LINE of the row above it, rather than a spec
+   * of its own — the shape a table like PROTECTION's six entries needs.
+   *
+   * On the wire that is simply a blank `label`, and this flag is derived from
+   * it on load. It exists because the editor must NOT infer group boundaries
+   * from emptiness: a user clearing a label would then silently merge that
+   * whole group into the one above it, and their lines would jump up the page.
+   * Carrying the boundary explicitly keeps a blank label an ordinary
+   * validation error instead. Never sent to the API — see `project()`.
+   */
+  cont: boolean;
 }
 
 export interface TextItemDraft {

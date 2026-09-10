@@ -493,7 +493,25 @@ export function sanitisePlainText(raw: string | null | undefined): string {
   t = decodeBasicEntities(t);
   t = normaliseWhitespaceChars(t);
   for (const [re, replacement] of LIGATURES) t = t.replace(re, replacement);
+  t = stripSpreadsheetTextGuard(t);
   return t.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Removes a leading apostrophe used by spreadsheets to force a cell to text.
+ *
+ * Excel and Sheets treat a value beginning `-` as a formula or a negative
+ * number, so an author typing a temperature range types `'-40°C to +40°C` and
+ * the guard travels into the export. It is not punctuation, and it renders
+ * literally: 32 spec values and 2 already-imported list items carry one.
+ *
+ * ⚠️ Deliberately NARROW — only an apostrophe followed by `-` or a digit, the
+ * shape a spreadsheet actually produces. A blanket "strip a leading quote"
+ * would eat real punctuation from a value like `'best in class' rating`, and
+ * every one of the 34 real cases matches `'-`.
+ */
+function stripSpreadsheetTextGuard(t: string): string {
+  return t.replace(/^['\u2018\u2019](?=[-\d])/, "");
 }
 
 /** Comparable words of a fragment, for measuring overlap between the two fields. */

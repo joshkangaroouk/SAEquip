@@ -219,8 +219,20 @@
       ".saeh-prose > *:last-child{margin-bottom:0}",
       ".saeh-table{width:100%;border-collapse:collapse;font-size:16px;font-weight:400;font-style:normal}",
       ".saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}",
-      ".saeh-table tr:nth-child(even){background:#fafafa}",
+      // Group striping, set by specsTable() — see the note there on why this
+      // is a class and not `tr:nth-child(even)`.
+      ".saeh-table tr.saeh-alt{background:#fafafa}",
       ".saeh-table td.saeh-label{font-weight:600;width:40%;color:#333}",
+      // Continuation rows need NO border special-casing: the default per-cell
+      // bottom border already draws the full-width rule under every line that
+      // the printed spec sheets use, and the empty label cell is what makes
+      // the label read once per group. Group membership is carried by the
+      // stripe instead, which avoids fighting border-collapse's conflict
+      // resolution over transparent-vs-solid edges.
+      // A sub-heading row ("SYSTEM INCLUDES") — a label with nothing beside
+      // it. Given the full width and a touch more weight so it reads as a
+      // divider rather than a spec whose value went missing.
+      ".saeh-table tr.saeh-sub td.saeh-label{width:auto;color:#111;font-weight:700;letter-spacing:.02em}",
       ".saeh-list{list-style:none;padding:0;margin:0}",
       ".saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:16px;font-weight:400;font-style:normal}",
             // The tick is a real SVG, not the U+2713 glyph it used to be. That
@@ -338,14 +350,64 @@
   // accordion reuses the EXACT same markup and styling as the standalone
   // sections — inside a tab the heading is redundant, since the tab label
   // already says "Technical Specs".
+  /**
+   * Fold the flat SpecRow list into labelled groups.
+   *
+   * A row with a blank label is another LINE of the row above it, which is how
+   * the source catalogue encodes specs like PROTECTION's six entries. A row
+   * with a label but no value is a sub-heading inside the table.
+   *
+   * The `!groups.length` arm matters on a live page: a leading blank-label row
+   * has nothing to attach to, and starting its own group shows the value
+   * anyway. Dropping it would silently delete content, which is the worse
+   * failure for a widget nobody is watching.
+   */
+  function groupSpecs(specs) {
+    var groups = [];
+    for (var i = 0; i < specs.length; i++) {
+      var label = (specs[i].label || "").trim();
+      var value = (specs[i].value || "").trim();
+      if (label || !groups.length) {
+        groups.push({ label: label, lines: value ? [value] : [] });
+      } else if (value) {
+        groups[groups.length - 1].lines.push(value);
+      }
+    }
+    return groups;
+  }
+
+  /**
+   * The spec table: one <tr> per LINE, with the label cell filled only on a
+   * group's first line — the shape the printed spec sheets use.
+   *
+   * ⚠️ Striping is applied per GROUP via an explicit class, not by
+   * `tr:nth-child(even)`. Row-parity striping predates multi-line specs and
+   * turns a six-line group into alternating bands, which reads as six
+   * unrelated specs rather than one. Parity has to follow the data, and CSS
+   * cannot see where a group starts.
+   */
   function specsTable(specs) {
     var table = el("table", "saeh-table");
     var tbody = el("tbody");
-    specs.forEach(function (s) {
-      var tr = el("tr");
-      tr.appendChild(el("td", "saeh-label", s.label));
-      tr.appendChild(el("td", null, s.value));
-      tbody.appendChild(tr);
+    groupSpecs(specs).forEach(function (g, gi) {
+      var alt = gi % 2 === 1 ? " saeh-alt" : "";
+
+      // A sub-heading: a label with no lines under it.
+      if (!g.lines.length) {
+        var hr = el("tr", "saeh-sub" + alt);
+        hr.appendChild(el("td", "saeh-label", g.label));
+        hr.appendChild(el("td", null, ""));
+        tbody.appendChild(hr);
+        return;
+      }
+
+      g.lines.forEach(function (line, li) {
+        var tr = el("tr", (li === 0 ? "" : "saeh-cont") + alt);
+        // Empty on continuation lines, so the label reads once per group.
+        tr.appendChild(el("td", "saeh-label", li === 0 ? g.label : ""));
+        tr.appendChild(el("td", null, line));
+        tbody.appendChild(tr);
+      });
     });
     table.appendChild(tbody);
     return table;

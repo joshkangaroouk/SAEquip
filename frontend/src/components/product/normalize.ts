@@ -76,7 +76,67 @@ export const cartesianSize = (refs: OptionRefDraft[]): number =>
   refs.length === 0 ? 0 : refs.reduce((n, r) => n * r.choiceIds.length, 1);
 
 export const specsFrom = (rows: HubSpecRow[]): SpecRowDraft[] =>
-  rows.map((r) => ({ id: r.id, label: r.label, value: r.value }));
+  rows.map((r, i) => ({
+    id: r.id,
+    label: r.label,
+    value: r.value,
+    // A blank label means "continue the row above". The first row can never
+    // be one (the API rejects it), so the index guard is belt-and-braces
+    // against malformed stored data rather than an expected case.
+    cont: i > 0 && r.label.trim().length === 0,
+  }));
+
+// --- spec groups: the editor's view of the flat row list ---
+
+export interface SpecLineDraft {
+  id: string;
+  value: string;
+}
+
+/** One labelled spec and every line beneath it. `lines: []` is a sub-heading. */
+export interface SpecGroupDraft {
+  id: string;
+  label: string;
+  lines: SpecLineDraft[];
+}
+
+/**
+ * Fold flat rows into the groups the editor renders, preserving row ids so
+ * React keys and drag identity survive a re-render.
+ *
+ * Round-trips exactly with `flattenSpecGroups` — a group's id is the id of the
+ * row that carried its label, and each line keeps its own row's id — so
+ * grouping and flattening cannot invent or lose a row, and `project()` keeps
+ * seeing the same shape it always did.
+ */
+export const groupSpecRows = (rows: SpecRowDraft[]): SpecGroupDraft[] => {
+  const groups: SpecGroupDraft[] = [];
+  for (const r of rows) {
+    if (!r.cont || groups.length === 0) {
+      groups.push({
+        id: r.id,
+        label: r.label,
+        lines: r.value.trim() ? [{ id: r.id, value: r.value }] : [],
+      });
+    } else {
+      groups[groups.length - 1].lines.push({ id: r.id, value: r.value });
+    }
+  }
+  return groups;
+};
+
+/** The inverse: groups back to the flat rows the API stores. */
+export const flattenSpecGroups = (groups: SpecGroupDraft[]): SpecRowDraft[] =>
+  groups.flatMap((g) =>
+    g.lines.length === 0
+      ? [{ id: g.id, label: g.label, value: "", cont: false }]
+      : g.lines.map((ln, i) => ({
+          id: ln.id,
+          label: i === 0 ? g.label : "",
+          value: ln.value,
+          cont: i > 0,
+        })),
+  );
 
 export const itemsFrom = (items: HubTextItem[]): TextItemDraft[] =>
   items.map((i) => ({ id: i.id, text: i.text }));
@@ -143,11 +203,17 @@ export function isSectionDirty(
 
 // --- validation (client mirror of the backend zod rules) ---
 
+/**
+ * Mirrors the backend rule: either side may be blank, never both.
+ *
+ *   label + value   an ordinary spec
+ *   ""    + value   another line of the spec above
+ *   label + ""      a sub-heading inside the table
+ */
 export const specRowValid = (r: SpecRowDraft): boolean =>
-  r.label.trim().length > 0 &&
   r.label.trim().length <= 200 &&
-  r.value.trim().length > 0 &&
-  r.value.trim().length <= 500;
+  r.value.trim().length <= 500 &&
+  (r.label.trim().length > 0 || r.value.trim().length > 0);
 
 export const textItemValid = (i: TextItemDraft): boolean =>
   i.text.trim().length > 0 && i.text.trim().length <= 500;
@@ -211,7 +277,9 @@ export function validate(
 
   if (draft.specs.length > 100) errors.specs = "Max 100 rows.";
   else if (!draft.specs.every(specRowValid))
-    errors.specs = "Every label and value is required (label ≤200, value ≤500 chars).";
+    errors.specs = "Every row needs a label or a value (label ≤200, value ≤500 chars).";
+  else if (draft.specs.some((r) => !r.cont && !r.label.trim()))
+    errors.specs = "Every spec needs a label.";
 
   if (draft.benefits.length > 100) errors.benefits = "Max 100 items.";
   else if (!draft.benefits.every(textItemValid))

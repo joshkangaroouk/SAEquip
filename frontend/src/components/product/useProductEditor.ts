@@ -378,7 +378,12 @@ export function useProductEditor(
           const rows = await apiJson<HubSpecRow[]>(`/api/products/${productId}/specs`, {
             method: "PUT",
             body: JSON.stringify({
-              rows: draft.specs.map((r) => ({ label: r.label.trim(), value: r.value.trim() })),
+              // A continuation row IS a blank label on the wire — that is how the
+            // API and the widget recognise "another line of the row above".
+            rows: draft.specs.map((r) => ({
+              label: r.cont ? "" : r.label.trim(),
+              value: r.value.trim(),
+            })),
             }),
           });
           return { specs: specsFrom(rows) };

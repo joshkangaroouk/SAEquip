@@ -33,6 +33,7 @@
  * that already have items are skipped unless --force, since these are
  * replace-whole-set and a re-run would otherwise clobber hand edits:
  *   npm run duda:import-products --workspace=backend -- --lists --confirm
+ *   npm run duda:import-products --workspace=backend -- --specs --confirm
  *
  * Undo (deletes only products THIS script created, per the ledger):
  *   npm run duda:import-products --workspace=backend -- --rollback --confirm
@@ -57,6 +58,7 @@ import {
   parsePublishedProducts,
   reportIntegrity,
   isIngestableUrl,
+  specRows,
   type WooProduct,
 } from "../services/wooImport.js";
 import {
@@ -902,6 +904,129 @@ const LIST_SOURCES = [
 ];
 
 /** Matches the cap the HTTP editor enforces, so nothing imports that the UI would reject. */
+const MAX_SPEC_ROWS = 100;
+const MAX_SPEC_LABEL = 200;
+const MAX_SPEC_VALUE = 500;
+
+/**
+ * Stage 3 (part): the technical-spec tables into the Hub.
+ *
+ * Hub-only, like the benefit/application lists — specs never go to Duda.
+ *
+ * The source repeater already encodes multi-line specs the way `SpecRow` does:
+ * a row with a blank title is another LINE of the row above it (225 of the 691
+ * exported rows), and a title with no value is a sub-heading inside the table
+ * (4 rows). `specRows()` preserves both, which is why it cannot use
+ * `acfRepeater()` — that drops blanks.
+ *
+ * ⚠️ REPLACE-WHOLE-SET, mirroring `PUT /api/products/:id/specs`, so the same
+ * two refusals as the lists import apply: a product with no spec rows in the
+ * CSV is skipped rather than written (an empty write would DELETE what is
+ * there), and a product that already has rows is skipped unless `--force`.
+ */
+async function importSpecs(products: WooProduct[]): Promise<void> {
+  const ledger = loadLedger();
+  const force = flag("force");
+  let written = 0;
+  let rowsWritten = 0;
+  let skippedEmpty = 0;
+  let skippedExisting = 0;
+  let continuations = 0;
+  let subheadings = 0;
+  const truncated: string[] = [];
+  const orphaned: string[] = [];
+  const failures: string[] = [];
+
+  console.log(`\nImporting technical specs for ${products.length} product(s)…`);
+  console.log(force ? "  --force: existing rows WILL be replaced\n" : "  (products that already have rows are skipped; --force to replace)\n");
+
+  for (const p of products) {
+    const entry = ledger[p.wpId];
+    if (!entry) continue;
+
+    const { rows, orphans } = specRows(p.raw, sanitisePlainText);
+    for (const o of orphans) {
+      orphaned.push(`${p.sku || "(no sku)"} ${p.name}: leading blank label — "${o.value.slice(0, 60)}"`);
+    }
+    if (!rows.length) {
+      skippedEmpty++;
+      continue;
+    }
+
+    const hub = await prisma.hubProduct.findUnique({
+      where: { dudaProductId: entry.dudaProductId },
+      select: { id: true },
+    });
+    if (!hub) {
+      failures.push(`${p.sku || "(no sku)"} ${p.name}: no HubProduct row (run --sync-hub)`);
+      continue;
+    }
+
+    for (const r of rows) {
+      if (r.label.length > MAX_SPEC_LABEL) truncated.push(`${p.sku}: label ${r.label.length} chars`);
+      if (r.value.length > MAX_SPEC_VALUE) truncated.push(`${p.sku}: value ${r.value.length} chars`);
+    }
+    const capped = rows.slice(0, MAX_SPEC_ROWS).map((r) => ({
+      label: r.label.slice(0, MAX_SPEC_LABEL),
+      value: r.value.slice(0, MAX_SPEC_VALUE),
+    }));
+    if (rows.length > MAX_SPEC_ROWS) {
+      truncated.push(`${p.sku}: ${rows.length} rows, capped at ${MAX_SPEC_ROWS}`);
+    }
+
+    const existing = await prisma.specRow.count({ where: { hubProductId: hub.id } });
+    if (existing > 0 && !force) {
+      skippedExisting++;
+      console.log(`  ⊘ ${(p.sku || "(no sku)").padEnd(18)} already has ${existing} row(s) — skipped`);
+      continue;
+    }
+
+    const cont = capped.filter((r) => !r.label).length;
+    const subs = capped.filter((r) => r.label && !r.value).length;
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.specRow.deleteMany({ where: { hubProductId: hub.id } });
+        await tx.specRow.createMany({
+          data: capped.map((r, i) => ({
+            hubProductId: hub.id,
+            label: r.label,
+            value: r.value,
+            sortOrder: i,
+          })),
+        });
+      });
+      written++;
+      rowsWritten += capped.length;
+      continuations += cont;
+      subheadings += subs;
+      const extra = [cont ? `${cont} cont` : "", subs ? `${subs} sub` : ""].filter(Boolean).join(", ");
+      console.log(`  ✓ ${(p.sku || "(no sku)").padEnd(18)} ${String(capped.length).padStart(2)} row(s)${extra ? ` (${extra})` : ""}`);
+    } catch (err) {
+      failures.push(`${p.sku || "(no sku)"}: ${err instanceof Error ? err.message.slice(0, 120) : "?"}`);
+    }
+    await sleep(60);
+  }
+
+  console.log(`\n=== TECHNICAL SPECS ===`);
+  console.log(`  products written : ${written}`);
+  console.log(`  rows written     : ${rowsWritten}`);
+  console.log(`    continuation lines : ${continuations}`);
+  console.log(`    sub-headings       : ${subheadings}`);
+  console.log(`  skipped (none in CSV)       : ${skippedEmpty}`);
+  console.log(`  skipped (already populated) : ${skippedExisting}`);
+  console.log(`  failed           : ${failures.length}`);
+  for (const f of failures) console.log(`     ${f}`);
+  if (orphaned.length) {
+    console.log(`\n  ⚠ dropped leading blank-label rows (nothing to continue):`);
+    for (const o of orphaned) console.log(`     ${o}`);
+  }
+  if (truncated.length) {
+    console.log(`\n  ⚠ over the editor's limits, truncated:`);
+    for (const t of truncated) console.log(`     ${t}`);
+  }
+}
+
 const MAX_LIST_ITEMS = 100;
 const MAX_ITEM_CHARS = 500;
 
@@ -1247,6 +1372,12 @@ async function main(): Promise<void> {
   if (flag("rollback")) {
     if (!flag("confirm")) fail("--rollback requires --confirm (this DELETES live Duda products).");
     await rollback();
+    return;
+  }
+
+  if (flag("specs")) {
+    if (!flag("confirm")) fail("--specs requires --confirm (it writes SpecRow rows).");
+    await importSpecs(products);
     return;
   }
 

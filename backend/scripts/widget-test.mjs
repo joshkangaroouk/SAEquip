@@ -23,7 +23,14 @@ const FULL = {
   dudaProductId: "01M1XRCFGGHYEJ0QGGXCJ3582N",
   descriptionHtml: "<p>First para.</p><p>Second para with <strong>bold</strong>.</p>",
   logos: { sa: [], cert: [] },
-  specs: [{ label: "Power", value: "18kW" }, { label: "Airflow", value: "2560m3/hr" }],
+  specs: [
+    { label: "CERTIFICATION", value: "Ex II 2 G D" },
+    { label: "", value: "Ex db eb ib mb pb IIB T4 Gb" },
+    { label: "", value: "db ib mb tb pb IIIC T135°C Db" },
+    { label: "AIRFLOW", value: "2560m3/hr" },
+    { label: "SYSTEM INCLUDES", value: "" },
+    { label: "WEIGHT", value: "200kg" },
+  ],
   benefits: ["IP65 Rated", "ATEX certified"],
   applications: ["Oil refineries"],
   downloads: [], model3dUrl: null,
@@ -230,6 +237,44 @@ async function main() {
     check(cta.querySelector(".saeh-3d-btn").textContent === "View 3D Mode", "leaving the label intact");
     check(/@media\(max-width:520px\)[^@]*\.saeh-3d-btn\{flex:1 1 100%/.test(css),
       "button goes full width on narrow screens");
+  }
+
+  console.log("\n=== spec table: multi-line specs and sub-headings ===");
+  {
+    const { d } = await boot({ props: { section: "specs", slug: "x" } });
+    const trs = [...d.querySelectorAll(".saeh-table tr")];
+    check(trs.length === 6, "one row per LINE, not per spec", String(trs.length));
+    const labels = trs.map((r) => r.querySelector("td.saeh-label").textContent);
+    check(labels.join("|") === "CERTIFICATION|||AIRFLOW|SYSTEM INCLUDES|WEIGHT",
+      "the label reads once per group, blank on continuation lines", labels.join("|"));
+    check(trs[1].classList.contains("saeh-cont") && trs[2].classList.contains("saeh-cont"),
+      "continuation lines are marked .saeh-cont");
+    check(!trs[0].classList.contains("saeh-cont"), "a group's first line is not");
+    check(trs[4].classList.contains("saeh-sub"), "a label with no value is a .saeh-sub heading");
+    check(trs[4].querySelectorAll("td")[1].textContent === "", "and its value cell is empty");
+    // Striping must follow the GROUP, or a 3-line spec reads as 3 unrelated
+    // ones. Groups here: CERTIFICATION(0) AIRFLOW(1) SYSTEM INCLUDES(2) WEIGHT(3).
+    const alt = trs.map((r) => (r.classList.contains("saeh-alt") ? "1" : "0")).join("");
+    check(alt === "000101", "stripes follow the group, not the row index", alt);
+    const css = d.getElementById("saeh-styles").textContent;
+    check(/tr\.saeh-alt\{background:#fafafa\}/.test(css), "striping is class-driven");
+    check(!/tr:nth-child\(even\)/.test(css), "the row-parity stripe rule is gone");
+  }
+  {
+    // Fail-soft: a leading blank label has nothing to continue. Showing it as
+    // its own row beats dropping content on a page nobody is watching.
+    const { d } = await boot({
+      payload: { ...FULL, specs: [{ label: "", value: "orphaned" }, { label: "A", value: "b" }] },
+      props: { section: "specs", slug: "x" },
+    });
+    const cells = [...d.querySelectorAll(".saeh-table tr")].map((r) =>
+      [...r.querySelectorAll("td")].map((c) => c.textContent).join("="));
+    check(cells.join(" | ") === "=orphaned | A=b", "a leading blank label still renders", cells.join(" | "));
+  }
+  {
+    const { d } = await boot({ payload: { ...FULL, specs: [] }, props: { section: "specs", slug: "x" } });
+    check(d.querySelectorAll(".saeh-table").length === 0, "no specs ⇒ no table");
+    check(d.getElementById("host").style.display === "none", "and the mount collapses");
   }
 
   console.log("\n=== the dashboard preview's copy of the cube glyph ===");
