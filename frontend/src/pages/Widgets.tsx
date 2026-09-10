@@ -26,7 +26,7 @@ const WIDGET_CSS = `
 .saeh-tab-h[aria-expanded='true']:after{transform:rotate(225deg);margin-top:2px}
 .saeh-tab-h:focus-visible{outline:2px solid #111;outline-offset:-2px}
 .saeh-tab-p{padding:18px 16px;background:#fff;border-top:1px solid #ececec}
-.saeh-prose{font-size:16px;font-weight:400}
+.saeh-prose{font-size:15px;font-weight:400;color:#878787}
 .saeh-prose p{margin:0}
 .saeh-prose p + p{margin-top:12px}
 .saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px}
@@ -35,13 +35,13 @@ const WIDGET_CSS = `
 .saeh-prose hr{border:0;border-top:1px solid #ececec;margin:16px 0}
 .saeh-prose > *:first-child{margin-top:0}
 .saeh-prose > *:last-child{margin-bottom:0}
-.saeh-table{width:100%;border-collapse:collapse;font-size:16px;font-weight:400;font-style:normal}
+.saeh-table{width:100%;border-collapse:collapse;font-size:15px;font-weight:400;font-style:normal;color:#878787}
 .saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}
 .saeh-table tr.saeh-alt{background:#fafafa}
-.saeh-table td.saeh-label{font-weight:600;width:40%;color:#333}
+.saeh-table td.saeh-label{font-weight:600;width:40%;color:#111}
 .saeh-table tr.saeh-sub td.saeh-label{width:auto;color:#111;font-weight:700;letter-spacing:.02em}
 .saeh-list{list-style:none;padding:0;margin:0}
-.saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:16px;font-weight:400;font-style:normal}
+.saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:15px;font-weight:400;font-style:normal;color:#878787}
 .saeh-check li:before{content:'';position:absolute;left:0;top:6px;width:17px;height:17px;border-radius:50%;background:#ffd200 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/11px 11px no-repeat}
 .saeh-dl{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #ececec}
 .saeh-dl:last-child{border-bottom:0}

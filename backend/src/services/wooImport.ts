@@ -239,7 +239,7 @@ export function specRows(
   const orphans: WooSpecRow[] = [];
   for (const i of [...byIndex.keys()].sort((a, b) => a - b)) {
     const slot = byIndex.get(i)!;
-    const label = sanitise(slot.title);
+    const label = titleCaseSpecLabel(sanitise(slot.title));
     const value = sanitise(slot.value);
     if (!label && !value) continue; // ACF trailing empty
     if (!label && rows.length === 0) {
@@ -249,4 +249,63 @@ export function specRows(
     rows.push({ label, value });
   }
   return { rows, orphans };
+}
+
+/**
+ * Tokens that must keep their exact casing when a shouty spec label is
+ * converted to sentence case. Keyed by upper-case form.
+ *
+ * Derived from the 158 distinct labels actually in the catalogue, not guessed:
+ * without this, `LED LIFE` becomes "Led Life" and `1 X EX AIR MOVER` becomes
+ * "1 X Ex Air Mover".
+ */
+const SPEC_LABEL_ACRONYMS = new Map<string, string>(
+  [
+    "LED", "EX", "IP", "SA", "AC", "DC", "UV", "AR", "PSI", "PSIG", "VAC", "RPM",
+    "CFM", "HEPA", "ATEX", "UKEX", "IECEx", "NPU", "HSG", "CDG", "BS", "UK",
+  ].map((a) => [a.toUpperCase(), a]),
+);
+
+/**
+ * Convert an ALL-CAPS spec label to capitalised words, preserving acronyms.
+ *
+ * ⚠️ CSS cannot do this. `text-transform:capitalize` only upper-cases the
+ * first letter of each word and leaves the rest untouched, so on `CERTIFICATION`
+ * it is a no-op — the text has to be transformed in the data.
+ *
+ * ⚠️ Only touches labels that are ENTIRELY upper case. 45 of the 158 distinct
+ * labels are already deliberately mixed ("Free Airflow (with 30cm Connectors)"),
+ * and running those through a title-caser would capitalise "with" and make them
+ * worse. Shouting is the signal that a label was never cased on purpose.
+ *
+ * Two preservation rules, both conservative:
+ *   - a token containing a DIGIT is kept verbatim — `440VAC`, `100PSIG`, `1M`,
+ *     `30CM`. These are measurements and spec codes whose correct casing
+ *     cannot be inferred, and getting one wrong is worse than leaving it loud.
+ *   - a token in SPEC_LABEL_ACRONYMS is kept in its canonical form.
+ *
+ * Everything else has its letter RUNS capitalised rather than being split on
+ * spaces alone, which is what makes `MIN/MAX PRESSURE` → "Min/Max Pressure"
+ * and `POWER (WATTS)` → "Power (Watts)" come out right.
+ */
+export function titleCaseSpecLabel(label: string): string {
+  const trimmed = label.trim();
+  if (!trimmed) return trimmed;
+  // Mixed case already ⇒ authored deliberately, leave alone.
+  if (trimmed !== trimmed.toUpperCase()) return trimmed;
+
+  return trimmed
+    .split(/(\s+)/)
+    .map((token) => {
+      if (/^\s+$/.test(token) || !token) return token;
+      if (/\d/.test(token)) return token; // measurement or code
+      const acronym = SPEC_LABEL_ACRONYMS.get(token.replace(/[^A-Za-z]/g, "").toUpperCase());
+      if (acronym && token.replace(/[^A-Za-z]/g, "").length === token.length) return acronym;
+      return token.replace(/[A-Za-z]+/g, (run) => {
+        const canonical = SPEC_LABEL_ACRONYMS.get(run.toUpperCase());
+        if (canonical) return canonical;
+        return run.charAt(0).toUpperCase() + run.slice(1).toLowerCase();
+      });
+    })
+    .join("");
 }

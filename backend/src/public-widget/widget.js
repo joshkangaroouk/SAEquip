@@ -154,6 +154,24 @@
        * <body> outside .saeh-root and so inherits nothing from it.
        */
       ".saeh-root,.saeh-3d-overlay{--saeh-head:'Barlow','Barlow Fallback',system-ui,sans-serif;--saeh-body:'Inter','Inter Fallback',system-ui,sans-serif}",
+      /*
+       * Accordion CONTENT is 15px #878787 — prose, spec values and list items.
+       * The spec table's LEFT column stays near-black (#111) so the label
+       * still leads the eye across the row; it is the only content that does.
+       *
+       * Set on the shared .saeh-prose/.saeh-table/.saeh-list rules rather than
+       * scoped under .saeh-tab-p, even though the request was about the tabs
+       * widget: those three designs render ONLY inside the accordion in
+       * production (the standalone specs/benefits/applications sections exist
+       * but no Duda widget places them), so scoping would create a second
+       * visual treatment of the same content with nothing to keep the two in
+       * step — the drift that put a dot bullet on Applications for months.
+       *
+       * ⚠️ #878787 on white is ~3.6:1, under the 4.5:1 WCAG AA needs for body
+       * text. A deliberate brand choice, recorded so it is not mistaken for an
+       * oversight; #767676 is the darkest grey that clears AA if it is ever
+       * revisited.
+       */
       // No outer margin. In production each section is its OWN Duda HTML/Embed
       // element, so Duda's element spacing already positions it — a margin here
       // just adds space that can't be tuned from the Duda editor, on every
@@ -208,7 +226,7 @@
       ".saeh-tab-p{padding:18px 16px;background:#fff;border-top:1px solid #ececec}",
       // Prose inside the Overview panel. Paragraphs are flush to match how
       // Duda renders the description natively (see CLAUDE.md).
-      ".saeh-prose{font-size:16px;font-weight:400}",
+      ".saeh-prose{font-size:15px;font-weight:400;color:#878787}",
       ".saeh-prose p{margin:0}",
       ".saeh-prose p + p{margin-top:12px}",
       ".saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px}",
@@ -217,12 +235,12 @@
       ".saeh-prose hr{border:0;border-top:1px solid #ececec;margin:16px 0}",
       ".saeh-prose > *:first-child{margin-top:0}",
       ".saeh-prose > *:last-child{margin-bottom:0}",
-      ".saeh-table{width:100%;border-collapse:collapse;font-size:16px;font-weight:400;font-style:normal}",
+      ".saeh-table{width:100%;border-collapse:collapse;font-size:15px;font-weight:400;font-style:normal;color:#878787}",
       ".saeh-table td{padding:9px 12px;border-bottom:1px solid #ececec;vertical-align:top}",
       // Group striping, set by specsTable() — see the note there on why this
       // is a class and not `tr:nth-child(even)`.
       ".saeh-table tr.saeh-alt{background:#fafafa}",
-      ".saeh-table td.saeh-label{font-weight:600;width:40%;color:#333}",
+      ".saeh-table td.saeh-label{font-weight:600;width:40%;color:#111}",
       // Continuation rows need NO border special-casing: the default per-cell
       // bottom border already draws the full-width rule under every line that
       // the printed spec sheets use, and the empty label cell is what makes
@@ -234,7 +252,7 @@
       // divider rather than a spec whose value went missing.
       ".saeh-table tr.saeh-sub td.saeh-label{width:auto;color:#111;font-weight:700;letter-spacing:.02em}",
       ".saeh-list{list-style:none;padding:0;margin:0}",
-      ".saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:16px;font-weight:400;font-style:normal}",
+      ".saeh-list li{position:relative;padding:5px 0 5px 26px;font-size:15px;font-weight:400;font-style:normal;color:#878787}",
             // The tick is a real SVG, not the U+2713 glyph it used to be. That
       // character's shape is whatever the host page's font decides, and most
       // render it as a wavy, hand-drawn stroke — which is not something CSS

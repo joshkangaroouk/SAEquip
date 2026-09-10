@@ -300,11 +300,21 @@ async function main() {
       const r = css.match(new RegExp(sel.replace(".", "\\.") + "\\{[^}]*\\}"))[0];
       check(/font-family:var\(--saeh-head\)/.test(r), `${sel} uses the heading family`);
     }
-    // Per-selector rather than a blanket "no 18px anywhere": .saeh-prose h4-h6
-    // is legitimately 18px, being a heading.
-    for (const sel of [".saeh-prose", ".saeh-table", ".saeh-list li", ".saeh-dl-title", ".saeh-in", ".saeh-msg"]) {
-      const r = css.match(new RegExp(sel.replace(/[.\s]/g, (c) => (c === "." ? "\\." : "\\s")) + "\\{[^}]*\\}"))[0];
-      check(/font-size:16px/.test(r), `${sel} is 16px`, r.match(/font-size:[^;}]*/)?.[0]);
+    const rule = (sel) =>
+      css.match(new RegExp(sel.replace(/[.\s]/g, (c) => (c === "." ? "\\." : "\\s")) + "\\{[^}]*\\}"))[0];
+    // Accordion content: 15px in #878787. The spec table's left column is the
+    // one exception and must stay near-black.
+    for (const sel of [".saeh-prose", ".saeh-table", ".saeh-list li"]) {
+      const r = rule(sel);
+      check(/font-size:15px/.test(r), `${sel} is 15px`, r.match(/font-size:[^;}]*/)?.[0]);
+      check(/color:#878787/.test(r), `${sel} is #878787`, r.match(/color:[^;}]*/)?.[0]);
+    }
+    check(/color:#111/.test(rule(".saeh-table td.saeh-label")), "the spec label column stays black",
+      rule(".saeh-table td.saeh-label").match(/color:[^;}]*/)?.[0]);
+    // The downloads section and its lead form are NOT accordion content and
+    // keep the 16px body size.
+    for (const sel of [".saeh-dl-title", ".saeh-in", ".saeh-msg"]) {
+      check(/font-size:16px/.test(rule(sel)), `${sel} keeps 16px`, rule(sel).match(/font-size:[^;}]*/)?.[0]);
     }
     // The modal is appended to <body>, outside .saeh-root, so it inherits none
     // of the custom properties unless they are declared on it directly.
