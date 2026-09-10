@@ -9,10 +9,10 @@ import {
   LogOut,
   Menu,
   Package,
-  Palette,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -50,6 +50,7 @@ const NAV: NavItem[] = [
   { to: "/logos", label: "Logos", icon: ShieldCheck },
   { to: "/widgets", label: "Widgets", icon: LayoutGrid },
   { to: "/quotes", label: "Quote Requests", icon: BarChart3 },
+  { to: "/users", label: "Users", icon: Users },
   { to: "/status", label: "Status", icon: Sparkles },
 ];
 
@@ -95,24 +96,6 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
           )}
         </NavLink>
       ))}
-
-      {/* Temporary: component-kit showcase (removed after verification). */}
-      <NavLink
-        to="/ui"
-        onClick={onNavigate}
-        className={({ isActive }) =>
-          cn(
-            rowBase,
-            "mt-2 text-small",
-            isActive
-              ? rowActive
-              : "text-sidebar-subtle before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-muted",
-          )
-        }
-      >
-        <Palette size={18} strokeWidth={2} className="shrink-0" />
-        Component kit
-      </NavLink>
     </nav>
   );
 }

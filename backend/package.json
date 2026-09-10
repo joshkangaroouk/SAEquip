@@ -21,7 +21,8 @@
     "media:verify-upload": "tsx src/scripts/mediaVerifyUpload.ts",
     "storage:ensure": "tsx src/scripts/storageEnsure.ts",
     "widget:test": "node scripts/widget-test.mjs",
-    "widget:sync-css": "node scripts/widget-sync-css.mjs"
+    "widget:sync-css": "node scripts/widget-sync-css.mjs",
+    "users:create": "tsx src/scripts/createStaffUser.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

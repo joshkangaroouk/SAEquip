@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { Button, Field, Input } from "../components/ui";
 import logoUrl from "../assets/saequip-logo.svg";
@@ -145,6 +145,12 @@ export default function Login() {
                 {error}
               </p>
             )}
+
+            <div className="mt-4 text-right">
+              <Link to="/forgot-password" className="text-small text-muted hover:text-text">
+                Forgot your password?
+              </Link>
+            </div>
 
             <Button type="submit" loading={submitting} className="mt-6 w-full">
               {submitting ? "Signing in…" : "Sign in"}

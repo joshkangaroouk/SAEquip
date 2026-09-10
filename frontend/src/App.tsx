@@ -10,7 +10,12 @@ import Logos from "./pages/Logos";
 import Widgets from "./pages/Widgets";
 import Quotes from "./pages/Quotes";
 import Status from "./pages/Status";
-import UIShowcase from "./pages/UIShowcase";
+// The component-kit showcase (pages/UIShowcase.tsx) is intentionally NOT
+// routed: it was a temporary reference for building the UI and is hidden from
+// the app. The file is kept for reference rather than deleted.
+import UsersPage from "./pages/Users";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import WebsiteEditor from "./pages/WebsiteEditor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
@@ -24,6 +29,11 @@ import { Layout } from "./components/Layout";
  */
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
+  // Unauthenticated on purpose: a visitor who has forgotten their password
+  // cannot be behind the auth guard. /reset-password only WORKS while the
+  // emailed recovery link's short-lived session exists — it checks for one.
+  { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/reset-password", element: <ResetPassword /> },
 
   // Authenticated app — shared sidebar shell renders the page via <Outlet/>.
   {
@@ -45,9 +55,8 @@ export const router = createBrowserRouter([
       { path: "/logos", element: <Logos /> },
       { path: "/widgets", element: <Widgets /> },
       { path: "/quotes", element: <Quotes /> },
+      { path: "/users", element: <UsersPage /> },
       { path: "/status", element: <Status /> },
-      // Temporary component-kit showcase — removed after verification.
-      { path: "/ui", element: <UIShowcase /> },
     ],
   },
 ]);

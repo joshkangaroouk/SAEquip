@@ -1,6 +1,5 @@
-import { useState } from "react";
-import { API_BASE } from "../lib/api";
-import { Badge, Card, Toggle, toast } from "../components/ui";
+import { Fragment, useState } from "react";
+import { Badge, Card } from "../components/ui";
 
 /**
  * The embeddable widget's own production CSS (verbatim from
@@ -94,23 +93,19 @@ function placeholderLogo(label: string): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-// ---- example dummy data — mirrors the shape of GET /public/products/content ----
+// ---- example content — mirrors the shape of GET /public/products/content ----
 const DUMMY = {
   saLogos: ["SA Rental", "SA Lumin", "SA Flexiheat", "SA Endure"],
-  certLogos: ["ISO 9001", "CE Mark"],
-  // Deliberately includes all three row kinds, so the preview shows what a
-  // real imported table looks like rather than only the simple case.
+  certLogos: ["ATEX", "UKEX", "IECEx"],
+  // All three spec row kinds, so the preview shows what a real imported table
+  // looks like rather than only the simple case.
   specs: [
-    { label: "CERTIFICATION", value: "Ex II 2 G D" },
+    { label: "Certification", value: "Ex II 2 G D" },
     { label: "", value: "Ex db eb ib mb pb IIB T4 Gb" },
     { label: "", value: "db ib mb tb pb IIIC T135°C Db" },
-    { label: "FREE AIRFLOW", value: "690m³/h (406cfm) @ 50Hz" },
-    { label: "OPERATING TEMPERATURE", value: "-20°C to +50°C" },
-    { label: "PROTECTION", value: "" },
-    { label: "Refrigerant", value: "Overpressure and leak protection" },
-    { label: "Mechanical", value: "Tipping protection" },
-    { label: "", value: "Vibration protection" },
-    { label: "INGRESS PROTECTION", value: "IP65" },
+    { label: "Free Airflow", value: "690m³/h (406cfm) @ 50Hz" },
+    { label: "Operating Temperature", value: "-20°C to +50°C" },
+    { label: "Ingress Protection", value: "IP65" },
   ],
   benefits: [
     "Explosion-proof housing rated for hazardous zones",
@@ -122,49 +117,16 @@ const DUMMY = {
     "Mining and underground operations",
     "Chemical manufacturing plants",
   ],
-  downloads: [
-    { id: "d1", title: "Installation Guide (PDF)", gated: false },
-    { id: "d2", title: "Full Datasheet (PDF)", gated: true },
-  ],
+  description:
+    "<p>A highly capable portable air heater suitable for use in the harshest conditions, offering robust and powerful performance.</p><p>Fully certified for Hazardous Area Zones 1 and 2, and exceptionally simple to operate.</p>",
 };
 
-function CodeBlock({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      toast.success("Copied to clipboard");
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast.error("Couldn't copy — select and copy manually");
-    }
-  }
-
-  return (
-    <div className="relative">
-      <pre className="overflow-x-auto rounded-md bg-[#0A0A0A] p-4 pr-16 text-xs leading-relaxed text-[#E4E4E7]">
-        <code>{code}</code>
-      </pre>
-      <button
-        type="button"
-        onClick={copy}
-        className="absolute right-2 top-2 rounded-md border border-white/20 px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-white/10"
-      >
-        {copied ? "Copied!" : "Copy"}
-      </button>
-    </div>
-  );
-}
-
-function LogoPreview({ title, labels }: { title?: string; labels: string[] }) {
+function LogoPreview({ labels }: { labels: string[] }) {
   return (
     <div className="saeh-section">
-      {title && <div className="saeh-h">{title}</div>}
       <div className="saeh-logos">
-        {labels.map((label) => (
-          <img key={label} src={placeholderLogo(label)} alt={label} />
+        {labels.map((l) => (
+          <img key={l} src={placeholderLogo(l)} alt={l} />
         ))}
       </div>
     </div>
@@ -177,51 +139,95 @@ function LogoPreview({ title, labels }: { title?: string; labels: string[] }) {
  * Striping is per GROUP, set here as it is there, which is why the widget's
  * CSS uses `.saeh-alt` and not `tr:nth-child(even)`.
  */
-function SpecsPreview() {
+function SpecsTablePreview() {
   let group = -1;
   return (
-    <div className="saeh-section">
-      <div className="saeh-h">Technical Specifications</div>
-      <table className="saeh-table">
-        <tbody>
-          {DUMMY.specs.map((s, i) => {
-            const cont = !s.label;
-            if (!cont) group += 1;
-            const alt = group % 2 === 1 ? " saeh-alt" : "";
-            const sub = !cont && !s.value;
-            const cls = `${sub ? "saeh-sub" : cont ? "saeh-cont" : ""}${alt}`.trim();
-            return (
-              <tr key={i} className={cls || undefined}>
-                <td className="saeh-label">{s.label}</td>
-                <td>{s.value}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <table className="saeh-table">
+      <tbody>
+        {DUMMY.specs.map((s, i) => {
+          const cont = !s.label;
+          if (!cont) group += 1;
+          const alt = group % 2 === 1 ? " saeh-alt" : "";
+          const sub = !cont && !s.value;
+          const cls = `${sub ? "saeh-sub" : cont ? "saeh-cont" : ""}${alt}`.trim();
+          return (
+            <tr key={i} className={cls || undefined}>
+              <td className="saeh-label">{s.label}</td>
+              <td>{s.value}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
-function ListPreview({ title, items }: { title: string; items: string[] }) {
+function ListPreview({ items }: { items: string[] }) {
+  return (
+    <ul className="saeh-list saeh-check">
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The tabbed accordion, live — clicking a tab really switches panels, so the
+ * preview behaves as the product page does.
+ *
+ * Mirrors tabsSection() in widget.js: one set of buttons serves both layouts,
+ * with the disclosure pattern (aria-expanded + aria-controls) rather than tab
+ * roles, and `hidden` rather than a class on the closed panels.
+ */
+function TabsPreview() {
+  const [open, setOpen] = useState(0);
+  const panels = [
+    {
+      id: "overview",
+      label: "Overview",
+      body: <div className="saeh-prose" dangerouslySetInnerHTML={{ __html: DUMMY.description }} />,
+    },
+    { id: "specs", label: "Technical Specs", body: <SpecsTablePreview /> },
+    { id: "benefits", label: "Key Benefits", body: <ListPreview items={DUMMY.benefits} /> },
+    { id: "applications", label: "Applications", body: <ListPreview items={DUMMY.applications} /> },
+  ];
+
   return (
     <div className="saeh-section">
-      <div className="saeh-h">{title}</div>
-      <ul className="saeh-list saeh-check">
-        {items.map((item) => (
-          <li key={item}>{item}</li>
+      <div className="saeh-tabs">
+        {panels.map((p, i) => (
+          <Fragment key={p.id}>
+            <button
+              type="button"
+              className="saeh-tab-h"
+              id={`prev-${p.id}-h`}
+              aria-expanded={i === open}
+              aria-controls={`prev-${p.id}`}
+              onClick={() => setOpen(i)}
+            >
+              <span>{p.label}</span>
+            </button>
+            <div
+              className="saeh-tab-p"
+              id={`prev-${p.id}`}
+              role="region"
+              aria-labelledby={`prev-${p.id}-h`}
+              hidden={i !== open}
+            >
+              {p.body}
+            </div>
+          </Fragment>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
 
 /**
- * Static mock of the CTA — clicking "View 3D Mode" on the live page opens a
- * full-screen modal (40px margin, click-off or ✕ to close, spin/reset
- * controls at the bottom). Not worth wiring a real modal + model-viewer +
- * .glb into a docs preview, so this just shows what visitors see before they
- * click. Renders nothing at all on the live page if no model is uploaded.
+ * Mirrors model3dSection() in widget.js. The cube path is a hand-maintained
+ * duplicate of CUBE_ICON_PATH — `widget:test` compares the two strings and
+ * fails on drift, since unlike the CSS there is no generator for it.
  */
 function Model3DPreview() {
   return (
@@ -256,223 +262,90 @@ function Model3DPreview() {
   );
 }
 
-function DownloadsPreview() {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [sentId, setSentId] = useState<string | null>(null);
-
-  return (
-    <div className="saeh-section">
-      <div className="saeh-h">Downloads</div>
-      {DUMMY.downloads.map((d) => (
-        <div key={d.id} className="saeh-dl">
-          <span className="saeh-dl-title">{d.title}</span>
-          {!d.gated ? (
-            <a className="saeh-btn" href="#" onClick={(e) => e.preventDefault()}>
-              Download
-            </a>
-          ) : (
-            <button type="button" className="saeh-btn" onClick={() => setOpenId(openId === d.id ? null : d.id)}>
-              Download
-            </button>
-          )}
-          {d.gated && (
-            <form
-              className={`saeh-form ${openId === d.id ? "saeh-open" : ""}`}
-              onSubmit={(e) => {
-                e.preventDefault();
-                setSentId(d.id);
-              }}
-            >
-              <input className="saeh-in" placeholder="Name" required />
-              <input className="saeh-in" placeholder="Email" type="email" required />
-              <input className="saeh-in" placeholder="Company (optional)" />
-              <button type="submit" className="saeh-btn">
-                Get download
-              </button>
-              {sentId === d.id && <div className="saeh-msg saeh-ok">Thanks — your download is starting.</div>}
-            </form>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-interface WidgetDef {
-  key: string;
-  name: string;
-  description: string;
-  section: string | null; // null = legacy full embed (no data-section)
-  preview: React.ReactNode;
-  /** Default true. When false the embed snippet is withheld entirely. */
-  enabled?: boolean;
-  /** Why it's off. Shown in place of the snippet. */
-  disabledReason?: string;
-}
+/**
+ * The four Duda widgets, in the order they appear down a product page.
+ *
+ * `section` is the string in each widget's JS inside Duda — the one value that
+ * decides what a widget renders. It is shown because a widget displaying
+ * another widget's content means that string is wrong, and this is the
+ * reference for checking it.
+ */
+const WIDGETS = [
+  {
+    section: "sa-logos",
+    name: "SA Logos",
+    what: "The SA range logos ticked on this product.",
+    source: "Logos page → SA logos, then ticked per product in the product editor.",
+    preview: <LogoPreview labels={DUMMY.saLogos} />,
+  },
+  {
+    section: "cert-logos",
+    name: "SA Cert Logos",
+    what: "The certification logos ticked on this product.",
+    source: "Logos page → certification logos, then ticked per product.",
+    preview: <LogoPreview labels={DUMMY.certLogos} />,
+  },
+  {
+    section: "tabs",
+    name: "SA Tabbed Accordion",
+    what: "The main product widget: Overview, Technical Specs, Key Benefits and Applications. Tabs on desktop, an accordion on mobile.",
+    source: "Description, Technical Specs, Key Benefits and Applications in the product editor.",
+    preview: <TabsPreview />,
+  },
+  {
+    section: "3d-viewer",
+    name: "SA 3D Model",
+    what: "A banner that opens a full-screen 3D viewer — rotate, zoom, AR and a spin toggle.",
+    source: "3D Model in the product editor (one .glb per product).",
+    preview: <Model3DPreview />,
+  },
+];
 
 export default function Widgets() {
-  const scriptTag = `<script src="${API_BASE}/public/widget.js" defer></script>`;
-
-  const widgets: WidgetDef[] = [
-    {
-      key: "sa-logos",
-      name: "SA Logos",
-      description: "Local/SA compliance logos active for this product.",
-      section: "sa-logos",
-      preview: <LogoPreview labels={DUMMY.saLogos} />,
-    },
-    {
-      key: "cert-logos",
-      name: "Certifications",
-      description: "Certification logos active for this product.",
-      section: "cert-logos",
-      preview: <LogoPreview labels={DUMMY.certLogos} />,
-    },
-    {
-      key: "3d-viewer",
-      name: "3D Model Viewer",
-      description: "A CTA card that opens a full-screen 3D viewer modal (rotate/zoom, AR, spin toggle, reset). Renders nothing if the product has no model uploaded.",
-      section: "3d-viewer",
-      preview: <Model3DPreview />,
-    },
-    {
-      key: "specs",
-      name: "Technical Specs",
-      description: "The product's spec table (label/value rows).",
-      section: "specs",
-      preview: <SpecsPreview />,
-    },
-    {
-      key: "benefits",
-      name: "Key Benefits",
-      description: "Checklist-style list of benefits.",
-      section: "benefits",
-      preview: <ListPreview title="Key Benefits" items={DUMMY.benefits} />,
-    },
-    {
-      key: "applications",
-      name: "Applications",
-      description: "Checklist-style list of typical applications.",
-      section: "applications",
-      preview: <ListPreview title="Applications" items={DUMMY.applications} />,
-    },
-    {
-      key: "downloads",
-      name: "Downloads",
-      description: "Download rows. Gated files show a lead-capture form first.",
-      section: "downloads",
-      preview: <DownloadsPreview />,
-      enabled: false,
-      disabledReason:
-        "Parked — the per-product downloads editor has been removed, so there is nothing to render yet. The backend, captured leads and the widget's downloads section are all still in place, so re-enabling this is a UI change only.",
-    },
-    {
-      key: "all",
-      name: "Full Embed (legacy)",
-      description: "Renders every non-empty section together in one mount — the original, pre section-scoped behavior.",
-      section: null,
-      preview: (
-        <>
-          <LogoPreview labels={DUMMY.certLogos} />
-          <LogoPreview labels={DUMMY.saLogos} />
-          <Model3DPreview />
-          <SpecsPreview />
-          <ListPreview title="Key Benefits" items={DUMMY.benefits} />
-          <ListPreview title="Applications" items={DUMMY.applications} />
-          <DownloadsPreview />
-        </>
-      ),
-    },
-  ];
-
   return (
     <>
       <style>{WIDGET_CSS}</style>
 
       <h1 className="text-xl font-semibold text-text">Widgets</h1>
       <p className="mt-1 text-sm text-muted">
-        Embeddable, section-scoped widgets that pull this product's Hub content onto its live Duda page.
-        Paste the code below into a Duda embed/code element.
+        The four widgets on the live product page. Each one shows content you enter here in the Hub.
       </p>
 
       <Card className="mt-6">
         <h2 className="text-body font-semibold text-text">How it works</h2>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
-          <li>One <code className="rounded bg-surface-2 px-1 py-0.5 text-xs text-text">{"<script>"}</code> tag per page — it's safe to include it multiple times (Duda embeds each ship their own copy).</li>
-          <li>One mount <code className="rounded bg-surface-2 px-1 py-0.5 text-xs text-text">{"<div>"}</code> per section, placed anywhere on the page.</li>
+        <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-muted">
           <li>
-            No <code className="rounded bg-surface-2 px-1 py-0.5 text-xs text-text">data-slug</code> needed — this
-            runs on Duda's dynamic product page template, so the widget reads the product straight from the page
-            URL (anything matching <code className="rounded bg-surface-2 px-1 py-0.5 text-xs text-text">/product/&lt;slug&gt;</code>).
-            The same embed code works unchanged across every product page.
+            All four are already built and placed on the Duda product template. Nothing needs pasting or
+            configuring here — edit a product and the widgets follow.
           </li>
-          <li>A section renders nothing if that content is empty on the product — it never leaves a broken-looking gap.</li>
+          <li>
+            They know which product to show because they read it from the page they are on, so one setup
+            covers every product.
+          </li>
+          <li>
+            <strong className="font-semibold text-text">Empty content disappears.</strong> A widget with
+            nothing to show hides itself completely, and an accordion tab with no content is not created at
+            all — so a product without specs simply has no Technical Specs tab, rather than an empty one.
+          </li>
+          <li>The previews below are the real widget styling, so they match the live page.</li>
         </ul>
       </Card>
 
       <div className="mt-6 space-y-6">
-        {widgets.map((w) => {
-          const div = w.section
-            ? `<div class="saequip-hub" data-section="${w.section}"></div>`
-            : `<div id="saequip-product-hub"></div>`;
-          const code = `${div}\n${scriptTag}`;
+        {WIDGETS.map((w) => (
+          <Card key={w.section}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-body font-semibold text-text">{w.name}</h2>
+              <Badge tone="neutral">{w.section}</Badge>
+            </div>
+            <p className="mt-1 text-sm text-muted">{w.what}</p>
+            <p className="mt-1 text-xs text-subtle">
+              <span className="font-semibold">Comes from:</span> {w.source}
+            </p>
 
-          const enabled = w.enabled !== false;
-
-          return (
-            <Card key={w.key} className={enabled ? undefined : "opacity-70"}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-body font-semibold text-text">{w.name}</h2>
-                  {!enabled && <Badge tone="neutral">Disabled</Badge>}
-                </div>
-                <div className="flex items-center gap-2">
-                  {w.section && (
-                    <code className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-muted">
-                      data-section="{w.section}"
-                    </code>
-                  )}
-                  {/* Genuinely inert, not a toggle that pretends to control the
-                      live site — the widget renders downloads from
-                      /public/products/content regardless of anything here. */}
-                  {!enabled && (
-                    <Toggle
-                      checked={false}
-                      disabled
-                      onChange={() => {}}
-                      label="Enabled"
-                      id={`toggle-${w.key}`}
-                    />
-                  )}
-                </div>
-              </div>
-              <p className="mt-1 text-sm text-muted">{w.description}</p>
-
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
-                    Embed in Duda
-                  </p>
-                  {enabled ? (
-                    <CodeBlock code={code} />
-                  ) : (
-                    <p className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-muted">
-                      {w.disabledReason}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
-                    Preview (example data)
-                  </p>
-                  <div className="rounded-md border border-border bg-white p-4">
-                    <div className="saeh-root">{w.preview}</div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
+            <div className="mt-4 rounded-lg border border-border bg-white p-4">{w.preview}</div>
+          </Card>
+        ))}
       </div>
     </>
   );

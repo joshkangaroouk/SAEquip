@@ -244,6 +244,45 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 - **The Duda session outlives the Hub session.** Once SSO'd, the user holds an independent Duda cookie; signing out of the Hub does not end it. This is why the permission set matters more than session hygiene.
 - **Offboarding is NOT automatic.** Deleting a Supabase user does *not* revoke Duda access — run `duda:editor-provision -- --email <staff> --revoke --confirm`, or you get orphaned editor access outliving the Hub account.
 
+## Users, password resets and 2FA
+
+### Accounts
+
+- **Public signup is disabled**; `ALLOWED_EMAIL_DOMAINS` gates who can sign in at all (`requireAuth`).
+- ⚠️ **There is NO role model.** Every authenticated user has identical access — any signed-in user can edit any product. "Admin account" currently means nothing more than "an account". The `/users` page says so rather than implying a hierarchy that doesn't exist. Adding roles is unbuilt work.
+- **`/users` is READ-ONLY** apart from triggering a reset email: `GET /api/users` (Supabase admin `listUsers`, filtered to allowed domains, joined against `DudaEditorAccount`) and `POST /api/users/password-reset`.
+- ⚠️ **Account creation is CLI-only, deliberately** — same reasoning as `duda:editor-provision`. `requireAuth` proves only "valid token + allowed domain", and that domain list spans two companies, so an HTTP route would let any signed-in session mint itself more accounts or delete a colleague's:
+
+  ```
+  npm run users:create --workspace=backend -- --email <addr> --check
+  npm run users:create --workspace=backend -- --email <addr> --confirm
+  npm run users:create --workspace=backend -- --email <addr> --reset --confirm
+  ```
+
+  ⚠️ **The password is read from a hidden prompt or `STAFF_PASSWORD`, never a flag.** Argv is readable by every process via `ps` and lands in shell history. The script also **refuses weak passwords** (min 12 chars, mixed case, digit, symbol, and it rejects the word-plus-digits shape) unless `--force`.
+
+- ⚠️ **`POST /api/users/password-reset` must never return the link.** It uses `resetPasswordForEmail`, which mails the token; `generateLink` would hand a live recovery credential back to the caller — the same class of mistake as echoing a Duda SSO URL. Rate limited 10/hour **per authenticated user** via the Postgres store, because in-memory counters are per-instance on serverless.
+
+### Password reset (app side — built)
+
+`/forgot-password` → `supabase.auth.resetPasswordForEmail`, and `/reset-password` handles the emailed link. Both are outside the auth guard on purpose; `/reset-password` only works while the recovery link's short-lived session exists, and **signs the user out afterwards** so they make one clean sign-in with the new credential (and, once MFA is on, go through the second factor rather than riding a session that skipped it). The request page **always reports success**, so it can't be used as a membership oracle for the staff directory. `frontend/src/lib/passwordPolicy.ts` mirrors the CLI's rules — a UX aid, not the enforcement point.
+
+### ⚠️ Supabase dashboard settings — REQUIRED, and not code
+
+None of the above is secure until these are set, and none of them can be done from this repo:
+
+1. **Custom SMTP** (Authentication → Emails). Supabase's built-in sender is capped at a handful of emails per hour and is explicitly not for production — without it, reset emails silently don't arrive.
+2. **Leaked-password protection** and a **minimum length of 12+** (Authentication → Policies). This is the real enforcement point; the client-side checks are cosmetic.
+3. **Enable MFA / TOTP** (Authentication → Multi-Factor). Nothing in the app can enrol a factor until this is on.
+4. **Reduce the access-token TTL** from the default hour if the threat model warrants it, and keep refresh-token rotation on.
+5. **Redirect allowlist** (Authentication → URL Configuration) must contain the deployed origin's `/reset-password`, or the emailed link bounces.
+
+### 2FA — NOT yet built, and the enforcement half is the part that matters
+
+Supabase MFA is enrolled client-side (`supabase.auth.mfa.enroll/challenge/verify`) against the user's own session, so enrolment is frontend work. **The security depends on a server-side check that does not exist yet**: a user who has enrolled a factor can still hold a valid `aal1` token, so `requireAuth` must reject `aal1` for any user with a verified factor. `supabase.auth.getUser()` validates the token but does not surface the `aal` claim — it has to be read from the (already-verified) JWT payload. Without that check, 2FA is decorative.
+
+Also unresolved before shipping it: **the recovery path**. Losing an authenticator locks a user out, and clearing a factor (`auth.admin.mfa.deleteFactor`) is privilege-escalating, so it belongs in the CLI alongside `users:create` — not on the `/users` page.
+
 ## Environment variables
 
 See `backend/.env.example` and `frontend/.env.example` for the full annotated list. Highlights:
