@@ -4,6 +4,26 @@ import { Badge, Button, Card, CardHeader, DragHandle, Input, SortableList } from
 import type { CompatibleDraft } from "./productEditorTypes";
 import type { ProductSummary } from "../../lib/types";
 
+/** Points from the catalogue toward this product's list. */
+function ArrowRight() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <path d="M5 12h13M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 /**
  * A product's thumbnail, or a neutral placeholder.
  *
@@ -152,8 +172,18 @@ export function CompatibleProductsSection({
                 <Thumb url={p.thumbnail} name={p.name ?? ""} />
                 <span className="min-w-0 flex-1 truncate text-xs font-medium text-text">{p.name}</span>
                 <span className="shrink-0 text-xs text-subtle">{p.sku ?? "—"}</span>
-                <span className="shrink-0 text-sm font-semibold text-accent-strong" aria-hidden="true">
-                  +
+                {/* A word plus a direction beats a "+": it says what the
+                    click does AND which way the product moves, which is the
+                    one thing a two-column transfer list has to make obvious.
+                    aria-hidden because the button's own title already reads
+                    "Add <product>" — otherwise a screen reader hears "Add"
+                    twice. */}
+                <span
+                  className="flex shrink-0 items-center gap-1 text-xs font-semibold text-accent-strong"
+                  aria-hidden="true"
+                >
+                  Add
+                  <ArrowRight />
                 </span>
               </button>
             ))}
@@ -200,9 +230,9 @@ export function CompatibleProductsSection({
                       type="button"
                       onClick={() => remove(item.dudaProductId)}
                       title={`Remove ${item.name}`}
-                      className="shrink-0 rounded px-1.5 text-sm font-semibold text-muted hover:text-danger"
+                      className="shrink-0 rounded px-1.5 text-xs font-semibold text-muted hover:text-danger"
                     >
-                      ×
+                      Remove
                     </button>
                   </div>
                 )}

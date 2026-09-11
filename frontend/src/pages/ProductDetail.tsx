@@ -206,19 +206,19 @@ export default function ProductDetail() {
               error={saveErrors.model3d}
             />
 
-            <SpecTableEditor
-              rows={draft.specs}
-              onChange={(rows) => setSection("specs", rows)}
-              dirty={dirty.specs}
-              error={saveErrors.specs ?? validationErrors.specs}
-            />
-
             <CompatibleProductsSection
               productId={product.id}
               items={draft.compatible}
               onChange={(next) => setSection("compatible", next)}
               dirty={dirty.compatible}
               error={saveErrors.compatible ?? validationErrors.compatible}
+            />
+
+            <SpecTableEditor
+              rows={draft.specs}
+              onChange={(rows) => setSection("specs", rows)}
+              dirty={dirty.specs}
+              error={saveErrors.specs ?? validationErrors.specs}
             />
 
             <TextItemListEditor
