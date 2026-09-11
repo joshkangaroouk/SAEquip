@@ -220,6 +220,18 @@
       // width, and since the height is pinned the image would squash
       // horizontally instead of wrapping to the next line.
       ".saeh-logos img{height:35px;width:auto;flex:0 0 auto;display:block}",
+      /*
+       * Smaller on a phone, where a row of 35px marks wraps onto three or four
+       * lines and the logo strip starts competing with the product for the
+       * fold. 560px is this widget's established mobile boundary — the same
+       * one the compatible carousel switches to one-up at — rather than a new
+       * number; the 520px block below is a narrower "things are getting tight"
+       * tier, not a device class.
+       *
+       * Height only: `width:auto` above is what keeps every mark the same
+       * height regardless of aspect ratio, so there is nothing else to scale.
+       */
+      "@media(max-width:560px){.saeh-logos img{height:28px}}",
       // --- tabbed accordion ---
       // Mobile-first: the DOM is header,panel,header,panel… so with no layout
       // rules at all it already reads and behaves as an accordion.
@@ -233,7 +245,35 @@
       ".saeh-tab-h:after{content:'';flex:0 0 auto;width:8px;height:8px;border-right:2px solid #111;border-bottom:2px solid #111;transform:rotate(45deg);margin-top:-4px;transition:transform .15s ease}",
       ".saeh-tab-h[aria-expanded='true']:after{transform:rotate(225deg);margin-top:2px}",
       ".saeh-tab-h:focus-visible{outline:2px solid #111;outline-offset:-2px}",
-      ".saeh-tab-p{padding:18px 16px;background:#fff;border-top:1px solid #ececec}",
+      /*
+       * The accordion panel slides open by animating a GRID ROW from 0fr to
+       * 1fr — the one technique that transitions to a content-determined
+       * height without measuring it in JS and writing a pixel value back.
+       * `height:auto` is not animatable, and a measured max-height either
+       * clips long panels or eases against a value the content never reaches
+       * (the tell-tale pause at the end of a too-large max-height).
+       *
+       * Three elements, and each one is load-bearing:
+       *   .saeh-tab-p — the grid, and the only thing that animates
+       *   .saeh-tab-c — overflow:hidden, and NOTHING else. Padding or a border
+       *                 here would survive the collapse, because box-sizing
+       *                 cannot shrink them to nothing: a 0fr row would still
+       *                 stand 36px tall.
+       *   .saeh-tab-b — the padding and the divider, clipped by .saeh-tab-c
+       *                 when closed and revealed with the content as it opens.
+       *
+       * ⚠️ `visibility`, not the `hidden` attribute this used to set.
+       * display:none cannot be transitioned from, so the panel would jump;
+       * visibility keeps the collapsed panel out of the accessibility tree and
+       * out of in-page find exactly as `hidden` did, and its 0s transition is
+       * DELAYED by the animation's length so it only hides once the panel has
+       * finished closing. Without that delay the content vanishes on frame one
+       * and the slide plays against empty space.
+       */
+      ".saeh-tab-p{display:grid;grid-template-rows:0fr;visibility:hidden;background:#fff;transition:grid-template-rows .34s cubic-bezier(.4,0,.2,1),visibility 0s linear .34s}",
+      ".saeh-tab-p.saeh-open{grid-template-rows:1fr;visibility:visible;transition:grid-template-rows .34s cubic-bezier(.4,0,.2,1),visibility 0s}",
+      ".saeh-tab-c{overflow:hidden;min-height:0}",
+      ".saeh-tab-b{padding:18px 16px;border-top:1px solid #ececec}",
       // Prose inside the Overview panel. Paragraphs are flush to match how
       // Duda renders the description natively (see CLAUDE.md).
       ".saeh-prose{font-size:15px;font-weight:400;color:#878787}",
@@ -391,7 +431,18 @@
       ".saeh-cp-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}",
       ".saeh-cp-shot img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}",
       ".saeh-cp-body{padding:14px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;flex:1}",
-      ".saeh-cp-name{font-family:var(--saeh-head);font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:#111;line-height:1.3}",
+      /*
+       * The card shows the product's name AS STORED, because that casing is
+       * now deliberate: 20 all-caps names were converted to sentence case in
+       * Duda (the source of truth for `name`), so uppercasing here would throw
+       * that away and re-shout every title on the one surface that displays
+       * another product's name.
+       *
+       * `text-transform:none` is stated rather than merely omitted — it is the
+       * rule that has to win if the host page ever uppercases a descendant,
+       * and it records that the value is a decision, not a default.
+       */
+      ".saeh-cp-name{font-family:var(--saeh-head);font-size:14px;font-weight:600;text-transform:none;letter-spacing:normal;color:#111;line-height:1.3}",
       ".saeh-cp-btn{margin-top:auto;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;padding:10px 18px;min-height:40px;font-size:14px;font-weight:500;line-height:1.2;display:inline-flex;align-items:center;gap:8px}",
       ".saeh-cp-btn img{width:16px;height:16px;display:block;flex:0 0 auto}",
       ".saeh-cp-card:hover .saeh-cp-btn{background:#f0c400}",
@@ -458,6 +509,26 @@
       ".saeh-3d-stage{flex:1;min-height:0;background:#f4f4f5}",
       ".saeh-3d-mv{width:100%;height:100%;display:block;--poster-color:transparent;outline:none}",
       ".saeh-3d-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:14px;border-top:1px solid #ececec;flex-shrink:0}",
+      /*
+       * The sliding tab indicator. Hidden by default and shown only once
+       * placeBar() has successfully measured the active header — see the note
+       * there. Kept out of the desktop media query so that fallback holds at
+       * every width.
+       */
+      ".saeh-tab-bar{display:none}",
+      /*
+       * Accordion-width type. 15px/13px is a comfortable desktop spec table
+       * but a phone is showing the same rows in a third of the width, where
+       * the smaller step keeps a two-column row from wrapping into a stack.
+       *
+       * 720px is the complement of the 721px tab breakpoint below, not a
+       * separate judgement about screen size: these sizes apply exactly when
+       * the widget is in accordion layout.
+       */
+      "@media(max-width:720px){" +
+        ".saeh-prose,.saeh-list li{font-size:14px}" +
+        ".saeh-table{font-size:13px}" +
+      "}",
       // Narrow screens: a wrapped CTA button spans the full width (a comfortable
       // thumb target) rather than sitting as a small tab under the headline,
       // and the banner's side padding tightens so the headline gets the space.
@@ -474,14 +545,60 @@
       // headers in the DOM. The panel is flex-basis:100% so it always drops to
       // its own line, and its top border doubles as the tab strip's baseline.
       "@media(min-width:721px){" +
-        ".saeh-tabs{display:flex;flex-wrap:wrap;border:0;border-radius:0;overflow:visible}" +
+        // position:relative makes .saeh-tabs the offsetParent every
+        // measurement in placeBar() is expressed against.
+        ".saeh-tabs{display:flex;flex-wrap:wrap;border:0;border-radius:0;overflow:visible;position:relative}" +
         ".saeh-tab-h{order:1;width:auto;flex:0 0 auto;border:0;border-bottom:3px solid transparent;background:none;padding:12px 20px 10px;font-size:13px}" +
         ".saeh-tab-h:hover{background:none;color:#000}" +
         ".saeh-tab-h[aria-expanded='true']{background:none;border-bottom-color:#ffd200}" +
         // The chevron only means something in accordion mode.
         ".saeh-tab-h:after{display:none}" +
         ".saeh-tab-h:first-child{padding-left:0}" +
-        ".saeh-tab-p{order:2;flex-basis:100%;padding:22px 0 0;background:none}" +
+        /*
+         * Tabs do not slide open — only the indicator moves — so the panel
+         * reverts to a plain block that is either displayed or not. The grid
+         * and its transition must BOTH be unset: a `display:block` element
+         * ignores grid-template-rows, so a closed panel would otherwise show
+         * at full height with nothing collapsing it.
+         */
+        ".saeh-tab-p{order:2;flex-basis:100%;display:none;grid-template-rows:none;visibility:visible;transition:none;background:none}" +
+        /*
+         * The grid and transition are unset on BOTH states, not just the
+         * closed one: `.saeh-tab-p.saeh-open` outranks a bare `.saeh-tab-p`
+         * whatever the source order or media query, so the reset above never
+         * reaches an open panel. Inert today (display:block ignores
+         * grid-template-rows) but the kind of leftover that becomes real the
+         * moment someone gives the desktop panel a display that honours it.
+         */
+        ".saeh-tab-p.saeh-open{display:block;grid-template-rows:none;transition:none}" +
+        // overflow:visible so a focused control inside a panel isn't clipped;
+        // there is nothing to hide once the panel is simply shown or not.
+        ".saeh-tab-c{overflow:visible}" +
+        // The divider rides along on .saeh-tab-b, where it still spans the
+        // full width and still doubles as the tab strip's baseline.
+        ".saeh-tab-b{padding:22px 0 0}" +
+        /*
+         * The yellow bar slides between tabs instead of jumping. It is ONE
+         * absolutely-positioned element moved with transform + width, because
+         * a per-header border cannot animate from one element to another.
+         *
+         * ⚠️ `.saeh-slide` is added by placeBar() only after a successful
+         * measurement, and it is what switches the per-header border off. So a
+         * measurement that never runs — the exact failure that once left the
+         * carousel showing two live arrows with nothing to scroll — degrades
+         * to the previous instant-switch underline rather than to NO underline
+         * at all. The fallback is the default state, not the recovery path.
+         */
+        ".saeh-tabs.saeh-slide .saeh-tab-bar{display:block;position:absolute;left:0;height:3px;background:#ffd200;pointer-events:none;transition:transform .32s cubic-bezier(.4,0,.2,1),width .32s cubic-bezier(.4,0,.2,1)}" +
+        ".saeh-tabs.saeh-slide .saeh-tab-h[aria-expanded='true']{border-bottom-color:transparent}" +
+      "}",
+      /*
+       * Honour a reduced-motion preference: the slide and the indicator both
+       * become instant. The layout is identical either way, so nothing is lost
+       * beyond the movement itself.
+       */
+      "@media(prefers-reduced-motion:reduce){" +
+        ".saeh-tab-p,.saeh-tab-p.saeh-open,.saeh-tabs.saeh-slide .saeh-tab-bar{transition:none}" +
       "}",
     ].join("");
     (document.head || document.documentElement).appendChild(s);
@@ -641,6 +758,10 @@
     // the aria-controls / id pairing.
     var uid = "saeh-t" + Math.random().toString(36).slice(2, 9);
     var headers = [];
+    // Held explicitly rather than reached via wrap.children[i * 2 + 1]: the
+    // indicator is a child too, and index arithmetic over a mixed child list
+    // is one appended element away from selecting the wrong panel.
+    var panelEls = [];
 
     panels.forEach(function (p, i) {
       var panelId = uid + "-" + p.id;
@@ -653,17 +774,29 @@
       h.setAttribute("aria-controls", panelId);
       h.appendChild(el("span", null, p.label));
 
+      // Three nested elements so the panel can slide — see the CSS note on
+      // .saeh-tab-p for why the padding cannot live on the clipping element.
       var panel = el("div", "saeh-tab-p");
       panel.id = panelId;
       panel.setAttribute("role", "region");
       panel.setAttribute("aria-labelledby", h.id);
-      panel.appendChild(p.build());
-      panel.hidden = true; // opened below, per layout
+      var clip = el("div", "saeh-tab-c");
+      var body = el("div", "saeh-tab-b");
+      body.appendChild(p.build());
+      clip.appendChild(body);
+      panel.appendChild(clip);
 
       headers.push(h);
+      panelEls.push(panel);
       wrap.appendChild(h);
       wrap.appendChild(panel);
     });
+
+    // Appended last, and deliberately AFTER the loop: it is absolutely
+    // positioned, so it takes part in no layout and sits in no flex line.
+    var bar = el("div", "saeh-tab-bar");
+    bar.setAttribute("aria-hidden", "true");
+    wrap.appendChild(bar);
 
     /*
      * Which layout the same DOM is currently in. Matches the media query in
@@ -682,16 +815,68 @@
 
     var current = -1; // -1 = everything closed
 
+    /*
+     * Move the yellow bar under the active tab.
+     *
+     * ⚠️ This measures, and a measurement can run before layout exists — the
+     * widget is built detached and only mounted by renderInto(), so the very
+     * first call reads every offset as 0. That is why a failed measurement
+     * REMOVES .saeh-slide instead of writing zeroes: without the class the CSS
+     * falls back to the per-header border, which is the behaviour that shipped
+     * before this animation existed. The bar can be late, but it cannot be
+     * wrong, and the tab is never left with no underline at all.
+     */
+    function placeBar() {
+      try {
+        if (!isTabs() || current < 0) {
+          wrap.classList.remove("saeh-slide");
+          return;
+        }
+        var h = headers[current];
+        var w = h.offsetWidth;
+        if (!w) {
+          wrap.classList.remove("saeh-slide");
+          return;
+        }
+        var first = !wrap.classList.contains("saeh-slide");
+        // The first placement must not animate in from the left edge, so the
+        // transition is suppressed until the bar has a real starting position.
+        if (first) bar.style.transition = "none";
+        // Sits ON the header's 3px bottom border rather than at the bottom of
+        // .saeh-tabs, which is below the open panel.
+        bar.style.top = h.offsetTop + h.offsetHeight - 3 + "px";
+        bar.style.width = w + "px";
+        bar.style.transform = "translateX(" + h.offsetLeft + "px)";
+        wrap.classList.add("saeh-slide");
+        if (first) {
+          // Read back to flush the layout, so clearing the override cannot be
+          // batched into the same frame as the placement above.
+          void bar.offsetWidth;
+          bar.style.transition = "";
+        }
+      } catch (e) {
+        wrap.classList.remove("saeh-slide");
+      }
+    }
+
     function select(index) {
       current = index;
       panels.forEach(function (_p, i) {
         var open = i === index;
         headers[i].setAttribute("aria-expanded", open ? "true" : "false");
-        // `hidden` rather than a class: it keeps the panel out of the
-        // accessibility tree and out of in-page find, which display:none via a
-        // class would also do but less explicitly.
-        wrap.children[i * 2 + 1].hidden = !open;
+        /*
+         * A class, not the `hidden` attribute this used to set. `hidden` is
+         * display:none, which cannot be transitioned from — the panel would
+         * jump open rather than slide. The CSS keeps both of the properties
+         * `hidden` was there for: display:none in tab layout, and an
+         * animation-delayed visibility:hidden in accordion layout, each of
+         * which removes the panel from the accessibility tree and from
+         * in-page find exactly as the attribute did.
+         */
+        if (open) panelEls[i].classList.add("saeh-open");
+        else panelEls[i].classList.remove("saeh-open");
       });
+      placeBar();
     }
 
     headers.forEach(function (h, i) {
@@ -740,10 +925,47 @@
         var mq = window.matchMedia("(min-width:721px)");
         var onLayoutChange = function () {
           if (mq.matches && current === -1) select(0);
+          // Crossing the breakpoint changes the header widths and whether the
+          // bar applies at all, so it always needs re-placing.
+          else placeBar();
         };
         if (mq.addEventListener) mq.addEventListener("change", onLayoutChange);
         else if (mq.addListener) mq.addListener(onLayoutChange); // older Safari
       }
+    } catch (e) {
+      /* never break the host page */
+    }
+
+    /*
+     * Everything that can make the first measurement succeed, or invalidate a
+     * later one.
+     *
+     * The rAF is the one that matters: select() above runs while the widget is
+     * still detached, so its placeBar() reads zeroes and leaves the fallback
+     * underline in place. By the next frame renderInto() has mounted it.
+     * document.fonts.ready matters nearly as much — tab labels are Barlow, and
+     * a web font landing after the bar is placed changes every header's width
+     * underneath it.
+     */
+    try {
+      if (window.requestAnimationFrame) window.requestAnimationFrame(placeBar);
+      else setTimeout(placeBar, 0);
+
+      if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+        document.fonts.ready.then(placeBar).catch(function () {});
+      }
+
+      // Self-removing, because clean() only empties the container and keeps no
+      // listener registry — without this the handler would outlive the widget
+      // and hold its whole DOM alive.
+      var onResize = function () {
+        if (!wrap.isConnected) {
+          window.removeEventListener("resize", onResize);
+          return;
+        }
+        placeBar();
+      };
+      window.addEventListener("resize", onResize);
     } catch (e) {
       /* never break the host page */
     }
@@ -1650,7 +1872,7 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  var iface = { init: init, clean: clean, version: "2026-09-11-tabs-tweaks" };
+  var iface = { init: init, clean: clean, version: "2026-09-11-tabs-motion" };
   window.SAEquipHubWidget = iface;
 
   /**

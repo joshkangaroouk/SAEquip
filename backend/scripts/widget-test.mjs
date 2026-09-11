@@ -99,7 +99,10 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
 }
 
 const labels = (d) => [...d.querySelectorAll(".saeh-tab-h")].map((b) => b.textContent.trim());
-const openPanels = (d) => [...d.querySelectorAll(".saeh-tab-p")].filter((p) => !p.hidden);
+// Open state is a CLASS, not the `hidden` attribute — display:none cannot be
+// transitioned from, so the panel could not slide. See the note in select().
+const openPanels = (d) =>
+  [...d.querySelectorAll(".saeh-tab-p")].filter((p) => p.classList.contains("saeh-open"));
 
 async function main() {
   console.log("=== renderExternalApp interface ===");
@@ -193,6 +196,102 @@ async function main() {
     check(d.querySelectorAll(".saeh-tab-p")[3].querySelector("ul.saeh-check") !== null,
       "Applications uses .saeh-check too — one list design, no per-path drift");
     check(d.querySelector("ul.saeh-apps") === null, "the dot-bullet variant is gone entirely");
+  }
+
+  console.log("\n=== logo rows and compatible-card titles ===");
+  {
+    // Real logos, not the empty FULL fixture: an empty section renders
+    // nothing, collapses, and never injects the stylesheet to assert against.
+    const { d } = await boot({
+      payload: {
+        ...FULL,
+        logos: { sa: [{ url: "https://x/cyclone.png", label: "Cyclone" }], cert: [] },
+      },
+      props: { section: "sa-logos", slug: "x" },
+    });
+    check(d.querySelectorAll(".saeh-logos img").length === 1, "the SA logo row renders its mark");
+    const css = d.getElementById("saeh-styles").textContent;
+    check(/\.saeh-logos img\{height:35px;width:auto/.test(css), "logos are 35px tall by default");
+    check(/@media\(max-width:560px\)\{\.saeh-logos img\{height:28px\}\}/.test(css),
+      "and 28px on mobile");
+    // width:auto is what makes a uniform height possible at all, so a mobile
+    // override that touched width would undo it for small screens only.
+    check(!/@media\(max-width:560px\)\{\.saeh-logos img\{[^}]*width/.test(css),
+      "the mobile override changes height only, leaving width:auto intact");
+  }
+  {
+    const { d } = await boot({ props: { section: "compatible", slug: "x" } });
+    const css = d.getElementById("saeh-styles").textContent;
+    check(/\.saeh-cp-name\{[^}]*text-transform:none/.test(css),
+      "compatible cards show the product name as stored, not uppercased");
+    check(!/\.saeh-cp-name\{[^}]*text-transform:uppercase/.test(css),
+      "…and nothing re-shouts it");
+  }
+
+  console.log("\n=== motion: sliding panel, sliding tab indicator ===");
+  {
+    const { d } = await boot({ props: { section: "tabs", slug: "x" }, tabsLayout: false });
+    const css = d.getElementById("saeh-styles").textContent;
+
+    // The 0fr→1fr grid row is the whole mechanism; a max-height rewrite would
+    // silently reintroduce the clipped-or-pausing panel this replaced.
+    check(/\.saeh-tab-p\{[^}]*grid-template-rows:0fr/.test(css), "collapsed panel is a 0fr grid row");
+    check(/\.saeh-tab-p\.saeh-open\{[^}]*grid-template-rows:1fr/.test(css), "open panel is 1fr");
+    check(/\.saeh-tab-p\{[^}]*transition:grid-template-rows \.34s/.test(css), "and it transitions");
+
+    // The clipping element must carry overflow and NOTHING else: padding or a
+    // border here survives the collapse, leaving a 0fr row tens of px tall.
+    const clip = /\.saeh-tab-c\{([^}]*)\}/.exec(css);
+    check(!!clip && !/padding|border|margin/.test(clip[1]),
+      "the clipping element has no padding/border/margin of its own", clip && clip[1]);
+    check(/\.saeh-tab-b\{padding:18px 16px;border-top/.test(css),
+      "padding and divider sit on the inner element instead");
+
+    // visibility, not display — and delayed, or the content vanishes on frame
+    // one and the slide plays against empty space.
+    check(/\.saeh-tab-p\{[^}]*visibility:hidden[^}]*visibility 0s linear \.34s/.test(css),
+      "a closed panel hides via visibility, delayed until the slide finishes");
+
+    const panel = d.querySelector(".saeh-tab-p");
+    check(panel.hidden === false, "the `hidden` attribute is no longer used (it would block the transition)");
+    check(panel.querySelector(".saeh-tab-c > .saeh-tab-b") !== null, "panel nests clip > body");
+
+    check(/@media\(prefers-reduced-motion:reduce\)/.test(css), "reduced motion is honoured");
+  }
+  {
+    const { d } = await boot({ props: { section: "tabs", slug: "x" }, tabsLayout: true });
+    const css = d.getElementById("saeh-styles").textContent;
+
+    check(d.querySelector(".saeh-tab-bar") !== null, "the indicator element exists");
+    check(/\.saeh-tab-bar\{display:none\}/.test(css), "and is hidden until it has been placed");
+    check(/\.saeh-tabs\.saeh-slide \.saeh-tab-h\[aria-expanded='true'\]\{border-bottom-color:transparent\}/.test(css),
+      "the per-header border switches off only under .saeh-slide");
+    check(/\.saeh-tab-h\[aria-expanded='true'\]\{background:none;border-bottom-color:#ffd200\}/.test(css),
+      "…so the instant underline remains the unconditional default");
+
+    /*
+     * The carousel-arrow lesson, asserted. jsdom performs no layout, so every
+     * offset reads 0 — exactly the "measurement ran too early" case. The bar
+     * must then stay OFF and leave the fallback underline showing, rather than
+     * switching the border off and painting a zero-width bar, which is how a
+     * tab ends up with no underline at all.
+     */
+    const wrap = d.querySelector(".saeh-tabs");
+    check(!wrap.classList.contains("saeh-slide"),
+      "an unmeasurable layout leaves .saeh-slide off, so the fallback underline holds");
+    check(d.querySelector(".saeh-tab-h").getAttribute("aria-expanded") === "true",
+      "and the active tab is still marked, so it is still underlined");
+  }
+  {
+    // Mobile type step. 720px is the exact complement of the 721px tab
+    // breakpoint, so these apply precisely in accordion layout.
+    const { d } = await boot({ props: { section: "tabs", slug: "x" } });
+    const css = d.getElementById("saeh-styles").textContent;
+    const mq = /@media\(max-width:720px\)\{([^@]*?)\}(?:,|$)/.exec(css.replace(/\n/g, ""));
+    check(/@media\(max-width:720px\)\{\.saeh-prose,\.saeh-list li\{font-size:14px\}\.saeh-table\{font-size:13px\}\}/.test(css),
+      "mobile: content 14px, spec table 13px", mq && mq[1]);
+    check(/\.saeh-table\{width:100%;border-collapse:collapse;font-size:15px/.test(css),
+      "and the desktop size is untouched at 15px");
   }
 
   console.log("\n=== four widgets on one page keep their own wiring ===");
