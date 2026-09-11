@@ -72,7 +72,10 @@ export function ImagesSection({
             getId={(img) => img.key}
             onReorder={onChange}
             strategy={rectSortingStrategy}
-            className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+            // 3 across at most, matching the SA/Cert logo panels — the editor's
+            // left column is now 70% of the page rather than the full width, so
+            // a 4-up grid made each thumbnail too small to judge an image by.
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3"
             renderItem={(img, handle, index) => (
               <ImageCard
                 image={img}

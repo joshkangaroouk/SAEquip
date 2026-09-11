@@ -19,11 +19,20 @@ export function ImageCard({
 }) {
   return (
     <div className="flex flex-col rounded-xl border border-border bg-surface p-3">
-      <div className="relative flex h-28 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
+      {/*
+        Square, not a fixed height. Product photos arrive in mixed aspect
+        ratios, and a fixed-height box let the cards' overall heights drift
+        apart as the grid narrowed. A square well keeps every tile identical
+        and matches how Duda crops the gallery thumbnail.
+      */}
+      <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-surface-2">
         <img
           src={image.url}
           alt={image.alt || "product image"}
-          className="max-h-28 max-w-full object-contain"
+          // object-contain, so a tall or wide photo is shown whole inside the
+          // square rather than cropped — this is a picker, not a preview of
+          // the final crop.
+          className="max-h-full max-w-full object-contain"
         />
         {isPrimary && (
           <span className="absolute left-1 top-1">
