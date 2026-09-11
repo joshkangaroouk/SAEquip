@@ -87,6 +87,15 @@ const variationsBody = z
   .strict();
 
 /** New product. Status defaults to HIDDEN at the route, not here. */
+/**
+ * ⚠️ These are ALL the fields Duda accepts at CREATE time — see
+ * `DudaProductCreate`. Everything else on a product (stock status, quantity,
+ * inventory tracking, images, options, variations, and SEO including the
+ * slug) is a PATCH after the fact, and every Hub-side field (specs, benefits,
+ * applications, logos, 3D model, compatible products) needs the HubProduct row
+ * that `syncHubProduct` creates from the response below. So the create form
+ * cannot collect them, and should not pretend to.
+ */
 const createProductSchema = z
   .object({
     name: z.string().trim().min(1, "name is required"),
@@ -96,6 +105,7 @@ const createProductSchema = z
     type: z.enum(["PHYSICAL", "DIGITAL", "SERVICE", "DONATION"]).default("PHYSICAL"),
     status: z.enum(["ACTIVE", "HIDDEN"]).default("HIDDEN"),
     description: z.string().optional(),
+    requires_shipping: z.boolean().optional(),
   })
   .strict()
   .refine(

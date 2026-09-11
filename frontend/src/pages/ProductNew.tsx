@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select, Textarea, toast } from "../components/ui";
+import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select, Textarea, Toggle, toast } from "../components/ui";
 import { apiJson } from "../lib/api";
 import type { ProductDetail } from "../lib/types";
 
@@ -11,8 +11,10 @@ interface NewProductForm {
   name: string;
   sku: string;
   price: string;
+  compareAtPrice: string;
   type: string;
   status: string;
+  requiresShipping: boolean;
   description: string;
 }
 
@@ -20,9 +22,11 @@ const blank: NewProductForm = {
   name: "",
   sku: "",
   price: "0.00",
+  compareAtPrice: "",
   type: "PHYSICAL",
   // Hidden by default so a half-filled product never goes live mid-migration.
   status: "HIDDEN",
+  requiresShipping: true,
   description: "",
 };
 
@@ -47,7 +51,12 @@ export default function ProductNew() {
 
   const nameOk = form.name.trim().length > 0;
   const priceOk = NUMERIC.test(form.price) && parseFloat(form.price) >= 0;
-  const valid = nameOk && priceOk;
+  // Duda rejects a compare-at price that is not ABOVE the price, so catch it
+  // here rather than after a round trip.
+  const compareOk =
+    form.compareAtPrice.trim() === "" ||
+    (NUMERIC.test(form.compareAtPrice) && parseFloat(form.compareAtPrice) > parseFloat(form.price || "0"));
+  const valid = nameOk && priceOk && compareOk;
 
   async function create(then: "edit" | "another") {
     if (!valid || saving) return;
@@ -60,7 +69,9 @@ export default function ProductNew() {
           price: form.price,
           type: form.type,
           status: form.status,
+          requires_shipping: form.requiresShipping,
           ...(form.sku.trim() ? { sku: form.sku.trim() } : {}),
+          ...(form.compareAtPrice.trim() ? { compare_at_price: form.compareAtPrice.trim() } : {}),
           ...(form.description.trim() ? { description: form.description } : {}),
         }),
       });
@@ -83,7 +94,7 @@ export default function ProductNew() {
     <div className="mx-auto max-w-2xl">
       <PageHeader
         title="New product"
-        description="Creates the product in Duda. Hidden by default — make it active once its content is filled in."
+        description="Creates the product in Duda with the fields it accepts at create time. Hidden by default, so a half-filled product never goes live."
         actions={
           createdCount > 0 ? (
             <Badge tone="success">
@@ -132,6 +143,21 @@ export default function ProductNew() {
               />
             </Field>
 
+            <Field
+              label="Compare-at price"
+              htmlFor="n-compare"
+              hint="Optional. Shown struck through; must be above the price."
+              error={!compareOk ? "Must be a number above the price" : undefined}
+            >
+              <Input
+                id="n-compare"
+                inputMode="decimal"
+                value={form.compareAtPrice}
+                onChange={(e) => set("compareAtPrice", e.target.value)}
+                placeholder="—"
+              />
+            </Field>
+
             <Field label="Type" htmlFor="n-type">
               <Select id="n-type" value={form.type} onChange={(e) => set("type", e.target.value)}>
                 {TYPES.map((t) => (
@@ -149,6 +175,19 @@ export default function ProductNew() {
               </Select>
             </Field>
           </div>
+
+          <Field
+            label="Requires shipping"
+            htmlFor="n-ship"
+            hint="Physical goods ship; a service or a downloadable file does not."
+          >
+            <Toggle
+              id="n-ship"
+              checked={form.requiresShipping}
+              onChange={(v) => set("requiresShipping", v)}
+              label={form.requiresShipping ? "Yes — this is a physical item" : "No"}
+            />
+          </Field>
 
           <Field label="Description (HTML)" htmlFor="n-desc" hint="Optional — you can add this later.">
             <Textarea
@@ -179,6 +218,56 @@ export default function ProductNew() {
           </div>
         </form>
       </Card>
+
+      <NextSteps />
     </div>
+  );
+}
+
+/**
+ * ⚠️ Everything listed here is deliberately absent from the form above.
+ *
+ * These are the fields the form CANNOT collect, and saying so is the point.
+ * Two different reasons, both hard:
+ *
+ *  - Stock, quantity, images, options, variations and SEO (including the
+ *    slug) are not accepted by Duda's create endpoint at all — see
+ *    DudaProductCreate. They are a PATCH after the product exists.
+ *  - Every Hub-side field keys off `HubProduct.dudaProductId`, and that row is
+ *    created from the response to this form. There is no product id to attach
+ *    them to until the create returns.
+ *
+ * Without this panel the page looks like it is asking for the whole product
+ * and quietly omitting half of it.
+ */
+function NextSteps() {
+  const AFTER = [
+    ["Images", "Uploaded here, then fetched and re-hosted by Duda on save."],
+    ["Technical Specs", "Label/value rows, including multi-line specs and sub-headings."],
+    ["Key Benefits & Applications", "Ordered checklists."],
+    ["Logos", "Tick the SA range and certification marks that apply."],
+    ["3D Model", "One .glb per product."],
+    ["Compatible Products", "The carousel of accessories that go with it."],
+    ["Stock, SEO & options", "Stock status, the page URL, and any variations."],
+  ];
+
+  return (
+    <Card className="mt-6">
+      <CardHeader
+        title="Added after it exists"
+        description="Duda only accepts the fields above when creating a product, and everything the Hub stores is keyed to the product id you get back. Create it first, then fill these in on the editor."
+      />
+      <ul className="space-y-2">
+        {AFTER.map(([label, why]) => (
+          <li key={label} className="flex gap-2 text-small">
+            <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+            <span>
+              <span className="font-medium text-text">{label}</span>
+              <span className="text-muted"> — {why}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
