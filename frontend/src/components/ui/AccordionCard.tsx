@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Badge } from "./Badge";
-import { AccordionBodyProvider, Card } from "./Card";
+import { AccordionBodyProvider } from "./Card";
 
 /**
  * A Card whose body collapses.
@@ -25,7 +25,6 @@ export function AccordionCard({
   dirty = false,
   error,
   defaultOpen = false,
-  flush = false,
   children,
 }: {
   id?: string;
@@ -36,14 +35,6 @@ export function AccordionCard({
   dirty?: boolean;
   error?: string;
   defaultOpen?: boolean;
-  /**
-   * Drop the body's own padding.
-   *
-   * For content sections whose inner layout is a table or a full-width list —
-   * those read better edge to edge, and the container's inset only added a
-   * second margin on top of the one the section already has.
-   */
-  flush?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -58,7 +49,17 @@ export function AccordionCard({
   }, [dirty, error]);
 
   return (
-    <Card id={id} className="p-0">
+    /*
+     * ⚠️ Its own container, NOT <Card className="p-0">.
+     *
+     * `cn()` is a plain string join rather than tailwind-merge, so `p-0`
+     * landed in the class list ALONGSIDE Card's own `p-5` and lost on
+     * stylesheet order — leaving 22px of padding wrapping the whole
+     * accordion, header included. Same trap as `w-56` on an Input and the
+     * `hidden` attribute beside a `flex` utility. Declaring the chrome here
+     * means there is nothing to override.
+     */
+    <div id={id} className="rounded-xl border border-border bg-surface shadow-xs">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -88,12 +89,9 @@ export function AccordionCard({
       </button>
 
       {open && (
-        <div id={bodyId} className={cn("border-t border-border", flush ? "" : "px-5 py-4")}>
+        <div id={bodyId} className="border-t border-border px-5 py-4">
           {error && (
-            <div className={cn(
-              "rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger",
-              flush ? "m-4 mb-0" : "mb-3",
-            )}>
+            <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
               {error}
             </div>
           )}
@@ -101,6 +99,6 @@ export function AccordionCard({
           <AccordionBodyProvider>{children}</AccordionBodyProvider>
         </div>
       )}
-    </Card>
+    </div>
   );
 }
