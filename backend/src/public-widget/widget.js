@@ -14,10 +14,12 @@
  * inside Duda's editor, because a plain HTML/Embed element gets no product
  * context there). The whole of the widget's JS:
  *
- *   (function () {
- *     var SRC = 'https://YOUR-BACKEND/public/widget.js?v=4';
- *     var PROPS = { section: 'tabs', inEditor: data.inEditor };
- *     var el = element;
+ *   (function (el, section, inEditor) {
+ *     // Stamped SYNCHRONOUSLY, before any async work. This is what makes a widget
+ *     // immune to another widget's props arriving later — see widget.js init().
+ *     el.setAttribute('data-saeh-section', section);
+ *
+ *     var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=17';
  *     var L = window.__saehLoader || (window.__saehLoader = {});
  *     if (!L.p) L.p = new Promise(function (res, rej) {
  *       var s = document.createElement('script');
@@ -25,9 +27,17 @@
  *       document.head.appendChild(s);
  *     });
  *     L.p.then(function () {
- *       window.SAEquipHubWidget.init({ container: el, props: PROPS });
+ *       window.SAEquipHubWidget.init({ container: el, props: { section: section, inEditor: inEditor } });
  *     }).catch(function () {});
- *   })();
+ *   })(element, 'compatible', data.inEditor);
+ *
+ * ⚠️ The section is passed as an IIFE PARAMETER and stamped on the element,
+ * not held in a `var`. Both matter. A `var` is only private if the IIFE really
+ * is there, and every shim's callback runs after every shim has been
+ * evaluated — so any shared binding holds the LAST widget's value by then.
+ * That is how the compatible widget rendered the 3D viewer's content on the
+ * live page while the editor, which initialises widgets one at a time, looked
+ * perfectly fine.
  *
  * ⚠️ It calls init() ITSELF rather than going through
  * api.scripts.renderExternalApp. That API was observed, on a live product
@@ -1445,6 +1455,36 @@
     var container = norm.container;
     var props = norm.props;
 
+    /*
+     * ⚠️ The CONTAINER'S OWN ATTRIBUTE WINS over the props.
+     *
+     * Symptom this exists for: on the live page the compatible widget rendered
+     * the 3d-viewer's content, while the Duda editor looked correct. The
+     * editor initialises widgets one at a time; live initialises all of them
+     * in the same tick, which is exactly when crossed props show up — every
+     * shim's callback runs after every shim's code has been evaluated, so any
+     * shared binding holds the LAST widget's values by then.
+     *
+     * `data-saeh-section` is written onto the element synchronously by the
+     * shim, before any async work, so it cannot be overwritten by another
+     * widget: there is one attribute per element, and each shim only ever
+     * touches its own. Props remain the fallback for callers that do not set
+     * it.
+     *
+     * Mismatches are recorded rather than hidden — if the attribute and the
+     * props disagree, that IS the bug, and `__saequipHub.inits` will say so.
+     */
+    var attrSection = "";
+    try {
+      if (container && container.getAttribute) {
+        attrSection = (container.getAttribute("data-saeh-section") || "").trim();
+      }
+    } catch (e) {
+      /* never break the host page */
+    }
+    var propSection = (props.section || "").trim();
+    var sectionName = attrSection || propSection;
+
     // Inspect from the browser console with __saequipHub.lastInit — the only
     // way to see what Duda passed, since a wrong shape is otherwise silent.
     //
@@ -1456,7 +1496,14 @@
     var record = {
       at: new Date().toISOString(),
       argKeys: a && typeof a === "object" && a.nodeType !== 1 ? Object.keys(a) : typeof a,
-      resolvedSection: props.section || null,
+      resolvedSection: sectionName || null,
+      sectionFrom: attrSection ? "container attribute" : propSection ? "props" : "none",
+      // Populated only when the two disagree — a non-null value here is the
+      // crossed-props bug, caught rather than rendered.
+      sectionMismatch:
+        attrSection && propSection && attrSection !== propSection
+          ? { attribute: attrSection, props: propSection }
+          : null,
       resolvedId: props.dudaId || props.slug || props.sku || null,
       gotContainer: !!container,
     };
@@ -1469,7 +1516,7 @@
 
     try {
       if (props.apiBase) hub.api = String(props.apiBase);
-      var sections = sectionsForName(props.section);
+      var sections = sectionsForName(sectionName);
       var inEditor = props.inEditor === true || props.inEditor === "true";
 
       var onEmpty = function () {
@@ -1516,7 +1563,7 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  var iface = { init: init, clean: clean, version: "2026-09-11-compatible" };
+  var iface = { init: init, clean: clean, version: "2026-09-11-section-attr" };
   window.SAEquipHubWidget = iface;
 
   /**

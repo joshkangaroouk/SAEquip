@@ -79,10 +79,11 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 ⚠️ **`api.scripts.renderExternalApp` does NOT work for this widget — the shim loads the script and calls `init` itself.** Identical for all four widgets except `section`:
 
 ```js
-(function () {
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=4';
-  var PROPS = { section: 'tabs', inEditor: data.inEditor };
-  var el = element;
+(function (el, section, inEditor) {
+  // Stamped SYNCHRONOUSLY, before any async work.
+  el.setAttribute('data-saeh-section', section);
+
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=17';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');
@@ -90,10 +91,14 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
     document.head.appendChild(s);
   });
   L.p.then(function () {
-    window.SAEquipHubWidget.init({ container: el, props: PROPS });
+    window.SAEquipHubWidget.init({ container: el, props: { section: section, inEditor: inEditor } });
   }).catch(function () {});
-})();
+})(element, 'compatible', data.inEditor);
 ```
+
+⚠️ **The section is an IIFE PARAMETER and is stamped on the element — not held in a `var`.** Both halves matter, and this is the second time the same bug has appeared. Every shim's `.then()` runs *after* every shim has been evaluated, so any shared binding holds the **last** widget's value by then. Symptom: the compatible widget rendered the 3D viewer's content on the **live** page while the **editor looked fine** — because the editor initialises widgets one at a time and live does them all in one tick.
+
+`init()` therefore treats **the container's `data-saeh-section` attribute as authoritative**, with props as fallback: there is one attribute per element and each shim only ever writes its own, so crossed props cannot misroute a widget. A disagreement between the two is recorded in `__saequipHub.inits[].sectionMismatch` rather than silently rendered. Covered by `widget:test`, which reproduces four shims sharing one props object.
 
 - The five sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`, `compatible`.
 - The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`. **Bump it whenever the widget changes** or Duda serves the cached copy.

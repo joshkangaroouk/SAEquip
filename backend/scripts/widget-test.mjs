@@ -165,6 +165,38 @@ async function main() {
       "and each records the section it was asked for");
   }
 
+  console.log("\n=== crossed props cannot misroute a widget ===");
+  {
+    // Reproduces the reported failure: four shims evaluated first, their
+    // callbacks running afterwards with a SHARED props object that by then
+    // holds the last widget's section. Without the attribute rule every
+    // container would render "3d-viewer".
+    const { w, d } = await boot({ viaInit: false });
+    const wanted = ["sa-logos", "cert-logos", "compatible", "3d-viewer"];
+    const hosts = wanted.map((name) => {
+      const div = d.createElement("div");
+      div.id = "x-" + name;
+      // The shim stamps this synchronously, per element.
+      div.setAttribute("data-saeh-section", name);
+      d.body.appendChild(div);
+      return div;
+    });
+    const shared = { section: "3d-viewer", slug: "x" }; // the last widget's props
+    for (const div of hosts) w.SAEquipHubWidget.init({ container: div, props: shared });
+    await new Promise((r) => setTimeout(r, 80));
+
+    const got = hosts.map((h) => h.getAttribute("data-saeh-section"));
+    check(got.join("|") === wanted.join("|"), "each container keeps its OWN section", got.join("|"));
+    check(d.querySelector("#x-compatible .saeh-cp-track") !== null,
+      "the compatible widget renders a carousel, not the 3D banner");
+    check(d.querySelector("#x-compatible .saeh-3d-cta") === null, "and no 3D banner leaked into it");
+    const inits = w.__saequipHub.inits.slice(-4);
+    check(inits.every((i) => i.sectionFrom === "container attribute"), "the attribute is what was used");
+    check(inits.filter((i) => i.sectionMismatch).length === 3,
+      "and the three disagreements are recorded rather than hidden",
+      String(inits.filter((i) => i.sectionMismatch).length));
+  }
+
   console.log("\n=== the accordion is full width, the narrow sections are not ===");
   {
     const { d } = await boot({ props: { section: "tabs", slug: "x" } });
