@@ -192,25 +192,66 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
           <ChevronDown
             size={18}
             strokeWidth={2.5}
-            className={cn("transition-transform duration-150", open ? "rotate-180" : "rotate-0")}
+            className={cn(
+              "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
+              open ? "rotate-180" : "rotate-0",
+            )}
           />
         </button>
       </div>
 
       {/*
-        ⚠️ A `display` UTILITY, not the `hidden` attribute.
+        The slide.
+        
+        ⚠️ `grid-template-rows: 0fr -> 1fr`, not max-height and not the
+        `hidden` attribute.
 
-        `[hidden]{display:none}` from Tailwind's preflight and `.flex
-        {display:flex}` have identical specificity, and utilities are emitted
-        after preflight — so `flex` won and the attribute did nothing at all,
-        leaving the children permanently visible and the chevron apparently
-        inert. Exactly one display class is applied here, so there is nothing
-        to tie-break.
+        - `height:auto` cannot be transitioned, and the usual max-height hack
+          needs a guessed ceiling: too small clips the list, too large makes
+          the open feel instant and the close feel delayed, because the
+          easing is spent travelling through empty space.
+        - The `hidden` ATTRIBUTE was the previous approach and did nothing at
+          all: `[hidden]{display:none}` from preflight and `.flex{display:flex}`
+          have identical specificity, and utilities are emitted after
+          preflight, so `flex` won.
+
+        A grid row measured in `fr` animates to the content's real height, so
+        the timing is honest at any number of children.
+
+        `visibility` is what keeps collapsed links out of the tab order — a
+        0fr row still contains focusable anchors. It flips to hidden only
+        AFTER the collapse finishes (hence the delay) so the rows do not
+        vanish mid-slide, and back to visible immediately on open.
       */}
-      <div id={groupId} className={cn("flex-col gap-0.5", open ? "flex" : "hidden")}>
-        {children.map((c) => (
-          <NavRow key={c.to} item={c} onNavigate={onNavigate} nested />
-        ))}
+      <div
+        id={groupId}
+        className="grid transition-[grid-template-rows,visibility] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+        style={{
+          gridTemplateRows: open ? "1fr" : "0fr",
+          visibility: open ? "visible" : "hidden",
+          transitionDelay: open ? "0ms" : "0ms, 300ms",
+        }}
+      >
+        <div className="overflow-hidden">
+          <div className="flex flex-col gap-0.5 pt-0.5">
+            {children.map((c, i) => (
+              <div
+                key={c.to}
+                // A short stagger on the way in gives the list a sense of
+                // arriving rather than appearing. On the way out every row
+                // leaves together — a staggered exit reads as sluggish.
+                className="transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+                style={{
+                  opacity: open ? 1 : 0,
+                  transform: open ? "translateY(0)" : "translateY(-6px)",
+                  transitionDelay: open ? `${60 + i * 45}ms` : "0ms",
+                }}
+              >
+                <NavRow item={c} onNavigate={onNavigate} nested />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
