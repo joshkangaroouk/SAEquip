@@ -95,7 +95,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 })();
 ```
 
-- The four sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`.
+- The five sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`, `compatible`.
 - The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`. **Bump it whenever the widget changes** or Duda serves the cached copy.
 - The shared promise on `window.__saehLoader` means all four widgets on a page fetch the script **once** between them.
 - **No `dudaId` prop.** The widget resolves the product itself (`dudaPageProduct()` → `identifier`, falling back to the `/product/<slug>` URL), so the shim needs no product lookup and therefore no `await`.
@@ -574,6 +574,29 @@ Cross-check that the derivation is right: EX Heater derives `Flexiheat` + `Renta
 ⚠️ **`ATEX` → "EX logo" and `UKEX` → "UKCA" are Josh's explicit decisions (2026-09-10), not inferences.** They are not the same marks by definition — UKCA is the UK conformity marking, UKEX the UK explosive-atmospheres scheme — so do not "correct" this mapping by re-deriving it.
 
 **The two Tasklight products** (`SA LUMIN Tasklight Base Unit`, `Adjustable Floor Stand`, wpId 13045/13050) are named LUMIN but sit outside the `SA Lumin` category, so derivation correctly finds nothing. `SA_RANGE_OVERRIDES` in `wooImport.ts` assigns them Lumin, per Josh. They are also the two SKU-less products on the fix-list.
+
+### Stage 3d — compatible products (done 2026-09-11)
+
+"Compatible Products & Accessories": **286 links across 75 products.**
+
+⚠️ **This data is NOT in the CSV, and the near-miss is the important part.** `Meta: compatible_products` is empty for all 584 rows; `Meta: _compatible_products` holds only ACF's field key (`field_62aa62a4e4a17`) for 193 rows, which says the field exists and nothing about its value — ACF relationship fields store serialised post-ID arrays and this exporter dropped them.
+
+⚠️ **WooCommerce `Cross-sells` is populated (29 products), resolves cleanly, and is the WRONG data.** It is a different, smaller set: EX Heater cross-sells 5 items against **6** live slides, EX Air Mover 5 against **8**. Importing it would have produced a wrong-but-entirely-plausible result that nobody would have questioned.
+
+So the live WordPress pages were the only source: `npm run wp:scrape-compatible --workspace=backend` writes `migration/compatible-products.json`, and `-- --compatible --confirm` imports it. Splitting the two means the import no longer depends on a third-party site being up.
+
+Traps the scraper had to handle:
+- **Bound the extraction to the productSwiper's own `swiper-wrapper`.** A fixed-size window after the heading silently absorbed cards from the *next* carousel — it reported 6 items for a 5-item product and looked right.
+- **13 of 96 WP slugs differ from Duda's**, because Duda re-slugged from the product NAME while WordPress kept historical slugs (`ex-splitter-box`, `-2` suffixes from re-created posts). Mapped by page title. `COMPACT FILTRATION UNIT` needs an explicit override: the import suffixed its Duda name to `(SAECFU)` to clear a duplicate-title collision, so its WP title now normalises onto the *other* product.
+- ⚠️ **`--only` must never write the aggregate file.** It writes the whole map, so a scoped run replaces every link with the one or two it looked at — `--only nothing` truncated it to `{}` exactly once.
+
+**`CompatibleLink` was rebuilt on HubProduct ids.** It previously held a `relatedSku` string with no relation, no foreign key and no cascade — and SKU cannot identify a product here: 3 of the 96 have none and 4 SKUs are shared by 9. The table was empty and unused, so it was replaced outright. Both sides cascade, because a link to a deleted product is meaningless. Self-links are dropped rather than rejected (5 existed in WordPress).
+
+⚠️ **`HubProduct.thumbnailUrl` mirrors Duda's `images[0]`**, like `sku`/`name`/`slug` already do. The carousel must show a thumbnail for a product OTHER than the one on the page, and `/public/products/content` must never call Duda on the request path. Consequence: a product whose gallery changes keeps a stale thumbnail until its next sync (opening it in the dashboard, or `--sync-hub`). Refresh with `npm run duda:import-products -- --sync-hub --confirm`.
+
+⚠️ **`--sync-hub` used to short-circuit on `slug` alone**, so the moment a new mirrored column was added it reported "96 already correct" and backfilled nothing. It now checks every mirrored field. **Add any future mirrored column to that check**, or the repair pass silently repairs nothing.
+
+**The carousel** is CSS scroll-snap, not a JS slider: card width is `calc((100% - gaps) / n)` at 2 / 3 / 4 up (mobile / 561px / 881px), so the browser owns layout and a resize needs no recalculation. `flex:0 0 <w>` means cards never grow or shrink, which is what makes a short row keep its card width instead of stretching. **Arrow visibility is MEASURED, not counted** — shown only while the track actually overflows, re-checked via `ResizeObserver`. That is the only way to get "3 items: no arrows on desktop, arrows on mobile" without hard-coding breakpoint assumptions.
 
 ### Data waiting for later stages
 

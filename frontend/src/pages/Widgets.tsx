@@ -63,6 +63,27 @@ const WIDGET_CSS = `
 .saeh-3d-btn-icon{width:20px;height:20px;flex:0 0 auto;display:block}
 .saeh-3d-btn:hover{background:#f0c400}
 .saeh-3d-btn:focus-visible{outline:2px solid #111;outline-offset:2px}
+.saeh-cp{position:relative}
+.saeh-cp-track{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
+.saeh-cp-track::-webkit-scrollbar{display:none}
+.saeh-cp-card{flex:0 0 calc((100% - 16px) / 2);scroll-snap-align:start;display:flex;flex-direction:column;background:#fff;border:1px solid #ececec;text-decoration:none;color:inherit}
+.saeh-cp-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}
+.saeh-cp-shot img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
+.saeh-cp-body{padding:14px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;flex:1}
+.saeh-cp-name{font-family:var(--saeh-head);font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:#111;line-height:1.3}
+.saeh-cp-btn{margin-top:auto;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;padding:10px 18px;min-height:40px;font-size:14px;font-weight:500;line-height:1.2;display:inline-flex;align-items:center;gap:8px}
+.saeh-cp-btn img{width:16px;height:16px;display:block;flex:0 0 auto}
+.saeh-cp-card:hover .saeh-cp-btn{background:#f0c400}
+.saeh-cp-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:38px;height:38px;border:1px solid #ececec;background:#fff;color:#111;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.saeh-cp-nav:hover{background:#f7f7f7}
+.saeh-cp-nav[disabled]{opacity:.35;cursor:default}
+.saeh-cp-prev{left:-19px}
+.saeh-cp-next{right:-19px}
+.saeh-cp-nav svg{width:16px;height:16px}
+@media(min-width:561px){.saeh-cp-card{flex-basis:calc((100% - 32px) / 3)}
+}
+@media(min-width:881px){.saeh-cp-card{flex-basis:calc((100% - 48px) / 4)}
+}
 .saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:var(--saeh-body)}
 .saeh-3d-sheet{position:relative;margin:40px;flex:1;min-width:0;background:#fff;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 .saeh-3d-close{position:absolute;top:14px;right:14px;z-index:2;width:36px;height:36px;border-radius:50%;border:none;background:rgba(17,17,17,.06);color:#111;font-family:var(--saeh-head);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
@@ -117,6 +138,13 @@ const DUMMY = {
     "Mining and underground operations",
     "Chemical manufacturing plants",
   ],
+  compatible: [
+    { name: "Trolley for EX Heater", image: placeholderLogo("trolley") },
+    { name: "Antistatic Reinforced Ducting", image: placeholderLogo("ducting") },
+    { name: "Duct Couplers", image: placeholderLogo("couplers") },
+    { name: "EX Air Mover", image: placeholderLogo("air mover") },
+    { name: "Manway Adaptor", image: placeholderLogo("adaptor") },
+  ],
   description:
     "<p>A highly capable portable air heater suitable for use in the harshest conditions, offering robust and powerful performance.</p><p>Fully certified for Hazardous Area Zones 1 and 2, and exceptionally simple to operate.</p>",
 };
@@ -159,6 +187,36 @@ function SpecsTablePreview() {
         })}
       </tbody>
     </table>
+  );
+}
+
+/**
+ * Mirrors compatibleSection() in widget.js. Static here — the live arrows
+ * appear only when the track actually overflows, which is measured from
+ * rendered width, so a preview can't meaningfully show that.
+ */
+function CompatiblePreview() {
+  return (
+    <div className="saeh-section">
+      <div className="saeh-h">Compatible Products &amp; Accessories</div>
+      <div className="saeh-cp">
+        <div className="saeh-cp-track">
+          {DUMMY.compatible.map((c) => (
+            <span key={c.name} className="saeh-cp-card">
+              <span className="saeh-cp-shot">
+                <img src={c.image} alt={c.name} />
+              </span>
+              <span className="saeh-cp-body">
+                <span className="saeh-cp-name">{c.name}</span>
+                <span className="saeh-cp-btn">
+                  <span>VIEW PRODUCT</span>
+                </span>
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -293,6 +351,13 @@ const WIDGETS = [
     preview: <TabsPreview />,
   },
   {
+    section: "compatible",
+    name: "SA Compatible Products",
+    what: "A carousel of products and accessories that go with this one — 4 across on desktop, 3 on tablet, 2 on mobile. Arrows appear only when there is more than fits.",
+    source: "Compatible Products in the product editor.",
+    preview: <CompatiblePreview />,
+  },
+  {
     section: "3d-viewer",
     name: "SA 3D Model",
     what: "A banner that opens a full-screen 3D viewer — rotate, zoom, AR and a spin toggle.",
@@ -308,18 +373,18 @@ export default function Widgets() {
 
       <h1 className="text-xl font-semibold text-text">Widgets</h1>
       <p className="mt-1 text-sm text-muted">
-        The four widgets on the live product page. Each one shows content you enter here in the Hub.
+        The five widgets on the live product page. Each one shows content you enter here in the Hub.
       </p>
 
       <Card className="mt-6">
         <h2 className="text-body font-semibold text-text">How it works</h2>
         <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-muted">
           <li>
-            All four are already built and placed on the Duda product template. Nothing needs pasting or
+            All five are already built and placed on the Duda product template. Nothing needs pasting or
             configuring here — edit a product and the widgets follow.
           </li>
           <li>
-            They know which product to show because they read it from the page they are on, so one setup
+            They each know which product to show because they read it from the page they are on, so one setup
             covers every product.
           </li>
           <li>

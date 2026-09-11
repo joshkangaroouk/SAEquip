@@ -73,8 +73,8 @@
   var STYLE_ID = "saeh-styles";
   var RENDERED_ATTR = "data-saeh-rendered";
   var MOUNT_SELECTOR = "#saequip-product-hub, .saequip-hub, [data-saequip-hub]";
-  var ALL_SECTIONS = ["cert-logos", "sa-logos", "3d-viewer", "tabs", "specs", "benefits", "applications", "downloads"];
-  var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "tabs": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1 };
+  var ALL_SECTIONS = ["cert-logos", "sa-logos", "3d-viewer", "tabs", "specs", "benefits", "applications", "downloads", "compatible"];
+  var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "tabs": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1, "compatible": 1 };
   var MODEL_VIEWER_SRC = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js";
 
   /**
@@ -312,6 +312,38 @@
       // Appended straight to <body>, OUTSIDE .saeh-root — an explicit inherit
       // here (rather than relying on the cascade reaching body) is what makes
       // this modal pick up Duda's page font too, not just the in-page sections.
+      /*
+       * COMPATIBLE PRODUCTS carousel.
+       *
+       * A CSS scroll-snap track, not a JS-positioned slider. The card width is
+       * `calc((100% - gaps) / n)` per breakpoint, so the browser owns the
+       * layout and a resize needs no recalculation — the arrows only call
+       * scrollBy(). That is also what makes the "fewer than a full row" case
+       * work for free: with 2 cards at 4-up the track simply has two
+       * items at their natural width, left-aligned, no stretching.
+       */
+      ".saeh-cp{position:relative}",
+      ".saeh-cp-track{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}",
+      ".saeh-cp-track::-webkit-scrollbar{display:none}",
+      // flex:0 0 <w> — never grow, never shrink. A card keeps its width when
+      // there are too few to fill the row, which is the behaviour asked for.
+      ".saeh-cp-card{flex:0 0 calc((100% - 16px) / 2);scroll-snap-align:start;display:flex;flex-direction:column;background:#fff;border:1px solid #ececec;text-decoration:none;color:inherit}",
+      ".saeh-cp-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}",
+      ".saeh-cp-shot img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}",
+      ".saeh-cp-body{padding:14px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;flex:1}",
+      ".saeh-cp-name{font-family:var(--saeh-head);font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:#111;line-height:1.3}",
+      ".saeh-cp-btn{margin-top:auto;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;padding:10px 18px;min-height:40px;font-size:14px;font-weight:500;line-height:1.2;display:inline-flex;align-items:center;gap:8px}",
+      ".saeh-cp-btn img{width:16px;height:16px;display:block;flex:0 0 auto}",
+      ".saeh-cp-card:hover .saeh-cp-btn{background:#f0c400}",
+      // The arrows sit OUTSIDE the track so they never cover a card.
+      ".saeh-cp-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:38px;height:38px;border:1px solid #ececec;background:#fff;color:#111;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}",
+      ".saeh-cp-nav:hover{background:#f7f7f7}",
+      ".saeh-cp-nav[disabled]{opacity:.35;cursor:default}",
+      ".saeh-cp-prev{left:-19px}",
+      ".saeh-cp-next{right:-19px}",
+      ".saeh-cp-nav svg{width:16px;height:16px}",
+      "@media(min-width:561px){.saeh-cp-card{flex-basis:calc((100% - 32px) / 3)}}",
+      "@media(min-width:881px){.saeh-cp-card{flex-basis:calc((100% - 48px) / 4)}}",
       ".saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:var(--saeh-body)}",
       ".saeh-3d-sheet{position:relative;margin:40px;flex:1;min-width:0;background:#fff;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}",
       ".saeh-3d-close{position:absolute;top:14px;right:14px;z-index:2;width:36px;height:36px;border-radius:50%;border:none;background:rgba(17,17,17,.06);color:#111;font-family:var(--saeh-head);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}",
@@ -893,6 +925,141 @@
     return sec;
   }
 
+  function chevron(dir) {
+    var NS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2.5");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    var p = document.createElementNS(NS, "path");
+    p.setAttribute("d", dir === "prev" ? "M15 5 8 12l7 7" : "M9 5l7 7-7 7");
+    svg.appendChild(p);
+    return svg;
+  }
+
+  /**
+   * "Compatible Products & Accessories" — a scroll-snap carousel.
+   *
+   * Card count per row is pure CSS (2 / 3 / 4 by breakpoint), so this only has
+   * to decide whether ARROWS are needed — and that question cannot be answered
+   * from the item count alone, because 3 items need arrows at 2-up and none at
+   * 3-up. It is measured instead: arrows show only while the track actually
+   * overflows, checked on load, on resize and on scroll. That gets the case
+   * asked for (3 items: no arrows on desktop, arrows on mobile) without
+   * hard-coding a single breakpoint assumption.
+   */
+  function compatibleSection(items) {
+    var sec = el("div", "saeh-section");
+    sec.appendChild(el("div", "saeh-h", "Compatible Products & Accessories"));
+
+    var wrap = el("div", "saeh-cp");
+    var track = el("div", "saeh-cp-track");
+
+    items.forEach(function (it) {
+      // The whole card is the link, so the button is decoration rather than a
+      // second tab stop for the same destination.
+      var card = document.createElement("a");
+      card.className = "saeh-cp-card";
+      card.href = it.url || "#";
+
+      var shot = el("div", "saeh-cp-shot");
+      if (it.imageUrl) {
+        var img = document.createElement("img");
+        img.src = it.imageUrl;
+        img.alt = it.name || "";
+        // setAttribute, not `img.loading =` — the property is not reflected
+        // to the attribute in every DOM implementation, so the property form
+        // silently produces no `loading` attribute at all in some engines.
+        img.setAttribute("loading", "lazy");
+        shot.appendChild(img);
+      }
+      card.appendChild(shot);
+
+      var body = el("div", "saeh-cp-body");
+      body.appendChild(el("div", "saeh-cp-name", it.name || ""));
+      var btn = el("span", "saeh-cp-btn");
+      btn.appendChild(el("span", null, "VIEW PRODUCT"));
+      var ico = document.createElement("img");
+      ico.className = "saeh-cp-btn-icon";
+      ico.src = CHEVRON_ICON_SRC;
+      ico.alt = "";
+      ico.setAttribute("aria-hidden", "true");
+      ico.width = 16;
+      ico.height = 16;
+      ico.addEventListener("error", function () {
+        ico.style.display = "none";
+      });
+      btn.appendChild(ico);
+      body.appendChild(btn);
+      card.appendChild(body);
+
+      track.appendChild(card);
+    });
+
+    var prev = document.createElement("button");
+    prev.type = "button";
+    prev.className = "saeh-cp-nav saeh-cp-prev";
+    prev.setAttribute("aria-label", "Previous products");
+    prev.appendChild(chevron("prev"));
+
+    var next = document.createElement("button");
+    next.type = "button";
+    next.className = "saeh-cp-nav saeh-cp-next";
+    next.setAttribute("aria-label", "Next products");
+    next.appendChild(chevron("next"));
+
+    wrap.appendChild(prev);
+    wrap.appendChild(track);
+    wrap.appendChild(next);
+    sec.appendChild(wrap);
+
+    function page() {
+      // One card plus its gap, so a click advances by whole cards at whatever
+      // the current breakpoint shows.
+      var first = track.firstElementChild;
+      return first ? first.getBoundingClientRect().width + 16 : track.clientWidth;
+    }
+
+    function sync() {
+      var overflow = track.scrollWidth - track.clientWidth > 2;
+      // `hidden` rather than a class: it also takes the buttons out of the tab
+      // order, which display:none via a class would too but less explicitly.
+      prev.hidden = !overflow;
+      next.hidden = !overflow;
+      if (!overflow) return;
+      prev.disabled = track.scrollLeft <= 2;
+      next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+    }
+
+    prev.addEventListener("click", function () {
+      track.scrollBy({ left: -page(), behavior: "smooth" });
+    });
+    next.addEventListener("click", function () {
+      track.scrollBy({ left: page(), behavior: "smooth" });
+    });
+    track.addEventListener("scroll", sync);
+
+    // Measured after layout, and again on resize — the arrow decision depends
+    // on the rendered width, which is not known at build time.
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(sync);
+    else setTimeout(sync, 0);
+    if (typeof ResizeObserver === "function") {
+      try {
+        new ResizeObserver(sync).observe(track);
+      } catch (e) {
+        window.addEventListener("resize", sync);
+      }
+    } else {
+      window.addEventListener("resize", sync);
+    }
+
+    return sec;
+  }
+
   // Build the DOM node for one named section, or null if that section is empty.
   function buildSection(name, data) {
     var logos = data.logos || { sa: [], cert: [] };
@@ -904,6 +1071,7 @@
     if (name === "benefits") return data.benefits && data.benefits.length ? listSection("Key Benefits", data.benefits) : null;
     if (name === "applications") return data.applications && data.applications.length ? listSection("Applications", data.applications) : null;
     if (name === "downloads") return data.downloads && data.downloads.length ? downloadsSection(data.downloads) : null;
+    if (name === "compatible") return data.compatible && data.compatible.length ? compatibleSection(data.compatible) : null;
     return null;
   }
 
@@ -1277,7 +1445,7 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  var iface = { init: init, clean: clean, version: "2026-09-09-self-init" };
+  var iface = { init: init, clean: clean, version: "2026-09-11-compatible" };
   window.SAEquipHubWidget = iface;
 
   /**

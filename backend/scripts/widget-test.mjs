@@ -34,6 +34,11 @@ const FULL = {
   benefits: ["IP65 Rated", "ATEX certified"],
   applications: ["Oil refineries"],
   downloads: [], model3dUrl: null,
+  compatible: [
+    { name: "Trolley for EX Heater", slug: "trolley-for-ex-heater", url: "/product/trolley-for-ex-heater", imageUrl: "https://irp.cdn-website.com/a.webp" },
+    { name: "Duct Couplers", slug: "duct-couplers", url: "/product/duct-couplers", imageUrl: "https://irp.cdn-website.com/b.webp" },
+    { name: "Manway Adaptor", slug: "manway-adaptor", url: "/product/manway-adaptor", imageUrl: null },
+  ],
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
@@ -274,6 +279,44 @@ async function main() {
   {
     const { d } = await boot({ payload: { ...FULL, specs: [] }, props: { section: "specs", slug: "x" } });
     check(d.querySelectorAll(".saeh-table").length === 0, "no specs ⇒ no table");
+    check(d.getElementById("host").style.display === "none", "and the mount collapses");
+  }
+
+  console.log("\n=== compatible products carousel ===");
+  {
+    const { d } = await boot({ props: { section: "compatible", slug: "x" } });
+    check(!!d.querySelector(".saeh-cp-track"), "renders a track");
+    const cards = [...d.querySelectorAll(".saeh-cp-card")];
+    check(cards.length === 3, "one card per item", String(cards.length));
+    check(cards.every((c) => c.tagName === "A"), "the whole card is the link");
+    check(cards[0].getAttribute("href") === "/product/trolley-for-ex-heater", "links to /product/<slug>",
+      cards[0].getAttribute("href"));
+    const names = cards.map((c) => c.querySelector(".saeh-cp-name").textContent);
+    check(names.join("|") === "Trolley for EX Heater|Duct Couplers|Manway Adaptor", "names in order", names.join("|"));
+    check(cards.every((c) => !!c.querySelector(".saeh-cp-btn")), "every card has a View Product button");
+    // An item with no mirrored thumbnail must still render a card, not a
+    // broken <img> — 96/96 have one today but a new product will not until
+    // its first sync.
+    check(cards[2].querySelector("img.saeh-cp-shot img, .saeh-cp-shot img") === null,
+      "an item with no imageUrl renders no <img>");
+    check(cards[0].querySelector(".saeh-cp-shot img").getAttribute("loading") === "lazy",
+      "thumbnails are lazy — a carousel is mostly off-screen");
+    const navs = [...d.querySelectorAll(".saeh-cp-nav")];
+    check(navs.length === 2, "prev and next exist");
+    check(navs.every((n) => n.getAttribute("aria-label")), "arrows are labelled for screen readers");
+    // jsdom reports zero layout, so the overflow measurement finds none and
+    // the arrows hide. That IS the contract: arrows appear only when the track
+    // actually overflows, never from the item count.
+    check(navs.every((n) => n.hidden), "arrows hidden when the track does not overflow");
+    const css = d.getElementById("saeh-styles").textContent;
+    check(/\.saeh-cp-card\{flex:0 0 calc\(\(100% - 16px\) \/ 2\)/.test(css), "2-up by default (mobile)");
+    check(/min-width:561px\)\{\.saeh-cp-card\{flex-basis:calc\(\(100% - 32px\) \/ 3\)/.test(css), "3-up on tablet");
+    check(/min-width:881px\)\{\.saeh-cp-card\{flex-basis:calc\(\(100% - 48px\) \/ 4\)/.test(css), "4-up on desktop");
+    check(/\.saeh-cp-card\{flex:0 0 /.test(css), "cards never grow or shrink — they keep their width when a row is short");
+  }
+  {
+    const { d } = await boot({ payload: { ...FULL, compatible: [] }, props: { section: "compatible", slug: "x" } });
+    check(d.querySelectorAll(".saeh-cp-track").length === 0, "no items ⇒ no carousel");
     check(d.getElementById("host").style.display === "none", "and the mount collapses");
   }
 
