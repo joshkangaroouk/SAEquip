@@ -95,6 +95,12 @@ const WIDGET_CSS = `
 }
 @media(min-width:881px){.saeh-cp-card{flex-basis:calc((100% - 48px) / 4)}
 }
+@media(max-width:560px){.saeh-cp[data-count='1'] .saeh-cp-nav{display:none}
+}
+@media(min-width:561px) and (max-width:880px){.saeh-cp[data-count='1'] .saeh-cp-nav,.saeh-cp[data-count='2'] .saeh-cp-nav,.saeh-cp[data-count='3'] .saeh-cp-nav{display:none}
+}
+@media(min-width:881px){.saeh-cp[data-count='1'] .saeh-cp-nav,.saeh-cp[data-count='2'] .saeh-cp-nav,.saeh-cp[data-count='3'] .saeh-cp-nav,.saeh-cp[data-count='4'] .saeh-cp-nav{display:none}
+}
 .saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:var(--saeh-body)}
 .saeh-3d-sheet{position:relative;margin:40px;flex:1;min-width:0;background:#fff;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 .saeh-3d-close{position:absolute;top:14px;right:14px;z-index:2;width:36px;height:36px;border-radius:50%;border:none;background:rgba(17,17,17,.06);color:#111;font-family:var(--saeh-head);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
@@ -210,7 +216,9 @@ function CompatiblePreview() {
   return (
     <div className="saeh-section saeh-cp-sec">
       <h3 className="saeh-cp-h">Compatible Products &amp; Accessories</h3>
-      <div className="saeh-cp">
+      {/* data-count drives the arrow-visibility CSS — 5 items, so on desktop
+          (4-up) the arrows correctly appear. */}
+      <div className="saeh-cp" data-count={Math.min(DUMMY.compatible.length, 5)}>
         {/* Static: the live arrows appear only while the track overflows,
             which is measured from rendered width. Shown here in both states
             so the styling is visible. */}

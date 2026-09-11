@@ -611,7 +611,9 @@ The heading is an `h3` (`.saeh-cp-h`) — sentence case, centred, 20px above the
 
 ⚠️ **On mobile (≤560px) the arrows move BELOW the track**, centred, so a card gets the full width rather than losing ~108px to two buttons and their gaps — nearly a third of a 375px row. Done with `flex-wrap` plus `order`, keeping the DOM order prev/track/next because that is the correct reading order for assistive tech.
 
-**Arrow visibility is MEASURED, not counted** — shown only while the track actually overflows, re-checked via `ResizeObserver`. That is the only way to get "3 items: no arrows on desktop, arrows on mobile" without hard-coding breakpoint assumptions.
+⚠️ **Arrow visibility is CSS, not measurement.** `data-count` on `.saeh-cp` carries the card count, and media-query rules hide the arrows whenever that count fits the row — ≤1 mobile, ≤3 tablet, ≤4 desktop. Decided at parse time by the same breakpoints that set the card width.
+
+This **replaced** a `scrollWidth`-vs-`clientWidth` measurement, and the reason matters: measuring is correct in principle but has to run after layout, and when it did not run the arrows stayed in their default state — two live arrows beside two cards with nothing to scroll, on the live site, while the editor looked fine. A rule that cannot run at the wrong time cannot be wrong. The cost is the breakpoints being stated twice (card width, and the hide rules); they sit adjacent for that reason. JS now only sets the `disabled` end-of-travel state, where running late is harmless.
 
 ### Data waiting for later stages
 

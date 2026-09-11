@@ -192,6 +192,8 @@ async function main() {
     check(d.querySelector("#x-compatible .saeh-3d-cta") === null, "and no 3D banner leaked into it");
     const inits = w.__saequipHub.inits.slice(-4);
     check(inits.every((i) => i.sectionFrom === "container attribute"), "the attribute is what was used");
+    check(d.querySelector("#x-compatible .saeh-cp").getAttribute("data-count") === "3",
+      "count published on the crossed-props render too");
     check(inits.filter((i) => i.sectionMismatch).length === 3,
       "and the three disagreements are recorded rather than hidden",
       String(inits.filter((i) => i.sectionMismatch).length));
@@ -345,7 +347,8 @@ async function main() {
     // jsdom reports zero layout, so the overflow measurement finds none and
     // the arrows hide. That IS the contract: arrows appear only when the track
     // actually overflows, never from the item count.
-    check(navs.every((n) => n.hidden), "arrows hidden when the track does not overflow");
+    check(d.querySelector(".saeh-cp").getAttribute("data-count") === "3",
+      "the card count is published for the CSS rules", d.querySelector(".saeh-cp").getAttribute("data-count"));
     check(/max-width:560px\)\{[^}]*\.saeh-cp\{flex-wrap:wrap/.test(
       d.getElementById("saeh-styles").textContent), "on mobile the row wraps");
     check(/\.saeh-cp-track\{order:1;flex:0 0 100%\}/.test(
@@ -359,6 +362,24 @@ async function main() {
     check(/justify-content:safe center/.test(css), "cards centre when they fit, start when they overflow");
     check(/\.saeh-cp-nav:hover:not\(\[disabled\]\)\{background:#fed217/.test(css), "arrows go yellow on hover");
     check(/\.saeh-cp-nav\[disabled\]\{border-color:#d8d8d8/.test(css), "arrows grey out at either end");
+    /*
+     * Arrow visibility is CSS keyed on data-count, so it can be asserted
+     * exactly — the old measurement could only be asserted as "hidden in a
+     * zero-layout DOM", which is precisely the case that kept passing while
+     * the live page showed arrows next to two cards.
+     */
+    const hides = (media) => {
+      const m = css.match(new RegExp(media.replace(/[.()\-]/g, (c) => "\\" + c) + "\\{(.*?)\\}\\}"));
+      return m ? m[1] : "";
+    };
+    check(/@media\(max-width:560px\)\{\.saeh-cp\[data-count='1'\] \.saeh-cp-nav\{display:none\}\}/.test(css),
+      "mobile (1-up): arrows hidden for 1 card only");
+    const tablet = hides("@media(min-width:561px) and (max-width:880px)");
+    check(["1", "2", "3"].every((n) => tablet.includes(`data-count='${n}'`)) && !tablet.includes("data-count='4'"),
+      "tablet (3-up): hidden for 1-3 cards, shown from 4");
+    const desktop = css.slice(css.indexOf("@media(min-width:881px){.saeh-cp[data-count"));
+    check(["1", "2", "3", "4"].every((n) => desktop.includes(`data-count='${n}'`)) && !desktop.includes("data-count='5'"),
+      "desktop (4-up): hidden for 1-4 cards, shown from 5");
     check(/\.saeh-cp-card\{flex:0 0 100%/.test(css), "1-up full width on mobile");
     check(/min-width:561px\)\{\.saeh-cp-card\{flex-basis:calc\(\(100% - 32px\) \/ 3\)/.test(css), "3-up on tablet");
     check(/min-width:881px\)\{\.saeh-cp-card\{flex-basis:calc\(\(100% - 48px\) \/ 4\)/.test(css), "4-up on desktop");

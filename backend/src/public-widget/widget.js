@@ -406,6 +406,37 @@
       "}",
       "@media(min-width:561px){.saeh-cp-card{flex-basis:calc((100% - 32px) / 3)}}",
       "@media(min-width:881px){.saeh-cp-card{flex-basis:calc((100% - 48px) / 4)}}",
+      /*
+       * ⚠️ ARROW VISIBILITY IS CSS, NOT MEASUREMENT.
+       *
+       * `data-count` on .saeh-cp is the number of cards; the rules below hide
+       * the arrows whenever that count fits the row at this breakpoint — 1 up
+       * to 1 on mobile, up to 3 on tablet, up to 4 on desktop. Deterministic:
+       * it is decided by the same media queries that set the card width, at
+       * parse time, with no dependency on when anything is laid out.
+       *
+       * This replaced a scrollWidth-vs-clientWidth measurement, which was
+       * correct in principle and kept failing in practice: it has to run after
+       * layout, and when it did not run at all the arrows stayed in their
+       * default state — two live arrows next to two cards with nothing to
+       * scroll. A rule that cannot run at the wrong time cannot be wrong.
+       *
+       * The cost is that the breakpoints are stated twice, here and in the
+       * card widths. They sit adjacent for exactly that reason: change one,
+       * change the other.
+       */
+      "@media(max-width:560px){.saeh-cp[data-count='1'] .saeh-cp-nav{display:none}}",
+      "@media(min-width:561px) and (max-width:880px){" +
+        ".saeh-cp[data-count='1'] .saeh-cp-nav," +
+        ".saeh-cp[data-count='2'] .saeh-cp-nav," +
+        ".saeh-cp[data-count='3'] .saeh-cp-nav{display:none}" +
+      "}",
+      "@media(min-width:881px){" +
+        ".saeh-cp[data-count='1'] .saeh-cp-nav," +
+        ".saeh-cp[data-count='2'] .saeh-cp-nav," +
+        ".saeh-cp[data-count='3'] .saeh-cp-nav," +
+        ".saeh-cp[data-count='4'] .saeh-cp-nav{display:none}" +
+      "}",
       ".saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:var(--saeh-body)}",
       ".saeh-3d-sheet{position:relative;margin:40px;flex:1;min-width:0;background:#fff;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}",
       ".saeh-3d-close{position:absolute;top:14px;right:14px;z-index:2;width:36px;height:36px;border-radius:50%;border:none;background:rgba(17,17,17,.06);color:#111;font-family:var(--saeh-head);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}",
@@ -1019,6 +1050,10 @@
     sec.appendChild(el("h3", "saeh-cp-h", "Compatible Products & Accessories"));
 
     var wrap = el("div", "saeh-cp");
+    // Drives the arrow-visibility rules above. Capped at 5 because every rule
+    // is "this many or fewer fit"; beyond 5 the arrows always show at every
+    // breakpoint, so the exact number stops mattering.
+    wrap.setAttribute("data-count", String(Math.min(items.length, 5)));
     var track = el("div", "saeh-cp-track");
 
     items.forEach(function (it) {
@@ -1065,16 +1100,12 @@
     var prev = document.createElement("button");
     prev.type = "button";
     prev.className = "saeh-cp-nav saeh-cp-prev";
-    // Start hidden and let the measurement reveal them. Defaulting to visible
-    // flashes two arrows on every load for the many products whose cards fit.
-    prev.hidden = true;
     prev.setAttribute("aria-label", "Previous products");
     prev.appendChild(chevron("prev"));
 
     var next = document.createElement("button");
     next.type = "button";
     next.className = "saeh-cp-nav saeh-cp-next";
-    next.hidden = true;
     next.setAttribute("aria-label", "Next products");
     next.appendChild(chevron("next"));
 
@@ -1090,26 +1121,17 @@
       return first ? first.getBoundingClientRect().width + 16 : track.clientWidth;
     }
 
+    /*
+     * Only the END-OF-TRAVEL state. Whether the arrows EXIST is CSS's job now
+     * (see the data-count rules); this just greys the one you cannot use.
+     * Measurement is fine for that: if it runs late the buttons are briefly
+     * both active, which is harmless, whereas a late visibility decision left
+     * arrows on a carousel with nothing to scroll.
+     */
     function sync() {
-      /*
-       * Overflow is the whole test, and it answers the item-count question for
-       * free: 3 cards where 4 fit do not overflow, so no arrows; the same 3 at
-       * 2-up on a phone do, so arrows appear. Counting items instead would
-       * need the breakpoint hard-coded here and would then disagree with the
-       * CSS the moment either changed.
-       *
-       * It cannot oscillate. Card width is a percentage OF THE TRACK, so
-       * hiding an arrow widens the track and widens the cards by the same
-       * proportion — the number that fits is identical either way.
-       */
-      var overflow = track.scrollWidth - track.clientWidth > 2;
-      // `hidden` rather than a class: it also takes the buttons out of the tab
-      // order, which display:none via a class would too but less explicitly.
-      prev.hidden = !overflow;
-      next.hidden = !overflow;
-      if (!overflow) return;
-      prev.disabled = track.scrollLeft <= 2;
-      next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+      var scrollable = track.scrollWidth - track.clientWidth > 2;
+      prev.disabled = !scrollable || track.scrollLeft <= 2;
+      next.disabled = !scrollable || track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
     }
 
     prev.addEventListener("click", function () {
@@ -1563,7 +1585,7 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  var iface = { init: init, clean: clean, version: "2026-09-11-section-attr" };
+  var iface = { init: init, clean: clean, version: "2026-09-11-arrows-css" };
   window.SAEquipHubWidget = iface;
 
   /**
