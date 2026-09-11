@@ -94,7 +94,7 @@ export function AssignPickList({
         <button
           type="button"
           onClick={() => onChange([])}
-          className="mt-2 text-xs font-medium text-muted hover:text-text"
+          className="mt-2 text-body font-semibold text-muted hover:text-text"
         >
           Clear all ({selected.length})
         </button>

@@ -155,7 +155,7 @@ export default function Media() {
         <button
           type="submit"
           disabled={!file || uploading}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
+          className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
         >
           {uploading ? "Uploading…" : "Upload"}
         </button>
@@ -274,7 +274,7 @@ export default function Media() {
 
                 <button
                   onClick={() => onDelete(a)}
-                  className="mt-2 rounded-md border border-border px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10"
+                  className="mt-2 rounded-md border border-border px-2 py-1 text-body font-semibold text-danger hover:bg-danger/10"
                 >
                   Delete
                 </button>

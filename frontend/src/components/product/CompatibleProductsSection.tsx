@@ -230,7 +230,7 @@ export function CompatibleProductsSection({
                       type="button"
                       onClick={() => remove(item.dudaProductId)}
                       title={`Remove ${item.name}`}
-                      className="shrink-0 rounded px-1.5 text-xs font-semibold text-muted hover:text-danger"
+                      className="shrink-0 rounded px-1.5 text-body font-semibold text-muted hover:text-danger"
                     >
                       Remove
                     </button>

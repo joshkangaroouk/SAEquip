@@ -79,7 +79,7 @@ export function MediaPicker({
             <button
               onClick={onUpload}
               disabled={!file || uploading}
-              className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
+              className="rounded-md bg-accent px-3 py-1.5 text-body font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
             >
               {uploading ? "Uploading…" : "Upload new"}
             </button>

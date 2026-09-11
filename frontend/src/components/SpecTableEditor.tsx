@@ -151,7 +151,7 @@ export function SpecTableEditor({
                 <button
                   type="button"
                   onClick={() => addLine(g.id)}
-                  className="rounded px-1 text-xs font-medium text-muted hover:text-text"
+                  className="rounded px-1 text-body font-semibold text-muted hover:text-text"
                 >
                   + Add line
                 </button>

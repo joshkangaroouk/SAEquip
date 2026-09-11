@@ -77,7 +77,7 @@ function LogoCard({
       </div>
 
       {dirty && (
-        <button onClick={saveMeta} disabled={saving} className="mt-2 rounded-md bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
+        <button onClick={saveMeta} disabled={saving} className="mt-2 rounded-md bg-accent px-3 py-1 text-body font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
           {saving ? "Saving…" : "Save label/alt"}
         </button>
       )}
@@ -172,7 +172,7 @@ export default function Logos() {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-text">Logos</h1>
-          <button onClick={() => setPickerOpen(true)} className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover">
+          <button onClick={() => setPickerOpen(true)} className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-foreground hover:bg-accent-hover">
             + Add logo
           </button>
         </div>

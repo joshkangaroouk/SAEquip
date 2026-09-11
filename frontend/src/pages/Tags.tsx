@@ -182,7 +182,7 @@ export default function Tags() {
                 <button
                   type="button"
                   onClick={() => void remove(tag)}
-                  className="shrink-0 rounded px-1.5 text-xs font-semibold text-muted hover:text-danger"
+                  className="shrink-0 rounded px-1.5 text-body font-semibold text-muted hover:text-danger"
                 >
                   Delete
                 </button>
