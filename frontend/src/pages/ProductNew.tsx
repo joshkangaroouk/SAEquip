@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select, Textarea, Toggle, toast } from "../components/ui";
+import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, RichTextEditor, Select, Toggle, toast } from "../components/ui";
 import { apiJson } from "../lib/api";
 import type { ProductDetail } from "../lib/types";
 
@@ -189,14 +189,22 @@ export default function ProductNew() {
             />
           </Field>
 
-          <Field label="Description (HTML)" htmlFor="n-desc" hint="Optional — you can add this later.">
-            <Textarea
-              id="n-desc"
-              className="h-28 font-mono text-small"
+          {/*
+            The same rich editor as the product page, not a raw-HTML textarea.
+            
+            The editor keeps an HTML escape hatch because opening an imported
+            product in a WYSIWYG would silently rewrite its legacy WordPress
+            markup. A product being created has no markup to protect, so that
+            trade-off does not apply here and the plain-English editor is
+            simply the better tool.
+          */}
+          {/* No htmlFor: the rich editor is a contenteditable surface, not a
+              form control with an id, so a label pointing at "n-desc" would be
+              a dangling reference — worse than no association at all. */}
+          <Field label="Description" hint="Optional — you can add or change this later.">
+            <RichTextEditor
               value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              placeholder="<p>…</p>"
-              spellCheck={false}
+              onChange={(html) => set("description", html)}
             />
           </Field>
 
