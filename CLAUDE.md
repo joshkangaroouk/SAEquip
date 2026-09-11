@@ -619,7 +619,7 @@ This **replaced** a `scrollWidth`-vs-`clientWidth` measurement, and the reason m
 
 176 downloads. **Logos are surveyed in the section below.** Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
 
-Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO is barely populated** (title on 4/96, meta description on 12/96), so SEO is authoring work, not migration. Per Josh, SEO metadata is off the table for now.
+Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO was barely populated** in WordPress (title on 4/96, meta description on 12/96) — so SEO titles and descriptions were authored rather than migrated. See the SEO section below.
 
 ### Product name casing (fixed 2026-09-11)
 
@@ -659,6 +659,21 @@ So writing a product's categories to Duda would mean rewriting every affected ca
 ⚠️ **`AccordionCard` declares its own card chrome instead of using `<Card className="p-0">`.** `cn()` is a **plain string join, not tailwind-merge**, so `p-0` landed in the class list *alongside* Card's `p-5` and lost on stylesheet order — leaving 22px of padding wrapping every accordion, header included. **This is the third time the same trap has bitten**: `w-56` on an `Input` losing to its `w-full`, and the `hidden` attribute losing to a `flex` utility. **Any `w-*`/`p-*`/`text-*` passed to a UI component can silently lose to that component's own base class.** Either swap `cn` for `tailwind-merge` (one dependency, fixes it everywhere — but existing overrides that are currently no-ops would start applying, so it needs a pass) or keep sizing the wrapper, as here.
 
 ⚠️ **`Card`/`CardHeader` render bare inside an accordion, via React context** (`AccordionBodyProvider`). Every section renders its own Card, so nesting would draw a card in a card and print the title twice. The alternative was threading a `bare` prop through eight unrelated section components; the accordion already knows, so it tells them.
+
+### SEO titles and descriptions (written 2026-09-11)
+
+`npm run duda:seo-fill --workspace=backend -- --confirm` writes `seo.title` and `seo.description` for every product, generated from the product's own content. Preview without `--confirm`; `--force` to overwrite. **Existing values are never overwritten without it** — anything a human wrote beats anything generated.
+
+Result: 96/96 both fields, **0 duplicate titles, 0 duplicate descriptions**, 0 descriptions outside 70-160 chars, 1 title over 60 (a 62-char product name, left whole).
+
+⚠️ **A product's `seo` is NOT full-replacement — this was probed, not assumed.** Sending `{title}` alone preserves `product_url` *and* an existing `description`. That mattered enough to test on a throwaway first: `seo.product_url` is the slug the public widget resolves by and the live page URL, so a full-replacement field would have 404'd all 96. Note this **contradicts the defensive rule the editor follows** ("send `seo` whole whenever any sub-field changed") — the editor isn't wrong to be careful, but a bulk write doesn't need to be, and not sending `product_url` means it cannot change a URL by accident. Verified after: 0 products without a slug, 0 hub/Duda drift.
+
+Rules the generator follows, each of which came from a bad first draft:
+- **Title** is `{Name} | SAEquip`, dropping the brand when the name alone fills 60 chars. Product name first because it *is* the search term; long names are left whole rather than chopped, since Google elides more gracefully than a hard cut.
+- **The product name must appear in the description**, matched on ≥70% of its significant words rather than as an exact substring. Exact matching produced "Trolley for EX Heater. Trolley for SA FLEXIHEAT EX Heater." — the name was there, just with the range name inserted mid-phrase.
+- **Boilerplate sentences are skipped** ("Disclaimer:", "Please note", "Sales Team will confirm…") unless they are the entire description. Five products led their meta description with a caveat otherwise.
+- **Short accessory copy gets a context sentence** rather than shipping an 40-char fragment.
+- **A final de-duplication pass** disambiguates by SKU. Before the name rule, five products shared a description verbatim — several "Purchase Only" items with identical disclaimer text — which search engines treat as duplicate content.
 
 ## Known gaps / backlog (as of 2026-07-28)
 
