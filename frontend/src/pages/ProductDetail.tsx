@@ -159,6 +159,7 @@ export default function ProductDetail() {
                 />
 
                 <AccordionCard
+                  flush
                   title="Images"
                   description="Gallery for the product page. Duda re-hosts each image on save."
                   summary={draft.images.length || undefined}
@@ -174,6 +175,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="Options"
                   description="Shared option catalogue, attached per product."
                   summary={draft.options.length || undefined}
@@ -195,6 +197,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="Variations"
                   description="Generated from the attached option choices."
                   summary={draft.variations.length || undefined}
@@ -214,6 +217,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="SA Logos"
                   description="SA range logos active for this product."
                   summary={draft.logos.SA_LOGO.length || undefined}
@@ -231,6 +235,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="Cert Logos"
                   description="Certification marks active for this product."
                   summary={draft.logos.CERT_LOGO.length || undefined}
@@ -248,6 +253,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="3D Model"
                   description="One .glb, shown by the 3D viewer widget."
                   summary={draft.model3d.mediaAssetId ? "1" : undefined}
@@ -263,6 +269,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="Compatible Products"
                   description="Shown as a carousel on the product page."
                   summary={draft.compatible.length || undefined}
@@ -279,6 +286,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="Technical Specs"
                   description="Rendered as a table in the Overview accordion."
                   summary={draft.specs.length || undefined}
@@ -294,6 +302,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="Key Benefits"
                   description="Checklist on the product page."
                   summary={draft.benefits.length || undefined}
@@ -313,6 +322,7 @@ export default function ProductDetail() {
                 </AccordionCard>
 
                 <AccordionCard
+                  flush
                   title="Applications"
                   description="Industries or use cases this product suits."
                   summary={draft.applications.length || undefined}

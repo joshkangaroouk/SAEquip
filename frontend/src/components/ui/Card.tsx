@@ -49,15 +49,20 @@ export function CardHeader({
 }) {
   const bare = useContext(InAccordion);
 
-  // The accordion's own header already shows the title, the dirty badge and a
-  // summary, so repeating them here would be noise. Actions can carry real
-  // controls, so they stay.
+  /*
+   * Inside an accordion, only ACTIONS survive.
+   *
+   * The accordion header already carries the title, the dirty badge, a summary
+   * and the description, so a section's own header repeated all of it — the
+   * same sentence twice, each with its own bottom margin. That duplication,
+   * not the container, was most of the "padding" around accordion content.
+   * Actions stay because they can be real controls rather than decoration.
+   */
   if (bare) {
-    if (!description && !actions) return null;
+    if (!actions) return null;
     return (
-      <div className={cn("mb-4 flex flex-wrap items-start justify-between gap-3", className)}>
-        {description ? <p className="text-small text-muted">{description}</p> : <span />}
-        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      <div className={cn("mb-3 flex flex-wrap items-center justify-end gap-2", className)}>
+        {actions}
       </div>
     );
   }

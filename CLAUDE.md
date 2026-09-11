@@ -654,6 +654,8 @@ So writing a product's categories to Duda would mean rewriting every affected ca
 
 `AccordionCard` **unmounts** its body when closed rather than hiding it: these bodies are not cheap (the compatible picker fetches the whole catalogue, the 3D section mounts a `model-viewer`), and twelve open at once is what this change exists to avoid. It also **opens itself when a section becomes dirty or errors, and only on that transition** — always-open-while-dirty could never be collapsed again, and an editor that can hide a failed section is how you lose work.
 
+⚠️ **A section's `CardHeader` renders ONLY its actions inside an accordion.** The accordion header already carries the title, dirty badge, summary and description, so the section's own header repeated all of it — the same sentence twice, each with a bottom margin. That duplication, not the container, was most of the apparent padding around accordion content. The 10 left-column content sections also pass `flush`, dropping the body's inset so tables and full-width lists read edge to edge; the right-column pickers keep theirs.
+
 ⚠️ **`Card`/`CardHeader` render bare inside an accordion, via React context** (`AccordionBodyProvider`). Every section renders its own Card, so nesting would draw a card in a card and print the title twice. The alternative was threading a `bare` prop through eight unrelated section components; the accordion already knows, so it tells them.
 
 ## Known gaps / backlog (as of 2026-07-28)

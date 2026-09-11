@@ -25,6 +25,7 @@ export function AccordionCard({
   dirty = false,
   error,
   defaultOpen = false,
+  flush = false,
   children,
 }: {
   id?: string;
@@ -35,6 +36,14 @@ export function AccordionCard({
   dirty?: boolean;
   error?: string;
   defaultOpen?: boolean;
+  /**
+   * Drop the body's own padding.
+   *
+   * For content sections whose inner layout is a table or a full-width list —
+   * those read better edge to edge, and the container's inset only added a
+   * second margin on top of the one the section already has.
+   */
+  flush?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -67,7 +76,10 @@ export function AccordionCard({
         />
         <span className="min-w-0 flex-1">
           <span className="block text-body font-semibold text-text">{title}</span>
-          {description && !open && (
+          {/* Shown here whether open or closed — it used to move into the body
+              on open, which put it next to the section's own copy of the same
+              sentence. */}
+          {description && (
             <span className="mt-0.5 block truncate text-small text-muted">{description}</span>
           )}
         </span>
@@ -76,10 +88,12 @@ export function AccordionCard({
       </button>
 
       {open && (
-        <div id={bodyId} className="border-t border-border px-5 py-4">
-          {description && <p className="mb-4 text-small text-muted">{description}</p>}
+        <div id={bodyId} className={cn("border-t border-border", flush ? "" : "px-5 py-4")}>
           {error && (
-            <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+            <div className={cn(
+              "rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger",
+              flush ? "m-4 mb-0" : "mb-3",
+            )}>
               {error}
             </div>
           )}
