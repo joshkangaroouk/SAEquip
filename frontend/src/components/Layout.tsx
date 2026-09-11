@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BarChart3,
+  ChevronDown,
   FolderTree,
   Globe,
   Images,
@@ -40,15 +41,26 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   end?: boolean;
+  /** Rendered as a collapsible group under this item. */
+  children?: NavItem[];
 }
 
 const NAV: NavItem[] = [
   { to: "/website", label: "Website Editor", icon: Globe },
-  { to: "/", label: "Products", icon: Package, end: true },
-  { to: "/categories", label: "Categories", icon: FolderTree },
-  { to: "/options", label: "Product Options", icon: SlidersHorizontal },
-  { to: "/media", label: "Media", icon: Images },
-  { to: "/logos", label: "Logos", icon: ShieldCheck },
+  {
+    to: "/",
+    label: "Products",
+    icon: Package,
+    end: true,
+    // Everything that describes a product lives under it, rather than as ten
+    // flat siblings where "Logos" and "Status" read as equally important.
+    children: [
+      { to: "/categories", label: "Categories", icon: FolderTree },
+      { to: "/options", label: "Product Options", icon: SlidersHorizontal },
+      { to: "/media", label: "Media", icon: Images },
+      { to: "/logos", label: "Logos", icon: ShieldCheck },
+    ],
+  },
   { to: "/widgets", label: "Widgets", icon: LayoutGrid },
   { to: "/quotes", label: "Quote Requests", icon: BarChart3 },
   { to: "/users", label: "Users", icon: Users },
@@ -65,6 +77,100 @@ const rowActive = "bg-accent/[0.12] font-medium text-sidebar-foreground before:b
 const rowIdle =
   "text-sidebar-muted before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-foreground";
 
+/** One row. Shared by top-level items and the nested children. */
+function NavRow({
+  item,
+  onNavigate,
+  nested = false,
+}: {
+  item: NavItem;
+  onNavigate?: () => void;
+  nested?: boolean;
+}) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onNavigate}
+      // The accent bar is a ::before pinned to the sidebar's left edge,
+      // which is why the row carries the negative inset rather than the
+      // pill doing it.
+      className={({ isActive }) =>
+        cn(rowBase, nested ? "py-2 pl-9 text-small" : "text-body", isActive ? rowActive : rowIdle)
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <Icon
+            size={nested ? 16 : 18}
+            strokeWidth={2}
+            className={cn(
+              "shrink-0 transition-colors duration-150",
+              isActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
+            )}
+          />
+          {item.label}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+/**
+ * A parent row plus its collapsible children.
+ *
+ * ⚠️ The parent is still a LINK — Products is a real page, not just a
+ * heading — so the disclosure lives in its own button beside it rather than
+ * swallowing the click. Making the whole row toggle would cost a click to
+ * reach the product list, which is the most-used page in the app.
+ */
+function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  const { pathname } = useLocation();
+  const children = item.children ?? [];
+  const childActive = children.some((c) => pathname === c.to || pathname.startsWith(c.to + "/"));
+  // Open when you are somewhere inside the group, so the sidebar always shows
+  // where you are; otherwise remember what you last chose.
+  const [open, setOpen] = useState(childActive);
+  useEffect(() => {
+    if (childActive) setOpen(true);
+  }, [childActive]);
+
+  const groupId = `nav-group-${item.to.replace(/\W+/g, "-")}`;
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1">
+        <div className="min-w-0 flex-1">
+          <NavRow item={item} onNavigate={onNavigate} />
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls={groupId}
+          aria-label={`${open ? "Collapse" : "Expand"} ${item.label}`}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sidebar-subtle transition-colors hover:bg-white/[0.04] hover:text-sidebar-foreground"
+        >
+          <ChevronDown
+            size={16}
+            strokeWidth={2.5}
+            className={cn("transition-transform duration-150", open ? "rotate-180" : "rotate-0")}
+          />
+        </button>
+      </div>
+
+      {/* `hidden` rather than unmounting: it keeps the children out of the
+          accessibility tree and out of in-page find, and the rows are cheap. */}
+      <div id={groupId} hidden={!open} className="flex flex-col gap-0.5">
+        {children.map((c) => (
+          <NavRow key={c.to} item={c} onNavigate={onNavigate} nested />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-0.5">
@@ -72,32 +178,13 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
         Main menu
       </p>
 
-      {NAV.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={onNavigate}
-          // The accent bar is a ::before pinned to the sidebar's left edge,
-          // which is why the row carries the negative inset rather than the
-          // pill doing it.
-          className={({ isActive }) => cn(rowBase, "text-body", isActive ? rowActive : rowIdle)}
-        >
-          {({ isActive }) => (
-            <>
-              <Icon
-                size={18}
-                strokeWidth={2}
-                className={cn(
-                  "shrink-0 transition-colors duration-150",
-                  isActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
-                )}
-              />
-              {label}
-            </>
-          )}
-        </NavLink>
-      ))}
+      {NAV.map((item) =>
+        item.children?.length ? (
+          <NavGroup key={item.to} item={item} onNavigate={onNavigate} />
+        ) : (
+          <NavRow key={item.to} item={item} onNavigate={onNavigate} />
+        ),
+      )}
     </nav>
   );
 }
