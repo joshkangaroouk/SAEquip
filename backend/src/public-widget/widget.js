@@ -322,8 +322,41 @@
        * work for free: with 2 cards at 4-up the track simply has two
        * items at their natural width, left-aligned, no stretching.
        */
-      ".saeh-cp{position:relative}",
-      ".saeh-cp-track{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}",
+      /*
+       * The section owns its own vertical rhythm — 3% desktop / 6% tablet /
+       * 8% mobile, top and bottom — so Duda's element padding can be set to
+       * zero. That matters for more than tidiness: when a product has no
+       * compatible items the widget renders nothing and collapses, and any
+       * padding living on the Duda section would survive as a visible empty
+       * band. Percentages resolve against the container WIDTH, which is what
+       * makes the spacing scale with the layout rather than the text.
+       */
+      ".saeh-cp-sec{padding:8% 0}",
+      "@media(min-width:561px){.saeh-cp-sec{padding:6% 0}}",
+      "@media(min-width:881px){.saeh-cp-sec{padding:3% 0}}",
+      // h3, sentence case, centred. Deliberately NOT .saeh-h — that is the
+      // uppercase, left-aligned, yellow-ruled heading the in-page sections
+      // use, and this one sits alone in a full-width band.
+      ".saeh-cp-h{font-family:var(--saeh-head);font-size:20px;font-weight:600;color:#111;text-align:center;margin:0 0 20px;line-height:1.25}",
+      /*
+       * A flex ROW — arrow, track, arrow — rather than arrows absolutely
+       * positioned over the track. Structurally they cannot overlap a card,
+       * and when they are hidden they occupy no space at all, so the track
+       * simply widens. Card width is a percentage OF THE TRACK, so showing or
+       * hiding an arrow never changes how many cards fit and the measurement
+       * cannot oscillate.
+       */
+      ".saeh-cp{display:flex;align-items:center;gap:14px}",
+      ".saeh-cp-track{flex:1;min-width:0;display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}",
+      /*
+       * `safe center` centres the cards when they fit and falls back to
+       * flex-start the moment they overflow. Plain `center` would centre an
+       * overflowing track too, which clips the FIRST card out of reach —
+       * unscrollable in most browsers. A browser that does not understand
+       * `safe` discards the declaration and keeps the default, which is the
+       * same behaviour as the fallback.
+       */
+      ".saeh-cp-track{justify-content:safe center}",
       ".saeh-cp-track::-webkit-scrollbar{display:none}",
       // flex:0 0 <w> — never grow, never shrink. A card keeps its width when
       // there are too few to fill the row, which is the behaviour asked for.
@@ -336,12 +369,13 @@
       ".saeh-cp-btn img{width:16px;height:16px;display:block;flex:0 0 auto}",
       ".saeh-cp-card:hover .saeh-cp-btn{background:#f0c400}",
       // The arrows sit OUTSIDE the track so they never cover a card.
-      ".saeh-cp-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:38px;height:38px;border:1px solid #ececec;background:#fff;color:#111;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}",
-      ".saeh-cp-nav:hover{background:#f7f7f7}",
-      ".saeh-cp-nav[disabled]{opacity:.35;cursor:default}",
-      ".saeh-cp-prev{left:-19px}",
-      ".saeh-cp-next{right:-19px}",
-      ".saeh-cp-nav svg{width:16px;height:16px}",
+      ".saeh-cp-nav{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #111;background:#fff;color:#111;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s ease,border-color .15s ease,color .15s ease}",
+      ".saeh-cp-nav:hover:not([disabled]){background:#fed217;border-color:#fed217;color:#000}",
+      ".saeh-cp-nav:focus-visible{outline:2px solid #111;outline-offset:2px}",
+      // Disabled means "nothing further this way" — greyed rather than
+      // removed, so the control does not jump position as you scroll.
+      ".saeh-cp-nav[disabled]{border-color:#d8d8d8;color:#bdbdbd;cursor:default}",
+      ".saeh-cp-nav svg{width:15px;height:15px}",
       "@media(min-width:561px){.saeh-cp-card{flex-basis:calc((100% - 32px) / 3)}}",
       "@media(min-width:881px){.saeh-cp-card{flex-basis:calc((100% - 48px) / 4)}}",
       ".saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:var(--saeh-body)}",
@@ -953,8 +987,8 @@
    * hard-coding a single breakpoint assumption.
    */
   function compatibleSection(items) {
-    var sec = el("div", "saeh-section");
-    sec.appendChild(el("div", "saeh-h", "Compatible Products & Accessories"));
+    var sec = el("div", "saeh-section saeh-cp-sec");
+    sec.appendChild(el("h3", "saeh-cp-h", "Compatible Products & Accessories"));
 
     var wrap = el("div", "saeh-cp");
     var track = el("div", "saeh-cp-track");
@@ -1287,8 +1321,12 @@
           for (var i = 0; i < sections.length; i++) {
             var node = buildSection(sections[i], data);
             if (!node) continue;
-            // The accordion opts out of the 920px cap — see .saeh-wide.
-            if (node.querySelector(".saeh-tabs")) root.className = "saeh-root saeh-wide";
+            // The accordion and the compatible carousel both opt out of the
+            // 920px cap — see .saeh-wide. The carousel especially: capped, its
+            // four cards filled only ~60% of a full-width Duda section.
+            if (node.querySelector(".saeh-tabs") || node.querySelector(".saeh-cp")) {
+              root.className = "saeh-root saeh-wide";
+            }
             root.appendChild(node);
           }
           if (!root.childNodes.length) return onEmpty();

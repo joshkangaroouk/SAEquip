@@ -286,6 +286,12 @@ async function main() {
   {
     const { d } = await boot({ props: { section: "compatible", slug: "x" } });
     check(!!d.querySelector(".saeh-cp-track"), "renders a track");
+    const h = d.querySelector(".saeh-cp-h");
+    check(h && h.tagName === "H3", "heading is an h3", h?.tagName);
+    check(h && h.textContent === "Compatible Products & Accessories", "sentence case, not shouted", h?.textContent);
+    check(d.querySelector(".saeh-cp-sec") !== null, "section carries its own vertical padding class");
+    check(d.querySelector(".saeh-root").classList.contains("saeh-wide"),
+      "opts out of the 920px cap so four cards fill the container");
     const cards = [...d.querySelectorAll(".saeh-cp-card")];
     check(cards.length === 3, "one card per item", String(cards.length));
     check(cards.every((c) => c.tagName === "A"), "the whole card is the link");
@@ -309,6 +315,13 @@ async function main() {
     // actually overflows, never from the item count.
     check(navs.every((n) => n.hidden), "arrows hidden when the track does not overflow");
     const css = d.getElementById("saeh-styles").textContent;
+    check(/\.saeh-cp-sec\{padding:8% 0\}/.test(css), "8% vertical padding on mobile");
+    check(/min-width:561px\)\{\.saeh-cp-sec\{padding:6% 0\}/.test(css), "6% on tablet");
+    check(/min-width:881px\)\{\.saeh-cp-sec\{padding:3% 0\}/.test(css), "3% on desktop");
+    check(/\.saeh-cp\{display:flex/.test(css), "arrows and track are a flex row, so arrows cannot overlap a card");
+    check(/justify-content:safe center/.test(css), "cards centre when they fit, start when they overflow");
+    check(/\.saeh-cp-nav:hover:not\(\[disabled\]\)\{background:#fed217/.test(css), "arrows go yellow on hover");
+    check(/\.saeh-cp-nav\[disabled\]\{border-color:#d8d8d8/.test(css), "arrows grey out at either end");
     check(/\.saeh-cp-card\{flex:0 0 calc\(\(100% - 16px\) \/ 2\)/.test(css), "2-up by default (mobile)");
     check(/min-width:561px\)\{\.saeh-cp-card\{flex-basis:calc\(\(100% - 32px\) \/ 3\)/.test(css), "3-up on tablet");
     check(/min-width:881px\)\{\.saeh-cp-card\{flex-basis:calc\(\(100% - 48px\) \/ 4\)/.test(css), "4-up on desktop");

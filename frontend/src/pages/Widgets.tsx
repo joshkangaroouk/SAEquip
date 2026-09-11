@@ -63,8 +63,15 @@ const WIDGET_CSS = `
 .saeh-3d-btn-icon{width:20px;height:20px;flex:0 0 auto;display:block}
 .saeh-3d-btn:hover{background:#f0c400}
 .saeh-3d-btn:focus-visible{outline:2px solid #111;outline-offset:2px}
-.saeh-cp{position:relative}
-.saeh-cp-track{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
+.saeh-cp-sec{padding:8% 0}
+@media(min-width:561px){.saeh-cp-sec{padding:6% 0}
+}
+@media(min-width:881px){.saeh-cp-sec{padding:3% 0}
+}
+.saeh-cp-h{font-family:var(--saeh-head);font-size:20px;font-weight:600;color:#111;text-align:center;margin:0 0 20px;line-height:1.25}
+.saeh-cp{display:flex;align-items:center;gap:14px}
+.saeh-cp-track{flex:1;min-width:0;display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
+.saeh-cp-track{justify-content:safe center}
 .saeh-cp-track::-webkit-scrollbar{display:none}
 .saeh-cp-card{flex:0 0 calc((100% - 16px) / 2);scroll-snap-align:start;display:flex;flex-direction:column;background:#fff;border:1px solid #ececec;text-decoration:none;color:inherit}
 .saeh-cp-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}
@@ -74,12 +81,11 @@ const WIDGET_CSS = `
 .saeh-cp-btn{margin-top:auto;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;padding:10px 18px;min-height:40px;font-size:14px;font-weight:500;line-height:1.2;display:inline-flex;align-items:center;gap:8px}
 .saeh-cp-btn img{width:16px;height:16px;display:block;flex:0 0 auto}
 .saeh-cp-card:hover .saeh-cp-btn{background:#f0c400}
-.saeh-cp-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:38px;height:38px;border:1px solid #ececec;background:#fff;color:#111;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
-.saeh-cp-nav:hover{background:#f7f7f7}
-.saeh-cp-nav[disabled]{opacity:.35;cursor:default}
-.saeh-cp-prev{left:-19px}
-.saeh-cp-next{right:-19px}
-.saeh-cp-nav svg{width:16px;height:16px}
+.saeh-cp-nav{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #111;background:#fff;color:#111;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s ease,border-color .15s ease,color .15s ease}
+.saeh-cp-nav:hover:not([disabled]){background:#fed217;border-color:#fed217;color:#000}
+.saeh-cp-nav:focus-visible{outline:2px solid #111;outline-offset:2px}
+.saeh-cp-nav[disabled]{border-color:#d8d8d8;color:#bdbdbd;cursor:default}
+.saeh-cp-nav svg{width:15px;height:15px}
 @media(min-width:561px){.saeh-cp-card{flex-basis:calc((100% - 32px) / 3)}
 }
 @media(min-width:881px){.saeh-cp-card{flex-basis:calc((100% - 48px) / 4)}
@@ -197,9 +203,17 @@ function SpecsTablePreview() {
  */
 function CompatiblePreview() {
   return (
-    <div className="saeh-section">
-      <div className="saeh-h">Compatible Products &amp; Accessories</div>
+    <div className="saeh-section saeh-cp-sec">
+      <h3 className="saeh-cp-h">Compatible Products &amp; Accessories</h3>
       <div className="saeh-cp">
+        {/* Static: the live arrows appear only while the track overflows,
+            which is measured from rendered width. Shown here in both states
+            so the styling is visible. */}
+        <button type="button" className="saeh-cp-nav" disabled aria-label="Previous products">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 5 8 12l7 7" />
+          </svg>
+        </button>
         <div className="saeh-cp-track">
           {DUMMY.compatible.map((c) => (
             <span key={c.name} className="saeh-cp-card">
@@ -215,6 +229,11 @@ function CompatiblePreview() {
             </span>
           ))}
         </div>
+        <button type="button" className="saeh-cp-nav" aria-label="Next products">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
     </div>
   );
