@@ -70,7 +70,20 @@ model HubProduct {
   /// applications. Written by `duda:import-products -- --descriptions`.
   descriptionHtml String?
 
+  /// Duda's first gallery image, mirrored like sku/name/slug.
+  ///
+  /// Needed because the compatible-products widget has to show a thumbnail for
+  /// OTHER products, and the public content endpoint must never call Duda's
+  /// API on the request path. Duda re-hosts images on its own CDN and those
+  /// URLs are stable, so caching one here is the same trade already made for
+  /// name and sku. Refreshed by syncHubProduct() — i.e. whenever a product is
+  /// opened in the dashboard, and in bulk by `--sync-hub`.
+  thumbnailUrl String?
   logos     ProductLogo[]
+  /// Products shown as compatible ON this product's page.
+  compatible        CompatibleLink[] @relation("CompatibleFrom")
+  /// Products that list THIS one as compatible (needed so a delete cascades).
+  compatibleFor     CompatibleLink[] @relation("CompatibleTo")
   specRows  SpecRow[]
   textItems ProductTextItem[]
   downloads Download[]
@@ -179,11 +192,30 @@ model Lead {
 }
 
 // Parked for a later step; no editor yet.
+/// "Compatible Products & Accessories" — an ordered, curated list of other
+/// products shown on a product page.
+///
+/// Keyed on HubProduct ids, NOT on SKU. The original draft of this model held
+/// a `relatedSku` string with no relation at all: no foreign key, no cascade,
+/// and a key that cannot identify a product here — 3 of the 96 have no SKU and
+/// 4 SKUs are shared by 9 products, so a SKU link would have been ambiguous
+/// for 9 products and impossible for 3. Table was empty and unused, so this
+/// replaces it outright.
+///
+/// Both sides cascade: a link to a deleted product is meaningless, so removing
+/// a product should take its inbound links with it rather than leave rows
+/// pointing at nothing.
 model CompatibleLink {
-  id           String @id @default(cuid())
-  hubProductId String
-  relatedSku   String
-  sortOrder    Int    @default(0)
+  id                  String     @id @default(cuid())
+  hubProductId        String
+  relatedHubProductId String
+  sortOrder           Int        @default(0)
+  hubProduct          HubProduct @relation("CompatibleFrom", fields: [hubProductId], references: [id], onDelete: Cascade)
+  related             HubProduct @relation("CompatibleTo", fields: [relatedHubProductId], references: [id], onDelete: Cascade)
+
+  @@unique([hubProductId, relatedHubProductId])
+  @@index([hubProductId])
+  @@index([relatedHubProductId])
 }
 
 /// A quote request submitted via the public basket-page widget (replaces the

@@ -10,7 +10,8 @@ export type SectionKey =
   | "benefits"
   | "applications"
   | "logos"
-  | "model3d";
+  | "model3d"
+  | "compatible";
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
   details: "Details",
@@ -22,6 +23,7 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   applications: "Applications",
   logos: "Logos",
   model3d: "3D Model",
+  compatible: "Compatible Products",
 };
 
 export type LogoKind = "SA_LOGO" | "CERT_LOGO";
@@ -48,6 +50,21 @@ export interface NativeForm {
 }
 
 /** `id` is cosmetic — a React key and dnd handle only. Order is array position. */
+/**
+ * One entry in a product's "Compatible Products & Accessories" list.
+ *
+ * Identified by `dudaProductId` — the only stable unique key. 3 products have
+ * no SKU and 4 SKUs are shared by 9 products, so neither SKU nor name can
+ * address a product here. The rest is display data carried so the row can be
+ * rendered without a second lookup.
+ */
+export interface CompatibleDraft {
+  dudaProductId: string;
+  name: string;
+  sku: string | null;
+  slug: string | null;
+}
+
 export interface SpecRowDraft {
   id: string;
   label: string;
@@ -130,6 +147,7 @@ export interface EditorSnapshot {
   options: OptionRefDraft[];
   variations: VariationDraft[];
   specs: SpecRowDraft[];
+  compatible: CompatibleDraft[];
   benefits: TextItemDraft[];
   applications: TextItemDraft[];
   logos: LogosDraft;

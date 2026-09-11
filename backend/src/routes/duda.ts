@@ -572,6 +572,10 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
         textItems: { orderBy: { sortOrder: "asc" } },
         downloads: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
         glbAsset: true,
+        compatible: {
+          orderBy: { sortOrder: "asc" },
+          include: { related: { select: { id: true, dudaProductId: true, name: true, sku: true, slug: true } } },
+        },
       },
     });
 
@@ -632,7 +636,105 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       applications: full.textItems.filter((t) => t.kind === TextItemKind.APPLICATION),
       downloads,
       model3d,
+      // The editor needs the related product's identity to render a row; the
+      // widget resolves its own image from Duda, so none is carried here.
+      compatible: full.compatible.map((c) => ({
+        id: c.id,
+        sortOrder: c.sortOrder,
+        hubProductId: c.relatedHubProductId,
+        dudaProductId: c.related.dudaProductId,
+        name: c.related.name,
+        sku: c.related.sku,
+        slug: c.related.slug,
+      })),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Compatible products, as a list of Duda product ids.
+ *
+ * Duda ids rather than SKUs or Hub ids: it is the only stable unique key (3
+ * products have no SKU, 4 SKUs are shared by 9 products), and it is what the
+ * editor already holds for every product in its list.
+ */
+const compatibleBody = z
+  .object({ dudaProductIds: z.array(z.string().min(1)).max(40, "max 40 compatible products") })
+  .strict();
+
+/**
+ * PUT /api/products/:id/compatible — replaces the whole compatible set.
+ *
+ * Array position is the display order, as everywhere else in the Hub.
+ *
+ * ⚠️ Self-links are dropped rather than rejected. A product listing itself is
+ * meaningless rather than malicious — it is an easy mis-click in a search
+ * list — and failing the whole save for it would lose the editor's other work.
+ * Duplicates collapse for the same reason, and because the unique constraint
+ * would otherwise abort the transaction.
+ */
+dudaRouter.put("/products/:id/compatible", async (req, res, next) => {
+  const parsed = compatibleBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+
+    const wanted = [...new Set(parsed.data.dudaProductIds)].filter((id) => id !== req.params.id);
+    const related = wanted.length
+      ? await prisma.hubProduct.findMany({
+          where: { dudaProductId: { in: wanted } },
+          select: { id: true, dudaProductId: true },
+        })
+      : [];
+
+    // Anything with no HubProduct row cannot be linked; report it rather than
+    // silently storing a shorter list than the editor sent.
+    const found = new Map(related.map((r) => [r.dudaProductId, r.id]));
+    const unknown = wanted.filter((id) => !found.has(id));
+    if (unknown.length) {
+      res.status(400).json({
+        error: "unknown_products",
+        detail: `No Hub record for: ${unknown.join(", ")}`,
+      });
+      return;
+    }
+
+    const saved = await prisma.$transaction(async (tx) => {
+      await tx.compatibleLink.deleteMany({ where: { hubProductId: hub.id } });
+      if (wanted.length) {
+        await tx.compatibleLink.createMany({
+          // Ordered by the request, not by the lookup — findMany does not
+          // preserve the `in` order.
+          data: wanted.map((dudaId, i) => ({
+            hubProductId: hub.id,
+            relatedHubProductId: found.get(dudaId)!,
+            sortOrder: i,
+          })),
+        });
+      }
+      return tx.compatibleLink.findMany({
+        where: { hubProductId: hub.id },
+        orderBy: { sortOrder: "asc" },
+        include: { related: { select: { dudaProductId: true, name: true, sku: true, slug: true } } },
+      });
+    });
+
+    res.json(
+      saved.map((c) => ({
+        id: c.id,
+        sortOrder: c.sortOrder,
+        hubProductId: c.relatedHubProductId,
+        dudaProductId: c.related.dudaProductId,
+        name: c.related.name,
+        sku: c.related.sku,
+        slug: c.related.slug,
+      })),
+    );
   } catch (err) {
     next(err);
   }

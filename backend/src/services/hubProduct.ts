@@ -16,7 +16,17 @@ type Db = Prisma.TransactionClient | typeof prisma;
  */
 export function syncHubProduct(product: DudaProduct, db: Db = prisma): Promise<HubProduct> {
   const slug = product.seo?.product_url?.trim() || null;
-  const fields = { sku: product.sku ?? null, name: product.name ?? null, slug };
+  // images[0] is Duda's thumbnail (documented: the array is ordered and its
+  // first entry is what Duda shows). Mirrored so the compatible-products
+  // widget can render a thumbnail for a product OTHER than the one on the
+  // page, without the public endpoint calling Duda.
+  const thumbnailUrl = product.images?.[0]?.url?.trim() || null;
+  const fields = {
+    sku: product.sku ?? null,
+    name: product.name ?? null,
+    slug,
+    thumbnailUrl,
+  };
 
   return db.hubProduct.upsert({
     where: { dudaProductId: product.id },

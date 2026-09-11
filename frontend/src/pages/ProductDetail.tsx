@@ -4,6 +4,7 @@ import { LogoActivationPanel } from "../components/LogoActivationPanel";
 import { SpecTableEditor } from "../components/SpecTableEditor";
 import { TextItemListEditor } from "../components/TextItemListEditor";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
+import { CompatibleProductsSection } from "../components/product/CompatibleProductsSection";
 import { DangerZoneSection } from "../components/product/DangerZoneSection";
 import { DescriptionSection } from "../components/product/DescriptionSection";
 import { ImagesSection } from "../components/product/ImagesSection";
@@ -210,6 +211,14 @@ export default function ProductDetail() {
               onChange={(rows) => setSection("specs", rows)}
               dirty={dirty.specs}
               error={saveErrors.specs ?? validationErrors.specs}
+            />
+
+            <CompatibleProductsSection
+              productId={product.id}
+              items={draft.compatible}
+              onChange={(next) => setSection("compatible", next)}
+              dirty={dirty.compatible}
+              error={saveErrors.compatible ?? validationErrors.compatible}
             />
 
             <TextItemListEditor

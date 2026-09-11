@@ -1,4 +1,5 @@
 import type {
+  HubCompatible,
   HubModel3D,
   HubSpecRow,
   HubTextItem,
@@ -11,6 +12,7 @@ import type {
   ImageDraft,
   LogoKind,
   Model3DDraft,
+  CompatibleDraft,
   OptionRefDraft,
   NativeForm,
   SectionKey,
@@ -138,6 +140,14 @@ export const flattenSpecGroups = (groups: SpecGroupDraft[]): SpecRowDraft[] =>
         })),
   );
 
+export const compatibleFrom = (rows: HubCompatible[]): CompatibleDraft[] =>
+  rows.map((r) => ({
+    dudaProductId: r.dudaProductId,
+    name: r.name ?? "",
+    sku: r.sku,
+    slug: r.slug,
+  }));
+
 export const itemsFrom = (items: HubTextItem[]): TextItemDraft[] =>
   items.map((i) => ({ id: i.id, text: i.text }));
 
@@ -190,6 +200,10 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
     case "model3d":
       // filename/url are cosmetic (carried for the preview) — only the id matters.
       return { mediaAssetId: snapshot.model3d.mediaAssetId };
+    case "compatible":
+      // Order is meaningful (it is the carousel order), so compared as-is.
+      // name/sku/slug are display-only, carried to render a row.
+      return snapshot.compatible.map((c) => c.dudaProductId);
   }
 }
 
@@ -280,6 +294,8 @@ export function validate(
     errors.specs = "Every row needs a label or a value (label ≤200, value ≤500 chars).";
   else if (draft.specs.some((r) => !r.cont && !r.label.trim()))
     errors.specs = "Every spec needs a label.";
+
+  if (draft.compatible.length > 40) errors.compatible = "Max 40 compatible products.";
 
   if (draft.benefits.length > 100) errors.benefits = "Max 100 items.";
   else if (!draft.benefits.every(textItemValid))

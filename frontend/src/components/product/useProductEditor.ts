@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiJson } from "../../lib/api";
 import { toast } from "../ui";
 import type {
+  HubCompatible,
   HubCustomPayload,
   HubModel3D,
   HubSpecRow,
@@ -10,6 +11,7 @@ import type {
   ProductLogoEntry,
 } from "../../lib/types";
 import {
+  compatibleFrom,
   activeLogoIds,
   buildDetailsPayload,
   imagesFrom,
@@ -43,6 +45,7 @@ const SECTION_KEYS: SectionKey[] = [
   "options",
   "variations",
   "specs",
+  "compatible",
   "benefits",
   "applications",
   "logos",
@@ -55,6 +58,7 @@ const emptyDirty: DirtyMap = {
   options: false,
   variations: false,
   specs: false,
+  compatible: false,
   benefits: false,
   applications: false,
   logos: false,
@@ -116,6 +120,7 @@ export function useProductEditor(
         options: optionsFrom(product.options),
         variations: variationsFrom(product.variations),
         specs: specsFrom(custom.specs),
+        compatible: compatibleFrom(custom.compatible),
         benefits: itemsFrom(custom.benefits),
         applications: itemsFrom(custom.applications),
         logos: { SA_LOGO: activeLogoIds(sa), CERT_LOGO: activeLogoIds(cert) },
@@ -366,6 +371,22 @@ export function useProductEditor(
           );
           setContext((c) => (c ? { ...c, product: res.product } : c));
           return { variations: variationsFrom(res.product.variations) };
+        },
+      });
+    }
+
+    if (dirty.compatible) {
+      tasks.push({
+        keys: ["compatible"],
+        label: "compatible products",
+        run: async () => {
+          const rows = await apiJson<HubCompatible[]>(`/api/products/${productId}/compatible`, {
+            method: "PUT",
+            // Array position IS the carousel order, so send it as the editor
+            // has it rather than sorting.
+            body: JSON.stringify({ dudaProductIds: draft.compatible.map((c) => c.dudaProductId) }),
+          });
+          return { compatible: compatibleFrom(rows) };
         },
       });
     }

@@ -23,7 +23,8 @@
     "widget:test": "node scripts/widget-test.mjs",
     "widget:sync-css": "node scripts/widget-sync-css.mjs",
     "users:create": "tsx src/scripts/createStaffUser.ts",
-    "users:mfa": "tsx src/scripts/manageMfa.ts"
+    "users:mfa": "tsx src/scripts/manageMfa.ts",
+    "wp:scrape-compatible": "tsx src/scripts/wpScrapeCompatible.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

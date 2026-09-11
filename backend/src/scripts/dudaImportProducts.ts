@@ -1065,6 +1065,127 @@ async function importLogos(products: WooProduct[]): Promise<void> {
   for (const f of failures) console.log(`     ${f}`);
 }
 
+const COMPATIBLE_FILE = path.join(MIGRATION_DIR, "compatible-products.json");
+const MAX_COMPATIBLE = 40;
+
+/**
+ * Stage 3d: "Compatible Products & Accessories" into the Hub.
+ *
+ * Reads `migration/compatible-products.json`, produced by
+ * `npm run wp:scrape-compatible`. ⚠️ NOT from the CSV: the export's
+ * `compatible_products` column is empty for all 584 rows (ACF relationship
+ * fields store serialised post-ID arrays and the exporter dropped them), so
+ * the live WordPress pages were the only source. Splitting scrape from import
+ * means this step is a pure read of a reviewable file — it does not depend on
+ * a third-party site still being up.
+ *
+ * ⚠️ Also NOT WooCommerce `Cross-sells`, which IS populated and looks like the
+ * right data but is a different, smaller set (EX Heater: 5 cross-sells vs 6
+ * live slides). Importing it would have produced a wrong-but-plausible result.
+ *
+ * Replace-whole-set per product, with the same two refusals as the other
+ * stages: a product absent from the scrape is skipped rather than cleared, and
+ * one that already has links is skipped unless --force.
+ */
+async function importCompatible(products: WooProduct[]): Promise<void> {
+  if (!existsSync(COMPATIBLE_FILE)) {
+    fail(`${COMPATIBLE_FILE} not found — run:\n    npm run wp:scrape-compatible --workspace=backend`);
+  }
+  const scraped = JSON.parse(readFileSync(COMPATIBLE_FILE, "utf8")) as Record<
+    string,
+    { name: string; items: { slug: string; title: string }[] }
+  >;
+
+  const ledger = loadLedger();
+  const force = flag("force");
+
+  // slug -> HubProduct id, for resolving both sides.
+  const hub = await prisma.hubProduct.findMany({ select: { id: true, dudaProductId: true, slug: true } });
+  const idBySlug = new Map(hub.filter((h) => h.slug).map((h) => [h.slug!, h.id]));
+
+  let written = 0, links = 0, skippedEmpty = 0, skippedExisting = 0, selfDropped = 0;
+  const unresolved: string[] = [];
+  const failures: string[] = [];
+
+  console.log(`\nImporting compatible products for ${products.length} product(s)…`);
+  console.log(`  scrape file holds ${Object.keys(scraped).length} product(s)`);
+  console.log(force ? "  --force: existing links WILL be replaced\n" : "  (products that already have links are skipped; --force to replace)\n");
+
+  for (const p of products) {
+    const entry = ledger[p.wpId];
+    if (!entry) continue;
+
+    const self = hub.find((h) => h.dudaProductId === entry.dudaProductId);
+    if (!self) {
+      failures.push(`${p.sku || "(no sku)"} ${p.name}: no HubProduct row (run --sync-hub)`);
+      continue;
+    }
+    const record = self.slug ? scraped[self.slug] : undefined;
+    if (!record || !record.items.length) {
+      skippedEmpty++;
+      continue;
+    }
+
+    const targets: string[] = [];
+    for (const it of record.items) {
+      const id = idBySlug.get(it.slug);
+      if (!id) {
+        unresolved.push(`${self.slug} → ${it.slug}`);
+        continue;
+      }
+      // A product listing itself is a WordPress data quirk, not a relationship.
+      if (id === self.id) {
+        selfDropped++;
+        continue;
+      }
+      if (!targets.includes(id)) targets.push(id);
+    }
+    if (!targets.length) {
+      skippedEmpty++;
+      continue;
+    }
+    const capped = targets.slice(0, MAX_COMPATIBLE);
+
+    const existing = await prisma.compatibleLink.count({ where: { hubProductId: self.id } });
+    if (existing > 0 && !force) {
+      skippedExisting++;
+      console.log(`  ⊘ ${(p.sku || "(no sku)").padEnd(18)} already has ${existing} link(s) — skipped`);
+      continue;
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.compatibleLink.deleteMany({ where: { hubProductId: self.id } });
+        await tx.compatibleLink.createMany({
+          data: capped.map((relatedHubProductId, i) => ({
+            hubProductId: self.id,
+            relatedHubProductId,
+            sortOrder: i,
+          })),
+        });
+      });
+      written++;
+      links += capped.length;
+      console.log(`  ✓ ${(p.sku || "(no sku)").padEnd(18)} ${String(capped.length).padStart(2)} link(s)`);
+    } catch (err) {
+      failures.push(`${p.sku || "(no sku)"}: ${err instanceof Error ? err.message.slice(0, 120) : "?"}`);
+    }
+  }
+
+  console.log(`\n=== COMPATIBLE PRODUCTS ===`);
+  console.log(`  products written : ${written}`);
+  console.log(`  links written    : ${links}`);
+  console.log(`  self-links dropped          : ${selfDropped}`);
+  console.log(`  skipped (none scraped)      : ${skippedEmpty}`);
+  console.log(`  skipped (already populated) : ${skippedExisting}`);
+  console.log(`  failed           : ${failures.length}`);
+  for (const f of failures) console.log(`     ${f}`);
+  if (unresolved.length) {
+    console.log(`\n  ⚠ ${unresolved.length} link(s) point at a product not in the Duda catalogue:`);
+    for (const u of unresolved.slice(0, 15)) console.log(`     ${u}`);
+  }
+}
+
 const MAX_SPEC_ROWS = 100;
 const MAX_SPEC_LABEL = 200;
 const MAX_SPEC_VALUE = 500;
@@ -1446,11 +1567,20 @@ async function syncHub(products: WooProduct[]): Promise<void> {
   for (const p of products) {
     const entry = ledger[p.wpId];
     if (!entry) continue;
+    /*
+     * ⚠️ Skip only when EVERY mirrored field is present, not just the slug.
+     *
+     * This used to short-circuit on `slug` alone, which was correct while the
+     * slug was the only thing syncHubProduct copied from Duda. The moment
+     * `thumbnailUrl` was added, "--sync-hub --confirm" reported "96 already
+     * correct" and backfilled nothing — a repair pass that silently repairs
+     * nothing is worse than one that fails. Add any new mirrored column here.
+     */
     const existing = await prisma.hubProduct.findUnique({
       where: { dudaProductId: entry.dudaProductId },
-      select: { slug: true },
+      select: { slug: true, thumbnailUrl: true },
     });
-    if (existing?.slug) {
+    if (existing?.slug && existing.thumbnailUrl && !flag("force")) {
       entry.hubSynced = true;
       skipped++;
       continue;
@@ -1460,7 +1590,7 @@ async function syncHub(products: WooProduct[]): Promise<void> {
       await syncHubProduct(live);
       entry.hubSynced = true;
       synced++;
-      console.log(`  ✓ ${p.sku || "(no sku)"} ${p.name} → slug ${live.seo?.product_url}`);
+      console.log(`  ✓ ${(p.sku || "(no sku)").padEnd(18)} slug=${live.seo?.product_url ?? "-"}  thumb=${live.images?.[0]?.url ? "yes" : "NONE"}`);
     } catch (err) {
       console.log(`  ✗ ${p.name}: ${err instanceof Error ? err.message.slice(0, 140) : "?"}`);
     }
@@ -1533,6 +1663,12 @@ async function main(): Promise<void> {
   if (flag("rollback")) {
     if (!flag("confirm")) fail("--rollback requires --confirm (this DELETES live Duda products).");
     await rollback();
+    return;
+  }
+
+  if (flag("compatible")) {
+    if (!flag("confirm")) fail("--compatible requires --confirm (it writes CompatibleLink rows).");
+    await importCompatible(products);
     return;
   }
 

@@ -1,0 +1,8 @@
+-- Intentionally empty.
+--
+-- `prisma migrate diff --from-migrations` failed (it needs --shadow-database-url)
+-- and the error was swallowed by a 2>/dev/null, so this migration was recorded
+-- as applied with no statements. The HubProduct.thumbnailUrl column it was
+-- meant to add is created by 20260911002000_hubproduct_thumbnail_url instead.
+-- Kept as a no-op because it is already in _prisma_migrations on production:
+-- deleting it would make `migrate status` report a missing migration forever.

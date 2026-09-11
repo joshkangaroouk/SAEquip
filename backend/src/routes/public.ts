@@ -206,6 +206,10 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
         textItems: { orderBy: { sortOrder: "asc" } },
         downloads: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
         glbAsset: true,
+        compatible: {
+          orderBy: { sortOrder: "asc" },
+          include: { related: { select: { name: true, slug: true, thumbnailUrl: true } } },
+        },
       },
     });
     console.timeEnd("[public/content] db");
@@ -280,6 +284,28 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       applications: full.textItems.filter((t) => t.kind === "APPLICATION").map((t) => t.text),
       downloads,
       model3dUrl: full.glbAsset ? publicModelUrl(full.glbAsset.storagePath) : null,
+      /*
+       * Compatible products: name, page URL and thumbnail.
+       *
+       * `imageUrl` comes from the MIRRORED HubProduct.thumbnailUrl, not from
+       * Duda — this endpoint must never call Duda's API on the request path
+       * (it once made the whole thing ~5s). The mirror is refreshed whenever a
+       * product is opened in the dashboard and in bulk by `--sync-hub`, so a
+       * product whose gallery changed keeps a stale thumbnail until then.
+       * Acceptable: the wrong-but-recent photo of the right product is a much
+       * smaller problem than a slow public endpoint.
+       *
+       * A link with no slug is dropped — the card's whole purpose is to be
+       * clickable, and /product/<slug> is the only URL we can build.
+       */
+      compatible: full.compatible
+        .filter((c) => c.related.slug)
+        .map((c) => ({
+          name: c.related.name ?? "",
+          slug: c.related.slug!,
+          url: `/product/${c.related.slug!}`,
+          imageUrl: c.related.thumbnailUrl ?? null,
+        })),
     });
     console.log(`[public/content] ${key}=${value} total ${Date.now() - startedAt}ms`);
   } catch (err) {

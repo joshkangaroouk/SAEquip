@@ -180,6 +180,18 @@ export interface HubCustomPayload {
   applications: HubTextItem[];
   downloads: HubDownload[];
   model3d: HubModel3D | null;
+  compatible: HubCompatible[];
+}
+
+/** A "Compatible Products & Accessories" entry, as the API returns it. */
+export interface HubCompatible {
+  id: string;
+  sortOrder: number;
+  hubProductId: string;
+  dudaProductId: string;
+  name: string | null;
+  sku: string | null;
+  slug: string | null;
 }
 
 // --- Quote requests (public basket-page widget submissions) ---
