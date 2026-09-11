@@ -604,6 +604,8 @@ The heading is an `h3` (`.saeh-cp-h`) — sentence case, centred, 20px above the
 
 **The carousel** is CSS scroll-snap, not a JS slider: card width is `calc((100% - gaps) / n)` at 2 / 3 / 4 up (mobile / 561px / 881px), so the browser owns layout and a resize needs no recalculation. `flex:0 0 <w>` means cards never grow or shrink, which is what makes a short row keep its card width instead of stretching. Arrows and track are a **flex row**, not arrows absolutely positioned over the track: structurally they cannot overlap a card, and when hidden they occupy no space so the track simply widens. Card width is a percentage OF THE TRACK, so showing or hiding an arrow never changes how many cards fit — the measurement cannot oscillate. ⚠️ `justify-content:safe center` centres the cards when they fit and falls back to start when they overflow; plain `center` would centre an overflowing track too, putting the FIRST card out of reach and unscrollable.
 
+⚠️ **On mobile (≤560px) the arrows move BELOW the track**, centred, so a card gets the full width rather than losing ~108px to two buttons and their gaps — nearly a third of a 375px row. Done with `flex-wrap` plus `order`, keeping the DOM order prev/track/next because that is the correct reading order for assistive tech.
+
 **Arrow visibility is MEASURED, not counted** — shown only while the track actually overflows, re-checked via `ResizeObserver`. That is the only way to get "3 items: no arrows on desktop, arrows on mobile" without hard-coding breakpoint assumptions.
 
 ### Data waiting for later stages

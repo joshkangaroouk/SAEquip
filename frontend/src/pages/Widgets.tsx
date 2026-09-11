@@ -86,6 +86,11 @@ const WIDGET_CSS = `
 .saeh-cp-nav:focus-visible{outline:2px solid #111;outline-offset:2px}
 .saeh-cp-nav[disabled]{border-color:#d8d8d8;color:#bdbdbd;cursor:default}
 .saeh-cp-nav svg{width:15px;height:15px}
+@media(max-width:560px){.saeh-cp{flex-wrap:wrap;justify-content:center;gap:14px 12px}
+.saeh-cp-track{order:1;flex:0 0 100%}
+.saeh-cp-prev{order:2}
+.saeh-cp-next{order:3}
+}
 @media(min-width:561px){.saeh-cp-card{flex-basis:calc((100% - 32px) / 3)}
 }
 @media(min-width:881px){.saeh-cp-card{flex-basis:calc((100% - 48px) / 4)}

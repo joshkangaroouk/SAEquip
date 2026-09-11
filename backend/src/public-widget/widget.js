@@ -376,6 +376,21 @@
       // removed, so the control does not jump position as you scroll.
       ".saeh-cp-nav[disabled]{border-color:#d8d8d8;color:#bdbdbd;cursor:default}",
       ".saeh-cp-nav svg{width:15px;height:15px}",
+      /*
+       * MOBILE: arrows move BELOW the track, centred, so a card gets the full
+       * width instead of losing ~108px to two buttons and their gaps — on a
+       * 375px screen that is nearly a third of the row. The track is the only
+       * flex item on its line (flex-basis 100%), so the two buttons wrap
+       * beneath it; `order` puts them there despite the DOM order being
+       * prev, track, next, which is kept because it is the correct reading
+       * order for assistive tech.
+       */
+      "@media(max-width:560px){" +
+        ".saeh-cp{flex-wrap:wrap;justify-content:center;gap:14px 12px}" +
+        ".saeh-cp-track{order:1;flex:0 0 100%}" +
+        ".saeh-cp-prev{order:2}" +
+        ".saeh-cp-next{order:3}" +
+      "}",
       "@media(min-width:561px){.saeh-cp-card{flex-basis:calc((100% - 32px) / 3)}}",
       "@media(min-width:881px){.saeh-cp-card{flex-basis:calc((100% - 48px) / 4)}}",
       ".saeh-3d-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;font-family:var(--saeh-body)}",
@@ -1037,12 +1052,16 @@
     var prev = document.createElement("button");
     prev.type = "button";
     prev.className = "saeh-cp-nav saeh-cp-prev";
+    // Start hidden and let the measurement reveal them. Defaulting to visible
+    // flashes two arrows on every load for the many products whose cards fit.
+    prev.hidden = true;
     prev.setAttribute("aria-label", "Previous products");
     prev.appendChild(chevron("prev"));
 
     var next = document.createElement("button");
     next.type = "button";
     next.className = "saeh-cp-nav saeh-cp-next";
+    next.hidden = true;
     next.setAttribute("aria-label", "Next products");
     next.appendChild(chevron("next"));
 
@@ -1059,6 +1078,17 @@
     }
 
     function sync() {
+      /*
+       * Overflow is the whole test, and it answers the item-count question for
+       * free: 3 cards where 4 fit do not overflow, so no arrows; the same 3 at
+       * 2-up on a phone do, so arrows appear. Counting items instead would
+       * need the breakpoint hard-coded here and would then disagree with the
+       * CSS the moment either changed.
+       *
+       * It cannot oscillate. Card width is a percentage OF THE TRACK, so
+       * hiding an arrow widens the track and widens the cards by the same
+       * proportion — the number that fits is identical either way.
+       */
       var overflow = track.scrollWidth - track.clientWidth > 2;
       // `hidden` rather than a class: it also takes the buttons out of the tab
       // order, which display:none via a class would too but less explicitly.

@@ -314,6 +314,11 @@ async function main() {
     // the arrows hide. That IS the contract: arrows appear only when the track
     // actually overflows, never from the item count.
     check(navs.every((n) => n.hidden), "arrows hidden when the track does not overflow");
+    check(/max-width:560px\)\{[^}]*\.saeh-cp\{flex-wrap:wrap/.test(
+      d.getElementById("saeh-styles").textContent), "on mobile the row wraps");
+    check(/\.saeh-cp-track\{order:1;flex:0 0 100%\}/.test(
+      d.getElementById("saeh-styles").textContent),
+      "mobile: track takes the full width and the arrows wrap below it");
     const css = d.getElementById("saeh-styles").textContent;
     check(/\.saeh-cp-sec\{padding:8% 0\}/.test(css), "8% vertical padding on mobile");
     check(/min-width:561px\)\{\.saeh-cp-sec\{padding:6% 0\}/.test(css), "6% on tablet");
