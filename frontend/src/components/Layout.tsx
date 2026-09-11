@@ -154,12 +154,12 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
         <button> cannot live inside an <a>, and because Products is a real page
         whose click should not be spent on expanding a menu.
       */}
-      <div className={cn(rowBase, "text-body pr-1", selfActive ? rowActive : rowIdle)}>
+      <div className={cn(rowBase, "text-body", selfActive ? rowActive : rowIdle)}>
         <NavLink
           to={item.to}
           end={item.end}
           onClick={onNavigate}
-          className="flex min-w-0 flex-1 items-center gap-3 outline-none"
+          className="flex min-w-0 flex-1 items-center gap-3"
         >
           <Icon
             size={18}
@@ -178,10 +178,19 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
           aria-expanded={open}
           aria-controls={groupId}
           aria-label={`${open ? "Collapse" : "Expand"} ${item.label}`}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-sidebar-subtle transition-colors hover:bg-white/[0.08] hover:text-sidebar-foreground"
+          /*
+           * ⚠️ No box: no width, no height, no padding.
+           *
+           * An h-7 w-7 button is 28px tall, which is taller than the row's
+           * text line, so it forced the Products row open and left it out of
+           * step with every other nav item. The chevron now contributes no
+           * height of its own — the row is sized by its text exactly as the
+           * others are. Hover is a colour change only.
+           */
+          className="flex shrink-0 items-center text-sidebar-subtle transition-colors hover:text-sidebar-foreground"
         >
           <ChevronDown
-            size={16}
+            size={18}
             strokeWidth={2.5}
             className={cn("transition-transform duration-150", open ? "rotate-180" : "rotate-0")}
           />
