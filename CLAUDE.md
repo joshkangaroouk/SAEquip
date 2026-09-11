@@ -633,6 +633,29 @@ Acronyms are **learned from the catalogue, not hard-coded**: all-caps tokens ins
 
 Verified after: 0 products still upper case, 0 name drift between Duda and `HubProduct`, 0 slug drift.
 
+## Categories and Tags (added 2026-09-11)
+
+Both are **assigned Hub-side** and both are pickers in the product editor's right-hand column.
+
+⚠️ **Duda has no working product-side category assignment, and it fails SILENTLY.** `PATCH /products/{id}` with `categories` (or `category_ids`, in either the `["id"]` or `[{id}]` shape) returns **200 and changes nothing** — the product still reports `categories: []`. Probed on throwaways. The only path that works is `PATCH /categories/{id}` with `{products:[{id}]}` — note `[{id}]`, not `["id"]`, which 400s on shape — and that array is full-replacement.
+
+So writing a product's categories to Duda would mean rewriting every affected category's entire product list on every save: N+M calls, and a race two editors lose silently, since Duda has no optimistic concurrency. **Josh chose Hub-side storage (2026-09-11).** Consequence: Duda's own category/storefront pages stay empty; these drive our widgets only, exactly like specs, logos and compatible products. The category LIST still comes from Duda, so names and nesting are always Duda's.
+
+- `ProductCategory` stores `dudaCategoryId` with **no foreign key** — categories live in Duda, so a category deleted there leaves a row pointing at nothing.
+- `Tag` / `ProductTag` are entirely Hub-owned; Duda has no equivalent. Managed at **`/tags`** (create, rename inline, reorder, delete). Deleting a tag cascades its assignments, so the confirm names the product count.
+- Nothing renders tags publicly yet — deliberately. The data layer exists so the labelling can be done before anything depends on it.
+- Both `PUT` routes **reject unknown ids** rather than dropping them, so a stale editor tab cannot quietly save fewer than it displayed. Both are compared as **sorted sets** in `project()`, so ticking A then B is not a change against a baseline that loaded B then A.
+
+### Product editor layout
+
+70/30 two-column (`lg:grid-cols-10`, 7 + 3). Left is the product; right is classification. **Grid, not flex**, so a long accordion opening on the left cannot drag the right column's panels down.
+
+⚠️ **Details and Description are deliberately NOT collapsible** — they are what you came to edit, and hiding them behind a click buys the least valuable scroll at the cost of the most common task.
+
+`AccordionCard` **unmounts** its body when closed rather than hiding it: these bodies are not cheap (the compatible picker fetches the whole catalogue, the 3D section mounts a `model-viewer`), and twelve open at once is what this change exists to avoid. It also **opens itself when a section becomes dirty or errors, and only on that transition** — always-open-while-dirty could never be collapsed again, and an editor that can hide a failed section is how you lose work.
+
+⚠️ **`Card`/`CardHeader` render bare inside an accordion, via React context** (`AccordionBodyProvider`). Every section renders its own Card, so nesting would draw a card in a card and print the title twice. The alternative was threading a `bare` prop through eight unrelated section components; the accordion already knows, so it tells them.
+
 ## Known gaps / backlog (as of 2026-07-28)
 
 - Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).

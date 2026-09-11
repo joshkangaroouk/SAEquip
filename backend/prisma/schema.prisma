@@ -84,6 +84,8 @@ model HubProduct {
   compatible        CompatibleLink[] @relation("CompatibleFrom")
   /// Products that list THIS one as compatible (needed so a delete cascades).
   compatibleFor     CompatibleLink[] @relation("CompatibleTo")
+  categories        ProductCategory[]
+  tags              ProductTag[]
   specRows  SpecRow[]
   textItems ProductTextItem[]
   downloads Download[]
@@ -221,6 +223,52 @@ model CompatibleLink {
 /// A quote request submitted via the public basket-page widget (replaces the
 /// legacy quote-mailer.php). Email notification is optional; emailSent tracks
 /// whether Resend actually sent the alert.
+/// A product's Duda categories, stored HUB-SIDE.
+///
+/// ⚠️ Not written to Duda, deliberately. Duda exposes no working product-side
+/// assignment: `PATCH /products/{id}` with `categories` returns 200 and does
+/// nothing (probed on throwaways — the product still reports `categories: []`).
+/// The only path that works is `PATCH /categories/{id}` with
+/// `{products:[{id}]}`, and that array is full-replacement, so assigning one
+/// product means rewriting a whole category's product list — N+M calls per
+/// save and a race two editors can lose silently, since Duda has no optimistic
+/// concurrency. Josh chose Hub-side (2026-09-11).
+///
+/// `dudaCategoryId` has no foreign key because categories live in Duda. A
+/// category deleted there leaves a row pointing at nothing, which the read
+/// path drops — see the categories route.
+model ProductCategory {
+  id             String     @id @default(cuid())
+  hubProductId   String
+  dudaCategoryId String
+  hubProduct     HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+
+  @@unique([hubProductId, dudaCategoryId])
+  @@index([dudaCategoryId])
+}
+
+/// A free-form label for grouping products. Hub-owned — Duda has no equivalent.
+model Tag {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  /// URL-safe form, unique so it can address a future tag page.
+  slug      String       @unique
+  sortOrder Int          @default(0)
+  createdAt DateTime     @default(now())
+  products  ProductTag[]
+}
+
+model ProductTag {
+  id           String     @id @default(cuid())
+  hubProductId String
+  tagId        String
+  hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+  tag          Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([hubProductId, tagId])
+  @@index([tagId])
+}
+
 model QuoteRequest {
   id        String   @id @default(cuid())
   name      String

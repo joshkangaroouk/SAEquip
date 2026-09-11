@@ -10,6 +10,7 @@ import { categoriesRouter } from "./routes/categories.js";
 import { downloadsRouter } from "./routes/downloads.js";
 import { quotesRouter } from "./routes/quotes.js";
 import { usersRouter } from "./routes/users.js";
+import { tagsRouter } from "./routes/tags.js";
 import { websiteEditorRouter } from "./routes/websiteEditor.js";
 import { publicRouter, publicCors } from "./routes/public.js";
 import { DudaApiError } from "./services/duda.js";
@@ -64,6 +65,7 @@ api.use(categoriesRouter);
 api.use(downloadsRouter);
 api.use(quotesRouter);
 api.use(usersRouter);
+api.use(tagsRouter);
 api.use(websiteEditorRouter);
 app.use("/api", requireAuth, api);
 

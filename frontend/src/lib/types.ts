@@ -181,6 +181,18 @@ export interface HubCustomPayload {
   downloads: HubDownload[];
   model3d: HubModel3D | null;
   compatible: HubCompatible[];
+  /** Duda category ids assigned to this product (stored Hub-side). */
+  categoryIds: string[];
+  /** Hub Tag ids assigned to this product. */
+  tagIds: string[];
+}
+
+export interface HubTag {
+  id: string;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  productCount: number;
 }
 
 /** A "Compatible Products & Accessories" entry, as the API returns it. */

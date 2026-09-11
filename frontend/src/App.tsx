@@ -4,6 +4,7 @@ import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import ProductNew from "./pages/ProductNew";
 import Categories from "./pages/Categories";
+import TagsPage from "./pages/Tags";
 import ProductOptions from "./pages/ProductOptions";
 import Media from "./pages/Media";
 import Logos from "./pages/Logos";
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
       { path: "/products/new", element: <ProductNew /> },
       { path: "/products/:id", element: <ProductDetail /> },
       { path: "/categories", element: <Categories /> },
+      { path: "/tags", element: <TagsPage /> },
       { path: "/options", element: <ProductOptions /> },
       { path: "/media", element: <Media /> },
       { path: "/logos", element: <Logos /> },

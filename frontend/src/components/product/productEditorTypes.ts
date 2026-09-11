@@ -11,7 +11,9 @@ export type SectionKey =
   | "applications"
   | "logos"
   | "model3d"
-  | "compatible";
+  | "compatible"
+  | "categories"
+  | "tags";
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
   details: "Details",
@@ -24,6 +26,8 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   logos: "Logos",
   model3d: "3D Model",
   compatible: "Compatible Products",
+  categories: "Categories",
+  tags: "Tags",
 };
 
 export type LogoKind = "SA_LOGO" | "CERT_LOGO";
@@ -148,6 +152,9 @@ export interface EditorSnapshot {
   variations: VariationDraft[];
   specs: SpecRowDraft[];
   compatible: CompatibleDraft[];
+  /** Duda category ids. Order is not meaningful — compared as a sorted set. */
+  categoryIds: string[];
+  tagIds: string[];
   benefits: TextItemDraft[];
   applications: TextItemDraft[];
   logos: LogosDraft;

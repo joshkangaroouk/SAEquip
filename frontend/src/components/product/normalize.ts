@@ -204,6 +204,12 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
       // Order is meaningful (it is the carousel order), so compared as-is.
       // name/sku/slug are display-only, carried to render a row.
       return snapshot.compatible.map((c) => c.dudaProductId);
+    // Sorted: these are SETS. Ticking A then B must not read as a change
+    // against a baseline that happened to load B then A.
+    case "categories":
+      return [...snapshot.categoryIds].sort();
+    case "tags":
+      return [...snapshot.tagIds].sort();
   }
 }
 
