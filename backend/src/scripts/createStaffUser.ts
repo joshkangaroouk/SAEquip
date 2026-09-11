@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createInterface } from "node:readline/promises";
 import { env } from "../env.js";
 import { supabase } from "../supabase.js";
+import { findUserWithFactors } from "../services/supabaseUsers.js";
 
 /**
  * Create (or repair) a staff Supabase account.
@@ -71,10 +72,13 @@ async function readPassword(): Promise<string> {
   return pw;
 }
 
+/**
+ * ⚠️ Goes through findUserWithFactors, not listUsers — the latter omits
+ * `factors`, so `--check` reported "MFA not enrolled" for accounts that had a
+ * verified authenticator.
+ */
 async function findByEmail(email: string) {
-  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
-  if (error) fail(`Could not list users: ${error.message}`);
-  return data!.users.find((u) => (u.email ?? "").toLowerCase() === email);
+  return (await findUserWithFactors(email)) ?? undefined;
 }
 
 async function main() {

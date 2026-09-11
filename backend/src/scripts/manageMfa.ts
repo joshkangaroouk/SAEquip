@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { supabase } from "../supabase.js";
+import { findUserWithFactors } from "../services/supabaseUsers.js";
 
 /**
  * Inspect or clear a staff account's two-factor enrolment.
@@ -35,9 +36,12 @@ async function main() {
   const email = (arg("email") ?? "").trim().toLowerCase();
   if (!email || !email.includes("@")) fail("Pass --email <address>");
 
-  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
-  if (error) fail(`Could not list users: ${error.message}`);
-  const user = data?.users.find((u) => (u.email ?? "").toLowerCase() === email);
+  /*
+   * ⚠️ findUserWithFactors, NOT listUsers. listUsers omits `factors`
+   * entirely, so this script would have reported "no factors enrolled" and
+   * refused to reset — for the one person who cannot get in without it.
+   */
+  const user = await findUserWithFactors(email);
   if (!user) fail(`No account for ${email}`);
 
   const factors = user.factors ?? [];

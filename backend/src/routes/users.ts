@@ -4,6 +4,7 @@ import { z } from "zod";
 import { env } from "../env.js";
 import { prisma } from "../prisma.js";
 import { supabase } from "../supabase.js";
+import { hasVerifiedFactor, listUsersWithFactors } from "../services/supabaseUsers.js";
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 
 export const usersRouter = Router();
@@ -47,30 +48,21 @@ interface StaffUser {
  */
 usersRouter.get("/users", async (req, res, next) => {
   try {
-    // perPage is capped by Supabase; 200 is far above the real staff count and
-    // this list is not expected to paginate.
-    const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
-    if (error) {
-      console.error("[users] listUsers failed:", error.message);
-      res.status(502).json({ error: "supabase_error" });
-      return;
-    }
+    // ⚠️ via listUsersWithFactors, NOT listUsers: the latter omits `factors`
+    // entirely, so Two-factor rendered "Off" for accounts that had it on.
+    const allUsers = await listUsersWithFactors(env.allowedEmailDomains);
 
     const editors = await prisma.dudaEditorAccount.findMany({ select: { staffUserId: true } });
     const editorIds = new Set(editors.map((e) => e.staffUserId));
 
-    const users: StaffUser[] = data.users
-      .filter((u) => {
-        const domain = (u.email ?? "").split("@")[1]?.toLowerCase() ?? "";
-        return domain && env.allowedEmailDomains.includes(domain);
-      })
+    const users: StaffUser[] = allUsers
       .map((u) => ({
         id: u.id,
         email: u.email ?? "",
         createdAt: u.created_at,
         lastSignInAt: u.last_sign_in_at ?? null,
         emailConfirmed: !!u.email_confirmed_at,
-        mfaEnabled: (u.factors ?? []).some((f) => f.status === "verified"),
+        mfaEnabled: hasVerifiedFactor(u),
         dudaEditor: editorIds.has(u.id),
       }))
       .sort((a, b) => a.email.localeCompare(b.email));
