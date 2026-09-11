@@ -97,13 +97,15 @@ function NavRow({
       // which is why the row carries the negative inset rather than the
       // pill doing it.
       className={({ isActive }) =>
-        cn(rowBase, nested ? "py-2 pl-9 text-small" : "text-body", isActive ? rowActive : rowIdle)
+        // Same type and icon size as a top-level row — only the indent
+        // differs, which is all the hierarchy needs to read.
+        cn(rowBase, "text-body", nested && "pl-6", isActive ? rowActive : rowIdle)
       }
     >
       {({ isActive }) => (
         <>
           <Icon
-            size={nested ? 16 : 18}
+            size={18}
             strokeWidth={2}
             className={cn(
               "shrink-0 transition-colors duration-150",
@@ -127,10 +129,15 @@ function NavRow({
  */
 function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const { pathname } = useLocation();
+  const Icon = item.icon;
   const children = item.children ?? [];
   const childActive = children.some((c) => pathname === c.to || pathname.startsWith(c.to + "/"));
-  // Open when you are somewhere inside the group, so the sidebar always shows
-  // where you are; otherwise remember what you last chose.
+  // Mirrors NavLink's own matching, since the highlight now lives on the
+  // wrapper rather than on the link itself.
+  const selfActive = item.end
+    ? pathname === item.to
+    : pathname === item.to || pathname.startsWith(item.to + "/");
+
   const [open, setOpen] = useState(childActive);
   useEffect(() => {
     if (childActive) setOpen(true);
@@ -140,17 +147,38 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
 
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-center gap-1">
-        <div className="min-w-0 flex-1">
-          <NavRow item={item} onNavigate={onNavigate} />
-        </div>
+      {/*
+        The ROW carries the highlight, not the link, so the chevron sits inside
+        the same background rather than floating beside it. The link keeps the
+        click target for the page; the chevron is a separate button because a
+        <button> cannot live inside an <a>, and because Products is a real page
+        whose click should not be spent on expanding a menu.
+      */}
+      <div className={cn(rowBase, "text-body pr-1", selfActive ? rowActive : rowIdle)}>
+        <NavLink
+          to={item.to}
+          end={item.end}
+          onClick={onNavigate}
+          className="flex min-w-0 flex-1 items-center gap-3 outline-none"
+        >
+          <Icon
+            size={18}
+            strokeWidth={2}
+            className={cn(
+              "shrink-0 transition-colors duration-150",
+              selfActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
+            )}
+          />
+          {item.label}
+        </NavLink>
+
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-controls={groupId}
           aria-label={`${open ? "Collapse" : "Expand"} ${item.label}`}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sidebar-subtle transition-colors hover:bg-white/[0.04] hover:text-sidebar-foreground"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-sidebar-subtle transition-colors hover:bg-white/[0.08] hover:text-sidebar-foreground"
         >
           <ChevronDown
             size={16}
@@ -160,9 +188,17 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
         </button>
       </div>
 
-      {/* `hidden` rather than unmounting: it keeps the children out of the
-          accessibility tree and out of in-page find, and the rows are cheap. */}
-      <div id={groupId} hidden={!open} className="flex flex-col gap-0.5">
+      {/*
+        ⚠️ A `display` UTILITY, not the `hidden` attribute.
+
+        `[hidden]{display:none}` from Tailwind's preflight and `.flex
+        {display:flex}` have identical specificity, and utilities are emitted
+        after preflight — so `flex` won and the attribute did nothing at all,
+        leaving the children permanently visible and the chevron apparently
+        inert. Exactly one display class is applied here, so there is nothing
+        to tie-break.
+      */}
+      <div id={groupId} className={cn("flex-col gap-0.5", open ? "flex" : "hidden")}>
         {children.map((c) => (
           <NavRow key={c.to} item={c} onNavigate={onNavigate} nested />
         ))}
