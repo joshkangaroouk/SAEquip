@@ -360,7 +360,10 @@
       ".saeh-cp-track::-webkit-scrollbar{display:none}",
       // flex:0 0 <w> — never grow, never shrink. A card keeps its width when
       // there are too few to fill the row, which is the behaviour asked for.
-      ".saeh-cp-card{flex:0 0 calc((100% - 16px) / 2);scroll-snap-align:start;display:flex;flex-direction:column;background:#fff;border:1px solid #ececec;text-decoration:none;color:inherit}",
+      // Mobile is ONE card, full width — a phone-sized card at 2-up is too
+      // small to read the product name or tap the button comfortably, and the
+      // arrows moving below the track is what buys the room for it.
+      ".saeh-cp-card{flex:0 0 100%;scroll-snap-align:start;display:flex;flex-direction:column;background:#fff;border:1px solid #ececec;text-decoration:none;color:inherit}",
       ".saeh-cp-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}",
       ".saeh-cp-shot img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}",
       ".saeh-cp-body{padding:14px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;flex:1}",

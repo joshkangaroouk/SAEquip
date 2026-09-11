@@ -327,10 +327,14 @@ async function main() {
     check(/justify-content:safe center/.test(css), "cards centre when they fit, start when they overflow");
     check(/\.saeh-cp-nav:hover:not\(\[disabled\]\)\{background:#fed217/.test(css), "arrows go yellow on hover");
     check(/\.saeh-cp-nav\[disabled\]\{border-color:#d8d8d8/.test(css), "arrows grey out at either end");
-    check(/\.saeh-cp-card\{flex:0 0 calc\(\(100% - 16px\) \/ 2\)/.test(css), "2-up by default (mobile)");
+    check(/\.saeh-cp-card\{flex:0 0 100%/.test(css), "1-up full width on mobile");
     check(/min-width:561px\)\{\.saeh-cp-card\{flex-basis:calc\(\(100% - 32px\) \/ 3\)/.test(css), "3-up on tablet");
     check(/min-width:881px\)\{\.saeh-cp-card\{flex-basis:calc\(\(100% - 48px\) \/ 4\)/.test(css), "4-up on desktop");
     check(/\.saeh-cp-card\{flex:0 0 /.test(css), "cards never grow or shrink — they keep their width when a row is short");
+    // The three breakpoints, in one place, so a future change to one of them
+    // has to acknowledge the set.
+    const widths = [...css.matchAll(/\.saeh-cp-card\{flex(?:-basis)?:(?:0 0 )?([^;}]+)/g)].map((m) => m[1]);
+    check(widths.length === 3, "exactly three card widths are declared", widths.join(" | "));
   }
   {
     const { d } = await boot({ payload: { ...FULL, compatible: [] }, props: { section: "compatible", slug: "x" } });
