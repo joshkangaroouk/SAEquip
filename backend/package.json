@@ -24,7 +24,8 @@
     "widget:sync-css": "node scripts/widget-sync-css.mjs",
     "users:create": "tsx src/scripts/createStaffUser.ts",
     "users:mfa": "tsx src/scripts/manageMfa.ts",
-    "wp:scrape-compatible": "tsx src/scripts/wpScrapeCompatible.ts"
+    "wp:scrape-compatible": "tsx src/scripts/wpScrapeCompatible.ts",
+    "duda:fix-casing": "tsx src/scripts/dudaFixProductCasing.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

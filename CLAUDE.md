@@ -621,6 +621,18 @@ This **replaced** a `scrollWidth`-vs-`clientWidth` measurement, and the reason m
 
 Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO is barely populated** (title on 4/96, meta description on 12/96), so SEO is authoring work, not migration. Per Josh, SEO metadata is off the table for now.
 
+### Product name casing (fixed 2026-09-11)
+
+20 of the 96 product names were entirely upper case and are now sentence case, in **Duda** (the source of truth for `name`), via `npm run duda:fix-casing --workspace=backend -- --confirm`. Preview without `--confirm`.
+
+⚠️ **Verified before writing: a case-only rename does NOT change Duda's auto-generated `seo.product_url`.** Probed on a throwaway product — created one SHOUTING, renamed it to sentence case, slug unchanged, deleted it. Had the slug tracked the name, this would have silently changed 20 public URLs and 404'd every link to them. **Re-probe before any bulk rename that changes words rather than just case** — that is a different question, and the answer may well differ.
+
+⚠️ **Only ENTIRELY upper-case names are touched.** The other 76 are already styled, and a title-caser over them would capitalise the deliberate lower-case words in e.g. "Free Airflow (with 30cm Connectors)".
+
+Acronyms are **learned from the catalogue, not hard-coded**: all-caps tokens inside already-styled names (the house style stating itself — `EX`, `LED`, `LEV`, `PU`, `PVC`, `KVA`) plus **every SKU**, because a product code in a name is a code. That second source is load-bearing: `COMPACT FILTRATION UNIT (SAECFU)` carries its SKU to clear a duplicate-title collision, and `SAECFU` appears in no styled name, so the first source alone produced "Saecfu". Tokens containing a digit are kept verbatim (`3.8KVA`, `400VA`).
+
+Verified after: 0 products still upper case, 0 name drift between Duda and `HubProduct`, 0 slug drift.
+
 ## Known gaps / backlog (as of 2026-07-28)
 
 - Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).
