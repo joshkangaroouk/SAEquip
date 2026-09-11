@@ -223,7 +223,7 @@
       // --- tabbed accordion ---
       // Mobile-first: the DOM is header,panel,header,panel… so with no layout
       // rules at all it already reads and behaves as an accordion.
-      ".saeh-tabs{border:1px solid #ececec;border-radius:10px;overflow:hidden}",
+      ".saeh-tabs{border:1px solid #ececec;overflow:hidden}",
       ".saeh-tab-h{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;margin:0;font-family:var(--saeh-head);text-align:left;background:#fafafa;border:0;border-top:1px solid #ececec;padding:14px 16px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#111;cursor:pointer}",
       ".saeh-tab-h:first-child{border-top:0}",
       ".saeh-tab-h:hover{background:#f2f2f2}",
@@ -239,7 +239,21 @@
       ".saeh-prose{font-size:15px;font-weight:400;color:#878787}",
       ".saeh-prose p{margin:0}",
       ".saeh-prose p + p{margin-top:12px}",
-      ".saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px}",
+      /*
+       * ⚠️ `!important` on the indent, deliberately.
+       *
+       * Markers sit OUTSIDE the content box by default, so a list needs left
+       * padding or its bullets render past the container's left edge — which
+       * is what was happening. The padding is set here, but Duda's own reset
+       * targets lists through `#dm`, and an ID beats any number of classes, so
+       * `.saeh-prose ul` loses and the padding never applies. This is the one
+       * place the widget cannot win on specificity, and a bullet hanging
+       * outside the card is a visible break rather than a nicety.
+       *
+       * Scoped to `.saeh-prose` lists only — it does not leak to the host page.
+       */
+      ".saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px!important;list-style-position:outside}",
+      ".saeh-prose li{margin:0}",
       ".saeh-prose h4,.saeh-prose h5,.saeh-prose h6{font-family:var(--saeh-head);margin:14px 0 6px;font-size:16px;font-weight:700}",
       ".saeh-prose a{color:inherit;text-decoration:underline}",
       ".saeh-prose hr{border:0;border-top:1px solid #ececec;margin:16px 0}",
@@ -341,9 +355,9 @@
        * band. Percentages resolve against the container WIDTH, which is what
        * makes the spacing scale with the layout rather than the text.
        */
-      ".saeh-cp-sec{padding:8% 0}",
-      "@media(min-width:561px){.saeh-cp-sec{padding:6% 0}}",
-      "@media(min-width:881px){.saeh-cp-sec{padding:3% 0}}",
+      ".saeh-cp-sec{padding:12% 0}",
+      "@media(min-width:561px){.saeh-cp-sec{padding:9% 0}}",
+      "@media(min-width:881px){.saeh-cp-sec{padding:5% 0}}",
       // h3, sentence case, centred. Deliberately NOT .saeh-h — that is the
       // uppercase, left-aligned, yellow-ruled heading the in-page sections
       // use, and this one sits alone in a full-width band.
@@ -635,7 +649,7 @@
       h.type = "button"; // never submit a surrounding Duda form
       h.className = "saeh-tab-h";
       h.id = panelId + "-h";
-      h.setAttribute("aria-expanded", i === 0 ? "true" : "false");
+      h.setAttribute("aria-expanded", "false");
       h.setAttribute("aria-controls", panelId);
       h.appendChild(el("span", null, p.label));
 
@@ -644,14 +658,32 @@
       panel.setAttribute("role", "region");
       panel.setAttribute("aria-labelledby", h.id);
       panel.appendChild(p.build());
-      if (i !== 0) panel.hidden = true;
+      panel.hidden = true; // opened below, per layout
 
       headers.push(h);
       wrap.appendChild(h);
       wrap.appendChild(panel);
     });
 
+    /*
+     * Which layout the same DOM is currently in. Matches the media query in
+     * injectStyles() — above it the headers become a tab strip, below it an
+     * accordion. Falls back to TABS on any error, because that layout is
+     * never empty: a tab row with no open panel looks broken, whereas a fully
+     * closed accordion is a normal resting state.
+     */
+    function isTabs() {
+      try {
+        return !window.matchMedia || window.matchMedia("(min-width:721px)").matches;
+      } catch (e) {
+        return true;
+      }
+    }
+
+    var current = -1; // -1 = everything closed
+
     function select(index) {
+      current = index;
       panels.forEach(function (_p, i) {
         var open = i === index;
         headers[i].setAttribute("aria-expanded", open ? "true" : "false");
@@ -664,7 +696,16 @@
 
     headers.forEach(function (h, i) {
       h.addEventListener("click", function () {
-        select(i);
+        /*
+         * Accordion mode TOGGLES; tab mode always selects.
+         *
+         * On mobile everything starts closed, so a header that could only
+         * open would leave no way back to that state. In the tab layout the
+         * same toggle would empty the panel area under a still-visible tab
+         * strip, which reads as broken rather than closed.
+         */
+        if (!isTabs() && current === i) select(-1);
+        else select(i);
       });
       // Arrow keys move between headers. Home/End jump to the ends. Buttons
       // already handle Enter/Space natively.
@@ -682,6 +723,30 @@
         target.focus();
       });
     });
+
+    /*
+     * Initial state: first panel open as TABS, nothing open as an ACCORDION.
+     * On a phone an auto-opened Overview pushes the other three headings off
+     * screen, so the widget reads as one long article rather than a list of
+     * what is available.
+     */
+    select(isTabs() ? 0 : -1);
+
+    // Crossing up into the tab layout with nothing open would show a tab strip
+    // above empty space, so open the first panel on the way up. The other
+    // direction is left alone — an open accordion panel is perfectly valid.
+    try {
+      if (window.matchMedia) {
+        var mq = window.matchMedia("(min-width:721px)");
+        var onLayoutChange = function () {
+          if (mq.matches && current === -1) select(0);
+        };
+        if (mq.addEventListener) mq.addEventListener("change", onLayoutChange);
+        else if (mq.addListener) mq.addListener(onLayoutChange); // older Safari
+      }
+    } catch (e) {
+      /* never break the host page */
+    }
 
     sec.appendChild(wrap);
     return sec;
@@ -1585,7 +1650,7 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  var iface = { init: init, clean: clean, version: "2026-09-11-arrows-css" };
+  var iface = { init: init, clean: clean, version: "2026-09-11-tabs-tweaks" };
   window.SAEquipHubWidget = iface;
 
   /**

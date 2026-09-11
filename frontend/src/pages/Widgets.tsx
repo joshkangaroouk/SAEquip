@@ -16,7 +16,7 @@ const WIDGET_CSS = `
 .saeh-h{font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;margin:0 0 12px;border-left:4px solid #ffd200;padding-left:10px}
 .saeh-logos{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .saeh-logos img{height:35px;width:auto;flex:0 0 auto;display:block}
-.saeh-tabs{border:1px solid #ececec;border-radius:10px;overflow:hidden}
+.saeh-tabs{border:1px solid #ececec;overflow:hidden}
 .saeh-tab-h{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;margin:0;font-family:var(--saeh-head);text-align:left;background:#fafafa;border:0;border-top:1px solid #ececec;padding:14px 16px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#111;cursor:pointer}
 .saeh-tab-h:first-child{border-top:0}
 .saeh-tab-h:hover{background:#f2f2f2}
@@ -28,7 +28,8 @@ const WIDGET_CSS = `
 .saeh-prose{font-size:15px;font-weight:400;color:#878787}
 .saeh-prose p{margin:0}
 .saeh-prose p + p{margin-top:12px}
-.saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px}
+.saeh-prose ul,.saeh-prose ol{margin:12px 0;padding-left:22px!important;list-style-position:outside}
+.saeh-prose li{margin:0}
 .saeh-prose h4,.saeh-prose h5,.saeh-prose h6{font-family:var(--saeh-head);margin:14px 0 6px;font-size:16px;font-weight:700}
 .saeh-prose a{color:inherit;text-decoration:underline}
 .saeh-prose hr{border:0;border-top:1px solid #ececec;margin:16px 0}
@@ -63,10 +64,10 @@ const WIDGET_CSS = `
 .saeh-3d-btn-icon{width:20px;height:20px;flex:0 0 auto;display:block}
 .saeh-3d-btn:hover{background:#f0c400}
 .saeh-3d-btn:focus-visible{outline:2px solid #111;outline-offset:2px}
-.saeh-cp-sec{padding:8% 0}
-@media(min-width:561px){.saeh-cp-sec{padding:6% 0}
+.saeh-cp-sec{padding:12% 0}
+@media(min-width:561px){.saeh-cp-sec{padding:9% 0}
 }
-@media(min-width:881px){.saeh-cp-sec{padding:3% 0}
+@media(min-width:881px){.saeh-cp-sec{padding:5% 0}
 }
 .saeh-cp-h{font-family:var(--saeh-head);font-size:20px;font-weight:600;color:#111;text-align:center;margin:0 0 20px;line-height:1.25}
 .saeh-cp{display:flex;align-items:center;gap:14px}

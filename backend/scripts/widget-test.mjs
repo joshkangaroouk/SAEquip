@@ -42,7 +42,7 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
     url: "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
@@ -61,6 +61,22 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
         pageData: () => (dmHangs ? new Promise(() => {}) : Promise.resolve(dmPageData)),
       }),
     };
+  }
+  /*
+   * jsdom does not evaluate media queries — its matchMedia (when present)
+   * always reports matches:false. So the accordion-vs-tabs layout has to be
+   * stubbed explicitly, or every test silently exercises one branch and the
+   * other ships unverified.
+   */
+  if (tabsLayout !== undefined) {
+    w.matchMedia = (q) => ({
+      media: q,
+      matches: tabsLayout,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+    });
   }
   if (amdLoader) {
     // Minimal AMD loader: capture whatever the script defines as its module.
@@ -114,6 +130,39 @@ async function main() {
     check(d.querySelector(".saeh-tab-h").getAttribute("aria-expanded") === "true", "first tab is the open one");
   }
 
+  console.log("\n=== mobile opens nothing; desktop opens the first tab ===");
+  {
+    const { d } = await boot({ props: { section: "tabs", slug: "x" }, tabsLayout: true });
+    check(openPanels(d).length === 1, "desktop: exactly one panel open");
+    check(d.querySelector(".saeh-tab-h").getAttribute("aria-expanded") === "true",
+      "desktop: it is the first");
+  }
+  {
+    const { d } = await boot({ props: { section: "tabs", slug: "x" }, tabsLayout: false });
+    check(openPanels(d).length === 0, "mobile: nothing open by default",
+      String(openPanels(d).length));
+    check([...d.querySelectorAll(".saeh-tab-h")].every((h) => h.getAttribute("aria-expanded") === "false"),
+      "mobile: every header reports collapsed");
+
+    // An accordion that can only open would strand the user with no way back
+    // to the all-closed state it started in.
+    const hs = [...d.querySelectorAll(".saeh-tab-h")];
+    hs[1].click();
+    check(openPanels(d).length === 1 && hs[1].getAttribute("aria-expanded") === "true",
+      "mobile: clicking a header opens it");
+    hs[1].click();
+    check(openPanels(d).length === 0, "mobile: clicking it again closes it");
+  }
+  {
+    // The tab layout must NOT toggle shut — a tab strip over an empty panel
+    // area reads as broken rather than closed.
+    const { d } = await boot({ props: { section: "tabs", slug: "x" }, tabsLayout: true });
+    const h0 = d.querySelector(".saeh-tab-h");
+    h0.click();
+    check(openPanels(d).length === 1 && h0.getAttribute("aria-expanded") === "true",
+      "desktop: re-clicking the open tab keeps it open");
+  }
+
   console.log("\n=== EMPTY TABS ARE NOT RENDERED ===");
   {
     const { d } = await boot({ payload: { ...FULL, specs: [], benefits: [] }, props: { section: "tabs", slug: "x" } });
@@ -133,6 +182,12 @@ async function main() {
   {
     const { d } = await boot({ props: { section: "tabs", slug: "x" } });
     check(!!d.querySelector(".saeh-prose p"), "Overview renders description HTML");
+    const tcss = d.getElementById("saeh-styles").textContent;
+    check(/\.saeh-tabs\{border:1px solid #ececec;overflow:hidden\}/.test(tcss),
+      "the accordion has square corners");
+    check(!/\.saeh-tabs\{[^}]*border-radius:10px/.test(tcss), "no 10px radius left on it");
+    check(/\.saeh-prose ul,\.saeh-prose ol\{[^}]*padding-left:22px!important/.test(tcss),
+      "list indent is !important, so the host reset cannot pull bullets outside");
     check(d.querySelectorAll(".saeh-tab-p")[1].querySelector("table.saeh-table") !== null, "Specs uses .saeh-table");
     check(d.querySelectorAll(".saeh-tab-p")[2].querySelector("ul.saeh-check") !== null, "Benefits uses .saeh-check (tick design)");
     check(d.querySelectorAll(".saeh-tab-p")[3].querySelector("ul.saeh-check") !== null,
@@ -355,9 +410,9 @@ async function main() {
       d.getElementById("saeh-styles").textContent),
       "mobile: track takes the full width and the arrows wrap below it");
     const css = d.getElementById("saeh-styles").textContent;
-    check(/\.saeh-cp-sec\{padding:8% 0\}/.test(css), "8% vertical padding on mobile");
-    check(/min-width:561px\)\{\.saeh-cp-sec\{padding:6% 0\}/.test(css), "6% on tablet");
-    check(/min-width:881px\)\{\.saeh-cp-sec\{padding:3% 0\}/.test(css), "3% on desktop");
+    check(/\.saeh-cp-sec\{padding:12% 0\}/.test(css), "12% vertical padding on mobile");
+    check(/min-width:561px\)\{\.saeh-cp-sec\{padding:9% 0\}/.test(css), "9% on tablet");
+    check(/min-width:881px\)\{\.saeh-cp-sec\{padding:5% 0\}/.test(css), "5% on desktop");
     check(/\.saeh-cp\{display:flex/.test(css), "arrows and track are a flex row, so arrows cannot overlap a card");
     check(/justify-content:safe center/.test(css), "cards centre when they fit, start when they overflow");
     check(/\.saeh-cp-nav:hover:not\(\[disabled\]\)\{background:#fed217/.test(css), "arrows go yellow on hover");
