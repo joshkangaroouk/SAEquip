@@ -107,8 +107,17 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 
   ```js
   })(element, 'compatible', data.inEditor,
-     data.singlePage === true, data.productTag || '', data.heading || '');
+     data.singlePage, data.productTag, data.heading);
   ```
+
+  ⚠️ **Pass the content-panel values RAW.** An earlier version narrowed them in
+  the shim (`data.singlePage === true`), which reads `"true"`, `1` and `"1"` as
+  OFF — Duda's content panel promises no particular representation for a
+  checkbox. The widget coerces generously via `truthyProp()`, but a shim that
+  converts first throws the information away before the widget ever sees it.
+  The symptom is a direct contradiction that looks impossible: Duda's own
+  "Show if: singlePage is true" rule renders the dependent dropdown (so the
+  editor reads the value as ON) while `lastInit.singlePage` reports `false`.
 
   with the matching extra parameters on the function and
   `props: { …, singlePage: singlePage, productTag: productTag, heading: heading }`.

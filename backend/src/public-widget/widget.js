@@ -121,6 +121,20 @@
   if (!hub.api) hub.api = findApiBase();
 
   // ---- tiny DOM helpers (textContent only — never inject HTML) ----
+  /**
+   * Coerce a content-panel value to a boolean.
+   *
+   * Accepts what a CMS checkbox plausibly hands over — a real boolean, the
+   * strings "true"/"1"/"on"/"yes", or the number 1 — rather than trusting one
+   * representation. Anything unrecognised is false, so the default stays "off".
+   */
+  function truthyProp(v) {
+    if (v === true || v === 1) return true;
+    if (typeof v !== "string") return false;
+    var t = v.trim().toLowerCase();
+    return t === "true" || t === "1" || t === "on" || t === "yes";
+  }
+
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -1936,7 +1950,20 @@
        * product page. The two are checked together because a tag-mode widget
        * with no tag has nothing to show.
        */
-      var singlePage = props.singlePage === true || props.singlePage === "true";
+      /*
+       * ⚠️ Generous on purpose. Duda's content panel does not promise a
+       * literal boolean for a checkbox, and a strict `=== true` reads "true",
+       * 1 and "1" as OFF — silently, and in the one place where Duda's OWN
+       * "Show if: singlePage is true" rule was simultaneously evaluating the
+       * same value as ON. That contradiction (the dropdown visible in the
+       * panel, the widget insisting the box was unticked) is what this exists
+       * to make impossible.
+       *
+       * The shim must pass `data.singlePage` RAW for this to help — a shim
+       * that narrows it to a boolean first throws the information away before
+       * it ever arrives. See DUDA-WIDGETS in CLAUDE.md.
+       */
+      var singlePage = truthyProp(props.singlePage);
       /*
        * Duda's dynamic dropdown documents `value` as the thing embedded into
        * the widget, but the panel builds each option as {value,label} and a

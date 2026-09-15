@@ -265,6 +265,36 @@ async function main() {
     check(d.querySelectorAll(".saeh-cp-card").length === 3, "the product's own compatible list still wins");
   }
   {
+    /*
+     * Duda's content panel does not promise a literal boolean for a checkbox.
+     * A strict `=== true` read "true"/1/"1" as OFF while Duda's own
+     * "Show if: singlePage is true" rule read the same value as ON — the
+     * widget and the editor disagreeing about one checkbox.
+     */
+    for (const on of [true, "true", 1, "1", "on", "yes"]) {
+      const { fetchedUrl } = await boot({
+        props: { section: "compatible", singlePage: on, productTag: "aviation" },
+        tagPayload: TAGGED,
+      });
+      check(
+        fetchedUrl.indexOf("/by-tag") !== -1,
+        `singlePage=${JSON.stringify(on)} enters tag mode`,
+        fetchedUrl,
+      );
+    }
+    for (const off of [false, "false", 0, "", undefined, "no"]) {
+      const { fetchedUrl } = await boot({
+        props: { section: "compatible", singlePage: off, productTag: "aviation" },
+        tagPayload: TAGGED,
+      });
+      check(
+        fetchedUrl.indexOf("/by-tag") === -1,
+        `singlePage=${JSON.stringify(off)} stays in product mode`,
+        fetchedUrl,
+      );
+    }
+  }
+  {
     // Duda's dropdown options are {value,label}; a loader passing the option
     // object straight through must not read as "nothing selected".
     const { d, fetchedUrl } = await boot({
