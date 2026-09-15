@@ -113,12 +113,15 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   variant of the one above:
 
   ```js
-  (function (el, section, inEditor, singlePage, productTag, heading) {
+  (function (el, section, inEditor, cfg) {
     // Stamped SYNCHRONOUSLY, before any async work.
     el.setAttribute('data-saeh-section', section);
 
-    // Diagnostic: what Duda ACTUALLY put in `data`, before this shim touches it.
+    // Diagnostic: the RAW object Duda handed this shim. See the console table.
     (window.__saehData || (window.__saehData = {}))[section] = data;
+
+    // Read into primitives NOW, at evaluation time — see the warning below.
+    var singlePage = cfg.singlePage, productTag = cfg.productTag, heading = cfg.heading;
 
     var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=19';
     var L = window.__saehLoader || (window.__saehLoader = {});
@@ -139,18 +142,29 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
         }
       });
     }).catch(function () {});
-  })(element, 'compatible', data.inEditor,
-     data.singlePage, data.productTag, data.heading);
+  })(element, 'compatible', data.inEditor, data.config || data);
   ```
 
-  ⚠️ **Pass the content-panel values RAW.** An earlier version narrowed them in
-  the shim (`data.singlePage === true`), which reads `"true"`, `1` and `"1"` as
-  OFF — Duda's content panel promises no particular representation for a
-  checkbox. The widget coerces generously via `truthyProp()`, but a shim that
-  converts first throws the information away before the widget ever sees it.
-  The symptom is a contradiction that looks impossible: Duda's own
-  "Show if: singlePage is true" rule renders the dependent dropdown (so the
-  editor reads the value as ON) while `lastInit.singlePage` reports `false`.
+  ⚠️ **Content-panel values live on `data.config`, NOT on `data`.** This cost
+  five round trips to find. `data` itself carries only platform context —
+  measured live, its keys are exactly `device | page | inEditor | accountId |
+  siteId | widgetId | widgetVersion | elementId | config | refresh | locale` —
+  and the panel's own variables are nested one level down in `config`. Note
+  `inEditor` IS top level, which is what made the mistake survive: the shim read
+  `data.inEditor` correctly right beside `data.singlePage` reading `undefined`,
+  so the pattern looked proven. `data.config || data` keeps it working if a
+  future widget version flattens them.
+
+  ⚠️ **Read the values into primitives at evaluation time**, as above, rather
+  than reaching into `cfg` inside the `.then()`. Every shim on a page is
+  evaluated before any promise resolves, so anything dereferenced later can hold
+  another widget's value — the bug that once had this widget rendering the 3D
+  viewer's content on the live page while the editor looked fine.
+
+  Duda supplies a real boolean for a checkbox and a bare string for a dynamic
+  dropdown's value (verified: `{"singlePage":true,"productTag":"aviation"}`).
+  `truthyProp()` and the object-shape handling in `init()` are defence against
+  other representations, not descriptions of what actually arrives.
 
   with the matching extra parameters on the function and
   `props: { …, singlePage: singlePage, productTag: productTag, heading: heading }`.
@@ -187,7 +201,7 @@ That pattern is a loader consuming the script's **module value** instead of `win
 | `$$('[data-saeh-section]').map(e => e.getAttribute('data-saeh-section'))` | which section each widget container actually asked for, in document order. This is how you check a widget is wired to the section it's named after — `buildSection` is a plain string switch, so a widget showing another widget's content means the wrong `section` string is in that widget's JS |
 | `__saequipHub.lastInit.argKeys` | what shape Duda actually passed |
 | `__saequipHub.lastInit.refFrom` | `props` / `dmAPI` / `url` / `none` — which identity source won |
-| `__saehData[<section>]` | the RAW `data` object Duda handed the shim, before any coercion. **This is the one to read when a content-panel value does not arrive** — `Object.keys(__saehData['compatible'])` shows which fields Duda actually supplies, which is a different question from what the shim passed on |
+| `__saehData[<section>]` | the RAW `data` object Duda handed the shim, before any coercion. **This is the one to read when a content-panel value does not arrive** — and remember the panel's own fields are under `.config`, not at the top level — `Object.keys(__saehData['compatible'])` shows which fields Duda actually supplies, which is a different question from what the shim passed on |
 | `__saequipHub.lastInit.propKeys` | which props the shim actually passed. **The first thing to read when a static-page (tag mode) widget renders nothing**: no `singlePage` key at all means the shim in Duda was never updated to the six-argument form, whereas the key present but `false` means the shim is current and the checkbox is simply off. The two are otherwise indistinguishable — both just fall through to product resolution, find no product, and collapse |
 | `__saequipHub.lastInit.mode` | `"tag"` when the widget took the static-page path. Absent means it did not, whatever the content panel appears to say |
 | `__saequipHub.pageDataTimedOut` | `true` ⇒ Duda's `pageData()` hung and the URL slug was used
