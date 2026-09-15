@@ -1392,7 +1392,7 @@
       var body = el("div", "saeh-cp-body");
       body.appendChild(el("div", "saeh-cp-name", it.name || ""));
       var btn = el("span", "saeh-cp-btn");
-      btn.appendChild(el("span", null, "VIEW PRODUCT"));
+      btn.appendChild(el("span", null, "View Product"));
       var ico = document.createElement("img");
       ico.className = "saeh-cp-btn-icon";
       ico.src = CHEVRON_ICON_SRC;

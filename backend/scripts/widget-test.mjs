@@ -645,6 +645,15 @@ async function main() {
     const names = cards.map((c) => c.querySelector(".saeh-cp-name").textContent);
     check(names.join("|") === "Trolley for EX Heater|Duct Couplers|Manway Adaptor", "names in order", names.join("|"));
     check(cards.every((c) => !!c.querySelector(".saeh-cp-btn")), "every card has a View Product button");
+    // Pinned because the casing lives in the STRING, not in CSS: .saeh-cp-btn
+    // carries no text-transform, so nothing else would catch a drift back to
+    // shouting. The rest of the widget's display type is uppercase, which is
+    // exactly what makes this easy to "correct" by accident.
+    check(
+      cards[0].querySelector(".saeh-cp-btn span").textContent === "View Product",
+      "and its label is sentence case",
+      cards[0].querySelector(".saeh-cp-btn span").textContent,
+    );
     // An item with no mirrored thumbnail must still render a card, not a
     // broken <img> — 96/96 have one today but a new product will not until
     // its first sync.
