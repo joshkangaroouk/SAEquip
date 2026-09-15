@@ -265,6 +265,20 @@ async function main() {
     check(d.querySelectorAll(".saeh-cp-card").length === 3, "the product's own compatible list still wins");
   }
   {
+    // Duda's dropdown options are {value,label}; a loader passing the option
+    // object straight through must not read as "nothing selected".
+    const { d, fetchedUrl } = await boot({
+      props: { section: "compatible", singlePage: true, productTag: { value: "aviation", label: "Aviation (3)" } },
+      tagPayload: TAGGED,
+    });
+    check(
+      fetchedUrl === "https://sa-equip-backend.vercel.app/public/products/by-tag?tag=aviation",
+      "an option object works as well as a bare string",
+      fetchedUrl,
+    );
+    check(d.querySelectorAll(".saeh-cp-card").length === 2, "and renders the same cards");
+  }
+  {
     const { d } = await boot({
       props: { section: "compatible", singlePage: true, productTag: "" },
     });

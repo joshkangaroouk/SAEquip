@@ -1915,7 +1915,18 @@
        * with no tag has nothing to show.
        */
       var singlePage = props.singlePage === true || props.singlePage === "true";
-      var productTag = typeof props.productTag === "string" ? props.productTag.trim() : "";
+      /*
+       * Duda's dynamic dropdown documents `value` as the thing embedded into
+       * the widget, but the panel builds each option as {value,label} and a
+       * loader handing the whole option through is entirely plausible. A bare
+       * `typeof === "string"` check turns that into an empty tag, which is
+       * indistinguishable from "nothing selected": the widget collapses and
+       * the live page shows nothing while the editor's dropdown clearly has a
+       * tag in it. Accept both shapes rather than depend on which one arrives.
+       */
+      var rawTag = props.productTag;
+      if (rawTag && typeof rawTag === "object") rawTag = rawTag.value || rawTag.id || "";
+      var productTag = typeof rawTag === "string" ? rawTag.trim() : "";
       if (singlePage) {
         hub.lastInit.mode = "tag";
         hub.lastInit.productTag = productTag;
