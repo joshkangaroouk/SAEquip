@@ -302,6 +302,29 @@ async function main() {
     );
   }
 
+  {
+    /*
+     * The diagnostic that tells a stale shim from an unset value. Both produce
+     * a widget that renders nothing on a static page; only propKeys separates
+     * them, so it must be recorded whether or not tag mode engaged.
+     */
+    const { w } = await boot({ props: { section: "compatible" } });
+    const li = w.__saequipHub.lastInit;
+    check(Array.isArray(li.propKeys), "lastInit records which props arrived");
+    check(li.propKeys.indexOf("singlePage") === -1, "an un-updated shim shows no singlePage key");
+    check("mode" in li === false, "and no tag mode was entered");
+  }
+  {
+    const { w } = await boot({
+      props: { section: "compatible", singlePage: false, productTag: "" },
+    });
+    const li = w.__saequipHub.lastInit;
+    check(
+      li.propKeys.indexOf("singlePage") !== -1 && li.singlePage === false,
+      "an updated shim with nothing ticked shows the key holding false",
+    );
+  }
+
   console.log("\n=== logo rows and compatible-card titles ===");
   {
     // Real logos, not the empty FULL fixture: an empty section renders

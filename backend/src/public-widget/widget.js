@@ -1886,6 +1886,28 @@
           : null,
       resolvedId: props.dudaId || props.slug || props.sku || null,
       gotContainer: !!container,
+      /*
+       * Recorded UNCONDITIONALLY, not just inside the tag-mode branch.
+       *
+       * When tag mode did not engage, the interesting question is always "did
+       * the shim actually send singlePage?" — and recording it only after the
+       * branch is taken answers that exactly when it no longer needs asking.
+       * A stale script and a shim that never passed the value produced
+       * identical console output, which cost a round trip to tell apart.
+       *
+       * `propKeys` is the giveaway: a shim that was never updated has no
+       * singlePage/productTag keys at all, whereas an updated one that simply
+       * has nothing selected shows the keys holding empty values.
+       */
+      propKeys: (function () {
+        try {
+          return Object.keys(props);
+        } catch (e) {
+          return null;
+        }
+      })(),
+      singlePage: props.singlePage,
+      productTag: props.productTag,
     };
     hub.lastInit = record;
     if (!hub.inits) hub.inits = [];
