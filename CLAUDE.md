@@ -89,7 +89,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   // question and cost three round trips to tell apart once already.
   (window.__saehData || (window.__saehData = {}))[section] = data;
 
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=17';
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=19';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');
@@ -108,10 +108,37 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 
 - The five sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`, `compatible`.
 - **`compatible` also runs on STATIC pages** (the Industries pages), driven by a
-  tag instead of by the page's product — see "Tag mode" below. Its shim passes
-  three extra values:
+  tag instead of by the page's product — see "Tag mode" below. It takes three
+  extra content-panel values, so its shim is the full thing below rather than a
+  variant of the one above:
 
   ```js
+  (function (el, section, inEditor, singlePage, productTag, heading) {
+    // Stamped SYNCHRONOUSLY, before any async work.
+    el.setAttribute('data-saeh-section', section);
+
+    // Diagnostic: what Duda ACTUALLY put in `data`, before this shim touches it.
+    (window.__saehData || (window.__saehData = {}))[section] = data;
+
+    var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=19';
+    var L = window.__saehLoader || (window.__saehLoader = {});
+    if (!L.p) L.p = new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = SRC; s.async = true; s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+    L.p.then(function () {
+      window.SAEquipHubWidget.init({
+        container: el,
+        props: {
+          section: section,
+          inEditor: inEditor,
+          singlePage: singlePage,
+          productTag: productTag,
+          heading: heading
+        }
+      });
+    }).catch(function () {});
   })(element, 'compatible', data.inEditor,
      data.singlePage, data.productTag, data.heading);
   ```
@@ -121,7 +148,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   OFF — Duda's content panel promises no particular representation for a
   checkbox. The widget coerces generously via `truthyProp()`, but a shim that
   converts first throws the information away before the widget ever sees it.
-  The symptom is a direct contradiction that looks impossible: Duda's own
+  The symptom is a contradiction that looks impossible: Duda's own
   "Show if: singlePage is true" rule renders the dependent dropdown (so the
   editor reads the value as ON) while `lastInit.singlePage` reports `false`.
 
