@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
@@ -241,11 +242,48 @@ function resolveWidgetDir(): string | null {
 
 const WIDGET_DIR = resolveWidgetDir();
 
+/**
+ * The widget's `version` marker, with a content hash stamped in.
+ *
+ * Hashed once and cached: the file cannot change under a running instance, and
+ * this is on the path Duda hits for every product page.
+ *
+ * Why at serve time rather than in the source: a hand-maintained version string
+ * only identifies a build if it is bumped in the same commit as every change.
+ * When it was not, a browser holding a cached older copy reported exactly the
+ * same version as the current one — so the one diagnostic for "are you running
+ * what I just deployed" quietly agreed with a stale script.
+ */
+let widgetJsCache: { src: string; stamped: string } | null = null;
+
+function stampedWidgetJs(dir: string): string {
+  const src = readFileSync(path.join(dir, "widget.js"), "utf8");
+  if (widgetJsCache && widgetJsCache.src === src) return widgetJsCache.stamped;
+  const hash = createHash("sha1").update(src).digest("hex").slice(0, 8);
+  /*
+   * ⚠️ Anchored to the `version:` assignment, NOT a bare
+   * `src.replace("%BUILD%", hash)`.
+   *
+   * String-form replace swaps only the FIRST occurrence, and widget.js
+   * explains the token in a comment above the assignment — so the plain form
+   * stamped the comment and left the real marker reading a literal `%BUILD%`.
+   * Which is the very failure this function exists to prevent: a version
+   * string that does not describe the bytes being served.
+   */
+  const stamped = src.replace(/(version:\s*")([^"]*)%BUILD%(")/, `$1$2${hash}$3`);
+  if (stamped === src) {
+    // Loud, because the alternative is a marker that silently lies.
+    console.error("[public] widget.js version token not found — the build marker will not identify this build");
+  }
+  widgetJsCache = { src, stamped };
+  return stamped;
+}
+
 /** GET /public/widget.js — the embeddable widget script. */
 publicRouter.get("/widget.js", (_req, res) => {
   try {
     if (!WIDGET_DIR) throw new Error("widget assets not deployed");
-    const js = readFileSync(path.join(WIDGET_DIR, "widget.js"), "utf8");
+    const js = stampedWidgetJs(WIDGET_DIR);
     res.setHeader("Content-Type", "application/javascript; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300");
     res.send(js);

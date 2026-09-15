@@ -1995,7 +1995,19 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  var iface = { init: init, clean: clean, version: "2026-09-15-tag-mode" };
+  /*
+   * ⚠️ `%BUILD%` is replaced with a hash of this file's bytes by the route that
+   * serves it (routes/public.ts). Do not "fix" it to a literal.
+   *
+   * The hand-written half is for humans; the hash is what makes the marker
+   * trustworthy. A hand-maintained version only tells you which build you have
+   * if it is bumped in the same commit as every change — and when it was not,
+   * a cached older copy reported the SAME string as the current one, which is
+   * precisely the question the marker exists to answer. Read from disk (tests,
+   * a local file) it stays the literal `%BUILD%`, which is itself a useful
+   * signal: it means nothing served it.
+   */
+  var iface = { init: init, clean: clean, version: "2026-09-15-tag-mode+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**
