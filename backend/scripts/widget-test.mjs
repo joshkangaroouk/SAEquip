@@ -42,7 +42,7 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, tagPayload = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
     url: "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
@@ -51,6 +51,15 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
   let fetchedUrl = null;
   w.fetch = (u) => {
     fetchedUrl = String(u);
+    // Tag mode hits a different endpoint, so the stub routes on the URL rather
+    // than answering everything with the product payload.
+    if (fetchedUrl.indexOf("/by-tag") !== -1) {
+      return Promise.resolve({
+        ok: tagPayload !== null && tagPayload !== undefined,
+        status: tagPayload ? 200 : 404,
+        json: () => Promise.resolve(tagPayload),
+      });
+    }
     return Promise.resolve({ ok: payload !== null, status: payload ? 200 : 404, json: () => Promise.resolve(payload) });
   };
   if (dmPageData !== undefined || dmHangs) {
@@ -196,6 +205,87 @@ async function main() {
     check(d.querySelectorAll(".saeh-tab-p")[3].querySelector("ul.saeh-check") !== null,
       "Applications uses .saeh-check too — one list design, no per-path drift");
     check(d.querySelector("ul.saeh-apps") === null, "the dot-bullet variant is gone entirely");
+  }
+
+  console.log("\n=== static-page tag mode (Industries pages) ===");
+  const TAGGED = {
+    tag: { name: "Aviation", slug: "aviation" },
+    items: [
+      { name: "EX Heater", slug: "ex-heater", url: "/product/ex-heater", imageUrl: "https://irp.cdn-website.com/a.webp" },
+      { name: "EX Air Mover", slug: "ex-air-mover", url: "/product/ex-air-mover", imageUrl: null },
+    ],
+  };
+  {
+    const { d, fetchedUrl } = await boot({
+      props: { section: "compatible", singlePage: true, productTag: "aviation" },
+      tagPayload: TAGGED,
+    });
+    check(
+      fetchedUrl === "https://sa-equip-backend.vercel.app/public/products/by-tag?tag=aviation",
+      "tag mode fetches by tag, not by product",
+      fetchedUrl,
+    );
+    check(d.querySelectorAll(".saeh-cp-card").length === 2, "renders a card per tagged product");
+    // The whole point of the request: one renderer, so the Industries page
+    // cannot drift from the product page's carousel.
+    check(d.querySelector(".saeh-cp-track") !== null, "…using the same carousel markup");
+    check(
+      d.querySelector(".saeh-cp").getAttribute("data-count") === "2",
+      "and the same data-count that drives arrow visibility",
+    );
+    check(
+      d.querySelector(".saeh-root").className.indexOf("saeh-wide") !== -1,
+      "opts out of the 920px cap, like the product-page carousel",
+    );
+    check(
+      d.querySelector(".saeh-cp-h").textContent === "Compatible Products & Accessories",
+      "heading falls back to the product-page wording",
+      d.querySelector(".saeh-cp-h").textContent,
+    );
+  }
+  {
+    const { d } = await boot({
+      props: { section: "compatible", singlePage: true, productTag: "aviation", heading: "Aviation Equipment" },
+      tagPayload: TAGGED,
+    });
+    check(d.querySelector(".saeh-cp-h").textContent === "Aviation Equipment", "heading is overridable");
+  }
+  {
+    // A tag left selected from earlier experimentation must not hijack a
+    // product page — `singlePage` is the switch, not the presence of a tag.
+    const { d, fetchedUrl } = await boot({
+      props: { section: "compatible", productTag: "aviation" },
+      tagPayload: TAGGED,
+    });
+    check(
+      fetchedUrl.indexOf("/by-tag") === -1,
+      "a tag alone does NOT switch a product page into tag mode",
+      fetchedUrl,
+    );
+    check(d.querySelectorAll(".saeh-cp-card").length === 3, "the product's own compatible list still wins");
+  }
+  {
+    const { d } = await boot({
+      props: { section: "compatible", singlePage: true, productTag: "" },
+    });
+    check(d.getElementById("host").style.display === "none", "tag mode with no tag collapses rather than erroring");
+  }
+  {
+    const { d } = await boot({
+      props: { section: "compatible", singlePage: true, productTag: "gone" },
+      tagPayload: null,
+    });
+    check(d.getElementById("host").style.display === "none", "a deleted/renamed tag (404) collapses too");
+  }
+  {
+    const { d } = await boot({
+      props: { section: "compatible", singlePage: true, productTag: "aviation", inEditor: true },
+      tagPayload: { tag: { name: "Aviation", slug: "aviation" }, items: [] },
+    });
+    check(
+      d.getElementById("host").style.display !== "none",
+      "but an empty tag stays visible in the Duda editor, so the element can still be selected",
+    );
   }
 
   console.log("\n=== logo rows and compatible-card titles ===");

@@ -101,6 +101,19 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 `init()` therefore treats **the container's `data-saeh-section` attribute as authoritative**, with props as fallback: there is one attribute per element and each shim only ever writes its own, so crossed props cannot misroute a widget. A disagreement between the two is recorded in `__saequipHub.inits[].sectionMismatch` rather than silently rendered. Covered by `widget:test`, which reproduces four shims sharing one props object.
 
 - The five sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`, `compatible`.
+- **`compatible` also runs on STATIC pages** (the Industries pages), driven by a
+  tag instead of by the page's product — see "Tag mode" below. Its shim passes
+  three extra values:
+
+  ```js
+  })(element, 'compatible', data.inEditor,
+     data.singlePage === true, data.productTag || '', data.heading || '');
+  ```
+
+  with the matching extra parameters on the function and
+  `props: { …, singlePage: singlePage, productTag: productTag, heading: heading }`.
+  ⚠️ Read synchronously into the IIFE's parameters like `section` is, and for the
+  same reason.
 - The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`. **Bump it whenever the widget changes** or Duda serves the cached copy.
 - The shared promise on `window.__saehLoader` means all four widgets on a page fetch the script **once** between them.
 - **No `dudaId` prop.** The widget resolves the product itself (`dudaPageProduct()` → `identifier`, falling back to the `/product/<slug>` URL), so the shim needs no product lookup and therefore no `await`.
@@ -139,6 +152,54 @@ That pattern is a loader consuming the script's **module value** instead of `win
 `widget.js` exports `init`/`clean` for `renderExternalApp` **and** still scans the DOM for `.saequip-hub` mounts, so the existing HTML/Embed placements keep working until the Widget Builder route is proven on real product pages. Both funnel through one `renderInto()`, so they cannot drift.
 
 The one behavioural difference: **an empty widget collapses on the live site but NOT when `inEditor` is true**, where the container is left exactly as Duda rendered it so any placeholder stays visible and the element stays selectable.
+
+## Tag mode — the compatible carousel on static pages (2026-09-15)
+
+The Industries pages are ordinary static pages, not dynamic product pages, so
+there is no product to resolve. The same carousel renders there from a **tag**
+chosen in the widget's content panel.
+
+**One renderer, one item shape.** `compatibleSection()` is fed
+`{name, slug, url, imageUrl}` by both sources, which is what makes "the exact
+same layout" true by construction rather than by two designs being kept in step.
+Only the `heading` differs, and it is a parameter — "Compatible Products &
+Accessories" is wrong above a list of aviation products.
+
+- `GET /public/products/by-tag?tag=<slug>` — the carousel payload for a tag.
+  404s an unknown tag, which the widget treats as "nothing to show" and
+  collapses; a content problem, not an error.
+- ⚠️ **Matched on SLUG, not name.** The dropdown stores the slug, and the tags
+  route regenerates a slug on rename, so renaming Aviation → Aerospace is a
+  visible break rather than a name match that quietly stops matching.
+- ⚠️ **`singlePage` is the switch, NOT the presence of a tag.** A tag left
+  selected from earlier experimentation must not quietly take over a product
+  page. Covered by `widget:test`.
+- `renderTagInto()` is its own path rather than a branch inside `renderInto()`:
+  that function is built around a product `ref` plus a section list, and
+  threading "sometimes there is no product" through it would put the product
+  pages at risk for the benefit of the second use case.
+
+### Duda's "dynamic dropdown" content-panel field
+
+The `productTag` dropdown is populated live from the Hub, so a tag created at
+`/tags` appears in Duda with no widget edit. Duda's contract, from their docs:
+
+- ⚠️ **Duda sends a `POST`, not a GET.** A GET-only route leaves the dropdown
+  silently empty.
+- Duda posts `{site:{site_name,lang,account_uuid}, widget:{variables:[]}}` and
+  expects **exactly** `{"options":[{"value":…,"label":…}]}` back. A bare array
+  does not work.
+- Duda wants a response "ideally less than 50ms" because it renders in the editor
+  in real time — hence the 30s cache on `POST /public/tags/options`. A cold
+  Lambda will still exceed it; that costs a beat in the editor, nothing more.
+- **Leave the Authorization field blank.** `/public/*` is unauthenticated by
+  design and this returns tag names that are about to be public anyway. The
+  request body is ignored, including `site_name` — validating it would break the
+  moment the widget is used on a second site.
+- The option **label carries a product count** (`"Aviation (0)"`) while the value
+  is the bare slug. Picking a tag with no products renders an empty section, and
+  without the count the only feedback is a blank page that looks like a broken
+  widget.
 
 ## The tabbed accordion (`section: "tabs"`)
 

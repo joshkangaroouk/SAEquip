@@ -1332,9 +1332,21 @@
    * asked for (3 items: no arrows on desktop, arrows on mobile) without
    * hard-coding a single breakpoint assumption.
    */
-  function compatibleSection(items) {
+  var COMPATIBLE_HEADING = "Compatible Products & Accessories";
+
+  /**
+   * The product carousel, used by BOTH sources: a product's own compatible
+   * list, and a tag's product list on a static Industries page. One renderer
+   * fed one item shape is what makes "the exact same layout" true by
+   * construction rather than by two designs being kept in step.
+   *
+   * `heading` is overridable because the text is the one thing that genuinely
+   * differs — "Compatible Products & Accessories" is wrong above a list of
+   * aviation products.
+   */
+  function compatibleSection(items, heading) {
     var sec = el("div", "saeh-section saeh-cp-sec");
-    sec.appendChild(el("h3", "saeh-cp-h", "Compatible Products & Accessories"));
+    sec.appendChild(el("h3", "saeh-cp-h", heading || COMPATIBLE_HEADING));
 
     var wrap = el("div", "saeh-cp");
     // Drives the arrow-visibility rules above. Capped at 5 because every rule
@@ -1692,6 +1704,65 @@
       .catch(function () {});
   }
 
+  /**
+   * Fetch a tag's products, memoized per tag across every mount and every copy
+   * of this script — the same contract as fetchContent, so two Industries
+   * carousels on one page share one request.
+   */
+  function fetchByTag(tag) {
+    if (!hub.tagFetches) hub.tagFetches = {};
+    var key = String(tag).toLowerCase();
+    if (!hub.tagFetches[key]) {
+      hub.tagFetches[key] = fetch(
+        hub.api + "/public/products/by-tag?tag=" + encodeURIComponent(key),
+        { credentials: "omit", headers: { Accept: "application/json" } },
+      )
+        .then(function (r) {
+          // 404 is "no such tag", which is a content problem, not an error —
+          // the editor may hold a tag that has since been renamed or deleted.
+          if (!r.ok) return null;
+          return r.json();
+        })
+        .catch(function () {
+          return null;
+        });
+    }
+    return hub.tagFetches[key];
+  }
+
+  /**
+   * Render the carousel for a TAG rather than for the page's product.
+   *
+   * Deliberately its own path rather than a branch inside renderInto: that
+   * function is built around a product `ref` and a list of sections, and a
+   * static Industries page has neither. Threading "sometimes there is no
+   * product" through it would put the product pages — the ones that actually
+   * matter — at risk for the benefit of a second use case.
+   */
+  function renderTagInto(container, tag, heading, onEmpty) {
+    try {
+      container.setAttribute("data-saeh-section", "compatible:tag=" + tag);
+    } catch (e) {
+      /* never break the host page */
+    }
+    if (!hub.api || !tag) return onEmpty();
+    return fetchByTag(tag).then(function (data) {
+      try {
+        var items = data && data.items;
+        if (!items || !items.length) return onEmpty();
+        var node = compatibleSection(items, heading);
+        if (!node) return onEmpty();
+        injectStyles();
+        var root = el("div", "saeh-root saeh-wide");
+        root.appendChild(node);
+        container.innerHTML = "";
+        container.appendChild(root);
+      } catch (e) {
+        /* never break the host page */
+      }
+    });
+  }
+
   function renderMount(mount, slug) {
     if (mount.getAttribute(RENDERED_ATTR)) return; // idempotency: skip already-processed mounts
     mount.setAttribute(RENDERED_ATTR, "1"); // claim synchronously so re-exec skips it
@@ -1833,6 +1904,25 @@
         collapseMount(container);
       };
 
+      /*
+       * Static-page mode: the Industries pages are not dynamic pages, so there
+       * is no product to resolve and the carousel is driven by a tag chosen in
+       * the content panel instead.
+       *
+       * `singlePage` gates this rather than "productTag is set", so a tag left
+       * selected from earlier experimentation cannot quietly take over a
+       * product page. The two are checked together because a tag-mode widget
+       * with no tag has nothing to show.
+       */
+      var singlePage = props.singlePage === true || props.singlePage === "true";
+      var productTag = typeof props.productTag === "string" ? props.productTag.trim() : "";
+      if (singlePage) {
+        hub.lastInit.mode = "tag";
+        hub.lastInit.productTag = productTag;
+        renderTagInto(container, productTag, props.heading, onEmpty);
+        return;
+      }
+
       var direct = refFrom(props);
       if (direct) {
         hub.lastInit.ref = direct;
@@ -1872,7 +1962,7 @@
   // The global renderExternalApp looks up when called with {amd:false,
   // name:"SAEquipHubWidget"}. Assigned unconditionally so a second copy of the
   // script simply refreshes the same interface.
-  var iface = { init: init, clean: clean, version: "2026-09-11-tabs-motion" };
+  var iface = { init: init, clean: clean, version: "2026-09-15-tag-mode" };
   window.SAEquipHubWidget = iface;
 
   /**

@@ -99,6 +99,113 @@ const quoteHourlyLimiter = rateLimit({
 
 export const publicRouter = Router();
 
+/* ------------------------------------------------- products by tag -- */
+
+/**
+ * GET /public/products/by-tag?tag=<slug>
+ *
+ * The same card payload as a product's `compatible` list, so the carousel can
+ * render either source without knowing which it was given. That shared shape is
+ * the point: the Industries pages asked for "the exact same layout", and the
+ * cheapest way to guarantee that is one renderer fed one shape.
+ *
+ * Matched on SLUG, not name. The slug is what the editor dropdown stores, and
+ * renaming a tag in the Hub (Aviation → Aerospace) must not silently blank a
+ * live Industries page — the tags route regenerates the slug on rename, so a
+ * rename that changes the slug is a deliberate, visible break rather than a
+ * name-match that quietly stops matching.
+ */
+publicRouter.get("/products/by-tag", contentLimiter, async (req, res, next) => {
+  try {
+    const raw = typeof req.query.tag === "string" ? req.query.tag.trim() : "";
+    if (!raw || raw.length > 120) {
+      res.status(400).json({ error: "bad_request", detail: "tag is required" });
+      return;
+    }
+
+    const tag = await prisma.tag.findUnique({
+      where: { slug: raw.toLowerCase() },
+      include: {
+        products: {
+          include: {
+            hubProduct: { select: { name: true, slug: true, thumbnailUrl: true } },
+          },
+        },
+      },
+    });
+
+    if (!tag) {
+      res.status(404).json({ error: "not_found", detail: "no such tag" });
+      return;
+    }
+
+    const items = tag.products
+      // A product with no slug has no page to link to. It can exist: `slug` is
+      // backfilled from Duda, so a product imported but never opened has none.
+      .filter((pt) => pt.hubProduct.slug)
+      .map((pt) => ({
+        name: pt.hubProduct.name ?? "",
+        slug: pt.hubProduct.slug!,
+        url: `/product/${pt.hubProduct.slug!}`,
+        imageUrl: pt.hubProduct.thumbnailUrl ?? null,
+      }))
+      // ProductTag carries no sortOrder, so order by name for a stable,
+      // predictable carousel rather than whatever the database returns.
+      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
+    res.json({ tag: { name: tag.name, slug: tag.slug }, items });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /public/tags/options — Duda Widget Builder "dynamic dropdown" source.
+ *
+ * ⚠️ POST, not GET, and the shape is Duda's, not ours. Per their docs Duda
+ * posts `{site:{site_name,lang,account_uuid}, widget:{variables:[]}}` and
+ * expects exactly `{"options":[{"value":..,"label":..}]}` back. A GET route or
+ * a bare array would leave the editor dropdown silently empty.
+ *
+ * Duda asks for a response "ideally less than 50ms" because it renders in the
+ * editor in real time, hence the cache: tags change a few times a year and this
+ * is on the editor's critical path.
+ *
+ * The request body is ignored entirely. It carries a site_name we could check,
+ * but this returns nothing sensitive — tag names that are about to be rendered
+ * on the public site anyway — and validating it would break the moment the
+ * widget is used on a second site.
+ */
+const TAG_OPTIONS_TTL_MS = 30 * 1000;
+let tagOptionsCache: { at: number; body: { options: { value: string; label: string }[] } } | null = null;
+
+publicRouter.post("/tags/options", contentLimiter, async (_req, res, next) => {
+  try {
+    if (tagOptionsCache && Date.now() - tagOptionsCache.at < TAG_OPTIONS_TTL_MS) {
+      res.json(tagOptionsCache.body);
+      return;
+    }
+    const tags = await prisma.tag.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      include: { _count: { select: { products: true } } },
+    });
+    const body = {
+      options: tags.map((t) => ({
+        value: t.slug,
+        // The count is an editor affordance, not decoration: picking a tag with
+        // no products renders an empty section, and without this the only
+        // feedback is a blank page that looks like a broken widget.
+        label: `${t.name} (${t._count.products})`,
+      })),
+    };
+    tagOptionsCache = { at: Date.now(), body };
+    res.json(body);
+  } catch (err) {
+    next(err);
+  }
+});
+
 /**
  * Locate the widget assets across all three ways this app runs.
  *
