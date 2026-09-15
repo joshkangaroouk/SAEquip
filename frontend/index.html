@@ -4,11 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SAEquip Product Hub</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!--
+      The SA EQUIP logo mark. Declared as the ONLY rel="icon" on purpose: a
+      browser picks the best candidate from everything declared, so leaving the
+      old favicon.svg alongside this would keep winning (scalable beats a
+      raster at every size) and the icon would appear not to have changed.
+
+      The superseded files (favicon.svg/.ico/-16x16/-32x32, apple-touch-icon)
+      are still in public/ but unreferenced. Only a legacy client probing
+      /favicon.ico by convention can still reach the old mark.
+    -->
+    <link rel="icon" type="image/jpeg" href="/sa-favicon.jpg" />
+    <link rel="apple-touch-icon" href="/sa-favicon.jpg" />
 
     <!-- DIN 2014 via Adobe Fonts. Adobe's licence forbids self-hosting the
          files, so this must load from their CDN rather than being vendored
