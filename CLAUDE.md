@@ -155,6 +155,30 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   so the pattern looked proven. `data.config || data` keeps it working if a
   future widget version flattens them.
 
+  **When a content-panel value does not arrive, read the raw object FIRST:**
+
+  ```js
+  Object.keys(__saehData['compatible']).join(' | ')   // then JSON.stringify it
+  ```
+
+  That single read would have ended this in one round trip. Instead four were
+  spent on theories that were all wrong, and each is worth NOT re-chasing:
+
+  | Theory | Why it was wrong |
+  |---|---|
+  | Widget/site needs republishing | `inEditor:false` + `page:'aviation'` proved the right code was on the right page already |
+  | Browser serving a cached script | real, but separate — it is why the build hash now exists, and it was not this |
+  | Duda sends `"true"` not `true` for a checkbox | it sends a real boolean; `truthyProp()` is defence, not the fix |
+  | Dynamic dropdown passes `{value,label}` | it passes the bare string `"aviation"` |
+
+  The through-line: every one of those was a guess about a system whose actual
+  output was one console command away. **Prefer the read over the theory** —
+  especially here, where Duda's behaviour is undocumented and cannot be
+  inferred from the parts of it that already work.
+
+  Confirmed working live 2026-09-15: `widgetVersion` 7, `config`
+  `{singlePage:true, heading:"Aviation", productTag:"aviation"}`.
+
   ⚠️ **Read the values into primitives at evaluation time**, as above, rather
   than reaching into `cfg` inside the `.then()`. Every shim on a page is
   evaluated before any promise resolves, so anything dereferenced later can hold
