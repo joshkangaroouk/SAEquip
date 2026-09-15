@@ -83,6 +83,12 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   // Stamped SYNCHRONOUSLY, before any async work.
   el.setAttribute('data-saeh-section', section);
 
+  // Diagnostic: what Duda ACTUALLY put in `data`, before this shim touches it.
+  // Keyed by section so four widgets on a page do not clobber each other.
+  // `lastInit.propKeys` only shows what the SHIM built, which is a different
+  // question and cost three round trips to tell apart once already.
+  (window.__saehData || (window.__saehData = {}))[section] = data;
+
   var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=17';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
@@ -154,6 +160,7 @@ That pattern is a loader consuming the script's **module value** instead of `win
 | `$$('[data-saeh-section]').map(e => e.getAttribute('data-saeh-section'))` | which section each widget container actually asked for, in document order. This is how you check a widget is wired to the section it's named after — `buildSection` is a plain string switch, so a widget showing another widget's content means the wrong `section` string is in that widget's JS |
 | `__saequipHub.lastInit.argKeys` | what shape Duda actually passed |
 | `__saequipHub.lastInit.refFrom` | `props` / `dmAPI` / `url` / `none` — which identity source won |
+| `__saehData[<section>]` | the RAW `data` object Duda handed the shim, before any coercion. **This is the one to read when a content-panel value does not arrive** — `Object.keys(__saehData['compatible'])` shows which fields Duda actually supplies, which is a different question from what the shim passed on |
 | `__saequipHub.lastInit.propKeys` | which props the shim actually passed. **The first thing to read when a static-page (tag mode) widget renders nothing**: no `singlePage` key at all means the shim in Duda was never updated to the six-argument form, whereas the key present but `false` means the shim is current and the checkbox is simply off. The two are otherwise indistinguishable — both just fall through to product resolution, find no product, and collapse |
 | `__saequipHub.lastInit.mode` | `"tag"` when the widget took the static-page path. Absent means it did not, whatever the content panel appears to say |
 | `__saequipHub.pageDataTimedOut` | `true` ⇒ Duda's `pageData()` hung and the URL slug was used
