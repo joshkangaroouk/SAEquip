@@ -144,6 +144,14 @@ const WIDGET_CSS = `
 .saeh-pl-count{font-size:15px;color:#878787}
 .saeh-pl-count b{color:#111;font-weight:600}
 .saeh-pl-filter{border:1px solid #e6e6e6;background:#fff}
+.saeh-pl-search{padding:14px 16px;border-bottom:1px solid #ececec}
+.saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 12px}
+.saeh-pl-search input::placeholder{color:#9a9a9a}
+.saeh-pl-search input:focus{outline:none;border-color:#111}
+.saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.saeh-pl-more:hover{background:#111;color:#fff}
+.saeh-pl-more span{color:#9a9a9a;font-weight:600}
+.saeh-pl-more:hover span{color:#bbb}
 .saeh-pl-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;margin:0;font-family:var(--saeh-head);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;text-align:left;color:#111;background:#f7f7f7;border:0;padding:15px 16px;cursor:pointer}
 .saeh-pl-toggle:hover{background:#f1f1f1}
 .saeh-pl-toggle:focus-visible{outline:2px solid #111;outline-offset:-2px}
@@ -172,12 +180,12 @@ const WIDGET_CSS = `
 .saeh-pl-card{display:flex;flex-direction:column;background:#fff;border:1px solid #e6e6e6;text-decoration:none;color:inherit;transition:box-shadow .2s ease}
 .saeh-pl-card:hover{box-shadow:0 10px 26px rgba(0,0,0,.08)}
 .saeh-pl-card:focus-visible{outline:2px solid #111;outline-offset:2px}
-.saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;padding:16px;background:#f5f5f5;box-sizing:border-box}
+.saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;padding:16px;background:#fff;box-sizing:border-box}
 .saeh-pl-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
-.saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px}
+.saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px;background:#f4f4f4}
 .saeh-pl-chips{display:flex;flex-wrap:wrap;gap:6px}
 .saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#f1f1f1;color:#444;padding:4px 8px}
-.saeh-pl-name{font-family:var(--saeh-head);font-size:17px;font-weight:600;line-height:1.25;color:#111;margin:0}
+.saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}
 .saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}
 .saeh-pl-btn{margin-top:auto;display:block;background:#fed217;color:#000;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:13px}
 .saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}

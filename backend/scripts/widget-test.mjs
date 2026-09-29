@@ -499,6 +499,101 @@ async function main() {
     check(btn.getAttribute("aria-expanded") === "true" && panel.classList.contains("saeh-open"),
       "and opens it");
   }
+  console.log("\n=== product listing: search and load more ===");
+  {
+    // 40 products so pagination is observable: 18, then 18, then 4.
+    const many = {
+      categories: CATALOGUE.categories,
+      products: Array.from({ length: 40 }, (_, i) => ({
+        name: i === 7 ? "Welding Torch" : `Item ${String(i).padStart(2, "0")}`,
+        slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
+        categoryIds: i % 2 ? ["avi"] : ["oil"], certs: [],
+      })),
+    };
+    const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
+    const cards = () => d.querySelectorAll(".saeh-pl-card").length;
+    const moreBtn = () => d.querySelector(".saeh-pl-more");
+
+    check(cards() === 18, "the first page shows 18", String(cards()));
+    check(!!moreBtn(), "and offers load more");
+    check(moreBtn().textContent.includes("+22"), "naming how many are left", moreBtn().textContent);
+
+    moreBtn().dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(cards() === 36, "a click loads another 18", String(cards()));
+    check(moreBtn().textContent.includes("+4"), "and the remainder updates", moreBtn().textContent);
+
+    moreBtn().dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(cards() === 40, "the last click shows the rest");
+    check(moreBtn() === null, "and the button goes away when nothing is left");
+  }
+  {
+    const many = {
+      categories: CATALOGUE.categories,
+      products: Array.from({ length: 40 }, (_, i) => ({
+        name: i === 7 ? "Welding Torch" : `Item ${String(i).padStart(2, "0")}`,
+        slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
+        categoryIds: i % 2 ? ["avi"] : ["oil"], certs: [],
+      })),
+    };
+    const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
+    const search = d.querySelector(".saeh-pl-search input");
+    const type = (v) => {
+      search.value = v;
+      search.dispatchEvent(new d.defaultView.Event("input"));
+    };
+
+    type("welding torch");
+    check(
+      [...d.querySelectorAll(".saeh-pl-name")].map((n) => n.textContent).join(",") === "Welding Torch",
+      "search matches the product name",
+    );
+
+    // "Product or task": a category title is searchable too, so a site
+    // challenge finds the products under it.
+    type("aviation");
+    check(d.querySelectorAll(".saeh-pl-card").length === 18, "a category title matches its products");
+    check(d.querySelector(".saeh-pl-more").textContent.includes("+2"), "…and paginates them", d.querySelector(".saeh-pl-more").textContent);
+
+    type("nothing at all");
+    check(!!d.querySelector(".saeh-pl-empty"), "no match shows the empty state");
+
+    type("");
+    check(d.querySelectorAll(".saeh-pl-card").length === 18, "clearing the search restores the first page");
+  }
+  {
+    // Narrowing must reset the offset, or "load more" outlives what it loads.
+    const many = {
+      categories: CATALOGUE.categories,
+      products: Array.from({ length: 40 }, (_, i) => ({
+        name: `Item ${i}`, slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
+        categoryIds: i < 20 ? ["avi"] : ["oil"], certs: [],
+      })),
+    };
+    const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
+    d.querySelector(".saeh-pl-more").dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(d.querySelectorAll(".saeh-pl-card").length === 36, "36 loaded");
+    tick(d, "avi");
+    check(d.querySelectorAll(".saeh-pl-card").length === 18, "filtering resets to the first page", String(d.querySelectorAll(".saeh-pl-card").length));
+  }
+
+  console.log("\n=== product listing: card styling ===");
+  {
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    const css = d.getElementById("saeh-styles").textContent;
+    check(/\.saeh-pl-shot\{[^}]*background:#fff/.test(css), "the image area is white, not grey");
+    check(/\.saeh-pl-body\{[^}]*background:#f4f4f4/.test(css), "the title and cert area is light grey");
+    check(/\.saeh-pl-name\{[^}]*font-size:15px/.test(css), "titles are smaller");
+    check(/\.saeh-pl-more\{[^}]*background:transparent[^}]*border:1px solid #111/.test(css),
+      "load more is bordered by default");
+    check(/\.saeh-pl-more:hover\{background:#111;color:#fff\}/.test(css), "and fills black on hover");
+    // The search must survive the mobile collapse, so it sits outside the panel.
+    check(
+      d.querySelector(".saeh-pl-panel .saeh-pl-search") === null &&
+        d.querySelector(".saeh-pl-filter > .saeh-pl-search") !== null,
+      "the search sits OUTSIDE the collapsible panel, so it stays visible on mobile",
+    );
+  }
+
   {
     // "all" must not build this — it belongs to a category page, not a product.
     const { d } = await boot({ props: { section: "all", slug: "x" }, cataloguePayload: CATALOGUE });

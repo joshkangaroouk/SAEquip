@@ -300,6 +300,13 @@ category template, or the page shows two listings.
   labels render — which means cards say "EX logo", "UKCA" and "Made in Britan" rather than
   ATEX/UKEX. The first two are deliberate (see the logo mapping note); filling `alt` on the
   Logos page changes the display without a code change.
+- **Instant search** over the product name AND its category titles, so "welding" finds the
+  products under Welding Fume Control — the mockup's "Product or task". ⚠️ It sits OUTSIDE
+  the collapsible panel: on a phone the filter list is behind a toggle, and the search is
+  the control people reach for first, so hiding it behind a click is the wrong trade.
+- **18 per page**, then a bordered "Load more products +N" that fills black on hover. Any
+  change to the search or the filters resets to the first page — otherwise a narrowed result
+  set keeps a button with nothing left to load.
 - Mobile-first: **stacked with a collapsible filter panel**, becoming a sticky sidebar only
   at 881px. Grid is 1 / 2 / 3 up at the house 561 / 881 breakpoints.
 

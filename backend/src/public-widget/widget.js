@@ -621,6 +621,20 @@
       ".saeh-pl-count{font-size:15px;color:#878787}",
       ".saeh-pl-count b{color:#111;font-weight:600}",
       ".saeh-pl-filter{border:1px solid #e6e6e6;background:#fff}",
+      /*
+       * The search sits OUTSIDE the collapsible panel deliberately. On a phone
+       * the filter list is behind a toggle, and an instant search hidden behind
+       * a click is the one control people reach for first — so it stays visible
+       * above the toggle there, and reads as the top of the sidebar on desktop.
+       */
+      ".saeh-pl-search{padding:14px 16px;border-bottom:1px solid #ececec}",
+      ".saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 12px}",
+      ".saeh-pl-search input::placeholder{color:#9a9a9a}",
+      ".saeh-pl-search input:focus{outline:none;border-color:#111}",
+      ".saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}",
+      ".saeh-pl-more:hover{background:#111;color:#fff}",
+      ".saeh-pl-more span{color:#9a9a9a;font-weight:600}",
+      ".saeh-pl-more:hover span{color:#bbb}",
       ".saeh-pl-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;margin:0;font-family:var(--saeh-head);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;text-align:left;color:#111;background:#f7f7f7;border:0;padding:15px 16px;cursor:pointer}",
       ".saeh-pl-toggle:hover{background:#f1f1f1}",
       ".saeh-pl-toggle:focus-visible{outline:2px solid #111;outline-offset:-2px}",
@@ -654,12 +668,12 @@
        * photographed at every aspect ratio; cropping a duct run or a tower light
        * to fill a square cuts the thing being sold out of frame.
        */
-      ".saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;padding:16px;background:#f5f5f5;box-sizing:border-box}",
+      ".saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;padding:16px;background:#fff;box-sizing:border-box}",
       ".saeh-pl-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}",
-      ".saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px}",
+      ".saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px;background:#f4f4f4}",
       ".saeh-pl-chips{display:flex;flex-wrap:wrap;gap:6px}",
       ".saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#f1f1f1;color:#444;padding:4px 8px}",
-      ".saeh-pl-name{font-family:var(--saeh-head);font-size:17px;font-weight:600;line-height:1.25;color:#111;margin:0}",
+      ".saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}",
       ".saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}",
       ".saeh-pl-btn{margin-top:auto;display:block;background:#fed217;color:#000;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:13px}",
       ".saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}",
@@ -2010,17 +2024,38 @@
       if (String(p.title).toLowerCase() === labelParent) labelParentId = p.id;
     });
 
+    /** Products shown before "Load more". */
+    var PAGE = 18;
+    var shownCount = PAGE;
+    var query = "";
+
     var root = el("div", "saeh-pl");
     var side = el("div", "saeh-pl-side");
     var main = el("div", "saeh-pl-main");
     var head = el("div", "saeh-pl-head");
     var count = el("div", "saeh-pl-count");
     var grid = el("div", "saeh-pl-grid");
+    var more = el("div", "saeh-pl-morewrap");
     head.appendChild(count);
     main.appendChild(head);
     main.appendChild(grid);
+    main.appendChild(more);
+
+    /** Searchable text: the name plus its category titles ("welding" finds it). */
+    function haystack(p) {
+      if (!p.__hay) {
+        var titles = (p.categoryIds || [])
+          .map(function (id) {
+            return byId[id] ? byId[id].title : "";
+          })
+          .join(" ");
+        p.__hay = ((p.name || "") + " " + titles).toLowerCase();
+      }
+      return p.__hay;
+    }
 
     function matches(p) {
+      if (query && haystack(p).indexOf(query) === -1) return false;
       var ids = p.categoryIds || [];
       for (var i = 0; i < parents.length; i++) {
         var picked = childrenOf(parents[i].id).filter(function (c) {
@@ -2044,13 +2079,17 @@
       );
 
       grid.textContent = "";
+      more.textContent = "";
       if (!shown.length) {
         grid.appendChild(
           el("p", "saeh-pl-empty", "No products match those filters. Try removing one."),
         );
         return;
       }
-      shown.forEach(function (p) {
+
+      var page = shown.slice(0, shownCount);
+      var remaining = shown.length - page.length;
+      page.forEach(function (p) {
         var chipTitles = labelParentId
           ? (p.categoryIds || [])
               .map(function (id) {
@@ -2065,6 +2104,22 @@
           : [];
         grid.appendChild(productCard(p, chipTitles));
       });
+
+      if (remaining > 0) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "saeh-pl-more";
+        // The label is a TEXT NODE and only the count is a span, because
+        // `.saeh-pl-more span` is what greys the count — two spans would grey
+        // the label too.
+        btn.appendChild(document.createTextNode("Load more products"));
+        btn.appendChild(el("span", null, "+" + remaining));
+        btn.addEventListener("click", function () {
+          shownCount += PAGE;
+          paint();
+        });
+        more.appendChild(btn);
+      }
     }
 
     // --- the filter panel ---
@@ -2097,6 +2152,7 @@
         input.addEventListener("change", function () {
           if (input.checked) chosen[c.id] = true;
           else delete chosen[c.id];
+          shownCount = PAGE;
           paint();
           updateCounts();
         });
@@ -2136,6 +2192,7 @@
       chosen = {};
       var boxes = inner.querySelectorAll("input[type=checkbox]");
       for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
+      shownCount = PAGE;
       paint();
       updateCounts();
     });
@@ -2143,6 +2200,22 @@
 
     clip.appendChild(inner);
     panel.appendChild(clip);
+    var search = el("div", "saeh-pl-search");
+    var input = document.createElement("input");
+    input.type = "search";
+    input.placeholder = "Search products or tasks…";
+    input.setAttribute("aria-label", "Search products");
+    input.addEventListener("input", function () {
+      query = input.value.trim().toLowerCase();
+      // Back to the first page: a search that kept the old offset would show
+      // "load more" over a handful of results.
+      shownCount = PAGE;
+      paint();
+      updateCounts();
+    });
+    search.appendChild(input);
+
+    filter.appendChild(search);
     filter.appendChild(btn);
     filter.appendChild(panel);
     side.appendChild(filter);
@@ -2457,7 +2530,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-29-product-list+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-29-product-list-2+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**
