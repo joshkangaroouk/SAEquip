@@ -841,7 +841,16 @@ Both are **assigned Hub-side** and both are pickers in the product editor's righ
 
 ⚠️ **Duda has no working product-side category assignment, and it fails SILENTLY.** `PATCH /products/{id}` with `categories` (or `category_ids`, in either the `["id"]` or `[{id}]` shape) returns **200 and changes nothing** — the product still reports `categories: []`. Probed on throwaways. The only path that works is `PATCH /categories/{id}` with `{products:[{id}]}` — note `[{id}]`, not `["id"]`, which 400s on shape — and that array is full-replacement.
 
-So writing a product's categories to Duda would mean rewriting every affected category's entire product list on every save: N+M calls, and a race two editors lose silently, since Duda has no optimistic concurrency. **Josh chose Hub-side storage (2026-09-11).** Consequence: Duda's own category/storefront pages stay empty; these drive our widgets only, exactly like specs, logos and compatible products. The category LIST still comes from Duda, so names and nesting are always Duda's.
+So writing a product's categories to Duda would mean rewriting every affected category's entire product list on every save: N+M calls, and a race two editors lose silently, since Duda has no optimistic concurrency. **Josh chose Hub-side storage (2026-09-11).** The category LIST still comes from Duda, so names and nesting are always Duda's.
+
+⚠️ **Re-probed 2026-09-29, and the earlier conclusion was too pessimistic.** Writing via
+`PATCH /categories/{id}` with `{products:[{id}]}` is **visible in both directions**: the
+category reports `products_count`, and the PRODUCT's own `categories` array then lists the
+category. Verified on a throwaway category with two products, then deleted. So Duda's
+storefront and its navigation picker *can* be driven from these links — the original
+objection was only ever to doing the write on every product save, and it does not apply to
+a batch sync. Consequence to note: with no sync run, Duda currently reports **0 products in
+all 3 categories** while the Hub holds the real assignments.
 
 - `ProductCategory` stores `dudaCategoryId` with **no foreign key** — categories live in Duda, so a category deleted there leaves a row pointing at nothing.
 - `Tag` / `ProductTag` are entirely Hub-owned; Duda has no equivalent. Managed at **`/tags`** (create, rename inline, reorder, delete). Deleting a tag cascades its assignments, so the confirm names the product count.
