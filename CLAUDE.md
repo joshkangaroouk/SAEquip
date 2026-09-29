@@ -889,6 +889,34 @@ was authored and each tag maps to its category by title when tags are retired.
 is no `sortOrder` on a category and the API exposes no way to set one, so the megamenu's
 column order has to be arranged in Duda's menu editor, not here.
 
+⚠️ **A category's slug CANNOT be derived from its title.** Measured across all 23: Duda
+renders `&` as **three hyphens**, so "Oil & Gas" is `oil---gas`, not `oil-and-gas`. Nine of
+the 23 are affected. Deriving them would have broken the listing widget's URL fallback on
+exactly those categories, silently — the same shape as the `aviation` → `aviation-and-aerospace`
+break. The slug also does not appear in `listAllCategories()` at all; only the
+single-category GET carries it, which is why it is mirrored rather than fetched per request.
+
+(Worth knowing separately: `/category/oil---gas` is a poor public URL for a commercial
+landing page. The Hub's category editor can override `seo.url`.)
+
+### `CategoryMirror` — the local copy of Duda's tree
+
+`dudaCategoryId, title, slug, parentId, position`. Refreshed by `duda:sync-categories` from
+the per-category GET it already makes. Exists so `/public/catalogue` is a pure Hub read:
+building the tree on the request path would cost one Duda call per category, and the rule
+that public endpoints never call Duda on the request path is what keeps them fast.
+
+⚠️ Goes stale if a category is renamed in Duda without re-running the sync, exactly like
+`HubProduct.thumbnailUrl`. The sync is the documented way to change these.
+
+### `GET /public/catalogue`
+
+Every product with its `categoryIds`, plus the tree — **one response, filtered client-side
+by the listing widget**. 96 products is ~25KB measured, and it buys instant filtering with
+no round trip per checkbox. The product card shape is identical to `compatible` and
+`by-tag`, so one renderer serves the carousel and the grid. Revisit only if the catalogue
+reaches the thousands.
+
 ### `npm run duda:sync-categories --workspace=backend`
 
 Pushes `ProductCategory` rows into Duda, **one call per category** rather than per product,

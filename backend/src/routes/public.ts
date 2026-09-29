@@ -231,6 +231,78 @@ publicRouter.post("/tags/options", contentLimiter, async (req, res, next) => {
   }
 });
 
+/* ------------------------------------------------------------ catalogue -- */
+
+/**
+ * GET /public/catalogue — every product with its category ids, plus the tree.
+ *
+ * The whole catalogue in ONE response, because the listing widget filters
+ * client-side. 96 products is roughly 30KB, and it buys instant filtering with
+ * no round trip per checkbox and facet counts computed in the browser. Revisit
+ * only if the catalogue reaches the thousands.
+ *
+ * ⚠️ A pure Hub read — no Duda call on the request path, the rule
+ * /public/products/content exists to honour. That is what CategoryMirror is
+ * for: `listAllCategories()` omits a category's SLUG, so resolving one here
+ * would cost a Duda round trip PER CATEGORY, and slugs cannot be derived from
+ * titles (Duda renders "Oil & Gas" as `oil---gas`). The mirror is refreshed by
+ * `duda:sync-categories`.
+ *
+ * The product card shape is identical to `compatible` and `by-tag`, so one
+ * renderer serves the carousel and the grid.
+ */
+publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
+  try {
+    const [categories, products] = await Promise.all([
+      prisma.categoryMirror.findMany({ orderBy: { position: "asc" } }),
+      prisma.hubProduct.findMany({
+        where: { slug: { not: null } },
+        select: {
+          name: true,
+          slug: true,
+          thumbnailUrl: true,
+          categories: { select: { dudaCategoryId: true } },
+        },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+
+    // Depth is derived here so every consumer agrees on it, the same contract
+    // buildTree() sets in routes/categories.ts.
+    const parentOf = new Map(categories.map((c) => [c.dudaCategoryId, c.parentId]));
+    const depthOf = (id: string): number => {
+      let d = 0;
+      let p = parentOf.get(id);
+      // Bounded: a cycle in Duda's tree would otherwise hang the request.
+      while (p && p !== "ROOT" && d < 10) {
+        d++;
+        p = parentOf.get(p);
+      }
+      return d;
+    };
+
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
+    res.json({
+      categories: categories.map((c) => ({
+        id: c.dudaCategoryId,
+        title: c.title,
+        slug: c.slug,
+        parentId: c.parentId,
+        depth: depthOf(c.dudaCategoryId),
+      })),
+      products: products.map((p) => ({
+        name: p.name ?? "",
+        slug: p.slug!,
+        url: `/product/${p.slug!}`,
+        imageUrl: p.thumbnailUrl ?? null,
+        categoryIds: p.categories.map((c) => c.dudaCategoryId),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /**
  * Locate the widget assets across all three ways this app runs.
  *

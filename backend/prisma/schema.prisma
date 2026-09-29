@@ -247,6 +247,35 @@ model ProductCategory {
   @@index([dudaCategoryId])
 }
 
+/// A local copy of Duda's category tree: id, title, slug, parent.
+///
+/// Duda owns categories; this mirrors them so the public catalogue endpoint is
+/// a pure Hub read, the same reason HubProduct mirrors name/sku/slug/thumbnail.
+///
+/// ⚠️ The SLUG is the reason this exists rather than an in-process cache.
+/// `listAllCategories()` does not return it — it comes from the single-category
+/// GET — so building slugs on the request path would mean one Duda call per
+/// category per cache miss, and slugs cannot be derived from the title:
+/// measured, Duda renders "Oil & Gas" as `oil---gas`, not `oil-and-gas`.
+///
+/// ⚠️ Goes stale if a category is renamed in Duda without re-running
+/// `duda:sync-categories`, exactly like HubProduct.thumbnailUrl. The sync is
+/// the documented way to change these.
+model CategoryMirror {
+  /// Duda's category id. No foreign key anywhere — categories live in Duda.
+  dudaCategoryId String   @id
+  title          String
+  /// Duda's own `seo.url`, stored verbatim. Never re-derived from the title.
+  slug           String
+  /// "ROOT" for a top-level category, matching Duda's sentinel.
+  parentId       String
+  /// Position in Duda's own list order, which is the only order it exposes.
+  position       Int      @default(0)
+  syncedAt       DateTime @updatedAt
+
+  @@index([parentId])
+}
+
 /// A named bucket of tags — "Industries", "Site Problems". Staff-managed, so a
 /// new grouping needs no migration.
 model TagGroup {

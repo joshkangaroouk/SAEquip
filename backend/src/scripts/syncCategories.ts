@@ -19,6 +19,12 @@
  * other, and Duda has no optimistic concurrency to catch it.
  *
  * One call per category (~23), not one per product.
+ *
+ * It also refreshes CategoryMirror — the local copy of Duda's tree that
+ * `/public/catalogue` reads instead of calling Duda on the request path. The
+ * per-category GET this already makes is the only place a category's SLUG is
+ * available (`listAllCategories()` omits it), so the mirror is filled from a
+ * round trip that was happening anyway.
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
@@ -72,22 +78,25 @@ async function main() {
   let changed = 0;
   let alreadyRight = 0;
   const failures: string[] = [];
+  /** Duda's own `seo.url` per category, read below. Never derived. */
+  const slugOf = new Map<string, string>();
 
   for (const c of categories) {
     const want = (wanted.get(c.id) ?? []).map((p) => p.id);
 
-    // Duda's summary gives a count but not the ids, so a category that already
-    // holds the right NUMBER still needs reading to know it holds the right
-    // ONES. Skip that read only when both sides are empty.
-    if (want.length === 0 && c.products_count === 0) {
-      alreadyRight++;
-      continue;
-    }
-
+    /*
+     * Every category is read, even when both sides are empty. The summary
+     * carries no slug, and the mirror needs one for every category or the
+     * listing page cannot resolve that category from its URL.
+     */
     let have: string[] = [];
     try {
-      const full = (await duda.getCategory(c.id)) as unknown as { products?: { id: string }[] };
+      const full = (await duda.getCategory(c.id)) as unknown as {
+        products?: { id: string }[];
+        seo?: { url?: string };
+      };
       have = (full.products ?? []).map((p) => p.id);
+      if (full.seo?.url) slugOf.set(c.id, full.seo.url);
     } catch (err) {
       failures.push(`${c.title}: could not read — ${err instanceof Error ? err.message.slice(0, 120) : err}`);
       continue;
@@ -118,7 +127,32 @@ async function main() {
     }
   }
 
+  /*
+   * Refresh the mirror from what we just read. Done AFTER the writes so the
+   * stored `products_count` reflects the sync rather than the state before it,
+   * and unconditionally on a dry run too — the mirror is a read-through copy,
+   * not a change to Duda, so keeping it fresh costs nothing and a stale mirror
+   * is the one thing that makes /public/catalogue lie.
+   */
+  const seen = new Set<string>();
+  for (const [i, c] of categories.entries()) {
+    seen.add(c.id);
+    const slug = slugOf.get(c.id);
+    if (!slug) continue; // never guessed — see the model comment
+    await prisma.categoryMirror.upsert({
+      where: { dudaCategoryId: c.id },
+      update: { title: c.title, slug, parentId: c.parent_id || "ROOT", position: i },
+      create: { dudaCategoryId: c.id, title: c.title, slug, parentId: c.parent_id || "ROOT", position: i },
+    });
+  }
+  // A category deleted in Duda must leave the mirror, or the listing offers a
+  // filter that matches nothing and links to a 404.
+  const dropped = await prisma.categoryMirror.deleteMany({
+    where: { dudaCategoryId: { notIn: [...seen] } },
+  });
+
   console.log(`\n=== CATEGORY SYNC ===`);
+  console.log(`  mirror rows        : ${seen.size}${dropped.count ? `  (${dropped.count} removed)` : ""}`);
   console.log(`  categories updated : ${changed}${confirm ? "" : " (would be)"}`);
   console.log(`  already correct    : ${alreadyRight}`);
   console.log(`  failed             : ${failures.length}`);
