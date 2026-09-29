@@ -11,3 +11,9 @@ migration/
 *.db-wal
 *.db-shm
 .DS_Store
+
+# Timestamped .env copies taken before a credential change. `.env` alone does
+# not match these, and one was a `git add -A` away from committing a live
+# database password.
+.env.backup*
+**/.env.backup*

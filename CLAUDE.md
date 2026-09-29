@@ -524,6 +524,41 @@ A shadow database is scratch space that Prisma **drops and recreates** as part o
 
 Everything except the quote requests was rebuilt from Duda, the gitignored `migration/` files and the surviving Storage objects (see `logos:rebuild` below). **7 real customer quote requests were lost permanently**: there are no backups on this Supabase tier, email was never configured so no notification copies exist, and the quote route logs no submission contents.
 
+### The runtime role cannot do DDL (added 2026-09-29)
+
+`DATABASE_URL` now connects as **`saequip_app`**, a role holding
+`SELECT/INSERT/UPDATE/DELETE` on `public` and nothing else — no `CREATE`, `DROP`,
+`TRUNCATE` or `ALTER`, and no ownership. `ALTER DEFAULT PRIVILEGES` covers tables and
+sequences a future migration adds, so the app does not break the next time one lands.
+
+**`DIRECT_URL` keeps the `postgres` owner credential and is used ONLY by migrations.**
+That split is the whole point: documentation did not stop a production wipe, and a role
+that cannot execute DDL would have. Verified after the change — the app reads and writes
+normally, while `DROP TABLE`, `TRUNCATE`, `CREATE TABLE`, `ALTER TABLE` and
+`DROP SCHEMA public` are all refused.
+
+⚠️ **Vercel's `DATABASE_URL` must be updated to match**, or production still runs as the
+owner. Nothing runs migrations at deploy time (`buildCommand` is only `prisma generate`),
+so the restricted role is safe there.
+
+⚠️ **A `.env` copy taken before a credential change is not matched by the `.env` gitignore
+rule.** `.env.backup*` is now ignored explicitly; one such file was a `git add -A` away
+from committing a live database password.
+
+### The guard hook
+
+`.claude/settings.json` registers a PreToolUse/Bash hook running
+`.claude/hooks/block-destructive-db.sh`, which refuses the destructive migration commands
+outright. Enforced by the harness rather than by anyone's judgement, which is the point —
+the warning above is the layer that had already failed.
+
+⚠️ **It strips heredoc BODIES before matching, and that is load-bearing.** The first
+version matched the raw command string, so it blocked the very commit whose message
+explained the incident, and then blocked the command that would have replaced it. A guard
+you cannot write about is one people route around. Real invocations are still caught; the
+same words in a `<<'EOF'` body are prose. Seven cases cover both directions — edit the
+script and re-run them rather than loosening the pattern.
+
 **The safe way to generate a migration here** is what the rest of this section already says: `migrate diff --from-schema-datasource` (read-only against the live DB) or `--from-migrations` with **no** shadow URL at all, then apply with `migrate deploy`. If a shadow database is genuinely needed, it must be a throwaway database that exists for nothing else.
 
 ### `npm run logos:rebuild --workspace=backend`
