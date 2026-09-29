@@ -870,6 +870,40 @@ all 3 categories** while the Hub holds the real assignments.
 **Duda side**: `POST /public/tags/options` takes an optional `?group=<slug>`, so the Industries widget's dropdown lists only Industries tags. ⚠️ **Its 30s cache is a `Map` keyed by group slug.** A single cached object would serve the first group's options to every other group for 30 seconds — a wrong answer indistinguishable from a right one, in the editor, where nobody is looking for it. An unknown group returns `{options:[]}` rather than an error, so a mistyped Fetch URL shows an empty dropdown instead of breaking the content panel.
 - Both `PUT` routes **reject unknown ids** rather than dropping them, so a stale editor tab cannot quietly save fewer than it displayed. Both are compared as **sorted sets** in `project()`, so ticking A then B is not a change against a baseline that loaded B then A.
 
+### The category tree drives navigation (2026-09-29)
+
+Three top-level parents — **Products**, **Industries**, **Site Challenges** — with the
+product taxonomy adopted under Products and one child per former tag beneath the other two.
+23 categories in total. Built by `npm run duda:seed-category-tree --workspace=backend`
+(dry run by default, `--confirm` to write, `--verify` to print the live tree).
+
+**Why categories rather than tags for the megamenu**: Duda's navigation widget picks
+categories natively, so the client builds menus from a list instead of hand-typing URLs to
+a collection-backed page, and every listing page is a real indexable URL with SEO fields the
+Hub already edits.
+
+⚠️ **The children are derived from the Hub's tags, not hardcoded**, so the names match what
+was authored and each tag maps to its category by title when tags are retired.
+
+⚠️ **Category order within a parent is Duda's own list order, which is newest-first.** There
+is no `sortOrder` on a category and the API exposes no way to set one, so the megamenu's
+column order has to be arranged in Duda's menu editor, not here.
+
+### `npm run duda:sync-categories --workspace=backend`
+
+Pushes `ProductCategory` rows into Duda, **one call per category** rather than per product,
+because `PATCH /categories/{id}` takes the category's whole product list. Dry run prints the
+diff; `--confirm` applies.
+
+⚠️ **One-way, Hub → Duda.** Duda's copy is overwritten wholesale each run, so an assignment
+made in Duda's own admin is lost at the next sync. The Hub's product editor is the place to
+change these.
+
+Verified end-to-end on throwaway assignments, then reverted: staging two Hub assignments and
+syncing made Duda report `products_count: 2` **and** made the product's own `categories`
+array list the category; a second run was a clean no-op; removing the Hub rows and
+re-syncing emptied both sides.
+
 ### Product editor layout
 
 70/30 two-column (`lg:grid-cols-10`, 7 + 3). Left is the product; right is classification. **Grid, not flex**, so a long accordion opening on the left cannot drag the right column's panels down.

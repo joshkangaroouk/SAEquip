@@ -330,6 +330,24 @@ export interface DudaCategoryInput {
   description?: string;
   image?: DudaImageInput | null;
   seo?: { url?: string; title?: string; description?: string };
+  /**
+   * The category's whole product list — FULL REPLACEMENT, and the only way to
+   * write a product↔category link at all.
+   *
+   * ⚠️ `PATCH /products/{id}` with `categories` returns 200 and changes
+   * nothing, so this is not one of two options; it is the only one. Probed
+   * 2026-09-29 on a throwaway: the write is visible in BOTH directions —
+   * the category reports `products_count`, and the product's own `categories`
+   * array then lists the category.
+   *
+   * Note the shape is `[{id}]`, not `["id"]`, which 400s.
+   *
+   * Because it replaces the whole list, this belongs in a batch sync and not
+   * in a per-product save, where two editors would silently clobber each
+   * other — Duda has no optimistic concurrency. See ProductCategory in
+   * schema.prisma.
+   */
+  products?: { id: string }[];
 }
 
 /** Minimum viable new product. Verified: {name, prices, status} is accepted. */

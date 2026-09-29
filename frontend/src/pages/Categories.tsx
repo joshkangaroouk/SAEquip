@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { ChevronDown, ChevronRight, ImageOff } from "lucide-react";
 import {
   Button,
@@ -75,6 +75,7 @@ export default function Categories() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const didInitialCollapse = useRef(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,6 +88,19 @@ export default function Categories() {
     try {
       const res = await apiJson<{ count: number; categories: CategoryNode[] }>("/api/categories");
       setNodes(res.categories);
+      /*
+       * Start with the top level collapsed, ONCE. The tree went from 3 rows to
+       * 23 when Industries and Site Challenges arrived, and every descendant
+       * rendering on first paint buries the structure it is meant to show.
+       *
+       * Guarded by a ref rather than keyed off `collapsed` being empty: `load()`
+       * runs again after every create, rename and delete, and re-collapsing
+       * there would throw away whatever the user had just opened to work in.
+       */
+      if (!didInitialCollapse.current) {
+        didInitialCollapse.current = true;
+        setCollapsed(new Set(res.categories.filter((c) => c.depth === 0).map((c) => c.id)));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load categories");
     } finally {
@@ -113,6 +127,19 @@ export default function Categories() {
   }, [nodes, collapsed]);
 
   const topLevel = useMemo(() => (nodes ?? []).filter((n) => n.parent_id === ROOT), [nodes]);
+
+  /**
+   * Row number for each top-level category, precomputed.
+   *
+   * This was `topLevel.indexOf(n)` inside the render loop — an O(n) scan per
+   * row, so O(n²) per paint. Invisible at 3 categories; the tree is 23 now and
+   * will grow every time a site challenge or industry is added.
+   */
+  const topLevelIndex = useMemo(() => {
+    const m = new Map<string, number>();
+    topLevel.forEach((n, i) => m.set(n.id, i + 1));
+    return m;
+  }, [topLevel]);
 
   function toggle(id: string) {
     setCollapsed((c) => {
@@ -279,7 +306,7 @@ export default function Categories() {
               <TBody>
                 {visible.map((n) => {
                   const isCollapsed = collapsed.has(n.id);
-                  const topIndex = n.depth === 0 ? topLevel.indexOf(n) + 1 : null;
+                  const topIndex = n.depth === 0 ? (topLevelIndex.get(n.id) ?? null) : null;
                   return (
                     <TR key={n.id}>
                       <TD className="text-subtle">{topIndex ?? ""}</TD>

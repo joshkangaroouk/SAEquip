@@ -27,7 +27,9 @@
     "wp:scrape-compatible": "tsx src/scripts/wpScrapeCompatible.ts",
     "duda:fix-casing": "tsx src/scripts/dudaFixProductCasing.ts",
     "duda:seo-fill": "tsx src/scripts/dudaSeoFill.ts",
-    "logos:rebuild": "tsx src/scripts/rebuildLogoCatalogue.ts"
+    "logos:rebuild": "tsx src/scripts/rebuildLogoCatalogue.ts",
+    "duda:seed-category-tree": "tsx src/scripts/seedCategoryTree.ts",
+    "duda:sync-categories": "tsx src/scripts/syncCategories.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
