@@ -488,6 +488,8 @@ async function main() {
       "chips come from the filter group only, not every category",
     );
     check(card.querySelector(".saeh-pl-certs").textContent === "EX logo, IECEx", "certs render as text");
+    // h4: the card title sits under the page's own heading levels, not beside them.
+    check(card.querySelector(".saeh-pl-name").tagName === "H4", "the product title is an h4");
     const second = d.querySelectorAll(".saeh-pl-card")[1];
     check(second.querySelector(".saeh-pl-certs") === null, "a product with no certs gets no cert line");
     check(second.querySelector("img") === null, "a product with no image still renders a card");
@@ -527,9 +529,21 @@ async function main() {
     check(svg.getAttribute("aria-hidden") === "true", "hidden from assistive tech: the label already says it");
     check(cta.textContent === "View Product", "…and adds no text of its own");
     check(/\.saeh-pl-btn\{[^}]*font-size:16px/.test(css), "16px, matching the site's buttons");
+    check(/\.saeh-pl-btn\{[^}]*font-weight:400/.test(css), "at 400 weight");
     check(/\.saeh-pl-btn\{[^}]*text-transform:none/.test(css), "and NOT all caps");
-    check(/\.saeh-pl-btn svg\{[^}]*width:0[^}]*opacity:0/.test(css), "the chevron starts collapsed and invisible");
-    check(/\.saeh-pl-card:hover \.saeh-pl-btn svg[^{]*\{[^}]*width:16px;opacity:1/.test(css),
+    /*
+     * ⚠️ The WRAPPER animates, never the svg. Animating the svg's own width
+     * scales its viewBox content, so the chevron zoomed up from a dot instead
+     * of sliding out from behind the label.
+     */
+    check(svg.parentNode.className === "saeh-pl-chevwrap", "the chevron sits in a clipping wrapper");
+    check(/\.saeh-pl-chevwrap\{[^}]*width:0;overflow:hidden;opacity:0/.test(css),
+      "which is what starts collapsed and invisible");
+    check(/\.saeh-pl-btn svg\{width:19px;height:19px/.test(css),
+      "while the svg keeps a FIXED size, so it slides rather than zooms");
+    check(svg.getAttribute("width") === "19" && svg.getAttribute("height") === "19",
+      "…and carries that size as attributes too, so it is right before the CSS lands");
+    check(/\.saeh-pl-card:hover \.saeh-pl-chevwrap[^{]*\{[^}]*width:19px;opacity:1/.test(css),
       "and expands on hover, which is what slides the label left");
   }
 
@@ -634,6 +648,10 @@ async function main() {
     const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
     const css = d.getElementById("saeh-styles").textContent;
     check(/\.saeh-pl-shot\{[^}]*background:#fff/.test(css), "the image area is white, not grey");
+    check(/\.saeh-pl-shot\{(?![^}]*padding)[^}]*\}/.test(css), "the image sits flush — no padding around it");
+    check(/\.saeh-pl-shot\{[^}]*overflow:hidden/.test(css), "…and clips, so the hover zoom cannot spill");
+    check(/\.saeh-pl-card:hover \.saeh-pl-shot img\{transform:scale\(1\.045\)\}/.test(css),
+      "a small zoom on tile hover");
     check(/\.saeh-pl-body\{[^}]*background:#f4f4f4/.test(css), "the title and cert area is light grey");
     check(/\.saeh-pl-name\{[^}]*font-size:15px/.test(css), "titles are smaller");
     check(/\.saeh-pl-more\{[^}]*background:transparent[^}]*border:1px solid #111/.test(css),

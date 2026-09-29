@@ -678,21 +678,32 @@
        * photographed at every aspect ratio; cropping a duct run or a tower light
        * to fill a square cuts the thing being sold out of frame.
        */
-      ".saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;padding:16px;background:#fff;box-sizing:border-box}",
-      ".saeh-pl-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}",
+      // overflow:hidden is what clips the hover zoom; without it the scaled image
+      // spills over the card border.
+      ".saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;box-sizing:border-box;overflow:hidden}",
+      ".saeh-pl-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;transition:transform .45s cubic-bezier(.4,0,.2,1)}",
+      ".saeh-pl-card:hover .saeh-pl-shot img{transform:scale(1.045)}",
       ".saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px;background:#f4f4f4}",
       ".saeh-pl-chips{display:flex;flex-wrap:wrap;gap:6px}",
       ".saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#f1f1f1;color:#444;padding:4px 8px}",
       ".saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}",
       ".saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}",
-      ".saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:600;text-transform:none;letter-spacing:normal;padding:13px}",
+      ".saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;text-transform:none;letter-spacing:normal;padding:13px}",
       /*
        * The chevron grows from zero width rather than just fading, so the
        * centred flex row shifts the label left by half the space it takes —
        * the pair stays centred instead of the label jumping.
        */
-      ".saeh-pl-btn svg{width:0;opacity:0;flex:0 0 auto;overflow:hidden;transition:width .18s cubic-bezier(.4,0,.2,1),opacity .12s ease,margin-left .18s cubic-bezier(.4,0,.2,1)}",
-      ".saeh-pl-card:hover .saeh-pl-btn svg,.saeh-pl-card:focus-visible .saeh-pl-btn svg{width:16px;opacity:1;margin-left:8px}",
+      /*
+       * ⚠️ The WRAPPER is what animates; the svg keeps a FIXED size inside it.
+       * Animating the svg's own width scales its viewBox content — the chevron
+       * zoomed up from a dot instead of sliding out from behind the label,
+       * because the default preserveAspectRatio fits the content to whichever
+       * axis is smaller.
+       */
+      ".saeh-pl-chevwrap{display:inline-flex;align-items:center;flex:0 0 auto;width:0;overflow:hidden;opacity:0;transition:width .18s cubic-bezier(.4,0,.2,1),opacity .12s ease,margin-left .18s cubic-bezier(.4,0,.2,1)}",
+      ".saeh-pl-btn svg{width:19px;height:19px;flex:0 0 auto;display:block}",
+      ".saeh-pl-card:hover .saeh-pl-chevwrap,.saeh-pl-card:focus-visible .saeh-pl-chevwrap{width:19px;opacity:1;margin-left:8px}",
       ".saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}",
       ".saeh-pl-empty{padding:32px 0;text-align:left;font-size:16px;color:#878787}",
       /*
@@ -724,7 +735,7 @@
         ".saeh-pl-inner{padding:16px}" +
       "}",
       "@media(prefers-reduced-motion:reduce){" +
-        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-btn svg{transition:none}" +
+        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img{transition:none}" +
         ".saeh-pl-card{animation:none}" +
       "}",
       /*
@@ -1999,14 +2010,16 @@
       });
       body.appendChild(chips);
     }
-    body.appendChild(el("h3", "saeh-pl-name", p.name || ""));
+    body.appendChild(el("h4", "saeh-pl-name", p.name || ""));
     if (p.certs && p.certs.length) {
       body.appendChild(el("div", "saeh-pl-certs", p.certs.join(", ")));
     }
     a.appendChild(body);
     var cta = el("span", "saeh-pl-btn");
     cta.appendChild(document.createTextNode("View Product"));
-    cta.appendChild(doubleChevron());
+    var chev = el("span", "saeh-pl-chevwrap");
+    chev.appendChild(doubleChevron());
+    cta.appendChild(chev);
     a.appendChild(cta);
     return a;
   }
@@ -2016,8 +2029,8 @@
     var ns = "http://www.w3.org/2000/svg";
     var svg = document.createElementNS(ns, "svg");
     svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("width", "16");
-    svg.setAttribute("height", "16");
+    svg.setAttribute("width", "19");
+    svg.setAttribute("height", "19");
     svg.setAttribute("fill", "none");
     svg.setAttribute("aria-hidden", "true");
     ["M5 5l7 7-7 7", "M13 5l7 7-7 7"].forEach(function (d) {
@@ -2640,7 +2653,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-29-categories-2+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-29-categories-3+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

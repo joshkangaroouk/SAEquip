@@ -21,9 +21,9 @@
  */
 import "dotenv/config";
 import { readFileSync } from "node:fs";
-import { parse } from "csv-parse/sync";
 import { PrismaClient } from "@prisma/client";
 import { duda } from "../services/duda.js";
+import { parsePublishedProducts, productCategories, saRangeLogos } from "../services/wooImport.js";
 
 const prisma = new PrismaClient();
 
@@ -36,100 +36,189 @@ function fail(message: string): never {
 }
 
 const CSV = "../migration/wc-export-2026-09-07.csv";
+const LEDGER = "../migration/ledger.json";
+
+const FUME = "Fume, Dust, LEV and Vapour Control";
+const LIGHT = "Lighting and Power";
+const CLIMATE = "Climate Control and Heating";
 
 /**
- * WooCommerce category → the product-type category it belongs to.
+ * WooCommerce category → product type. Covers 68 of the 96.
  *
  * The Rental variants fold into the same type: "Portable EX Lighting Rental"
  * is the same kind of product, hired rather than sold, and the hire/purchase
  * distinction is not what this axis is for.
  */
 const TYPE_OF: Record<string, string> = {
-  "portable ex ventilation": "Fume, Dust, LEV and Vapour Control",
-  "portable ex ventilation rental": "Fume, Dust, LEV and Vapour Control",
-  "portable ex lighting": "Lighting and Power",
-  "portable ex lighting rental": "Lighting and Power",
-  "portable ex power distribution": "Lighting and Power",
-  "portable ex power rental": "Lighting and Power",
-  "portable lighting & power": "Lighting and Power",
-  "portable ex heating": "Climate Control and Heating",
-  "portable ex heating rental": "Climate Control and Heating",
-  "portable ex climate control": "Climate Control and Heating",
+  "portable ex ventilation": FUME,
+  "portable ex ventilation rental": FUME,
+  "portable ex lighting": LIGHT,
+  "portable ex lighting rental": LIGHT,
+  "portable ex power distribution": LIGHT,
+  "portable ex power rental": LIGHT,
+  "portable lighting & power": LIGHT,
+  "portable ex heating": CLIMATE,
+  "portable ex heating rental": CLIMATE,
+  "portable ex climate control": CLIMATE,
 };
+
+/**
+ * SA product range → product type, the fallback for the 28 products whose
+ * WooCommerce categories carry only industry sectors.
+ *
+ * ⚠️ These are the SAME ranges `saRangeLogos()` already derives for the logo
+ * import, reused rather than re-derived — including its two Tasklight
+ * overrides, which is how the 2 SKU-less products get a type at all. A second
+ * copy of the category→range matching would be a second thing to keep in step.
+ *
+ * `Rental` is deliberately absent: it is orthogonal to the ranges (a product
+ * is both `SA Cyclone` and `Rental`) and says nothing about what the product
+ * IS. `Endure` is absent because it spans two types — see below.
+ */
+const TYPE_OF_RANGE: Record<string, string> = {
+  Lumin: LIGHT,
+  Powernet: LIGHT,
+  Cyclone: FUME,
+  Flexiheat: CLIMATE,
+};
+
+/**
+ * ⚠️ SA ENDURE is the one range that is NOT a product type. It is the
+ * non-EX/general-industrial line and spans both lighting and extraction, so
+ * each of its products needs an explicit decision. Keyed on WordPress id,
+ * like `SA_RANGE_OVERRIDES`, because that is the migration's only reliable
+ * identity — 3 products have no SKU and 4 SKUs are shared by 9 products.
+ *
+ * An ENDURE product missing from this map is a HARD FAILURE rather than a
+ * guess: a new one added to the range later must be classified deliberately,
+ * not filed wherever a keyword match happens to land it.
+ */
+const ENDURE_TYPE: Record<string, string> = {
+  "9049": LIGHT, // SAWL — LED Worklamp
+  "9305": LIGHT, // ST100 — LED Tubelight
+  "9346": LIGHT, // STE100 — LED Emergency Tubelight
+  "12626": FUME, // SEF35 — AIR MOVER
+  "15464": FUME, // SEF35HP — HIGH POWER AIR MOVER
+  "15476": FUME, // SAECFU — COMPACT FILTRATION UNIT
+  "28972": FUME, // SAELFU — LIGHTWEIGHT FILTRATION UNIT
+  "29036": FUME, // SAEWFS — MOBILE LEV SYSTEM
+  "29166": FUME, // SAEWFP — PORTABLE LEV SYSTEM
+  "29812": FUME, // SEFD — PVC FLEXIBLE DUCT SYSTEM
+  "30437": FUME, // SAEWFC — CONTAINER LEV SYSTEM
+};
+
+interface LedgerEntry {
+  dudaProductId: string;
+}
 
 async function main() {
   const confirm = flag("confirm");
 
-  const rows = parse(readFileSync(CSV), {
-    columns: true,
-    skip_empty_lines: true,
-    relax_quotes: true,
-    relax_column_count: true,
-  }) as Record<string, string>[];
-  const published = rows.filter((r) => r["Type"] !== "variation" && r["Published"] === "1");
+  const products = parsePublishedProducts(readFileSync(CSV, "utf8"));
+
+  /*
+   * ⚠️ The Hub row is found through the LEDGER (wpId → dudaProductId), never
+   * by SKU. SKU cannot identify a product here: 3 of the 96 have none and 4
+   * SKUs are shared by 9 products, so a SKU-keyed map silently collapses each
+   * pair onto one row — assigning one twin twice and the other never, with
+   * nothing in the output to show it happened.
+   */
+  const ledger = JSON.parse(readFileSync(LEDGER, "utf8")) as Record<string, LedgerEntry>;
 
   const cats = await duda.listAllCategories();
   const idOf = new Map(cats.map((c) => [c.title.toLowerCase(), c.id]));
-  const typeIds = [...new Set(Object.values(TYPE_OF))].map((title) => {
+  const typeIds = [FUME, LIGHT, CLIMATE].map((title) => {
     const id = idOf.get(title.toLowerCase());
     if (!id) fail(`No category titled “${title}” — run duda:seed-category-tree first.`);
     return id!;
   });
 
-  const hubBySku = new Map(
-    (await prisma.hubProduct.findMany({ select: { id: true, sku: true, name: true } }))
-      .filter((h) => h.sku)
-      .map((h) => [h.sku!.toLowerCase(), h]),
+  const hubByDudaId = new Map(
+    (await prisma.hubProduct.findMany({ select: { id: true, dudaProductId: true, name: true } })).map(
+      (h) => [h.dudaProductId, h],
+    ),
   );
 
   let assigned = 0;
   const unmatched: string[] = [];
   const noHub: string[] = [];
   const perType = new Map<string, number>();
+  const bySource = new Map<string, number>();
   const writes: { hubProductId: string; dudaCategoryId: string }[] = [];
 
-  for (const r of published) {
-    const sku = String(r["SKU"] ?? "").trim();
-    const name = String(r["Name"] ?? "").trim();
-    const wooCats = String(r["Categories"] ?? "")
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
+  for (const p of products) {
+    const label = `${p.sku || "(no sku)"} ${p.name}`;
 
-    const titles = [...new Set(wooCats.map((c) => TYPE_OF[c]).filter(Boolean))];
-    if (!titles.length) {
-      unmatched.push(`${sku || "(no sku)"} ${name}`);
+    // 1. The WooCommerce product category, where there is one.
+    // ⚠️ Distinct titles, not the first match: none of the 96 sits in two
+    // product-type categories today (checked), but picking arbitrarily from a
+    // future one that does would file it wrongly without saying so.
+    const wooCats = productCategories(p.raw).map((c) => c.toLowerCase());
+    const wooTypes = [...new Set(wooCats.map((c) => TYPE_OF[c]).filter(Boolean))];
+    if (wooTypes.length > 1) {
+      fail(`wp#${p.wpId} ${label} is in ${wooTypes.length} product-type categories: ${wooTypes.join(", ")}`);
+    }
+    let title = wooTypes[0];
+    let source = "woo category";
+
+    // 2. Otherwise the SA range, which every remaining product carries.
+    if (!title) {
+      const ranges = saRangeLogos(p).filter((r) => r !== "Rental");
+      if (ranges.includes("Endure")) {
+        title = ENDURE_TYPE[p.wpId];
+        source = "ENDURE (explicit)";
+        if (!title) {
+          fail(
+            `SA ENDURE product with no explicit type: wp#${p.wpId} ${label}.\n` +
+              `  ENDURE spans lighting AND extraction, so add it to ENDURE_TYPE by hand.`,
+          );
+        }
+      } else {
+        const mapped = [...new Set(ranges.map((r) => TYPE_OF_RANGE[r]).filter(Boolean))];
+        // Two ranges disagreeing is a content question, not something to pick.
+        if (mapped.length > 1) fail(`wp#${p.wpId} ${label} maps to ${mapped.length} types: ${mapped.join(", ")}`);
+        title = mapped[0];
+        source = "SA range";
+      }
+    }
+
+    if (!title) {
+      unmatched.push(label);
       continue;
     }
 
-    const hub = sku ? hubBySku.get(sku.toLowerCase()) : undefined;
+    const dudaId = ledger[p.wpId]?.dudaProductId;
+    const hub = dudaId ? hubByDudaId.get(dudaId) : undefined;
     if (!hub) {
-      noHub.push(`${sku || "(no sku)"} ${name}`);
+      noHub.push(`${label}${dudaId ? "" : "  (not in the ledger)"}`);
       continue;
     }
 
-    for (const t of titles) {
-      writes.push({ hubProductId: hub.id, dudaCategoryId: idOf.get(t.toLowerCase())! });
-      perType.set(t, (perType.get(t) ?? 0) + 1);
-    }
+    writes.push({ hubProductId: hub.id, dudaCategoryId: idOf.get(title.toLowerCase())! });
+    perType.set(title, (perType.get(title) ?? 0) + 1);
+    bySource.set(source, (bySource.get(source) ?? 0) + 1);
     assigned++;
   }
 
-  console.log(`\n${confirm ? "Assigning" : "Dry run —"} product types for ${published.length} published product(s)\n`);
+  console.log(`\n${confirm ? "Assigning" : "Dry run —"} product types for ${products.length} published product(s)\n`);
   for (const [title, n] of [...perType.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`  ${String(n).padStart(3)}  ${title}`);
   }
-  console.log(`\n  products matched  : ${assigned}`);
+  console.log(`\n  derived from:`);
+  for (const [src, n] of [...bySource.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${String(n).padStart(3)}  ${src}`);
+  }
+  console.log(`\n  products matched  : ${assigned} of ${products.length}`);
   console.log(`  links to write    : ${writes.length}`);
-  console.log(`  no type in the CSV: ${unmatched.length}`);
-  console.log(`  no Hub row by SKU : ${noHub.length}`);
+  console.log(`  no type derivable : ${unmatched.length}`);
+  console.log(`  no Hub row        : ${noHub.length}`);
 
   if (unmatched.length) {
     console.log(`\n  ⚠ no product type could be derived for these — assign by hand:`);
     for (const u of unmatched) console.log(`     ${u}`);
   }
   if (noHub.length) {
-    console.log(`\n  ⚠ in the CSV but no Hub product with that SKU:`);
+    console.log(`\n  ⚠ in the CSV but no Hub product:`);
     for (const n of noHub) console.log(`     ${n}`);
   }
 

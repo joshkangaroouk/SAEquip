@@ -302,8 +302,9 @@ category template, or the page shows two listings.
 - ⚠️ **`product-list` is deliberately absent from `ALL_SECTIONS`** — it belongs to a category
   page and has no product, so the legacy `data-section="all"` embed must never build it.
 - Cards: white, **square 1:1 image using `object-fit:contain`** (cropping industrial kit to
-  fill a square cuts the product out of frame), chips from the label group, certification
-  text, and **one** "View Product" button.
+  fill a square cuts the product out of frame) sitting flush with no padding and a small
+  scale on card hover, chips from the filter group, an **h4** title, certification text, and
+  **one** "View Product" button.
 - ⚠️ **Certification text reads `Logo.alt || Logo.label`.** Every `alt` is empty today, so
   labels render — which means cards say "EX logo", "UKCA" and "Made in Britan" rather than
   ATEX/UKEX. The first two are deliberate (see the logo mapping note); filling `alt` on the
@@ -328,11 +329,17 @@ category template, or the page shows two listings.
 - **Cards fade up as they arrive** — first paint, every filter change, every loaded page —
   with an `nth-child` stagger capped at ~0.1s so a 40-card page is not a slow cascade.
   Silenced entirely under `prefers-reduced-motion`.
-- ⚠️ **The "View Product" chevron is drawn INLINE, not fetched.** It is 16px sentence-case to
-  match the site's buttons, and a double chevron slides in on card hover while the label
-  slides left to stay centred. A network-loaded icon would be blank for exactly as long as
-  the hover that reveals it — the one moment it has to be there. `CHEVRON_ICON_SRC` is fine
-  for the always-visible carousel arrows; it is the wrong tool here.
+- ⚠️ **The "View Product" chevron is drawn INLINE, not fetched.** The label is 16px/400
+  sentence case to match the site's buttons, and a 19px double chevron slides in on card
+  hover while the label slides left to stay centred. A network-loaded icon would be blank
+  for exactly as long as the hover that reveals it — the one moment it has to be there.
+  `CHEVRON_ICON_SRC` is fine for the always-visible carousel arrows; it is the wrong tool
+  here.
+- ⚠️ **`.saeh-pl-chevwrap` animates; the `<svg>` keeps a FIXED size inside it.** Animating
+  the svg's own `width` scales its viewBox content, because the default
+  `preserveAspectRatio` fits the drawing to whichever axis is smaller — so the chevron
+  zoomed up from a dot instead of sliding out from behind the label. Reveal an icon by
+  clipping a wrapper, never by resizing the icon.
 
 ## Category mode — the compatible carousel on static pages
 

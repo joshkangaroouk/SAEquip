@@ -186,16 +186,18 @@ const WIDGET_CSS = `
 .saeh-pl-card{display:flex;flex-direction:column;background:#fff;border:1px solid #e6e6e6;text-decoration:none;color:inherit;transition:box-shadow .2s ease}
 .saeh-pl-card:hover{box-shadow:0 10px 26px rgba(0,0,0,.08)}
 .saeh-pl-card:focus-visible{outline:2px solid #111;outline-offset:2px}
-.saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;padding:16px;background:#fff;box-sizing:border-box}
-.saeh-pl-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
+.saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;box-sizing:border-box;overflow:hidden}
+.saeh-pl-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;transition:transform .45s cubic-bezier(.4,0,.2,1)}
+.saeh-pl-card:hover .saeh-pl-shot img{transform:scale(1.045)}
 .saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px;background:#f4f4f4}
 .saeh-pl-chips{display:flex;flex-wrap:wrap;gap:6px}
 .saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#f1f1f1;color:#444;padding:4px 8px}
 .saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}
 .saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}
-.saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:600;text-transform:none;letter-spacing:normal;padding:13px}
-.saeh-pl-btn svg{width:0;opacity:0;flex:0 0 auto;overflow:hidden;transition:width .18s cubic-bezier(.4,0,.2,1),opacity .12s ease,margin-left .18s cubic-bezier(.4,0,.2,1)}
-.saeh-pl-card:hover .saeh-pl-btn svg,.saeh-pl-card:focus-visible .saeh-pl-btn svg{width:16px;opacity:1;margin-left:8px}
+.saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;text-transform:none;letter-spacing:normal;padding:13px}
+.saeh-pl-chevwrap{display:inline-flex;align-items:center;flex:0 0 auto;width:0;overflow:hidden;opacity:0;transition:width .18s cubic-bezier(.4,0,.2,1),opacity .12s ease,margin-left .18s cubic-bezier(.4,0,.2,1)}
+.saeh-pl-btn svg{width:19px;height:19px;flex:0 0 auto;display:block}
+.saeh-pl-card:hover .saeh-pl-chevwrap,.saeh-pl-card:focus-visible .saeh-pl-chevwrap{width:19px;opacity:1;margin-left:8px}
 .saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}
 .saeh-pl-empty{padding:32px 0;text-align:left;font-size:16px;color:#878787}
 @keyframes saeh-pl-in{from{opacity:0;transform:translateY(12px)}
@@ -215,7 +217,7 @@ to{opacity:1;transform:none}
 .saeh-pl-clip{overflow:visible}
 .saeh-pl-inner{padding:16px}
 }
-@media(prefers-reduced-motion:reduce){.saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-btn svg{transition:none}
+@media(prefers-reduced-motion:reduce){.saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img{transition:none}
 .saeh-pl-card{animation:none}
 }
 @media(prefers-reduced-motion:reduce){.saeh-tab-p,.saeh-tab-p.saeh-open,.saeh-tabs.saeh-slide .saeh-tab-bar{transition:none}
