@@ -845,7 +845,20 @@ So writing a product's categories to Duda would mean rewriting every affected ca
 
 - `ProductCategory` stores `dudaCategoryId` with **no foreign key** — categories live in Duda, so a category deleted there leaves a row pointing at nothing.
 - `Tag` / `ProductTag` are entirely Hub-owned; Duda has no equivalent. Managed at **`/tags`** (create, rename inline, reorder, delete). Deleting a tag cascades its assignments, so the confirm names the product count.
-- Nothing renders tags publicly yet — deliberately. The data layer exists so the labelling can be done before anything depends on it.
+- Tags render publicly through the compatible widget's **tag mode** (the Industries pages) — a tag is public content, not an internal label. The line that used to say otherwise predated that.
+
+### Tag groups (added 2026-09-29)
+
+`TagGroup` buckets tags into separate vocabularies — **Industries** and **Site Problems** — because mixed together they are unusable both on `/tags` and in the editor's picker. Staff-managed, so a new grouping needs no migration. A tag belongs to at most one group; `groupId` null is "Ungrouped", which sorts last everywhere.
+
+- ⚠️ **`Tag.groupId` is `onDelete: SetNull`, NEVER Cascade.** `ProductTag` cascades from `Tag`, so cascading here would make deleting a group silently destroy every product assignment beneath it — losing real content to fix a naming mistake. Verified on throwaway data: deleting a group leaves its tags alive, ungrouped, with their assignments intact. The delete confirm says so explicitly, because a warning implying deletion would stop someone tidying a mistyped name.
+- ⚠️ **Tag slugs stay unique GLOBALLY, not per group.** The slug is stored inside the Duda widget's saved config and resolved by `/public/products/by-tag`; per-group slugs would need a compound key in that URL and would re-configure every live page that already names a tag.
+- **`sortOrder` is per group**, allocated with `aggregate({ where: { groupId } })` exactly as `Logo.sortOrder` is per kind. `PUT /api/tags/reorder` takes `{groupId, ids}` and rejects an id set that is not exactly that group's tags — the same guard `routes/logos.ts` makes, without which a stale tab reordering one group renumbers another.
+- `PATCH /api/tags/:id` distinguishes **absent** `groupId` (leave the group alone) from explicit **null** (move to Ungrouped) with `in`. `?? null` would silently ungroup a tag on a plain rename.
+- `GET /api/tags` stays a **flat, pre-ordered array** carrying `groupId`/`groupName` — group order, then tag order, ungrouped last. Ordering is derived once server-side, the same contract `buildTree()` uses in `routes/categories.ts`, so the Tags page and the editor's picker cannot disagree.
+- ⚠️ **`AssignPickList` pins selected items WITHIN their group**, not to the top of the whole list. Global pinning is what it did before groups existed and it directly fights them — a ticked Site Problems tag would jump above the Industries heading and read as belonging to it.
+
+**Duda side**: `POST /public/tags/options` takes an optional `?group=<slug>`, so the Industries widget's dropdown lists only Industries tags. ⚠️ **Its 30s cache is a `Map` keyed by group slug.** A single cached object would serve the first group's options to every other group for 30 seconds — a wrong answer indistinguishable from a right one, in the editor, where nobody is looking for it. An unknown group returns `{options:[]}` rather than an error, so a mistyped Fetch URL shows an empty dropdown instead of breaking the content panel.
 - Both `PUT` routes **reject unknown ids** rather than dropping them, so a stale editor tab cannot quietly save fewer than it displayed. Both are compared as **sorted sets** in `project()`, so ticking A then B is not a change against a baseline that loaded B then A.
 
 ### Product editor layout

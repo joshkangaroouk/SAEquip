@@ -179,15 +179,39 @@ publicRouter.get("/products/by-tag", contentLimiter, async (req, res, next) => {
  * widget is used on a second site.
  */
 const TAG_OPTIONS_TTL_MS = 30 * 1000;
-let tagOptionsCache: { at: number; body: { options: { value: string; label: string }[] } } | null = null;
+/**
+ * ⚠️ Keyed BY GROUP, not a single cached object.
+ *
+ * Duda's dropdown fetches this per widget, and the Industries widget asks for
+ * `?group=industries` while a Site Problems one asks for something else. With
+ * one shared entry the first request would populate it and every other group
+ * would be served the wrong tags for the next 30 seconds — a wrong answer that
+ * looks exactly like a right one, in the editor, where nobody is watching for
+ * it. `""` is the unfiltered listing.
+ */
+const tagOptionsCache = new Map<string, { at: number; body: { options: { value: string; label: string }[] } }>();
 
-publicRouter.post("/tags/options", contentLimiter, async (_req, res, next) => {
+publicRouter.post("/tags/options", contentLimiter, async (req, res, next) => {
   try {
-    if (tagOptionsCache && Date.now() - tagOptionsCache.at < TAG_OPTIONS_TTL_MS) {
-      res.json(tagOptionsCache.body);
+    const group = typeof req.query.group === "string" ? req.query.group.trim().toLowerCase() : "";
+    if (group.length > 120) {
+      res.json({ options: [] });
       return;
     }
+
+    const hit = tagOptionsCache.get(group);
+    if (hit && Date.now() - hit.at < TAG_OPTIONS_TTL_MS) {
+      res.json(hit.body);
+      return;
+    }
+
+    /*
+     * An unknown group returns an EMPTY option list rather than an error: Duda
+     * renders whatever comes back into the content panel, so a mistyped Fetch
+     * URL should show an empty dropdown the editor can see, not break the panel.
+     */
     const tags = await prisma.tag.findMany({
+      where: group ? { group: { slug: group } } : {},
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       include: { _count: { select: { products: true } } },
     });
@@ -200,7 +224,7 @@ publicRouter.post("/tags/options", contentLimiter, async (_req, res, next) => {
         label: `${t.name} (${t._count.products})`,
       })),
     };
-    tagOptionsCache = { at: Date.now(), body };
+    tagOptionsCache.set(group, { at: Date.now(), body });
     res.json(body);
   } catch (err) {
     next(err);

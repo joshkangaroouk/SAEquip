@@ -8,9 +8,14 @@ import type { HubTag } from "../../lib/types";
  * Assign Hub tags to the product.
  *
  * Tags are Hub-owned — Duda has no equivalent — so unlike categories there is
- * nothing upstream to reconcile with. Nothing renders them publicly yet; this
- * is the data layer, so the labelling can be done before anything depends on
- * it rather than after.
+ * nothing upstream to reconcile with. They drive the live Industries pages via
+ * the compatible widget's tag mode, so a tag here is public content, not just
+ * an internal label.
+ *
+ * Rendered under their group headings. /api/tags returns a flat, pre-ordered
+ * array (group order, then tag order, ungrouped last), so this passes the
+ * group through and does no ordering of its own — the Tags page reads the same
+ * response and the two cannot disagree about it.
  */
 export function TagsSection({
   selected,
@@ -54,6 +59,7 @@ export function TagsSection({
             id: t.id,
             label: t.name,
             hint: t.productCount ? `${t.productCount}` : undefined,
+            group: t.groupName ?? "Ungrouped",
           }))}
           selected={selected}
           onChange={onChange}
