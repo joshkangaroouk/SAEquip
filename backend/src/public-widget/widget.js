@@ -1808,21 +1808,21 @@
   }
 
   /**
-   * Fetch a tag's products, memoized per tag across every mount and every copy
-   * of this script — the same contract as fetchContent, so two Industries
+   * Fetch a category's products, memoized per category across every mount and
+   * every copy of this script — the same contract as fetchContent, so two
    * carousels on one page share one request.
    */
-  function fetchByTag(tag) {
-    if (!hub.tagFetches) hub.tagFetches = {};
-    var key = String(tag).toLowerCase();
-    if (!hub.tagFetches[key]) {
-      hub.tagFetches[key] = fetch(
-        hub.api + "/public/products/by-tag?tag=" + encodeURIComponent(key),
+  function fetchByCategory(category) {
+    if (!hub.categoryFetches) hub.categoryFetches = {};
+    var key = String(category).toLowerCase();
+    if (!hub.categoryFetches[key]) {
+      hub.categoryFetches[key] = fetch(
+        hub.api + "/public/products/by-category?category=" + encodeURIComponent(key),
         { credentials: "omit", headers: { Accept: "application/json" } },
       )
         .then(function (r) {
-          // 404 is "no such tag", which is a content problem, not an error —
-          // the editor may hold a tag that has since been renamed or deleted.
+          // 404 is "no such category", a content problem rather than an error —
+          // the editor may hold one since renamed or deleted.
           if (!r.ok) return null;
           return r.json();
         })
@@ -1830,11 +1830,11 @@
           return null;
         });
     }
-    return hub.tagFetches[key];
+    return hub.categoryFetches[key];
   }
 
   /**
-   * Render the carousel for a TAG rather than for the page's product.
+   * Render the carousel for a CATEGORY rather than for the page's product.
    *
    * Deliberately its own path rather than a branch inside renderInto: that
    * function is built around a product `ref` and a list of sections, and a
@@ -1842,14 +1842,14 @@
    * product" through it would put the product pages — the ones that actually
    * matter — at risk for the benefit of a second use case.
    */
-  function renderTagInto(container, tag, heading, onEmpty) {
+  function renderCategoryInto(container, category, heading, onEmpty) {
     try {
-      container.setAttribute("data-saeh-section", "compatible:tag=" + tag);
+      container.setAttribute("data-saeh-section", "compatible:category=" + category);
     } catch (e) {
       /* never break the host page */
     }
-    if (!hub.api || !tag) return onEmpty();
-    return fetchByTag(tag).then(function (data) {
+    if (!hub.api || !category) return onEmpty();
+    return fetchByCategory(category).then(function (data) {
       try {
         var items = data && data.items;
         if (!items || !items.length) return onEmpty();
@@ -2391,7 +2391,7 @@
        * identical console output, which cost a round trip to tell apart.
        *
        * `propKeys` is the giveaway: a shim that was never updated has no
-       * singlePage/productTag keys at all, whereas an updated one that simply
+       * singlePage/productCategory keys at all, whereas an updated one that simply
        * has nothing selected shows the keys holding empty values.
        */
       propKeys: (function () {
@@ -2402,7 +2402,7 @@
         }
       })(),
       singlePage: props.singlePage,
-      productTag: props.productTag,
+      productCategory: props.productCategory,
     };
     hub.lastInit = record;
     if (!hub.inits) hub.inits = [];
@@ -2426,7 +2426,7 @@
        * is no product to resolve and the carousel is driven by a tag chosen in
        * the content panel instead.
        *
-       * `singlePage` gates this rather than "productTag is set", so a tag left
+       * `singlePage` gates this rather than "productCategory is set", so one left
        * selected from earlier experimentation cannot quietly take over a
        * product page. The two are checked together because a tag-mode widget
        * with no tag has nothing to show.
@@ -2469,13 +2469,13 @@
        * the live page shows nothing while the editor's dropdown clearly has a
        * tag in it. Accept both shapes rather than depend on which one arrives.
        */
-      var rawTag = props.productTag;
-      if (rawTag && typeof rawTag === "object") rawTag = rawTag.value || rawTag.id || "";
-      var productTag = typeof rawTag === "string" ? rawTag.trim() : "";
+      var rawCat = props.productCategory;
+      if (rawCat && typeof rawCat === "object") rawCat = rawCat.value || rawCat.id || "";
+      var productCategory = typeof rawCat === "string" ? rawCat.trim() : "";
       if (singlePage) {
-        hub.lastInit.mode = "tag";
-        hub.lastInit.productTag = productTag;
-        renderTagInto(container, productTag, props.heading, onEmpty);
+        hub.lastInit.mode = "category";
+        hub.lastInit.productCategory = productCategory;
+        renderCategoryInto(container, productCategory, props.heading, onEmpty);
         return;
       }
 
@@ -2530,7 +2530,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-29-product-list-2+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-29-categories+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

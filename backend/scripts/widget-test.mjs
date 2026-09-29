@@ -42,7 +42,7 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, tagPayload = undefined, cataloguePayload = undefined, url = undefined } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, url = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
     url: url ?? "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
@@ -60,11 +60,11 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
         json: () => Promise.resolve(cataloguePayload),
       });
     }
-    if (fetchedUrl.indexOf("/by-tag") !== -1) {
+    if (fetchedUrl.indexOf("/by-category") !== -1) {
       return Promise.resolve({
-        ok: tagPayload !== null && tagPayload !== undefined,
-        status: tagPayload ? 200 : 404,
-        json: () => Promise.resolve(tagPayload),
+        ok: catPayload !== null && catPayload !== undefined,
+        status: catPayload ? 200 : 404,
+        json: () => Promise.resolve(catPayload),
       });
     }
     return Promise.resolve({ ok: payload !== null, status: payload ? 200 : 404, json: () => Promise.resolve(payload) });
@@ -214,9 +214,9 @@ async function main() {
     check(d.querySelector("ul.saeh-apps") === null, "the dot-bullet variant is gone entirely");
   }
 
-  console.log("\n=== static-page tag mode (Industries pages) ===");
+  console.log("\n=== static-page category mode (Industries pages) ===");
   const TAGGED = {
-    tag: { name: "Aviation", slug: "aviation" },
+    category: { title: "Aviation & Aerospace", slug: "aviation-aerospace" },
     items: [
       { name: "EX Heater", slug: "ex-heater", url: "/product/ex-heater", imageUrl: "https://irp.cdn-website.com/a.webp" },
       { name: "EX Air Mover", slug: "ex-air-mover", url: "/product/ex-air-mover", imageUrl: null },
@@ -224,15 +224,15 @@ async function main() {
   };
   {
     const { d, fetchedUrl } = await boot({
-      props: { section: "compatible", singlePage: true, productTag: "aviation" },
-      tagPayload: TAGGED,
+      props: { section: "compatible", singlePage: true, productCategory: "aviation-aerospace" },
+      catPayload: TAGGED,
     });
     check(
-      fetchedUrl === "https://sa-equip-backend.vercel.app/public/products/by-tag?tag=aviation",
-      "tag mode fetches by tag, not by product",
+      fetchedUrl === "https://sa-equip-backend.vercel.app/public/products/by-category?category=aviation-aerospace",
+      "category mode fetches by category, not by product",
       fetchedUrl,
     );
-    check(d.querySelectorAll(".saeh-cp-card").length === 2, "renders a card per tagged product");
+    check(d.querySelectorAll(".saeh-cp-card").length === 2, "renders a card per product in the category");
     // The whole point of the request: one renderer, so the Industries page
     // cannot drift from the product page's carousel.
     check(d.querySelector(".saeh-cp-track") !== null, "…using the same carousel markup");
@@ -252,8 +252,8 @@ async function main() {
   }
   {
     const { d } = await boot({
-      props: { section: "compatible", singlePage: true, productTag: "aviation", heading: "Aviation Equipment" },
-      tagPayload: TAGGED,
+      props: { section: "compatible", singlePage: true, productCategory: "aviation-aerospace", heading: "Aviation Equipment" },
+      catPayload: TAGGED,
     });
     check(d.querySelector(".saeh-cp-h").textContent === "Aviation Equipment", "heading is overridable");
   }
@@ -261,12 +261,12 @@ async function main() {
     // A tag left selected from earlier experimentation must not hijack a
     // product page — `singlePage` is the switch, not the presence of a tag.
     const { d, fetchedUrl } = await boot({
-      props: { section: "compatible", productTag: "aviation" },
-      tagPayload: TAGGED,
+      props: { section: "compatible", productCategory: "aviation-aerospace" },
+      catPayload: TAGGED,
     });
     check(
-      fetchedUrl.indexOf("/by-tag") === -1,
-      "a tag alone does NOT switch a product page into tag mode",
+      fetchedUrl.indexOf("/by-category") === -1,
+      "a category alone does NOT switch a product page into category mode",
       fetchedUrl,
     );
     check(d.querySelectorAll(".saeh-cp-card").length === 3, "the product's own compatible list still wins");
@@ -280,22 +280,22 @@ async function main() {
      */
     for (const on of [true, "true", 1, "1", "on", "yes"]) {
       const { fetchedUrl } = await boot({
-        props: { section: "compatible", singlePage: on, productTag: "aviation" },
-        tagPayload: TAGGED,
+        props: { section: "compatible", singlePage: on, productCategory: "aviation-aerospace" },
+        catPayload: TAGGED,
       });
       check(
-        fetchedUrl.indexOf("/by-tag") !== -1,
-        `singlePage=${JSON.stringify(on)} enters tag mode`,
+        fetchedUrl.indexOf("/by-category") !== -1,
+        `singlePage=${JSON.stringify(on)} enters category mode`,
         fetchedUrl,
       );
     }
     for (const off of [false, "false", 0, "", undefined, "no"]) {
       const { fetchedUrl } = await boot({
-        props: { section: "compatible", singlePage: off, productTag: "aviation" },
-        tagPayload: TAGGED,
+        props: { section: "compatible", singlePage: off, productCategory: "aviation-aerospace" },
+        catPayload: TAGGED,
       });
       check(
-        fetchedUrl.indexOf("/by-tag") === -1,
+        fetchedUrl.indexOf("/by-category") === -1,
         `singlePage=${JSON.stringify(off)} stays in product mode`,
         fetchedUrl,
       );
@@ -305,11 +305,11 @@ async function main() {
     // Duda's dropdown options are {value,label}; a loader passing the option
     // object straight through must not read as "nothing selected".
     const { d, fetchedUrl } = await boot({
-      props: { section: "compatible", singlePage: true, productTag: { value: "aviation", label: "Aviation (3)" } },
-      tagPayload: TAGGED,
+      props: { section: "compatible", singlePage: true, productCategory: { value: "aviation-aerospace", label: "Aviation (3)" } },
+      catPayload: TAGGED,
     });
     check(
-      fetchedUrl === "https://sa-equip-backend.vercel.app/public/products/by-tag?tag=aviation",
+      fetchedUrl === "https://sa-equip-backend.vercel.app/public/products/by-category?category=aviation-aerospace",
       "an option object works as well as a bare string",
       fetchedUrl,
     );
@@ -317,25 +317,25 @@ async function main() {
   }
   {
     const { d } = await boot({
-      props: { section: "compatible", singlePage: true, productTag: "" },
+      props: { section: "compatible", singlePage: true, productCategory: "" },
     });
-    check(d.getElementById("host").style.display === "none", "tag mode with no tag collapses rather than erroring");
+    check(d.getElementById("host").style.display === "none", "category mode with no category collapses rather than erroring");
   }
   {
     const { d } = await boot({
-      props: { section: "compatible", singlePage: true, productTag: "gone" },
-      tagPayload: null,
+      props: { section: "compatible", singlePage: true, productCategory: "gone" },
+      catPayload: null,
     });
-    check(d.getElementById("host").style.display === "none", "a deleted/renamed tag (404) collapses too");
+    check(d.getElementById("host").style.display === "none", "a deleted/renamed category (404) collapses too");
   }
   {
     const { d } = await boot({
-      props: { section: "compatible", singlePage: true, productTag: "aviation", inEditor: true },
-      tagPayload: { tag: { name: "Aviation", slug: "aviation" }, items: [] },
+      props: { section: "compatible", singlePage: true, productCategory: "aviation-aerospace", inEditor: true },
+      catPayload: { category: { title: "Aviation & Aerospace", slug: "aviation-aerospace" }, items: [] },
     });
     check(
       d.getElementById("host").style.display !== "none",
-      "but an empty tag stays visible in the Duda editor, so the element can still be selected",
+      "but an empty category stays visible in the Duda editor, so the element can still be selected",
     );
   }
 
@@ -349,11 +349,11 @@ async function main() {
     const li = w.__saequipHub.lastInit;
     check(Array.isArray(li.propKeys), "lastInit records which props arrived");
     check(li.propKeys.indexOf("singlePage") === -1, "an un-updated shim shows no singlePage key");
-    check("mode" in li === false, "and no tag mode was entered");
+    check("mode" in li === false, "and no category mode was entered");
   }
   {
     const { w } = await boot({
-      props: { section: "compatible", singlePage: false, productTag: "" },
+      props: { section: "compatible", singlePage: false, productCategory: "" },
     });
     const li = w.__saequipHub.lastInit;
     check(

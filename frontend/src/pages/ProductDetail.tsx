@@ -14,7 +14,6 @@ import { OptionsSection } from "../components/product/OptionsSection";
 import { VariationsSection } from "../components/product/VariationsSection";
 import { ProductDetailsSection } from "../components/product/ProductDetailsSection";
 import { ProductSaveBar } from "../components/product/ProductSaveBar";
-import { TagsSection } from "../components/product/TagsSection";
 import { useProductEditor } from "../components/product/useProductEditor";
 import { useHideCommerceFields } from "../hooks/useUserPreference";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
@@ -345,13 +344,6 @@ export default function ProductDetail() {
                   onChange={(next) => setSection("categoryIds", next)}
                   dirty={dirty.categories}
                   error={saveErrors.categories ?? validationErrors.categories}
-                />
-
-                <TagsSection
-                  selected={draft.tagIds}
-                  onChange={(next) => setSection("tagIds", next)}
-                  dirty={dirty.tags}
-                  error={saveErrors.tags ?? validationErrors.tags}
                 />
               </div>
             </div>

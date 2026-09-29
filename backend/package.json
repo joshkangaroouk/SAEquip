@@ -28,7 +28,6 @@
     "duda:fix-casing": "tsx src/scripts/dudaFixProductCasing.ts",
     "duda:seo-fill": "tsx src/scripts/dudaSeoFill.ts",
     "logos:rebuild": "tsx src/scripts/rebuildLogoCatalogue.ts",
-    "duda:seed-category-tree": "tsx src/scripts/seedCategoryTree.ts",
     "duda:sync-categories": "tsx src/scripts/syncCategories.ts",
     "duda:assign-product-types": "tsx src/scripts/assignProductTypes.ts"
   },

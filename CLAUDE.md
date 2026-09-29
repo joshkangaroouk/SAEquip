@@ -310,53 +310,49 @@ category template, or the page shows two listings.
 - Mobile-first: **stacked with a collapsible filter panel**, becoming a sticky sidebar only
   at 881px. Grid is 1 / 2 / 3 up at the house 561 / 881 breakpoints.
 
-## Tag mode — the compatible carousel on static pages (2026-09-15)
+## Category mode — the compatible carousel on static pages
 
-The Industries pages are ordinary static pages, not dynamic product pages, so
-there is no product to resolve. The same carousel renders there from a **tag**
-chosen in the widget's content panel.
+The Industries pages are ordinary static pages, not dynamic category pages, so there is no
+page context to resolve. The same carousel renders there from a **category** chosen in the
+widget's content panel.
 
-**One renderer, one item shape.** `compatibleSection()` is fed
-`{name, slug, url, imageUrl}` by both sources, which is what makes "the exact
-same layout" true by construction rather than by two designs being kept in step.
-Only the `heading` differs, and it is a parameter — "Compatible Products &
-Accessories" is wrong above a list of aviation products.
+**One renderer, one item shape.** `compatibleSection()` is fed `{name, slug, url, imageUrl}`
+by both sources, which is what makes the layouts identical by construction rather than by two
+designs being kept in step. Only the `heading` differs, and it is a parameter.
 
-- `GET /public/products/by-tag?tag=<slug>` — the carousel payload for a tag.
-  404s an unknown tag, which the widget treats as "nothing to show" and
-  collapses; a content problem, not an error.
-- ⚠️ **Matched on SLUG, not name.** The dropdown stores the slug, and the tags
-  route regenerates a slug on rename, so renaming Aviation → Aerospace is a
-  visible break rather than a name match that quietly stops matching.
-- ⚠️ **`singlePage` is the switch, NOT the presence of a tag.** A tag left
-  selected from earlier experimentation must not quietly take over a product
-  page. Covered by `widget:test`.
-- `renderTagInto()` is its own path rather than a branch inside `renderInto()`:
-  that function is built around a product `ref` plus a section list, and
-  threading "sometimes there is no product" through it would put the product
-  pages at risk for the benefit of the second use case.
+- `GET /public/products/by-category?category=<slug>` — the carousel payload. 404s an unknown
+  category, which the widget treats as "nothing to show" and collapses; a content problem,
+  not an error.
+- ⚠️ **Matched on the MIRRORED slug, never derived.** Duda does not slugify titles the way
+  you would guess — before the URLs were tidied it rendered "Oil & Gas" as `oil---gas`.
+- ⚠️ **`singlePage` is the switch, NOT the presence of a category.** One left selected from
+  earlier experimentation must not quietly take over a product page. Covered by `widget:test`.
+- `POST /public/categories/options?parent=<slug>` feeds Duda's dynamic dropdown, so an
+  Industries widget offers only industries. Its 30s cache is a `Map` **keyed by parent** — a
+  single shared entry would serve the wrong branch for 30 seconds, a wrong answer
+  indistinguishable from a right one in the editor.
 
-### Duda's "dynamic dropdown" content-panel field
+### Shim
 
-The `productTag` dropdown is populated live from the Hub, so a tag created at
-`/tags` appears in Duda with no widget edit. Duda's contract, from their docs:
+`data.config` carries `singlePage`, `productCategory` and `heading`; pass them as IIFE
+parameters exactly as `section` is, and read the values RAW (see the content-panel warning
+above).
 
-- ⚠️ **Duda sends a `POST`, not a GET.** A GET-only route leaves the dropdown
-  silently empty.
-- Duda posts `{site:{site_name,lang,account_uuid}, widget:{variables:[]}}` and
-  expects **exactly** `{"options":[{"value":…,"label":…}]}` back. A bare array
-  does not work.
-- Duda wants a response "ideally less than 50ms" because it renders in the editor
-  in real time — hence the 30s cache on `POST /public/tags/options`. A cold
-  Lambda will still exceed it; that costs a beat in the editor, nothing more.
-- **Leave the Authorization field blank.** `/public/*` is unauthenticated by
-  design and this returns tag names that are about to be public anyway. The
-  request body is ignored, including `site_name` — validating it would break the
-  moment the widget is used on a second site.
-- The option **label carries a product count** (`"Aviation (0)"`) while the value
-  is the bare slug. Picking a tag with no products renders an empty section, and
-  without the count the only feedback is a blank page that looks like a broken
-  widget.
+## Tags — retired 2026-09-29
+
+`Tag`, `TagGroup` and `ProductTag` are **gone**, along with `/tags`, `routes/tags.ts`,
+`TagsSection`, `PUT /api/products/:id/tags`, `GET /public/products/by-tag` and
+`POST /public/tags/options`. Nothing had been assigned (0 `ProductTag` rows), so the drop
+migration lost no content.
+
+Categories replaced them because Duda's navigation widget picks categories natively, they
+nest, and they already carry SEO fields the Hub edits — so the client builds the megamenu
+from a list instead of hand-typing URLs. Running both would have meant two vocabularies for
+one job, two pickers in the editor and two places to look.
+
+⚠️ **Anything in Duda still configured against a tag is broken** and must be re-pointed at a
+category: the dropdown's Fetch URL becomes `/public/categories/options?parent=<slug>` and the
+content-panel variable becomes `productCategory`.
 
 ## The tabbed accordion (`section: "tabs"`)
 

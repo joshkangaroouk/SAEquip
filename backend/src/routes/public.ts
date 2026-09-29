@@ -100,131 +100,115 @@ const quoteHourlyLimiter = rateLimit({
 
 export const publicRouter = Router();
 
-/* ------------------------------------------------- products by tag -- */
+/* -------------------------------------------- products by category -- */
 
 /**
- * GET /public/products/by-tag?tag=<slug>
+ * GET /public/products/by-category?category=<slug>
  *
- * The same card payload as a product's `compatible` list, so the carousel can
- * render either source without knowing which it was given. That shared shape is
- * the point: the Industries pages asked for "the exact same layout", and the
- * cheapest way to guarantee that is one renderer fed one shape.
+ * The same card payload as a product's `compatible` list, so one carousel
+ * renderer serves both. Replaced the tag-driven twin when tags were retired:
+ * categories already drive the navigation, and two vocabularies for one job
+ * meant two places to look and two to keep in step.
  *
- * Matched on SLUG, not name. The slug is what the editor dropdown stores, and
- * renaming a tag in the Hub (Aviation → Aerospace) must not silently blank a
- * live Industries page — the tags route regenerates the slug on rename, so a
- * rename that changes the slug is a deliberate, visible break rather than a
- * name-match that quietly stops matching.
+ * ⚠️ Matched on the MIRRORED slug, never a derived one. Duda does not slugify
+ * titles the way you would guess — before the URLs were tidied it rendered
+ * "Oil & Gas" as `oil---gas` — so deriving would miss whole categories in a way
+ * nothing reports.
  */
-publicRouter.get("/products/by-tag", contentLimiter, async (req, res, next) => {
+publicRouter.get("/products/by-category", contentLimiter, async (req, res, next) => {
   try {
-    const raw = typeof req.query.tag === "string" ? req.query.tag.trim() : "";
-    if (!raw || raw.length > 120) {
-      res.status(400).json({ error: "bad_request", detail: "tag is required" });
+    const raw = typeof req.query.category === "string" ? req.query.category.trim() : "";
+    if (!raw || raw.length > 160) {
+      res.status(400).json({ error: "bad_request", detail: "category is required" });
       return;
     }
 
-    const tag = await prisma.tag.findUnique({
-      where: { slug: raw.toLowerCase() },
-      include: {
-        products: {
-          include: {
-            hubProduct: { select: { name: true, slug: true, thumbnailUrl: true } },
-          },
-        },
-      },
+    const cat = await prisma.categoryMirror.findFirst({ where: { slug: raw.toLowerCase() } });
+    if (!cat) {
+      res.status(404).json({ error: "not_found", detail: "no such category" });
+      return;
+    }
+
+    const links = await prisma.productCategory.findMany({
+      where: { dudaCategoryId: cat.dudaCategoryId },
+      select: { hubProduct: { select: { name: true, slug: true, thumbnailUrl: true } } },
     });
 
-    if (!tag) {
-      res.status(404).json({ error: "not_found", detail: "no such tag" });
-      return;
-    }
-
-    const items = tag.products
+    const items = links
       // A product with no slug has no page to link to. It can exist: `slug` is
       // backfilled from Duda, so a product imported but never opened has none.
-      .filter((pt) => pt.hubProduct.slug)
-      .map((pt) => ({
-        name: pt.hubProduct.name ?? "",
-        slug: pt.hubProduct.slug!,
-        url: `/product/${pt.hubProduct.slug!}`,
-        imageUrl: pt.hubProduct.thumbnailUrl ?? null,
+      .filter((l) => l.hubProduct.slug)
+      .map((l) => ({
+        name: l.hubProduct.name ?? "",
+        slug: l.hubProduct.slug!,
+        url: `/product/${l.hubProduct.slug!}`,
+        imageUrl: l.hubProduct.thumbnailUrl ?? null,
       }))
-      // ProductTag carries no sortOrder, so order by name for a stable,
+      // ProductCategory carries no sortOrder, so order by name for a stable,
       // predictable carousel rather than whatever the database returns.
       .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 
     res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
-    res.json({ tag: { name: tag.name, slug: tag.slug }, items });
+    res.json({ category: { title: cat.title, slug: cat.slug }, items });
   } catch (err) {
     next(err);
   }
 });
 
 /**
- * POST /public/tags/options — Duda Widget Builder "dynamic dropdown" source.
+ * POST /public/categories/options — Duda Widget Builder "dynamic dropdown".
  *
- * ⚠️ POST, not GET, and the shape is Duda's, not ours. Per their docs Duda
- * posts `{site:{site_name,lang,account_uuid}, widget:{variables:[]}}` and
- * expects exactly `{"options":[{"value":..,"label":..}]}` back. A GET route or
- * a bare array would leave the editor dropdown silently empty.
+ * ⚠️ POST, not GET, and the shape is Duda's: it posts
+ * `{site:{…}, widget:{variables:[]}}` and expects exactly
+ * `{"options":[{"value":..,"label":..}]}`. A GET route or a bare array leaves
+ * the editor dropdown silently empty.
  *
- * Duda asks for a response "ideally less than 50ms" because it renders in the
- * editor in real time, hence the cache: tags change a few times a year and this
- * is on the editor's critical path.
- *
- * The request body is ignored entirely. It carries a site_name we could check,
- * but this returns nothing sensitive — tag names that are about to be rendered
- * on the public site anyway — and validating it would break the moment the
- * widget is used on a second site.
+ * `?parent=<slug>` narrows to one branch, so an Industries widget offers only
+ * industries. An unknown parent returns an empty list rather than an error — a
+ * mistyped Fetch URL should show an empty dropdown the editor can see, not
+ * break the content panel.
  */
-const TAG_OPTIONS_TTL_MS = 30 * 1000;
-/**
- * ⚠️ Keyed BY GROUP, not a single cached object.
- *
- * Duda's dropdown fetches this per widget, and the Industries widget asks for
- * `?group=industries` while a Site Problems one asks for something else. With
- * one shared entry the first request would populate it and every other group
- * would be served the wrong tags for the next 30 seconds — a wrong answer that
- * looks exactly like a right one, in the editor, where nobody is watching for
- * it. `""` is the unfiltered listing.
- */
-const tagOptionsCache = new Map<string, { at: number; body: { options: { value: string; label: string }[] } }>();
+const CATEGORY_OPTIONS_TTL_MS = 30 * 1000;
+/** Keyed BY PARENT — one shared entry would serve the wrong branch for 30s. */
+const categoryOptionsCache = new Map<string, { at: number; body: { options: { value: string; label: string }[] } }>();
 
-publicRouter.post("/tags/options", contentLimiter, async (req, res, next) => {
+publicRouter.post("/categories/options", contentLimiter, async (req, res, next) => {
   try {
-    const group = typeof req.query.group === "string" ? req.query.group.trim().toLowerCase() : "";
-    if (group.length > 120) {
+    const parent = typeof req.query.parent === "string" ? req.query.parent.trim().toLowerCase() : "";
+    if (parent.length > 160) {
       res.json({ options: [] });
       return;
     }
 
-    const hit = tagOptionsCache.get(group);
-    if (hit && Date.now() - hit.at < TAG_OPTIONS_TTL_MS) {
+    const hit = categoryOptionsCache.get(parent);
+    if (hit && Date.now() - hit.at < CATEGORY_OPTIONS_TTL_MS) {
       res.json(hit.body);
       return;
     }
 
-    /*
-     * An unknown group returns an EMPTY option list rather than an error: Duda
-     * renders whatever comes back into the content panel, so a mistyped Fetch
-     * URL should show an empty dropdown the editor can see, not break the panel.
-     */
-    const tags = await prisma.tag.findMany({
-      where: group ? { group: { slug: group } } : {},
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      include: { _count: { select: { products: true } } },
-    });
+    const all = await prisma.categoryMirror.findMany({ orderBy: { position: "asc" } });
+    const parentRow = parent ? all.find((c) => c.slug === parent) : null;
+    const rows = parent ? (parentRow ? all.filter((c) => c.parentId === parentRow.dudaCategoryId) : []) : all;
+
+    // One grouped query for every count, never one per category — the same
+    // reasoning as usageIndex() in routes/media.ts.
+    const counts = new Map(
+      (await prisma.productCategory.groupBy({ by: ["dudaCategoryId"], _count: true })).map((g) => [
+        g.dudaCategoryId,
+        g._count,
+      ]),
+    );
+
     const body = {
-      options: tags.map((t) => ({
-        value: t.slug,
-        // The count is an editor affordance, not decoration: picking a tag with
-        // no products renders an empty section, and without this the only
-        // feedback is a blank page that looks like a broken widget.
-        label: `${t.name} (${t._count.products})`,
+      options: rows.map((c) => ({
+        value: c.slug,
+        // The count is an editor affordance: picking a category with no
+        // products renders an empty section, and without it the only feedback
+        // is a blank page that looks like a broken widget.
+        label: `${c.title} (${counts.get(c.dudaCategoryId) ?? 0})`,
       })),
     };
-    tagOptionsCache.set(group, { at: Date.now(), body });
+    categoryOptionsCache.set(parent, { at: Date.now(), body });
     res.json(body);
   } catch (err) {
     next(err);
@@ -248,7 +232,7 @@ publicRouter.post("/tags/options", contentLimiter, async (req, res, next) => {
  * titles (Duda renders "Oil & Gas" as `oil---gas`). The mirror is refreshed by
  * `duda:sync-categories`.
  *
- * The product card shape is identical to `compatible` and `by-tag`, so one
+ * The product card shape is identical to `compatible` and `by-category`, so one
  * renderer serves the carousel and the grid.
  */
 publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {

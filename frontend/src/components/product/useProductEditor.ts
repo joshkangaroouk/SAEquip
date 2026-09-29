@@ -47,7 +47,6 @@ const SECTION_KEYS: SectionKey[] = [
   "specs",
   "compatible",
   "categories",
-  "tags",
   "benefits",
   "applications",
   "logos",
@@ -62,7 +61,6 @@ const emptyDirty: DirtyMap = {
   specs: false,
   compatible: false,
   categories: false,
-  tags: false,
   benefits: false,
   applications: false,
   logos: false,
@@ -126,8 +124,7 @@ export function useProductEditor(
         specs: specsFrom(custom.specs),
         compatible: compatibleFrom(custom.compatible),
         categoryIds: custom.categoryIds ?? [],
-        tagIds: custom.tagIds ?? [],
-        benefits: itemsFrom(custom.benefits),
+          benefits: itemsFrom(custom.benefits),
         applications: itemsFrom(custom.applications),
         logos: { SA_LOGO: activeLogoIds(sa), CERT_LOGO: activeLogoIds(cert) },
         model3d: model3dFrom(custom.model3d),
@@ -381,7 +378,7 @@ export function useProductEditor(
       });
     }
 
-    for (const key of ["categories", "tags"] as const) {
+    for (const key of ["categories"] as const) {
       if (!dirty[key]) continue;
       tasks.push({
         keys: [key],
@@ -389,9 +386,9 @@ export function useProductEditor(
         run: async () => {
           const ids = await apiJson<string[]>(`/api/products/${productId}/${key}`, {
             method: "PUT",
-            body: JSON.stringify({ ids: key === "categories" ? draft.categoryIds : draft.tagIds }),
+            body: JSON.stringify({ ids: draft.categoryIds }),
           });
-          return key === "categories" ? { categoryIds: ids } : { tagIds: ids };
+          return { categoryIds: ids };
         },
       });
     }

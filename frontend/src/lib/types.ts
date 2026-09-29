@@ -183,30 +183,9 @@ export interface HubCustomPayload {
   compatible: HubCompatible[];
   /** Duda category ids assigned to this product (stored Hub-side). */
   categoryIds: string[];
-  /** Hub Tag ids assigned to this product. */
-  tagIds: string[];
 }
 
-export interface HubTag {
-  id: string;
-  name: string;
-  slug: string;
-  /** Position WITHIN its group — not globally unique. */
-  sortOrder: number;
-  productCount: number;
-  /** null = Ungrouped, which sorts last everywhere. */
-  groupId: string | null;
-  groupName: string | null;
-}
 
-/** A named bucket of tags — "Industries", "Site Problems". */
-export interface HubTagGroup {
-  id: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  tagCount: number;
-}
 
 /** A "Compatible Products & Accessories" entry, as the API returns it. */
 export interface HubCompatible {

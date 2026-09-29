@@ -208,8 +208,6 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
     // against a baseline that happened to load B then A.
     case "categories":
       return [...snapshot.categoryIds].sort();
-    case "tags":
-      return [...snapshot.tagIds].sort();
   }
 }
 

@@ -7,6 +7,9 @@
  * Apply:
  *   npm run duda:sync-categories --workspace=backend -- --confirm
  *
+ * Print the live tree and each category's product count:
+ *   npm run duda:sync-categories --workspace=backend -- --verify
+ *
  * ⚠️ ONE-WAY, Hub → Duda. Duda's copy is overwritten wholesale on every run, so
  * an assignment made in Duda's own admin is lost at the next sync. The Hub's
  * product editor is the place to change these.
@@ -43,8 +46,40 @@ const DELAY_MS = 300;
 const sameSet = (a: string[], b: string[]) =>
   a.length === b.length && new Set(a).size === new Set([...a, ...b]).size;
 
+/** Print the live tree, depth-first, with each category's Duda product count. */
+async function verify(): Promise<void> {
+  const cats = await duda.listAllCategories();
+  const byParent = new Map<string, typeof cats>();
+  for (const c of cats) {
+    const k = c.parent_id || "ROOT";
+    if (!byParent.has(k)) byParent.set(k, []);
+    byParent.get(k)!.push(c);
+  }
+  console.log(`\n${cats.length} categories:\n`);
+  const walk = (p: string, d: number) => {
+    for (const c of byParent.get(p) ?? []) {
+      console.log(`  ${"  ".repeat(d)}${d === 0 ? "" : "└ "}${c.title}  [${c.products_count}]`);
+      walk(c.id, d + 1);
+    }
+  };
+  walk("ROOT", 0);
+  // A parent deleted in Duda strands its children at the root: reachable, but
+  // misplaced, and the megamenu would quietly lose a column.
+  const orphans = cats.filter(
+    (c) => (c.parent_id || "ROOT") !== "ROOT" && !cats.some((x) => x.id === c.parent_id),
+  );
+  console.log(`\n  orphans (parent missing): ${orphans.length}`);
+  for (const o of orphans) console.log(`     ${o.title}`);
+  console.log();
+}
+
 async function main() {
   const confirm = flag("confirm");
+
+  if (flag("verify")) {
+    await verify();
+    return;
+  }
 
   const [categories, links] = await Promise.all([
     duda.listAllCategories(),

@@ -587,7 +587,6 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
           include: { related: { select: { id: true, dudaProductId: true, name: true, sku: true, slug: true } } },
         },
         categories: { select: { dudaCategoryId: true } },
-        tags: { select: { tagId: true } },
       },
     });
 
@@ -650,11 +649,10 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       model3d,
       // The editor needs the related product's identity to render a row; the
       // widget resolves its own image from Duda, so none is carried here.
-      // Ids only — the editor already loads the full category tree and tag
-      // list to render the pickers, so sending names here would be a second,
-      // divergent copy of the same data.
+      // Ids only — the editor already loads the full category tree to render
+      // the picker, so sending names here would be a second, divergent copy of
+      // the same data.
       categoryIds: full.categories.map((c) => c.dudaCategoryId),
-      tagIds: full.tags.map((t) => t.tagId),
       compatible: full.compatible.map((c) => ({
         id: c.id,
         sortOrder: c.sortOrder,
@@ -809,43 +807,6 @@ dudaRouter.put("/products/:id/categories", async (req, res, next) => {
   }
 });
 
-/** PUT /api/products/:id/tags — replaces the product's whole tag set. */
-dudaRouter.put("/products/:id/tags", async (req, res, next) => {
-  const parsed = idsBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
-    return;
-  }
-  try {
-    const hub = await ensureHubProduct(req.params.id);
-    const wanted = [...new Set(parsed.data.ids)];
-
-    if (wanted.length) {
-      const found = await prisma.tag.findMany({ where: { id: { in: wanted } }, select: { id: true } });
-      if (found.length !== wanted.length) {
-        const have = new Set(found.map((t) => t.id));
-        res.status(400).json({
-          error: "unknown_tags",
-          detail: `No such tag: ${wanted.filter((id) => !have.has(id)).join(", ")}`,
-        });
-        return;
-      }
-    }
-
-    const saved = await prisma.$transaction(async (tx) => {
-      await tx.productTag.deleteMany({ where: { hubProductId: hub.id } });
-      if (wanted.length) {
-        await tx.productTag.createMany({
-          data: wanted.map((tagId) => ({ hubProductId: hub.id, tagId })),
-        });
-      }
-      return tx.productTag.findMany({ where: { hubProductId: hub.id }, select: { tagId: true } });
-    });
-    res.json(saved.map((t) => t.tagId));
-  } catch (err) {
-    next(err);
-  }
-});
 
 /**
  * PUT /api/products/:id/model3d

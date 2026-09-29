@@ -85,7 +85,6 @@ model HubProduct {
   /// Products that list THIS one as compatible (needed so a delete cascades).
   compatibleFor CompatibleLink[]  @relation("CompatibleTo")
   categories    ProductCategory[]
-  tags          ProductTag[]
   specRows      SpecRow[]
   textItems     ProductTextItem[]
   downloads     Download[]
@@ -274,55 +273,6 @@ model CategoryMirror {
   syncedAt       DateTime @updatedAt
 
   @@index([parentId])
-}
-
-/// A named bucket of tags — "Industries", "Site Problems". Staff-managed, so a
-/// new grouping needs no migration.
-model TagGroup {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  slug      String   @unique
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  tags      Tag[]
-}
-
-/// A free-form label for grouping products. Hub-owned — Duda has no equivalent.
-model Tag {
-  id        String       @id @default(cuid())
-  name      String       @unique
-  /// URL-safe form, unique so it can address a future tag page.
-  ///
-  /// Unique GLOBALLY, not per group: this slug is stored inside the Duda
-  /// widget's saved config and resolved by /public/products/by-tag, so making
-  /// it unique per group would need a compound key in that URL and would
-  /// re-configure every live page that already names a tag.
-  slug      String       @unique
-  /// Allocated PER GROUP, like Logo.sortOrder is per kind.
-  sortOrder Int          @default(0)
-  createdAt DateTime     @default(now())
-  /// Nullable, and therefore "Ungrouped" in the UI. Required by SetNull below,
-  /// and it lets a tag exist before anyone has decided where it belongs.
-  groupId   String?
-  /// ⚠️ SetNull, NEVER Cascade. ProductTag cascades from Tag, so cascading here
-  /// would make deleting a group silently destroy every product assignment
-  /// beneath it — losing real content to fix a naming mistake. Same reasoning
-  /// as Lead.downloadId.
-  group     TagGroup?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  products  ProductTag[]
-
-  @@index([groupId])
-}
-
-model ProductTag {
-  id           String     @id @default(cuid())
-  hubProductId String
-  tagId        String
-  hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
-  tag          Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([hubProductId, tagId])
-  @@index([tagId])
 }
 
 model QuoteRequest {

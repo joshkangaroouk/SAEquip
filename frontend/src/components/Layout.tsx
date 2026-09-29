@@ -13,7 +13,6 @@ import {
   KeyRound,
   ShieldCheck,
   SlidersHorizontal,
-  Tag as TagIcon,
   Sparkles,
   Users,
   X,
@@ -57,7 +56,6 @@ const NAV: NavItem[] = [
     // flat siblings where "Logos" and "Status" read as equally important.
     children: [
       { to: "/categories", label: "Categories", icon: FolderTree },
-      { to: "/tags", label: "Tags", icon: TagIcon },
       { to: "/options", label: "Product Options", icon: SlidersHorizontal },
       { to: "/media", label: "Media", icon: Images },
       { to: "/logos", label: "Logos", icon: ShieldCheck },
