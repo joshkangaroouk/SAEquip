@@ -42,9 +42,9 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, tagPayload = undefined } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, tagPayload = undefined, cataloguePayload = undefined, url = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
-    url: "https://saequip.multiscreensite.com/product/ex-heater",
+    url: url ?? "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
   });
   const w = dom.window;
@@ -53,6 +53,13 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
     fetchedUrl = String(u);
     // Tag mode hits a different endpoint, so the stub routes on the URL rather
     // than answering everything with the product payload.
+    if (fetchedUrl.indexOf("/catalogue") !== -1) {
+      return Promise.resolve({
+        ok: cataloguePayload !== null && cataloguePayload !== undefined,
+        status: cataloguePayload ? 200 : 500,
+        json: () => Promise.resolve(cataloguePayload),
+      });
+    }
     if (fetchedUrl.indexOf("/by-tag") !== -1) {
       return Promise.resolve({
         ok: tagPayload !== null && tagPayload !== undefined,
@@ -353,6 +360,149 @@ async function main() {
       li.propKeys.indexOf("singlePage") !== -1 && li.singlePage === false,
       "an updated shim with nothing ticked shows the key holding false",
     );
+  }
+
+  console.log("\n=== product listing: filtering ===");
+  /*
+   * Two axes, two children each, products spread so the OR-within /
+   * AND-across distinction is actually observable: P1 is Aviation AND
+   * Welding, P2 shares only the industry, P3 only the challenge.
+   */
+  const CAT = (id, title, slug, parentId) => ({ id, title, slug, parentId, depth: parentId === "ROOT" ? 0 : 1 });
+  const CATALOGUE = {
+    categories: [
+      CAT("ind", "Industries", "industries", "ROOT"),
+      CAT("avi", "Aviation & Aerospace", "aviation---aerospace", "ind"),
+      CAT("oil", "Oil & Gas", "oil---gas", "ind"),
+      CAT("sc", "Site Challenges", "site-challenges", "ROOT"),
+      CAT("weld", "Welding Fume Control", "welding-fume-control", "sc"),
+      CAT("dust", "Dust Extraction", "dust-extraction", "sc"),
+    ],
+    products: [
+      { name: "P1", slug: "p1", url: "/product/p1", imageUrl: "https://x/1.jpg", categoryIds: ["avi", "weld"], certs: ["EX logo", "IECEx"] },
+      { name: "P2", slug: "p2", url: "/product/p2", imageUrl: null, categoryIds: ["avi", "dust"], certs: [] },
+      { name: "P3", slug: "p3", url: "/product/p3", imageUrl: "https://x/3.jpg", categoryIds: ["oil", "weld"], certs: ["UKCA"] },
+      { name: "P4", slug: "p4", url: "/product/p4", imageUrl: null, categoryIds: [], certs: [] },
+    ],
+  };
+  const PL = { section: "product-list" };
+  const AT = "https://saequip.multiscreensite.com/some-page";
+  const names = (d) => [...d.querySelectorAll(".saeh-pl-name")].map((n) => n.textContent);
+  const tick = (d, id) => {
+    const i = [...d.querySelectorAll(".saeh-pl-opt input")].find((x) => x.value === id);
+    i.checked = !i.checked;
+    i.dispatchEvent(new d.defaultView.Event("change"));
+  };
+
+  {
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    check(names(d).join(",") === "P1,P2,P3,P4", "unfiltered shows everything", names(d).join(","));
+    tick(d, "avi");
+    check(names(d).join(",") === "P1,P2", "one option filters to its products", names(d).join(","));
+    tick(d, "oil");
+    check(names(d).join(",") === "P1,P2,P3", "a second option in the SAME group widens (OR)", names(d).join(","));
+    tick(d, "weld");
+    check(names(d).join(",") === "P1,P3", "an option in ANOTHER group narrows (AND)", names(d).join(","));
+    d.querySelector(".saeh-pl-clear").dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(names(d).join(",") === "P1,P2,P3,P4", "clear filters restores everything");
+  }
+  {
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    tick(d, "avi");
+    tick(d, "dust");
+    check(names(d).join(",") === "P2", "a combination matching exactly one product");
+    tick(d, "weld");
+    check(names(d).join(",") === "P1,P2", "widened by a second challenge", names(d).join(","));
+  }
+  {
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    tick(d, "oil");
+    tick(d, "dust");
+    check(!!d.querySelector(".saeh-pl-empty"), "an impossible combination shows an empty state");
+    check(d.querySelector(".saeh-pl-filter") !== null, "…with the filters still on screen to widen from");
+  }
+
+  console.log("\n=== product listing: the page's own category pre-filters ===");
+  {
+    /*
+     * ⚠️ The slug is DUDA'S, not derived — it renders "Oil & Gas" as
+     * `oil---gas`. A widget that slugified the title would miss exactly the
+     * categories containing an ampersand, silently, on the live site.
+     */
+    const { d, w } = await boot({
+      props: PL, cataloguePayload: CATALOGUE,
+      url: "https://saequip.multiscreensite.com/category/oil---gas",
+    });
+    check(names(d).join(",") === "P3", "the URL's category is pre-applied", names(d).join(","));
+    check(w.__saequipHub.lastInit.categoryFrom === "url", "recorded as resolved from the url");
+    const box = [...d.querySelectorAll(".saeh-pl-opt input")].find((x) => x.value === "oil");
+    check(box.checked === true, "its checkbox is ticked and VISIBLE, not hidden");
+    tick(d, "oil");
+    check(names(d).join(",") === "P1,P2,P3,P4", "so the visitor can widen from it");
+  }
+  {
+    const { d, w } = await boot({
+      props: { section: "product-list", category: "welding-fume-control" },
+      cataloguePayload: CATALOGUE, url: "https://saequip.multiscreensite.com/anything",
+    });
+    check(names(d).join(",") === "P1,P3", "an explicit prop resolves too", names(d).join(","));
+    check(w.__saequipHub.lastInit.categoryFrom === "props", "recorded as resolved from props");
+  }
+  {
+    const { d } = await boot({
+      props: PL, cataloguePayload: CATALOGUE,
+      url: "https://saequip.multiscreensite.com/category/industries",
+    });
+    check(names(d).length === 4, "a PARENT category page starts unfiltered — everything under it is relevant");
+  }
+  {
+    const { d, w } = await boot({
+      props: PL, cataloguePayload: CATALOGUE,
+      url: "https://saequip.multiscreensite.com/category/nope",
+    });
+    check(w.__saequipHub.lastInit.categoryFrom === "none", "an unknown slug resolves to nothing");
+    check(names(d).length === 4, "…and falls back to the whole catalogue rather than an empty page");
+  }
+
+  console.log("\n=== product listing: cards and layout ===");
+  {
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    const css = d.getElementById("saeh-styles").textContent;
+    const card = d.querySelector("a.saeh-pl-card");
+    check(card.getAttribute("href") === "/product/p1", "the whole card links to the product");
+    check(d.querySelectorAll(".saeh-pl-btn").length === 4, "ONE button per card, not two");
+    check(d.querySelector(".saeh-pl-btn").textContent === "View Product", "labelled View Product");
+    check(
+      [...card.querySelectorAll(".saeh-pl-chip")].map((c) => c.textContent).join(",") === "Welding Fume Control",
+      "chips come from the label group only, not every category",
+    );
+    check(card.querySelector(".saeh-pl-certs").textContent === "EX logo, IECEx", "certs render as text");
+    const second = d.querySelectorAll(".saeh-pl-card")[1];
+    check(second.querySelector(".saeh-pl-certs") === null, "a product with no certs gets no cert line");
+    check(second.querySelector("img") === null, "a product with no image still renders a card");
+
+    check(/\.saeh-pl-shot\{aspect-ratio:1\/1/.test(css), "the image area is square");
+    check(/\.saeh-pl-shot img\{[^}]*object-fit:contain/.test(css),
+      "and CONTAINS rather than crops — cropping industrial kit cuts the product out of frame");
+    check(/\.saeh-pl-card\{[^}]*background:#fff/.test(css), "cards are white");
+
+    check(/\.saeh-pl\{display:flex;flex-direction:column/.test(css), "stacked on mobile by default");
+    check(/\.saeh-pl-grid\{display:grid;gap:20px;grid-template-columns:1fr\}/.test(css), "1 column on mobile");
+    check(/@media\(min-width:561px\)\{\.saeh-pl-grid\{grid-template-columns:repeat\(2,1fr\)\}\}/.test(css), "2 on tablet");
+    check(/\.saeh-pl-grid\{grid-template-columns:repeat\(3,1fr\)\}/.test(css), "3 on desktop");
+    check(/\.saeh-pl-toggle\{display:none\}/.test(css), "the filter toggle is hidden on desktop");
+
+    const btn = d.querySelector(".saeh-pl-toggle");
+    const panel = d.querySelector(".saeh-pl-panel");
+    check(btn.getAttribute("aria-controls") === panel.id, "the mobile toggle is wired to its panel");
+    btn.dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(btn.getAttribute("aria-expanded") === "true" && panel.classList.contains("saeh-open"),
+      "and opens it");
+  }
+  {
+    // "all" must not build this — it belongs to a category page, not a product.
+    const { d } = await boot({ props: { section: "all", slug: "x" }, cataloguePayload: CATALOGUE });
+    check(d.querySelector(".saeh-pl") === null, "the legacy \"all\" embed never builds the listing");
   }
 
   console.log("\n=== logo rows and compatible-card titles ===");

@@ -84,7 +84,9 @@
   var RENDERED_ATTR = "data-saeh-rendered";
   var MOUNT_SELECTOR = "#saequip-product-hub, .saequip-hub, [data-saequip-hub]";
   var ALL_SECTIONS = ["cert-logos", "sa-logos", "3d-viewer", "tabs", "specs", "benefits", "applications", "downloads", "compatible"];
-  var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "tabs": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1, "compatible": 1 };
+  // Not in ALL_SECTIONS: "product-list" belongs to a CATEGORY page and has no
+  // product, so the legacy `data-section="all"` embed must never build it.
+  var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "tabs": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1, "compatible": 1, "product-list": 1 };
   var MODEL_VIEWER_SRC = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js";
 
   /**
@@ -605,6 +607,79 @@
          */
         ".saeh-tabs.saeh-slide .saeh-tab-bar{display:block;position:absolute;left:0;height:3px;background:#ffd200;pointer-events:none;transition:transform .32s cubic-bezier(.4,0,.2,1),width .32s cubic-bezier(.4,0,.2,1)}" +
         ".saeh-tabs.saeh-slide .saeh-tab-h[aria-expanded='true']{border-bottom-color:transparent}" +
+      "}",
+      /* --- product listing (category pages) --- */
+      /*
+       * Mobile-first and STACKED: the filter panel sits above the grid and only
+       * becomes a sidebar at 881px. A sidebar that merely squeezes is what makes
+       * filtered listings unusable on a phone, and browsing on site is this
+       * widget's whole job.
+       */
+      ".saeh-pl{display:flex;flex-direction:column;gap:20px;font-family:var(--saeh-body)}",
+      ".saeh-pl-main{min-width:0;flex:1}",
+      ".saeh-pl-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:16px}",
+      ".saeh-pl-count{font-size:15px;color:#878787}",
+      ".saeh-pl-count b{color:#111;font-weight:600}",
+      ".saeh-pl-filter{border:1px solid #e6e6e6;background:#fff}",
+      ".saeh-pl-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;margin:0;font-family:var(--saeh-head);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;text-align:left;color:#111;background:#f7f7f7;border:0;padding:15px 16px;cursor:pointer}",
+      ".saeh-pl-toggle:hover{background:#f1f1f1}",
+      ".saeh-pl-toggle:focus-visible{outline:2px solid #111;outline-offset:-2px}",
+      ".saeh-pl-chev{flex:0 0 auto;width:9px;height:9px;border-right:2px solid #111;border-bottom:2px solid #111;transform:rotate(45deg);margin-top:-5px;transition:transform .3s cubic-bezier(.4,0,.2,1)}",
+      ".saeh-pl-toggle[aria-expanded='true'] .saeh-pl-chev{transform:rotate(225deg);margin-top:3px}",
+      ".saeh-pl-panel{display:grid;grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1),visibility 0s linear .32s}",
+      ".saeh-pl-panel.saeh-open{grid-template-rows:1fr;visibility:visible;transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1),visibility 0s}",
+      ".saeh-pl-clip{overflow:hidden;min-height:0}",
+      ".saeh-pl-inner{padding:4px 16px 16px}",
+      ".saeh-pl-group{margin-top:16px}",
+      ".saeh-pl-group:first-child{margin-top:4px}",
+      ".saeh-pl-glabel{font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}",
+      ".saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:15px;color:#555;line-height:1.35}",
+      ".saeh-pl-opt:hover{color:#111}",
+      ".saeh-pl-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0}",
+      ".saeh-pl-box{position:relative;flex:0 0 auto;width:18px;height:18px;margin-top:1px;background:#fff;border:2px solid #d8d8d8;border-radius:3px;transition:background .15s ease,border-color .15s ease}",
+      ".saeh-pl-opt:hover .saeh-pl-box{border-color:#bdbdbd}",
+      ".saeh-pl-opt input:checked + .saeh-pl-box{background:#fed217;border-color:#fed217}",
+      ".saeh-pl-box:after{content:\'\';position:absolute;left:4.5px;top:1px;width:5px;height:9px;border:solid #111;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) scale(0);transition:transform .15s ease}",
+      ".saeh-pl-opt input:checked + .saeh-pl-box:after{transform:rotate(45deg) scale(1)}",
+      ".saeh-pl-opt input:focus-visible + .saeh-pl-box{outline:2px solid #111;outline-offset:2px}",
+      ".saeh-pl-n{margin-left:auto;flex:0 0 auto;font-size:13px;color:#9a9a9a}",
+      ".saeh-pl-clear{margin-top:14px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:#fff;color:#111;border:1px solid #111;padding:10px;cursor:pointer}",
+      ".saeh-pl-clear:hover{background:#111;color:#fff}",
+      ".saeh-pl-grid{display:grid;gap:20px;grid-template-columns:1fr}",
+      ".saeh-pl-card{display:flex;flex-direction:column;background:#fff;border:1px solid #e6e6e6;text-decoration:none;color:inherit;transition:box-shadow .2s ease}",
+      ".saeh-pl-card:hover{box-shadow:0 10px 26px rgba(0,0,0,.08)}",
+      ".saeh-pl-card:focus-visible{outline:2px solid #111;outline-offset:2px}",
+      /*
+       * Square, and `contain` rather than `cover`. These are industrial products
+       * photographed at every aspect ratio; cropping a duct run or a tower light
+       * to fill a square cuts the thing being sold out of frame.
+       */
+      ".saeh-pl-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;padding:16px;background:#f5f5f5;box-sizing:border-box}",
+      ".saeh-pl-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}",
+      ".saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px}",
+      ".saeh-pl-chips{display:flex;flex-wrap:wrap;gap:6px}",
+      ".saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#f1f1f1;color:#444;padding:4px 8px}",
+      ".saeh-pl-name{font-family:var(--saeh-head);font-size:17px;font-weight:600;line-height:1.25;color:#111;margin:0}",
+      ".saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}",
+      ".saeh-pl-btn{margin-top:auto;display:block;background:#fed217;color:#000;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:13px}",
+      ".saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}",
+      ".saeh-pl-empty{padding:40px 0;text-align:center;font-size:16px;color:#878787}",
+      "@media(min-width:561px){.saeh-pl-grid{grid-template-columns:repeat(2,1fr)}}",
+      "@media(min-width:881px){" +
+        ".saeh-pl{flex-direction:row;align-items:flex-start;gap:28px}" +
+        // min-width:0 on the main column is load-bearing: a grid inside a flex
+        // item otherwise refuses to shrink below its content and shoves the
+        // sidebar off the row.
+        ".saeh-pl-side{flex:0 0 268px;max-width:268px;position:sticky;top:20px}" +
+        ".saeh-pl-grid{grid-template-columns:repeat(3,1fr)}" +
+        // Desktop shows the filters outright: no toggle, no collapse, no slide.
+        ".saeh-pl-toggle{display:none}" +
+        ".saeh-pl-panel,.saeh-pl-panel.saeh-open{display:block;grid-template-rows:none;visibility:visible;transition:none}" +
+        ".saeh-pl-clip{overflow:visible}" +
+        ".saeh-pl-inner{padding:16px}" +
+      "}",
+      "@media(prefers-reduced-motion:reduce){" +
+        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card{transition:none}" +
       "}",
       /*
        * Honour a reduced-motion preference: the slide and the indicator both
@@ -1777,6 +1852,339 @@
     });
   }
 
+  /* ------------------------------------------------- product listing -- */
+
+  /**
+   * The whole catalogue, memoised per page. One fetch however many listing
+   * widgets are placed, and filtering happens in the browser — 96 products is
+   * ~29KB, so a round trip per checkbox would be slower than the work it saves.
+   */
+  function fetchCatalogue() {
+    if (!hub.cataloguePromise) {
+      hub.cataloguePromise = fetch(hub.api + "/public/catalogue", {
+        credentials: "omit",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("catalogue " + r.status);
+          return r.json();
+        })
+        .catch(function () {
+          return null;
+        });
+    }
+    return hub.cataloguePromise;
+  }
+
+  /**
+   * Which category this page is for.
+   *
+   * ⚠️ Matched on SLUG, taken from the mirror, never derived from a title —
+   * Duda renders "Oil & Gas" as `oil---gas`, so a derived slug would miss
+   * exactly the categories with an ampersand and fail silently.
+   *
+   * Sources in order, the same shape as dudaPageProduct(): Duda's own page
+   * data, then the /category/<slug> URL, then an explicit prop. Each is a
+   * guess about a mechanism we cannot fully see, so the chain is what makes a
+   * wrong guess cost a fallback rather than a redesign.
+   */
+  function resolveCategory(cats, props) {
+    var bySlug = {};
+    var byId = {};
+    for (var i = 0; i < cats.length; i++) {
+      bySlug[String(cats[i].slug).toLowerCase()] = cats[i];
+      byId[cats[i].id] = cats[i];
+    }
+
+    var explicit = (props.category || "").trim().toLowerCase();
+    if (explicit && bySlug[explicit]) return { cat: bySlug[explicit], from: "props" };
+
+    try {
+      var pd = hub.lastPageData;
+      if (pd) {
+        if (pd.identifier && byId[pd.identifier]) return { cat: byId[pd.identifier], from: "dmAPI" };
+        var s = String(pd.seo_url || pd.page_item_url || "").toLowerCase();
+        if (s && bySlug[s]) return { cat: bySlug[s], from: "dmAPI" };
+      }
+    } catch (e) {
+      /* fall through to the URL */
+    }
+
+    try {
+      var m = /\/category\/([^/?#]+)/.exec(window.location.pathname);
+      if (m) {
+        var fromUrl = decodeURIComponent(m[1]).toLowerCase();
+        if (bySlug[fromUrl]) return { cat: bySlug[fromUrl], from: "url" };
+      }
+      var q = /[?&]category=([^&]+)/.exec(window.location.search);
+      if (q) {
+        var fromQuery = decodeURIComponent(q[1]).toLowerCase();
+        if (bySlug[fromQuery]) return { cat: bySlug[fromQuery], from: "query" };
+      }
+    } catch (e) {
+      /* never break the host page */
+    }
+
+    return { cat: null, from: "none" };
+  }
+
+  function productCard(p, chipTitles) {
+    var a = document.createElement("a");
+    a.className = "saeh-pl-card";
+    a.href = p.url || "#";
+
+    var shot = el("div", "saeh-pl-shot");
+    if (p.imageUrl) {
+      var img = document.createElement("img");
+      img.src = p.imageUrl;
+      // The card's own title is the accessible name, so a descriptive alt here
+      // would have a screen reader announce the product twice.
+      img.alt = "";
+      img.setAttribute("loading", "lazy");
+      shot.appendChild(img);
+    }
+    a.appendChild(shot);
+
+    var body = el("div", "saeh-pl-body");
+    if (chipTitles.length) {
+      var chips = el("div", "saeh-pl-chips");
+      chipTitles.forEach(function (t) {
+        chips.appendChild(el("span", "saeh-pl-chip", t));
+      });
+      body.appendChild(chips);
+    }
+    body.appendChild(el("h3", "saeh-pl-name", p.name || ""));
+    if (p.certs && p.certs.length) {
+      body.appendChild(el("div", "saeh-pl-certs", p.certs.join(", ")));
+    }
+    a.appendChild(body);
+    a.appendChild(el("span", "saeh-pl-btn", "View Product"));
+    return a;
+  }
+
+  /**
+   * Build the listing: filter panel on the left, product grid on the right.
+   *
+   * Filter semantics are OR WITHIN a group and AND ACROSS groups. Ticking two
+   * industries widens the results; adding a site challenge narrows them.
+   * "Must match all" empties the grid on nearly every real combination.
+   */
+  function productListSection(data, props) {
+    var cats = (data && data.categories) || [];
+    var products = (data && data.products) || [];
+    if (!cats.length) return null;
+
+    var byId = {};
+    cats.forEach(function (c) {
+      byId[c.id] = c;
+    });
+    // Whatever top-level parents exist, rather than three hardcoded names —
+    // the tree is expected to be reworked, and a rename should not need a
+    // widget change.
+    var parents = cats.filter(function (c) {
+      return c.parentId === "ROOT";
+    });
+    var childrenOf = function (parentId) {
+      return cats.filter(function (c) {
+        return c.parentId === parentId;
+      });
+    };
+
+    var resolved = resolveCategory(cats, props);
+    hub.lastInit.categoryFrom = resolved.from;
+    hub.lastInit.category = resolved.cat ? resolved.cat.slug : null;
+
+    // Pre-tick the page's own category, and show it rather than hiding it, so
+    // the visitor can see what they are filtered by and widen from there.
+    var chosen = {};
+    if (resolved.cat && resolved.cat.parentId !== "ROOT") chosen[resolved.cat.id] = true;
+    else if (resolved.cat) {
+      // A page for a PARENT (e.g. /category/industries) filters to nothing in
+      // particular — everything under it is relevant, so start unfiltered.
+      chosen = {};
+    }
+
+    var labelParent = (props.labelGroup || "Site Challenges").toLowerCase();
+    var labelParentId = null;
+    parents.forEach(function (p) {
+      if (String(p.title).toLowerCase() === labelParent) labelParentId = p.id;
+    });
+
+    var root = el("div", "saeh-pl");
+    var side = el("div", "saeh-pl-side");
+    var main = el("div", "saeh-pl-main");
+    var head = el("div", "saeh-pl-head");
+    var count = el("div", "saeh-pl-count");
+    var grid = el("div", "saeh-pl-grid");
+    head.appendChild(count);
+    main.appendChild(head);
+    main.appendChild(grid);
+
+    function matches(p) {
+      var ids = p.categoryIds || [];
+      for (var i = 0; i < parents.length; i++) {
+        var picked = childrenOf(parents[i].id).filter(function (c) {
+          return chosen[c.id];
+        });
+        if (!picked.length) continue; // this axis is unconstrained
+        var hit = picked.some(function (c) {
+          return ids.indexOf(c.id) !== -1;
+        });
+        if (!hit) return false; // AND across groups
+      }
+      return true;
+    }
+
+    function paint() {
+      var shown = products.filter(matches);
+      count.innerHTML = "";
+      count.appendChild(el("b", null, String(shown.length)));
+      count.appendChild(
+        document.createTextNode(" product" + (shown.length === 1 ? "" : "s") + " of " + products.length),
+      );
+
+      grid.textContent = "";
+      if (!shown.length) {
+        grid.appendChild(
+          el("p", "saeh-pl-empty", "No products match those filters. Try removing one."),
+        );
+        return;
+      }
+      shown.forEach(function (p) {
+        var chipTitles = labelParentId
+          ? (p.categoryIds || [])
+              .map(function (id) {
+                return byId[id];
+              })
+              .filter(function (c) {
+                return c && c.parentId === labelParentId;
+              })
+              .map(function (c) {
+                return c.title;
+              })
+          : [];
+        grid.appendChild(productCard(p, chipTitles));
+      });
+    }
+
+    // --- the filter panel ---
+    var filter = el("div", "saeh-pl-filter");
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "saeh-pl-toggle";
+    btn.setAttribute("aria-expanded", "false");
+    btn.appendChild(el("span", null, "Filter Products"));
+    btn.appendChild(el("span", "saeh-pl-chev"));
+
+    var panel = el("div", "saeh-pl-panel");
+    var uid = "saeh-pl" + Math.random().toString(36).slice(2, 9);
+    panel.id = uid;
+    btn.setAttribute("aria-controls", uid);
+    var clip = el("div", "saeh-pl-clip");
+    var inner = el("div", "saeh-pl-inner");
+
+    parents.forEach(function (parent) {
+      var kids = childrenOf(parent.id);
+      if (!kids.length) return;
+      var group = el("div", "saeh-pl-group");
+      group.appendChild(el("div", "saeh-pl-glabel", parent.title));
+      kids.forEach(function (c) {
+        var label = el("label", "saeh-pl-opt");
+        var input = document.createElement("input");
+        input.type = "checkbox";
+        input.value = c.id;
+        input.checked = !!chosen[c.id];
+        input.addEventListener("change", function () {
+          if (input.checked) chosen[c.id] = true;
+          else delete chosen[c.id];
+          paint();
+          updateCounts();
+        });
+        label.appendChild(input);
+        label.appendChild(el("span", "saeh-pl-box"));
+        label.appendChild(el("span", null, c.title));
+        var n = el("span", "saeh-pl-n", "");
+        n.setAttribute("data-for", c.id);
+        label.appendChild(n);
+        group.appendChild(label);
+      });
+      inner.appendChild(group);
+    });
+
+    /**
+     * Counts beside each option: how many products WOULD show if this one were
+     * added. Recomputed on every change, because a count that ignores the other
+     * axes promises results a click cannot deliver.
+     */
+    function updateCounts() {
+      var nodes = inner.querySelectorAll(".saeh-pl-n");
+      for (var i = 0; i < nodes.length; i++) {
+        var id = nodes[i].getAttribute("data-for");
+        var was = !!chosen[id];
+        chosen[id] = true;
+        var n = products.filter(matches).length;
+        if (!was) delete chosen[id];
+        nodes[i].textContent = String(n);
+      }
+    }
+
+    var clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "saeh-pl-clear";
+    clear.textContent = "Clear filters";
+    clear.addEventListener("click", function () {
+      chosen = {};
+      var boxes = inner.querySelectorAll("input[type=checkbox]");
+      for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
+      paint();
+      updateCounts();
+    });
+    inner.appendChild(clear);
+
+    clip.appendChild(inner);
+    panel.appendChild(clip);
+    filter.appendChild(btn);
+    filter.appendChild(panel);
+    side.appendChild(filter);
+
+    btn.addEventListener("click", function () {
+      var open = panel.classList.toggle("saeh-open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+
+    paint();
+    updateCounts();
+    root.appendChild(side);
+    root.appendChild(main);
+
+    var sec = el("div", "saeh-section");
+    sec.appendChild(root);
+    return sec;
+  }
+
+  /** Render the listing. Its own path — there is no product to resolve here. */
+  function renderListInto(container, props, onEmpty) {
+    try {
+      container.setAttribute("data-saeh-section", "product-list");
+    } catch (e) {
+      /* never break the host page */
+    }
+    if (!hub.api) return onEmpty();
+    return fetchCatalogue().then(function (data) {
+      try {
+        var node = productListSection(data, props);
+        if (!node) return onEmpty();
+        injectStyles();
+        var root = el("div", "saeh-root saeh-wide");
+        root.appendChild(node);
+        container.innerHTML = "";
+        container.appendChild(root);
+      } catch (e) {
+        /* never break the host page */
+      }
+    });
+  }
+
   function renderMount(mount, slug) {
     if (mount.getAttribute(RENDERED_ATTR)) return; // idempotency: skip already-processed mounts
     mount.setAttribute(RENDERED_ATTR, "1"); // claim synchronously so re-exec skips it
@@ -1963,6 +2371,21 @@
        * that narrows it to a boolean first throws the information away before
        * it ever arrives. See DUDA-WIDGETS in CLAUDE.md.
        */
+      /*
+       * The listing is a CATEGORY-page widget: there is no product to resolve,
+       * so it branches out before any of the product identity work below.
+       */
+      if (sectionName === "product-list") {
+        hub.lastInit.mode = "product-list";
+        dudaPageProduct().then(function (pd) {
+          // Stashed for resolveCategory(): on a category page this is the
+          // category's own row, not a product's.
+          hub.lastPageData = pd || null;
+          renderListInto(container, props, onEmpty);
+        });
+        return;
+      }
+
       var singlePage = truthyProp(props.singlePage);
       /*
        * Duda's dynamic dropdown documents `value` as the thing embedded into
@@ -2034,7 +2457,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-15-tag-mode+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-29-product-list+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

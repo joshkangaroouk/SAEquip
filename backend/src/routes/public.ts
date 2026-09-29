@@ -262,6 +262,16 @@ publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
           slug: true,
           thumbnailUrl: true,
           categories: { select: { dudaCategoryId: true } },
+          /*
+           * Certification text for the card. `alt` first, then `label`:
+           * every alt is empty today, so labels are what render — but a card
+           * reading "ATEX" instead of "EX logo" then becomes a data edit on
+           * the Logos page rather than a code change.
+           */
+          logos: {
+            where: { logo: { kind: "CERT_LOGO" } },
+            select: { logo: { select: { label: true, alt: true, sortOrder: true } } },
+          },
         },
         orderBy: { name: "asc" },
       }),
@@ -296,6 +306,11 @@ publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
         url: `/product/${p.slug!}`,
         imageUrl: p.thumbnailUrl ?? null,
         categoryIds: p.categories.map((c) => c.dudaCategoryId),
+        certs: p.logos
+          .map((l) => l.logo)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((l) => (l.alt || l.label || "").trim())
+          .filter(Boolean),
       })),
     });
   } catch (err) {

@@ -236,6 +236,73 @@ That pattern is a loader consuming the script's **module value** instead of `win
 
 The one behavioural difference: **an empty widget collapses on the live site but NOT when `inEditor` is true**, where the container is left exactly as Duda rendered it so any placeholder stays visible and the element stays selectable.
 
+## The product listing widget (`section: "product-list"`, 2026-09-29)
+
+Goes on Duda's **category page template**, once, for every category page. Filter panel plus
+a product grid, pre-filtered to the category the page is for.
+
+### The Duda shim
+
+```js
+(function (el, section, inEditor, cfg) {
+  el.setAttribute('data-saeh-section', section);
+  (window.__saehData || (window.__saehData = {}))[section] = data;
+
+  var category = cfg.category, labelGroup = cfg.labelGroup;
+
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=20';
+  var L = window.__saehLoader || (window.__saehLoader = {});
+  if (!L.p) L.p = new Promise(function (res, rej) {
+    var s = document.createElement('script');
+    s.src = SRC; s.async = true; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  L.p.then(function () {
+    window.SAEquipHubWidget.init({
+      container: el,
+      props: { section: section, inEditor: inEditor, category: category, labelGroup: labelGroup }
+    });
+  }).catch(function () {});
+})(element, 'product-list', data.inEditor, data.config || data);
+```
+
+Content panel: both fields are optional. `category` overrides which category the page filters
+to (normally resolved from the URL); `labelGroup` names the top-level parent whose children
+become the card chips, defaulting to "Site Challenges".
+
+⚠️ Duda's native **Sort & Filter** element and product grid must be removed from the
+category template, or the page shows two listings.
+
+### How it works
+
+- **One fetch of `/public/catalogue`**, filtered client-side. 96 products is ~29KB, so a
+  round trip per checkbox would cost more than it saves.
+- **Filter semantics: OR within a group, AND across groups.** Two industries widen; adding a
+  site challenge narrows. "Must match all" empties the grid on nearly every real combination.
+- **The sidebar renders whatever top-level parents exist**, not three hardcoded names — the
+  tree is expected to be reworked and a rename should not need a widget change.
+- **Counts beside each option** are "how many would show if this were added", recomputed on
+  every change. A count that ignored the other axes would promise results a click cannot
+  deliver.
+- **The page's own category is pre-ticked and VISIBLE**, so a visitor can see what they are
+  filtered by and widen from it. A **parent** page (`/category/industries`) starts unfiltered
+  — everything beneath it is relevant.
+- ⚠️ **Category resolution is by SLUG from the mirror, never derived.** Duda renders
+  "Oil & Gas" as `oil---gas`, so a slugified title would miss exactly the ampersand
+  categories, silently. Sources in order: `dmAPI` page data → `/category/<slug>` URL →
+  `?category=` → the content-panel prop, recorded in `__saequipHub.lastInit.categoryFrom`.
+- ⚠️ **`product-list` is deliberately absent from `ALL_SECTIONS`** — it belongs to a category
+  page and has no product, so the legacy `data-section="all"` embed must never build it.
+- Cards: white, **square 1:1 image using `object-fit:contain`** (cropping industrial kit to
+  fill a square cuts the product out of frame), chips from the label group, certification
+  text, and **one** "View Product" button.
+- ⚠️ **Certification text reads `Logo.alt || Logo.label`.** Every `alt` is empty today, so
+  labels render — which means cards say "EX logo", "UKCA" and "Made in Britan" rather than
+  ATEX/UKEX. The first two are deliberate (see the logo mapping note); filling `alt` on the
+  Logos page changes the display without a code change.
+- Mobile-first: **stacked with a collapsible filter panel**, becoming a sticky sidebar only
+  at 881px. Grid is 1 / 2 / 3 up at the house 561 / 881 breakpoints.
+
 ## Tag mode — the compatible carousel on static pages (2026-09-15)
 
 The Industries pages are ordinary static pages, not dynamic product pages, so
