@@ -144,8 +144,13 @@ const WIDGET_CSS = `
 .saeh-pl-count{font-size:15px;color:#878787}
 .saeh-pl-count b{color:#111;font-weight:600}
 .saeh-pl-filter{border:1px solid #e6e6e6;background:#fff}
-.saeh-pl-search{padding:14px 16px;border-bottom:1px solid #ececec}
-.saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 12px}
+.saeh-pl-search{position:relative;padding:14px 16px;border-bottom:1px solid #ececec}
+.saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px}
+.saeh-pl-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
+.saeh-pl-clearq{position:absolute;right:20px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:none;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}
+.saeh-pl-clearq.on{display:flex}
+.saeh-pl-clearq:hover{color:#666}
+.saeh-pl-clearq svg{display:block}
 .saeh-pl-search input::placeholder{color:#9a9a9a}
 .saeh-pl-search input:focus{outline:none;border-color:#111}
 .saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
@@ -166,6 +171,7 @@ const WIDGET_CSS = `
 .saeh-pl-glabel{font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}
 .saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:15px;color:#555;line-height:1.35}
 .saeh-pl-opt:hover{color:#111}
+.saeh-pl-t{min-width:0}
 .saeh-pl-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
 .saeh-pl-box{position:relative;flex:0 0 auto;width:18px;height:18px;margin-top:1px;background:#fff;border:2px solid #d8d8d8;border-radius:3px;transition:background .15s ease,border-color .15s ease}
 .saeh-pl-opt:hover .saeh-pl-box{border-color:#bdbdbd}
@@ -187,20 +193,30 @@ const WIDGET_CSS = `
 .saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#f1f1f1;color:#444;padding:4px 8px}
 .saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}
 .saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}
-.saeh-pl-btn{margin-top:auto;display:block;background:#fed217;color:#000;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:13px}
+.saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:600;text-transform:none;letter-spacing:normal;padding:13px}
+.saeh-pl-btn svg{width:0;opacity:0;flex:0 0 auto;overflow:hidden;transition:width .18s cubic-bezier(.4,0,.2,1),opacity .12s ease,margin-left .18s cubic-bezier(.4,0,.2,1)}
+.saeh-pl-card:hover .saeh-pl-btn svg,.saeh-pl-card:focus-visible .saeh-pl-btn svg{width:16px;opacity:1;margin-left:8px}
 .saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}
-.saeh-pl-empty{padding:40px 0;text-align:center;font-size:16px;color:#878787}
+.saeh-pl-empty{padding:32px 0;text-align:left;font-size:16px;color:#878787}
+@keyframes saeh-pl-in{from{opacity:0;transform:translateY(12px)}
+to{opacity:1;transform:none}
+}
+.saeh-pl-card{animation:saeh-pl-in .32s cubic-bezier(.4,0,.2,1) both}
+.saeh-pl-card:nth-child(3n+2){animation-delay:.05s}
+.saeh-pl-card:nth-child(3n+3){animation-delay:.1s}
 @media(min-width:561px){.saeh-pl-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:881px){.saeh-pl{flex-direction:row;align-items:flex-start;gap:28px}
-.saeh-pl-side{flex:0 0 268px;max-width:268px;position:sticky;top:20px}
+.saeh-pl-side{flex:0 0 268px;max-width:268px;position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
+.saeh-pl-filter{border-top:5px solid var(--color_7,#fed217)}
 .saeh-pl-grid{grid-template-columns:repeat(3,1fr)}
 .saeh-pl-toggle{display:none}
 .saeh-pl-panel,.saeh-pl-panel.saeh-open{display:block;grid-template-rows:none;visibility:visible;transition:none}
 .saeh-pl-clip{overflow:visible}
 .saeh-pl-inner{padding:16px}
 }
-@media(prefers-reduced-motion:reduce){.saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card{transition:none}
+@media(prefers-reduced-motion:reduce){.saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-btn svg{transition:none}
+.saeh-pl-card{animation:none}
 }
 @media(prefers-reduced-motion:reduce){.saeh-tab-p,.saeh-tab-p.saeh-open,.saeh-tabs.saeh-slide .saeh-tab-bar{transition:none}
 }

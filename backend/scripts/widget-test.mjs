@@ -362,32 +362,41 @@ async function main() {
     );
   }
 
-  console.log("\n=== product listing: filtering ===");
+  console.log("\n=== product listing: the page's category is the base filter ===");
   /*
-   * Two axes, two children each, products spread so the OR-within /
-   * AND-across distinction is actually observable: P1 is Aviation AND
-   * Welding, P2 shares only the industry, P3 only the challenge.
+   * ⚠️ The page's own category is a FIXED base, not a checkbox, and the sidebar
+   * offers Site Challenges only. The fixture is built so both halves are
+   * observable: P1 and P2 are the only Lighting and Power products, and only
+   * P1 carries a challenge — so that page must offer exactly one option, and
+   * never the Welding/Dust options that belong to products it is not showing.
    */
   const CAT = (id, title, slug, parentId) => ({ id, title, slug, parentId, depth: parentId === "ROOT" ? 0 : 1 });
   const CATALOGUE = {
     categories: [
+      CAT("prod", "Products", "products", "ROOT"),
+      CAT("lp", "Lighting and Power", "lighting-and-power", "prod"),
+      CAT("fume", "Fume, Dust, LEV and Vapour Control", "fume-dust-lev-and-vapour-control", "prod"),
       CAT("ind", "Industries", "industries", "ROOT"),
       CAT("avi", "Aviation & Aerospace", "aviation---aerospace", "ind"),
       CAT("oil", "Oil & Gas", "oil---gas", "ind"),
       CAT("sc", "Site Challenges", "site-challenges", "ROOT"),
       CAT("weld", "Welding Fume Control", "welding-fume-control", "sc"),
       CAT("dust", "Dust Extraction", "dust-extraction", "sc"),
+      CAT("dark", "Working in the Dark", "working-in-the-dark", "sc"),
     ],
     products: [
-      { name: "P1", slug: "p1", url: "/product/p1", imageUrl: "https://x/1.jpg", categoryIds: ["avi", "weld"], certs: ["EX logo", "IECEx"] },
-      { name: "P2", slug: "p2", url: "/product/p2", imageUrl: null, categoryIds: ["avi", "dust"], certs: [] },
-      { name: "P3", slug: "p3", url: "/product/p3", imageUrl: "https://x/3.jpg", categoryIds: ["oil", "weld"], certs: ["UKCA"] },
-      { name: "P4", slug: "p4", url: "/product/p4", imageUrl: null, categoryIds: [], certs: [] },
+      { name: "P1", slug: "p1", url: "/product/p1", imageUrl: "https://x/1.jpg", categoryIds: ["lp", "avi", "dark"], certs: ["EX logo", "IECEx"] },
+      { name: "P2", slug: "p2", url: "/product/p2", imageUrl: null, categoryIds: ["lp", "oil"], certs: [] },
+      { name: "P3", slug: "p3", url: "/product/p3", imageUrl: "https://x/3.jpg", categoryIds: ["fume", "oil", "weld"], certs: ["UKCA"] },
+      { name: "P4", slug: "p4", url: "/product/p4", imageUrl: null, categoryIds: ["fume", "avi", "dust"], certs: [] },
+      { name: "P5", slug: "p5", url: "/product/p5", imageUrl: null, categoryIds: [], certs: [] },
     ],
   };
   const PL = { section: "product-list" };
   const AT = "https://saequip.multiscreensite.com/some-page";
+  const CATEGORY = (slug) => `https://saequip.multiscreensite.com/category/${slug}`;
   const names = (d) => [...d.querySelectorAll(".saeh-pl-name")].map((n) => n.textContent);
+  const opts = (d) => [...d.querySelectorAll(".saeh-pl-opt")].map((l) => l.querySelector(".saeh-pl-t").textContent);
   const tick = (d, id) => {
     const i = [...d.querySelectorAll(".saeh-pl-opt input")].find((x) => x.value === id);
     i.checked = !i.checked;
@@ -395,73 +404,75 @@ async function main() {
   };
 
   {
-    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
-    check(names(d).join(",") === "P1,P2,P3,P4", "unfiltered shows everything", names(d).join(","));
-    tick(d, "avi");
-    check(names(d).join(",") === "P1,P2", "one option filters to its products", names(d).join(","));
-    tick(d, "oil");
-    check(names(d).join(",") === "P1,P2,P3", "a second option in the SAME group widens (OR)", names(d).join(","));
-    tick(d, "weld");
-    check(names(d).join(",") === "P1,P3", "an option in ANOTHER group narrows (AND)", names(d).join(","));
-    d.querySelector(".saeh-pl-clear").dispatchEvent(new d.defaultView.MouseEvent("click"));
-    check(names(d).join(",") === "P1,P2,P3,P4", "clear filters restores everything");
-  }
-  {
-    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
-    tick(d, "avi");
-    tick(d, "dust");
-    check(names(d).join(",") === "P2", "a combination matching exactly one product");
-    tick(d, "weld");
-    check(names(d).join(",") === "P1,P2", "widened by a second challenge", names(d).join(","));
-  }
-  {
-    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
-    tick(d, "oil");
-    tick(d, "dust");
-    check(!!d.querySelector(".saeh-pl-empty"), "an impossible combination shows an empty state");
-    check(d.querySelector(".saeh-pl-filter") !== null, "…with the filters still on screen to widen from");
-  }
+    const { d, w } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: CATEGORY("lighting-and-power") });
+    check(w.__saequipHub.lastInit.categoryFrom === "url", "the page's category resolves from the url");
+    check(names(d).join(",") === "P1,P2", "the grid shows ONLY that category's products", names(d).join(","));
+    check(opts(d).join(",") === "Working in the Dark",
+      "and the sidebar offers only the challenges those products actually have", opts(d).join(","));
+    check(d.querySelectorAll(".saeh-pl-group").length === 1, "one group — industries and product types are not filters");
+    check(d.querySelector(".saeh-pl-glabel").textContent === "Site Challenges", "labelled Site Challenges");
+    check([...d.querySelectorAll(".saeh-pl-opt input")].every((i) => i.checked === false),
+      "nothing is pre-ticked: the category is the base, not a selection");
 
-  console.log("\n=== product listing: the page's own category pre-filters ===");
+    tick(d, "dark");
+    check(names(d).join(",") === "P1", "ticking a challenge narrows within the category", names(d).join(","));
+    tick(d, "dark");
+    check(names(d).join(",") === "P1,P2", "unticking returns to the category, never the whole catalogue");
+  }
   {
-    /*
-     * ⚠️ The slug is DUDA'S, not derived — it renders "Oil & Gas" as
-     * `oil---gas`. A widget that slugified the title would miss exactly the
-     * categories containing an ampersand, silently, on the live site.
-     */
-    const { d, w } = await boot({
-      props: PL, cataloguePayload: CATALOGUE,
-      url: "https://saequip.multiscreensite.com/category/oil---gas",
-    });
-    check(names(d).join(",") === "P3", "the URL's category is pre-applied", names(d).join(","));
-    check(w.__saequipHub.lastInit.categoryFrom === "url", "recorded as resolved from the url");
-    const box = [...d.querySelectorAll(".saeh-pl-opt input")].find((x) => x.value === "oil");
-    check(box.checked === true, "its checkbox is ticked and VISIBLE, not hidden");
-    tick(d, "oil");
-    check(names(d).join(",") === "P1,P2,P3,P4", "so the visitor can widen from it");
+    // ⚠️ Duda renders "Oil & Gas" as `oil---gas`. A widget that slugified the
+    // title would miss exactly the categories containing an ampersand.
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: CATEGORY("oil---gas") });
+    check(names(d).join(",") === "P2,P3", "an ampersand slug resolves", names(d).join(","));
+    check(opts(d).join(",") === "Welding Fume Control",
+      "a different category derives a different option set", opts(d).join(","));
+  }
+  {
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: CATEGORY("industries") });
+    check(names(d).join(",") === "P1,P2,P3,P4",
+      "a PARENT page scopes to everything under it — a product sits on the leaves", names(d).join(","));
+    check(opts(d).length === 3, "so all three challenges are offered", String(opts(d).length));
+  }
+  {
+    const { d, w } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: CATEGORY("nope") });
+    check(w.__saequipHub.lastInit.categoryFrom === "none", "an unknown slug resolves to nothing");
+    check(names(d).length === 5, "…and falls back to the whole catalogue rather than an empty page");
   }
   {
     const { d, w } = await boot({
       props: { section: "product-list", category: "welding-fume-control" },
       cataloguePayload: CATALOGUE, url: "https://saequip.multiscreensite.com/anything",
     });
-    check(names(d).join(",") === "P1,P3", "an explicit prop resolves too", names(d).join(","));
+    check(names(d).join(",") === "P3", "an explicit prop resolves too", names(d).join(","));
     check(w.__saequipHub.lastInit.categoryFrom === "props", "recorded as resolved from props");
   }
   {
-    const { d } = await boot({
-      props: PL, cataloguePayload: CATALOGUE,
-      url: "https://saequip.multiscreensite.com/category/industries",
-    });
-    check(names(d).length === 4, "a PARENT category page starts unfiltered — everything under it is relevant");
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    check(names(d).join(",") === "P1,P2,P3,P4,P5", "with no category, everything shows");
+    tick(d, "weld");
+    check(names(d).join(",") === "P3", "one challenge filters to its products", names(d).join(","));
+    tick(d, "dust");
+    check(names(d).join(",") === "P3,P4", "a second challenge WIDENS — they are OR, not AND", names(d).join(","));
+    d.querySelector(".saeh-pl-clear").dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(names(d).join(",") === "P1,P2,P3,P4,P5", "clear filters restores everything");
   }
   {
-    const { d, w } = await boot({
-      props: PL, cataloguePayload: CATALOGUE,
-      url: "https://saequip.multiscreensite.com/category/nope",
+    // The filter group is named, not hard-coded, because the tree is expected
+    // to be renamed — a rename should cost a content-panel edit, not a deploy.
+    const { d } = await boot({
+      props: { section: "product-list", filterGroup: "Industries" },
+      cataloguePayload: CATALOGUE, url: AT,
     });
-    check(w.__saequipHub.lastInit.categoryFrom === "none", "an unknown slug resolves to nothing");
-    check(names(d).length === 4, "…and falls back to the whole catalogue rather than an empty page");
+    check(d.querySelector(".saeh-pl-glabel").textContent === "Industries", "the filter group is configurable");
+  }
+  {
+    const only = {
+      categories: CATALOGUE.categories,
+      products: [{ name: "Solo", slug: "s", url: "/product/s", imageUrl: null, categoryIds: ["lp"], certs: [] }],
+    };
+    const { d } = await boot({ props: PL, cataloguePayload: only, url: CATEGORY("lighting-and-power") });
+    check(d.querySelectorAll(".saeh-pl-opt").length === 0, "no challenges in scope means no options at all");
+    check(names(d).join(",") === "Solo", "…and the grid still renders");
   }
 
   console.log("\n=== product listing: cards and layout ===");
@@ -470,11 +481,11 @@ async function main() {
     const css = d.getElementById("saeh-styles").textContent;
     const card = d.querySelector("a.saeh-pl-card");
     check(card.getAttribute("href") === "/product/p1", "the whole card links to the product");
-    check(d.querySelectorAll(".saeh-pl-btn").length === 4, "ONE button per card, not two");
+    check(d.querySelectorAll(".saeh-pl-btn").length === 5, "ONE button per card, not two");
     check(d.querySelector(".saeh-pl-btn").textContent === "View Product", "labelled View Product");
     check(
-      [...card.querySelectorAll(".saeh-pl-chip")].map((c) => c.textContent).join(",") === "Welding Fume Control",
-      "chips come from the label group only, not every category",
+      [...card.querySelectorAll(".saeh-pl-chip")].map((c) => c.textContent).join(",") === "Working in the Dark",
+      "chips come from the filter group only, not every category",
     );
     check(card.querySelector(".saeh-pl-certs").textContent === "EX logo, IECEx", "certs render as text");
     const second = d.querySelectorAll(".saeh-pl-card")[1];
@@ -499,6 +510,29 @@ async function main() {
     check(btn.getAttribute("aria-expanded") === "true" && panel.classList.contains("saeh-open"),
       "and opens it");
   }
+
+  console.log("\n=== product listing: the View Product button ===");
+  {
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    const css = d.getElementById("saeh-styles").textContent;
+    const cta = d.querySelector(".saeh-pl-btn");
+    /*
+     * ⚠️ The chevron is drawn INLINE, not fetched. It only appears on hover, so
+     * a network-loaded icon is blank for exactly as long as the hover that
+     * reveals it — the one moment it has to be there.
+     */
+    const svg = cta.querySelector("svg");
+    check(!!svg, "the button carries an inline chevron");
+    check(svg.querySelectorAll("path").length === 2, "a DOUBLE chevron — two strokes");
+    check(svg.getAttribute("aria-hidden") === "true", "hidden from assistive tech: the label already says it");
+    check(cta.textContent === "View Product", "…and adds no text of its own");
+    check(/\.saeh-pl-btn\{[^}]*font-size:16px/.test(css), "16px, matching the site's buttons");
+    check(/\.saeh-pl-btn\{[^}]*text-transform:none/.test(css), "and NOT all caps");
+    check(/\.saeh-pl-btn svg\{[^}]*width:0[^}]*opacity:0/.test(css), "the chevron starts collapsed and invisible");
+    check(/\.saeh-pl-card:hover \.saeh-pl-btn svg[^{]*\{[^}]*width:16px;opacity:1/.test(css),
+      "and expands on hover, which is what slides the label left");
+  }
+
   console.log("\n=== product listing: search and load more ===");
   {
     // 40 products so pagination is observable: 18, then 18, then 4.
@@ -507,7 +541,7 @@ async function main() {
       products: Array.from({ length: 40 }, (_, i) => ({
         name: i === 7 ? "Welding Torch" : `Item ${String(i).padStart(2, "0")}`,
         slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
-        categoryIds: i % 2 ? ["avi"] : ["oil"], certs: [],
+        categoryIds: i % 2 ? ["weld"] : ["dust"], certs: [],
       })),
     };
     const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
@@ -532,33 +566,52 @@ async function main() {
       products: Array.from({ length: 40 }, (_, i) => ({
         name: i === 7 ? "Welding Torch" : `Item ${String(i).padStart(2, "0")}`,
         slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
-        categoryIds: i % 2 ? ["avi"] : ["oil"], certs: [],
+        categoryIds: i % 2 ? ["weld"] : ["dust"], certs: [],
       })),
     };
     const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
     const search = d.querySelector(".saeh-pl-search input");
+    const clearQ = d.querySelector(".saeh-pl-clearq");
     const type = (v) => {
       search.value = v;
       search.dispatchEvent(new d.defaultView.Event("input"));
     };
+    const enter = () =>
+      search.dispatchEvent(new d.defaultView.KeyboardEvent("keydown", { key: "Enter" }));
 
+    /*
+     * ⚠️ Search runs on ENTER, not on every keystroke. Re-rendering the grid
+     * mid-word makes the list jump under your thumb on a phone with the
+     * keyboard open — and "weld" would strand you on an empty page on the way
+     * to "welding torch".
+     */
     type("welding torch");
+    check(d.querySelectorAll(".saeh-pl-card").length === 18, "typing alone does NOT filter");
+    check(clearQ.className.indexOf("on") !== -1, "…though the clear button appears as soon as there is text");
+    enter();
     check(
       [...d.querySelectorAll(".saeh-pl-name")].map((n) => n.textContent).join(",") === "Welding Torch",
-      "search matches the product name",
+      "Enter runs it, matching the product name",
     );
 
     // "Product or task": a category title is searchable too, so a site
     // challenge finds the products under it.
-    type("aviation");
+    type("welding fume");
+    enter();
     check(d.querySelectorAll(".saeh-pl-card").length === 18, "a category title matches its products");
     check(d.querySelector(".saeh-pl-more").textContent.includes("+2"), "…and paginates them", d.querySelector(".saeh-pl-more").textContent);
 
     type("nothing at all");
+    enter();
     check(!!d.querySelector(".saeh-pl-empty"), "no match shows the empty state");
+    check(d.querySelector(".saeh-pl-filter") !== null, "…with the filters still on screen to widen from");
 
-    type("");
-    check(d.querySelectorAll(".saeh-pl-card").length === 18, "clearing the search restores the first page");
+    clearQ.dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(d.querySelectorAll(".saeh-pl-card").length === 18, "the X clears the search and restores the page");
+    check(search.value === "", "…and empties the field");
+    check(clearQ.className.indexOf("on") === -1, "…and hides itself again");
+    check(clearQ.querySelector("svg path").getAttribute("stroke") === "currentColor",
+      "the X is a stroked SVG, not the browser's own glyph");
   }
   {
     // Narrowing must reset the offset, or "load more" outlives what it loads.
@@ -566,17 +619,17 @@ async function main() {
       categories: CATALOGUE.categories,
       products: Array.from({ length: 40 }, (_, i) => ({
         name: `Item ${i}`, slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
-        categoryIds: i < 20 ? ["avi"] : ["oil"], certs: [],
+        categoryIds: i < 20 ? ["weld"] : ["dust"], certs: [],
       })),
     };
     const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
     d.querySelector(".saeh-pl-more").dispatchEvent(new d.defaultView.MouseEvent("click"));
     check(d.querySelectorAll(".saeh-pl-card").length === 36, "36 loaded");
-    tick(d, "avi");
+    tick(d, "weld");
     check(d.querySelectorAll(".saeh-pl-card").length === 18, "filtering resets to the first page", String(d.querySelectorAll(".saeh-pl-card").length));
   }
 
-  console.log("\n=== product listing: card styling ===");
+  console.log("\n=== product listing: styling ===");
   {
     const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
     const css = d.getElementById("saeh-styles").textContent;
@@ -586,6 +639,18 @@ async function main() {
     check(/\.saeh-pl-more\{[^}]*background:transparent[^}]*border:1px solid #111/.test(css),
       "load more is bordered by default");
     check(/\.saeh-pl-more:hover\{background:#111;color:#fff\}/.test(css), "and fills black on hover");
+    check(/\.saeh-pl-empty\{[^}]*text-align:left/.test(css), "the empty message is left aligned, not centred");
+    // Duda's theme colour, with the brand yellow only as a fallback for the
+    // editor preview — hard-coding it would drift the day the theme changes.
+    check(/\.saeh-pl-filter\{border-top:5px solid var\(--color_7,#fed217\)\}/.test(css),
+      "a 5px theme-coloured rule tops the filter bar on desktop");
+    check(/\.saeh-pl-side\{[^}]*position:sticky;top:20px/.test(css), "the sidebar is sticky on desktop");
+    check(/\.saeh-pl-side\{[^}]*max-height:calc\(100vh - 40px\);overflow-y:auto/.test(css),
+      "…and scrolls internally, so a long filter list cannot outrun the viewport");
+    check(/@keyframes saeh-pl-in\{from\{opacity:0;transform:translateY\(12px\)\}/.test(css),
+      "cards fade up as they arrive");
+    check(/@media\(prefers-reduced-motion:reduce\)\{[^@]*\.saeh-pl-card\{animation:none\}/.test(css),
+      "…and not at all for anyone who asked for less motion");
     // The search must survive the mobile collapse, so it sits outside the panel.
     check(
       d.querySelector(".saeh-pl-panel .saeh-pl-search") === null &&

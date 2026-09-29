@@ -627,8 +627,15 @@
        * a click is the one control people reach for first — so it stays visible
        * above the toggle there, and reads as the top of the sidebar on desktop.
        */
-      ".saeh-pl-search{padding:14px 16px;border-bottom:1px solid #ececec}",
-      ".saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 12px}",
+      ".saeh-pl-search{position:relative;padding:14px 16px;border-bottom:1px solid #ececec}",
+      ".saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px}",
+      // The native search X cannot be styled to match the site, so it is
+      // suppressed and replaced with an inline SVG that inherits currentColor.
+      ".saeh-pl-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}",
+      ".saeh-pl-clearq{position:absolute;right:20px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:none;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}",
+      ".saeh-pl-clearq.on{display:flex}",
+      ".saeh-pl-clearq:hover{color:#666}",
+      ".saeh-pl-clearq svg{display:block}",
       ".saeh-pl-search input::placeholder{color:#9a9a9a}",
       ".saeh-pl-search input:focus{outline:none;border-color:#111}",
       ".saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}",
@@ -649,6 +656,9 @@
       ".saeh-pl-glabel{font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}",
       ".saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:15px;color:#555;line-height:1.35}",
       ".saeh-pl-opt:hover{color:#111}",
+      // min-width:0 lets a long challenge name wrap instead of pushing its count
+      // off the edge of a 268px sidebar.
+      ".saeh-pl-t{min-width:0}",
       ".saeh-pl-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0}",
       ".saeh-pl-box{position:relative;flex:0 0 auto;width:18px;height:18px;margin-top:1px;background:#fff;border:2px solid #d8d8d8;border-radius:3px;transition:background .15s ease,border-color .15s ease}",
       ".saeh-pl-opt:hover .saeh-pl-box{border-color:#bdbdbd}",
@@ -675,16 +685,37 @@
       ".saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#f1f1f1;color:#444;padding:4px 8px}",
       ".saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}",
       ".saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}",
-      ".saeh-pl-btn{margin-top:auto;display:block;background:#fed217;color:#000;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:13px}",
+      ".saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:600;text-transform:none;letter-spacing:normal;padding:13px}",
+      /*
+       * The chevron grows from zero width rather than just fading, so the
+       * centred flex row shifts the label left by half the space it takes —
+       * the pair stays centred instead of the label jumping.
+       */
+      ".saeh-pl-btn svg{width:0;opacity:0;flex:0 0 auto;overflow:hidden;transition:width .18s cubic-bezier(.4,0,.2,1),opacity .12s ease,margin-left .18s cubic-bezier(.4,0,.2,1)}",
+      ".saeh-pl-card:hover .saeh-pl-btn svg,.saeh-pl-card:focus-visible .saeh-pl-btn svg{width:16px;opacity:1;margin-left:8px}",
       ".saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}",
-      ".saeh-pl-empty{padding:40px 0;text-align:center;font-size:16px;color:#878787}",
+      ".saeh-pl-empty{padding:32px 0;text-align:left;font-size:16px;color:#878787}",
+      /*
+       * Cards fade up as they arrive — on first paint, on every filter change,
+       * and for each newly loaded page. The stagger is capped at a few hundred
+       * ms via nth-child so a 40-card page does not turn into a slow cascade.
+       */
+      "@keyframes saeh-pl-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}",
+      ".saeh-pl-card{animation:saeh-pl-in .32s cubic-bezier(.4,0,.2,1) both}",
+      ".saeh-pl-card:nth-child(3n+2){animation-delay:.05s}",
+      ".saeh-pl-card:nth-child(3n+3){animation-delay:.1s}",
       "@media(min-width:561px){.saeh-pl-grid{grid-template-columns:repeat(2,1fr)}}",
       "@media(min-width:881px){" +
         ".saeh-pl{flex-direction:row;align-items:flex-start;gap:28px}" +
         // min-width:0 on the main column is load-bearing: a grid inside a flex
         // item otherwise refuses to shrink below its content and shoves the
         // sidebar off the row.
-        ".saeh-pl-side{flex:0 0 268px;max-width:268px;position:sticky;top:20px}" +
+        // max-height + overflow is what makes sticky useful rather than nominal: a
+        // filter list taller than the viewport would scroll the page past it.
+        ".saeh-pl-side{flex:0 0 268px;max-width:268px;position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}" +
+        // Duda's theme colour 7, with the brand yellow as the fallback for
+        // when the widget renders outside a themed page (the editor preview).
+        ".saeh-pl-filter{border-top:5px solid var(--color_7,#fed217)}" +
         ".saeh-pl-grid{grid-template-columns:repeat(3,1fr)}" +
         // Desktop shows the filters outright: no toggle, no collapse, no slide.
         ".saeh-pl-toggle{display:none}" +
@@ -693,7 +724,8 @@
         ".saeh-pl-inner{padding:16px}" +
       "}",
       "@media(prefers-reduced-motion:reduce){" +
-        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card{transition:none}" +
+        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-btn svg{transition:none}" +
+        ".saeh-pl-card{animation:none}" +
       "}",
       /*
        * Honour a reduced-motion preference: the slide and the indicator both
@@ -1972,16 +2004,63 @@
       body.appendChild(el("div", "saeh-pl-certs", p.certs.join(", ")));
     }
     a.appendChild(body);
-    a.appendChild(el("span", "saeh-pl-btn", "View Product"));
+    var cta = el("span", "saeh-pl-btn");
+    cta.appendChild(document.createTextNode("View Product"));
+    cta.appendChild(doubleChevron());
+    a.appendChild(cta);
     return a;
   }
 
+  /** A double chevron, drawn inline so it is present the instant hover starts. */
+  function doubleChevron() {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "16");
+    svg.setAttribute("height", "16");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("aria-hidden", "true");
+    ["M5 5l7 7-7 7", "M13 5l7 7-7 7"].forEach(function (d) {
+      var path = document.createElementNS(ns, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("stroke", "currentColor");
+      path.setAttribute("stroke-width", "2.5");
+      path.setAttribute("stroke-linecap", "round");
+      path.setAttribute("stroke-linejoin", "round");
+      svg.appendChild(path);
+    });
+    return svg;
+  }
+
+  /** The X in the search box — a plain stroked cross, not a glyph. */
+  function closeIcon() {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "15");
+    svg.setAttribute("height", "15");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("aria-hidden", "true");
+    ["M5 5l14 14", "M19 5L5 19"].forEach(function (d) {
+      var path = document.createElementNS(ns, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("stroke", "currentColor");
+      path.setAttribute("stroke-width", "2");
+      path.setAttribute("stroke-linecap", "round");
+      svg.appendChild(path);
+    });
+    return svg;
+  }
+
   /**
-   * Build the listing: filter panel on the left, product grid on the right.
+   * Build the listing: a Site Challenges filter on the left, product grid right.
    *
-   * Filter semantics are OR WITHIN a group and AND ACROSS groups. Ticking two
-   * industries widens the results; adding a site challenge narrows them.
-   * "Must match all" empties the grid on nearly every real combination.
+   * ⚠️ The page's own category is a fixed BASE FILTER, not a checkbox. On
+   * /category/lighting-and-power the grid only ever shows that category's
+   * products, and the challenge options are derived from THAT set — so an
+   * option is never offered that would return nothing. Industries and the
+   * product taxonomy are deliberately absent from the sidebar: they are how you
+   * arrived, not how you refine.
    */
   function productListSection(data, props) {
     var cats = (data && data.categories) || [];
@@ -1992,42 +2071,59 @@
     cats.forEach(function (c) {
       byId[c.id] = c;
     });
-    // Whatever top-level parents exist, rather than three hardcoded names —
-    // the tree is expected to be reworked, and a rename should not need a
-    // widget change.
-    var parents = cats.filter(function (c) {
-      return c.parentId === "ROOT";
-    });
-    var childrenOf = function (parentId) {
-      return cats.filter(function (c) {
-        return c.parentId === parentId;
-      });
-    };
 
     var resolved = resolveCategory(cats, props);
     hub.lastInit.categoryFrom = resolved.from;
     hub.lastInit.category = resolved.cat ? resolved.cat.slug : null;
 
-    // Pre-tick the page's own category, and show it rather than hiding it, so
-    // the visitor can see what they are filtered by and widen from there.
-    var chosen = {};
-    if (resolved.cat && resolved.cat.parentId !== "ROOT") chosen[resolved.cat.id] = true;
-    else if (resolved.cat) {
-      // A page for a PARENT (e.g. /category/industries) filters to nothing in
-      // particular — everything under it is relevant, so start unfiltered.
-      chosen = {};
+    /*
+     * Everything under the page's category. A PARENT page (…/industries) scopes
+     * to all of its children, since a product sits on the leaves; a leaf page
+     * scopes to itself; no category at all means the whole catalogue.
+     */
+    var scopeIds = null;
+    if (resolved.cat) {
+      scopeIds = {};
+      scopeIds[resolved.cat.id] = true;
+      cats.forEach(function (c) {
+        if (c.parentId === resolved.cat.id) scopeIds[c.id] = true;
+      });
     }
+    var base = scopeIds
+      ? products.filter(function (p) {
+          return (p.categoryIds || []).some(function (id) {
+            return scopeIds[id];
+          });
+        })
+      : products;
 
-    var labelParent = (props.labelGroup || "Site Challenges").toLowerCase();
-    var labelParentId = null;
-    parents.forEach(function (p) {
-      if (String(p.title).toLowerCase() === labelParent) labelParentId = p.id;
+    // Which branch supplies the filter options. Configurable, because the tree
+    // is expected to be reworked and a rename should not need a code change.
+    var filterTitle = (props.filterGroup || "Site Challenges").toLowerCase();
+    var filterParent = null;
+    cats.forEach(function (c) {
+      if (c.parentId === "ROOT" && String(c.title).toLowerCase() === filterTitle) filterParent = c;
     });
 
-    /** Products shown before "Load more". */
+    // Only options that actually appear in the base set — an option that could
+    // only ever return nothing is noise, and a count of 0 invites a dead click.
+    var options = [];
+    if (filterParent) {
+      var present = {};
+      base.forEach(function (p) {
+        (p.categoryIds || []).forEach(function (id) {
+          present[id] = true;
+        });
+      });
+      options = cats.filter(function (c) {
+        return c.parentId === filterParent.id && present[c.id];
+      });
+    }
+
     var PAGE = 18;
     var shownCount = PAGE;
     var query = "";
+    var chosen = {};
 
     var root = el("div", "saeh-pl");
     var side = el("div", "saeh-pl-side");
@@ -2056,47 +2152,42 @@
 
     function matches(p) {
       if (query && haystack(p).indexOf(query) === -1) return false;
+      var picked = options.filter(function (c) {
+        return chosen[c.id];
+      });
+      if (!picked.length) return true;
+      // OR within the group: ticking a second challenge widens.
       var ids = p.categoryIds || [];
-      for (var i = 0; i < parents.length; i++) {
-        var picked = childrenOf(parents[i].id).filter(function (c) {
-          return chosen[c.id];
-        });
-        if (!picked.length) continue; // this axis is unconstrained
-        var hit = picked.some(function (c) {
-          return ids.indexOf(c.id) !== -1;
-        });
-        if (!hit) return false; // AND across groups
-      }
-      return true;
+      return picked.some(function (c) {
+        return ids.indexOf(c.id) !== -1;
+      });
     }
 
     function paint() {
-      var shown = products.filter(matches);
+      var shown = base.filter(matches);
       count.innerHTML = "";
       count.appendChild(el("b", null, String(shown.length)));
       count.appendChild(
-        document.createTextNode(" product" + (shown.length === 1 ? "" : "s") + " of " + products.length),
+        document.createTextNode(" product" + (shown.length === 1 ? "" : "s") + " of " + base.length),
       );
 
       grid.textContent = "";
       more.textContent = "";
       if (!shown.length) {
-        grid.appendChild(
-          el("p", "saeh-pl-empty", "No products match those filters. Try removing one."),
-        );
+        grid.appendChild(el("p", "saeh-pl-empty", "No products match those filters. Try removing one."));
         return;
       }
 
       var page = shown.slice(0, shownCount);
       var remaining = shown.length - page.length;
       page.forEach(function (p) {
-        var chipTitles = labelParentId
+        var chipTitles = filterParent
           ? (p.categoryIds || [])
               .map(function (id) {
                 return byId[id];
               })
               .filter(function (c) {
-                return c && c.parentId === labelParentId;
+                return c && c.parentId === filterParent.id;
               })
               .map(function (c) {
                 return c.title;
@@ -2109,9 +2200,8 @@
         var btn = document.createElement("button");
         btn.type = "button";
         btn.className = "saeh-pl-more";
-        // The label is a TEXT NODE and only the count is a span, because
-        // `.saeh-pl-more span` is what greys the count — two spans would grey
-        // the label too.
+        // The label is a TEXT NODE and only the count a span, because
+        // `.saeh-pl-more span` is what greys the count.
         btn.appendChild(document.createTextNode("Load more products"));
         btn.appendChild(el("span", null, "+" + remaining));
         btn.addEventListener("click", function () {
@@ -2124,6 +2214,48 @@
 
     // --- the filter panel ---
     var filter = el("div", "saeh-pl-filter");
+
+    var search = el("div", "saeh-pl-search");
+    var input = document.createElement("input");
+    input.type = "search";
+    input.placeholder = "Search products or tasks…";
+    input.setAttribute("aria-label", "Search products");
+    var clearQ = document.createElement("button");
+    clearQ.type = "button";
+    clearQ.className = "saeh-pl-clearq";
+    clearQ.setAttribute("aria-label", "Clear search");
+    clearQ.appendChild(closeIcon());
+
+    /*
+     * Runs on ENTER, not on every keystroke. Filtering as you type re-renders
+     * the whole grid mid-word, which on a phone means the list jumping under
+     * your thumb while the keyboard is open.
+     */
+    function runSearch() {
+      query = input.value.trim().toLowerCase();
+      shownCount = PAGE;
+      clearQ.className = "saeh-pl-clearq" + (input.value ? " on" : "");
+      paint();
+      updateCounts();
+    }
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        runSearch();
+      }
+    });
+    // The toggle only tracks whether the X should show; the search itself waits.
+    input.addEventListener("input", function () {
+      clearQ.className = "saeh-pl-clearq" + (input.value ? " on" : "");
+    });
+    clearQ.addEventListener("click", function () {
+      input.value = "";
+      runSearch();
+      input.focus();
+    });
+    search.appendChild(input);
+    search.appendChild(clearQ);
+
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "saeh-pl-toggle";
@@ -2138,47 +2270,40 @@
     var clip = el("div", "saeh-pl-clip");
     var inner = el("div", "saeh-pl-inner");
 
-    parents.forEach(function (parent) {
-      var kids = childrenOf(parent.id);
-      if (!kids.length) return;
+    if (options.length) {
       var group = el("div", "saeh-pl-group");
-      group.appendChild(el("div", "saeh-pl-glabel", parent.title));
-      kids.forEach(function (c) {
+      group.appendChild(el("div", "saeh-pl-glabel", filterParent.title));
+      options.forEach(function (c) {
         var label = el("label", "saeh-pl-opt");
-        var input = document.createElement("input");
-        input.type = "checkbox";
-        input.value = c.id;
-        input.checked = !!chosen[c.id];
-        input.addEventListener("change", function () {
-          if (input.checked) chosen[c.id] = true;
+        var box = document.createElement("input");
+        box.type = "checkbox";
+        box.value = c.id;
+        box.addEventListener("change", function () {
+          if (box.checked) chosen[c.id] = true;
           else delete chosen[c.id];
           shownCount = PAGE;
           paint();
           updateCounts();
         });
-        label.appendChild(input);
+        label.appendChild(box);
         label.appendChild(el("span", "saeh-pl-box"));
-        label.appendChild(el("span", null, c.title));
+        label.appendChild(el("span", "saeh-pl-t", c.title));
         var n = el("span", "saeh-pl-n", "");
         n.setAttribute("data-for", c.id);
         label.appendChild(n);
         group.appendChild(label);
       });
       inner.appendChild(group);
-    });
+    }
 
-    /**
-     * Counts beside each option: how many products WOULD show if this one were
-     * added. Recomputed on every change, because a count that ignores the other
-     * axes promises results a click cannot deliver.
-     */
+    /** How many would show if this option were added — never a static total. */
     function updateCounts() {
       var nodes = inner.querySelectorAll(".saeh-pl-n");
       for (var i = 0; i < nodes.length; i++) {
         var id = nodes[i].getAttribute("data-for");
         var was = !!chosen[id];
         chosen[id] = true;
-        var n = products.filter(matches).length;
+        var n = base.filter(matches).length;
         if (!was) delete chosen[id];
         nodes[i].textContent = String(n);
       }
@@ -2200,21 +2325,6 @@
 
     clip.appendChild(inner);
     panel.appendChild(clip);
-    var search = el("div", "saeh-pl-search");
-    var input = document.createElement("input");
-    input.type = "search";
-    input.placeholder = "Search products or tasks…";
-    input.setAttribute("aria-label", "Search products");
-    input.addEventListener("input", function () {
-      query = input.value.trim().toLowerCase();
-      // Back to the first page: a search that kept the old offset would show
-      // "load more" over a handful of results.
-      shownCount = PAGE;
-      paint();
-      updateCounts();
-    });
-    search.appendChild(input);
-
     filter.appendChild(search);
     filter.appendChild(btn);
     filter.appendChild(panel);
@@ -2530,7 +2640,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-29-categories+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-29-categories-2+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

@@ -89,7 +89,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   // question and cost three round trips to tell apart once already.
   (window.__saehData || (window.__saehData = {}))[section] = data;
 
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=19';
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=21';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');
@@ -123,7 +123,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
     // Read into primitives NOW, at evaluation time — see the warning below.
     var singlePage = cfg.singlePage, productTag = cfg.productTag, heading = cfg.heading;
 
-    var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=19';
+    var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=21';
     var L = window.__saehLoader || (window.__saehLoader = {});
     if (!L.p) L.p = new Promise(function (res, rej) {
       var s = document.createElement('script');
@@ -195,6 +195,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   ⚠️ Read synchronously into the IIFE's parameters like `section` is, and for the
   same reason.
 - The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`. **Bump it whenever the widget changes** or Duda serves the cached copy.
+  ⚠️ **Bump it in EVERY shim, not just the one you changed.** All shims share one promise on `window.__saehLoader`, so the script is fetched once using whichever `SRC` was evaluated first — a single stale `?v=` can therefore serve the cached old copy to all five widgets on the page. Currently `?v=21`.
 - The shared promise on `window.__saehLoader` means all four widgets on a page fetch the script **once** between them.
 - **No `dudaId` prop.** The widget resolves the product itself (`dudaPageProduct()` → `identifier`, falling back to the `/product/<slug>` URL), so the shim needs no product lookup and therefore no `await`.
 - `https://my.duda.co` must be in `WIDGET_ALLOWED_ORIGINS` or the editor's fetch 403s. Negligible exposure — that endpoint serves content already public on the site.
@@ -248,9 +249,9 @@ a product grid, pre-filtered to the category the page is for.
   el.setAttribute('data-saeh-section', section);
   (window.__saehData || (window.__saehData = {}))[section] = data;
 
-  var category = cfg.category, labelGroup = cfg.labelGroup;
+  var category = cfg.category, filterGroup = cfg.filterGroup;
 
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=20';
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=21';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');
@@ -260,15 +261,15 @@ a product grid, pre-filtered to the category the page is for.
   L.p.then(function () {
     window.SAEquipHubWidget.init({
       container: el,
-      props: { section: section, inEditor: inEditor, category: category, labelGroup: labelGroup }
+      props: { section: section, inEditor: inEditor, category: category, filterGroup: filterGroup }
     });
   }).catch(function () {});
 })(element, 'product-list', data.inEditor, data.config || data);
 ```
 
 Content panel: both fields are optional. `category` overrides which category the page filters
-to (normally resolved from the URL); `labelGroup` names the top-level parent whose children
-become the card chips, defaulting to "Site Challenges".
+to (normally resolved from the URL); `filterGroup` names the top-level parent whose children
+are BOTH the sidebar's checkboxes and the card chips, defaulting to "Site Challenges".
 
 ⚠️ Duda's native **Sort & Filter** element and product grid must be removed from the
 category template, or the page shows two listings.
@@ -277,16 +278,23 @@ category template, or the page shows two listings.
 
 - **One fetch of `/public/catalogue`**, filtered client-side. 96 products is ~29KB, so a
   round trip per checkbox would cost more than it saves.
-- **Filter semantics: OR within a group, AND across groups.** Two industries widen; adding a
-  site challenge narrows. "Must match all" empties the grid on nearly every real combination.
-- **The sidebar renders whatever top-level parents exist**, not three hardcoded names — the
-  tree is expected to be reworked and a rename should not need a widget change.
+- ⚠️ **The page's category is a fixed BASE FILTER, not a checkbox.** On
+  `/category/lighting-and-power` the grid only ever shows that category's products, and no
+  control can widen past it — the visitor widens by navigating, which is what the megamenu is
+  for. A **parent** page (`/category/industries`) scopes to itself plus its children, since a
+  product sits on the leaves. No category resolves (an unknown slug, a non-category page) ⇒
+  the whole catalogue.
+- ⚠️ **One axis in the sidebar: Site Challenges.** Industries and product types are *how you
+  arrived*, not how you refine, so offering them back as checkboxes only lets a visitor
+  contradict the page they are on. `filterGroup` names the parent, so a rename costs a
+  content-panel edit rather than a deploy.
+- ⚠️ **Only options that appear in the base set are rendered.** An option matching nothing in
+  this category is a dead click; the check is against the BASE set, not the current results,
+  so options do not vanish from under the cursor as boxes are ticked.
+- **Filter semantics: OR.** Ticking a second challenge widens. With one axis there is nothing
+  to AND across, and "must match all" empties the grid on nearly every real combination.
 - **Counts beside each option** are "how many would show if this were added", recomputed on
-  every change. A count that ignored the other axes would promise results a click cannot
-  deliver.
-- **The page's own category is pre-ticked and VISIBLE**, so a visitor can see what they are
-  filtered by and widen from it. A **parent** page (`/category/industries`) starts unfiltered
-  — everything beneath it is relevant.
+  every change — never a static total, which would promise results a click cannot deliver.
 - ⚠️ **Category resolution is by SLUG from the mirror, never derived.** Duda renders
   "Oil & Gas" as `oil---gas`, so a slugified title would miss exactly the ampersand
   categories, silently. Sources in order: `dmAPI` page data → `/category/<slug>` URL →
@@ -300,15 +308,31 @@ category template, or the page shows two listings.
   labels render — which means cards say "EX logo", "UKCA" and "Made in Britan" rather than
   ATEX/UKEX. The first two are deliberate (see the logo mapping note); filling `alt` on the
   Logos page changes the display without a code change.
-- **Instant search** over the product name AND its category titles, so "welding" finds the
-  products under Welding Fume Control — the mockup's "Product or task". ⚠️ It sits OUTSIDE
-  the collapsible panel: on a phone the filter list is behind a toggle, and the search is
-  the control people reach for first, so hiding it behind a click is the wrong trade.
+- **Search runs on ENTER**, over the product name AND its category titles, so "welding" finds
+  the products under Welding Fume Control — the mockup's "Product or task". ⚠️ Deliberately
+  not instant: re-rendering the grid mid-word makes the list jump under your thumb on a phone
+  with the keyboard open, and "weld" strands you on an empty page on the way to "welding
+  torch". ⚠️ It sits OUTSIDE the collapsible panel: on a phone the filter list is behind a
+  toggle, and the search is the control people reach for first, so hiding it behind a click
+  is the wrong trade. The native `::-webkit-search-cancel-button` is suppressed for an inline
+  stroked-SVG X that inherits `currentColor` and matches the rest of the site.
 - **18 per page**, then a bordered "Load more products +N" that fills black on hover. Any
   change to the search or the filters resets to the first page — otherwise a narrowed result
   set keeps a button with nothing left to load.
 - Mobile-first: **stacked with a collapsible filter panel**, becoming a sticky sidebar only
-  at 881px. Grid is 1 / 2 / 3 up at the house 561 / 881 breakpoints.
+  at 881px. Grid is 1 / 2 / 3 up at the house 561 / 881 breakpoints. The sidebar is
+  `position:sticky` with `max-height:calc(100vh - 40px)` and its own scroll — ⚠️ sticky only
+  works there because `.saeh-pl` sets `align-items:flex-start`; a stretched flex item fills
+  the row and has no room to move. A 5px rule in `var(--color_7)` (Duda's theme colour, brand
+  yellow only as the editor-preview fallback) tops the filter bar.
+- **Cards fade up as they arrive** — first paint, every filter change, every loaded page —
+  with an `nth-child` stagger capped at ~0.1s so a 40-card page is not a slow cascade.
+  Silenced entirely under `prefers-reduced-motion`.
+- ⚠️ **The "View Product" chevron is drawn INLINE, not fetched.** It is 16px sentence-case to
+  match the site's buttons, and a double chevron slides in on card hover while the label
+  slides left to stay centred. A network-loaded icon would be blank for exactly as long as
+  the hover that reveals it — the one moment it has to be there. `CHEVRON_ICON_SRC` is fine
+  for the always-visible carousel arrows; it is the wrong tool here.
 
 ## Category mode — the compatible carousel on static pages
 
