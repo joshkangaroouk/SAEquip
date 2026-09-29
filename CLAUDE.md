@@ -504,9 +504,31 @@ See `backend/.env.example` and `frontend/.env.example` for the full annotated li
 - Description is a **raw-HTML two-pane editor, not a WYSIWYG** — a WYSIWYG normalises markup on load, so merely opening a product would silently rewrite Duda's legacy WordPress HTML. The preview is DOMPurify-sanitised; the textarea is what saves.
 - Product images upload to Supabase for a public URL, then Duda ingests them **on save** (hence the "Pending upload" badge). There is deliberately no local `ProductImage` mirror: once Duda re-hosts an image the product no longer references Supabase, so deleting the Media Centre original can't break a live gallery.
 
-## Prisma migrations — baselined
+## Prisma migrations — baselined (twice)
 
-The database had **no `_prisma_migrations` table** until 2026-07-28 (schema applied without migration tracking), so `migrate deploy` failed with `P3005`. The five pre-existing migrations were baselined with `prisma migrate resolve --applied`. Migration state is now consistent — don't re-baseline.
+The database had **no `_prisma_migrations` table** until 2026-07-28 (schema applied without migration tracking), so `migrate deploy` failed with `P3005`. The five pre-existing migrations were baselined with `prisma migrate resolve --applied`.
+
+⚠️ **It was missing AGAIN on 2026-09-29** — `P3005` returned, and a query confirmed no `_prisma_migrations` in any schema, only Supabase's own `auth`/`realtime`/`storage` ones. All 14 migrations' effects were verified present in the DB (tables and columns checked one by one) before re-baselining them. So the previous "state is now consistent — don't re-baseline" was wrong, and something between then and now dropped the history without dropping the schema — most likely a `prisma db push` or a reset. **Check `_prisma_migrations` exists before concluding migration state is sound**; the schema being correct says nothing about it.
+
+### ⚠️⚠️ NEVER pass a real database URL to `--shadow-database-url`
+
+On 2026-09-29 this command **wiped the production database**:
+
+```
+prisma migrate diff --from-migrations prisma/migrations \
+  --to-schema-datamodel prisma/schema.prisma \
+  --shadow-database-url "<DIRECT_URL from .env>"   # ← production
+```
+
+A shadow database is scratch space that Prisma **drops and recreates** as part of its normal operation. Pointing it at production emptied all 19 application tables. The command then failed on an unrelated error (`P3015`, a missing `migration.sql`), so the output gave no hint that anything had been destroyed — the damage was found minutes later when a row count came back zero.
+
+Everything except the quote requests was rebuilt from Duda, the gitignored `migration/` files and the surviving Storage objects (see `logos:rebuild` below). **7 real customer quote requests were lost permanently**: there are no backups on this Supabase tier, email was never configured so no notification copies exist, and the quote route logs no submission contents.
+
+**The safe way to generate a migration here** is what the rest of this section already says: `migrate diff --from-schema-datasource` (read-only against the live DB) or `--from-migrations` with **no** shadow URL at all, then apply with `migrate deploy`. If a shadow database is genuinely needed, it must be a throwaway database that exists for nothing else.
+
+### `npm run logos:rebuild --workspace=backend`
+
+Rebuilds the `Logo` catalogue and its `MediaAsset` rows from the files in the `product-media` bucket. Logos are uploaded by hand through the dashboard, so unlike product images they have no importer — and `--logos` cannot run without them, because it resolves each CSV token to a Logo **by the media asset's filename**. `LOGOS` in that script is copied from `SA_LOGO_FILES`/`CERT_LOGO_FILES` in `dudaImportProducts.ts`; if the two drift the import fails loudly rather than badging products with the wrong certification. Dry run by default, idempotent, and it picks the largest file when a name has several uploads (`resolveLogoCatalogue()` aborts on ambiguity, so only one may become a Logo).
 
 `Lead` deliberately has a **nullable `downloadId` with `onDelete: SetNull`** plus `productName`/`productSku`/`downloadTitle` snapshot columns written at capture time, so deleting a product **preserves** captured leads (a null `downloadId` means "product since deleted"). Don't restore the cascade. `QuoteRequest`/`QuoteRequestItem` were never at risk — they hold denormalised snapshots with no FK to `HubProduct`.
 

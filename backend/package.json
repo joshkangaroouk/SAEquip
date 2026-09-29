@@ -26,7 +26,8 @@
     "users:mfa": "tsx src/scripts/manageMfa.ts",
     "wp:scrape-compatible": "tsx src/scripts/wpScrapeCompatible.ts",
     "duda:fix-casing": "tsx src/scripts/dudaFixProductCasing.ts",
-    "duda:seo-fill": "tsx src/scripts/dudaSeoFill.ts"
+    "duda:seo-fill": "tsx src/scripts/dudaSeoFill.ts",
+    "logos:rebuild": "tsx src/scripts/rebuildLogoCatalogue.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
