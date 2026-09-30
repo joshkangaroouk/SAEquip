@@ -2126,6 +2126,37 @@
     var count = el("div", "saeh-pl-count");
     var grid = el("div", "saeh-pl-grid");
     var more = el("div", "saeh-pl-morewrap");
+
+    /*
+     * ⚠️ Created ONCE and reused, never rebuilt per paint.
+     *
+     * A re-created button loses focus, and refocusing the new one scrolled the
+     * viewport down to it — a click focuses a button, so this fired on every
+     * mouse click, not just keyboard use, and `.focus()` scrolls into view
+     * unless told not to. Keeping the same node means there is no focus to
+     * restore and nothing that can scroll. Only its count changes.
+     */
+    var moreBtn = document.createElement("button");
+    moreBtn.type = "button";
+    moreBtn.className = "saeh-pl-more";
+    // The label is a TEXT NODE and only the count a span, because
+    // `.saeh-pl-more span` is what greys the count.
+    moreBtn.appendChild(document.createTextNode("Load more products"));
+    var moreN = el("span", null, "");
+    moreBtn.appendChild(moreN);
+    moreBtn.addEventListener("click", function () {
+      shownCount += PAGE;
+      paint(true);
+    });
+
+    function showMore(remaining) {
+      if (remaining > 0) {
+        moreN.textContent = "+" + remaining;
+        if (moreBtn.parentNode !== more) more.appendChild(moreBtn);
+      } else if (moreBtn.parentNode) {
+        moreBtn.parentNode.removeChild(moreBtn);
+      }
+    }
     head.appendChild(count);
     main.appendChild(head);
     main.appendChild(grid);
@@ -2167,6 +2198,8 @@
      * scroll position back. Appending never shrinks the page, so there is
      * nothing to clamp. It also means the already-visible cards are not
      * re-created, so they do not replay their entry animation.
+     *
+     * Nothing here may move the viewport: loading more is not navigation.
      */
     function paint(append) {
       var shown = base.filter(matches);
@@ -2180,12 +2213,9 @@
         grid.textContent = "";
         rendered = 0;
       }
-      // Keyboard users press Enter ON the button; re-creating it would drop
-      // focus to <body> and lose their place in the page.
-      var refocus = more.firstChild && document.activeElement === more.firstChild;
-      more.textContent = "";
 
       if (!shown.length) {
+        showMore(0);
         grid.appendChild(el("p", "saeh-pl-empty", "No products match those filters. Try removing one."));
         return;
       }
@@ -2207,22 +2237,7 @@
       });
       rendered = Math.min(shownCount, shown.length);
 
-      var remaining = shown.length - rendered;
-      if (remaining > 0) {
-        var btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "saeh-pl-more";
-        // The label is a TEXT NODE and only the count a span, because
-        // `.saeh-pl-more span` is what greys the count.
-        btn.appendChild(document.createTextNode("Load more products"));
-        btn.appendChild(el("span", null, "+" + remaining));
-        btn.addEventListener("click", function () {
-          shownCount += PAGE;
-          paint(true);
-        });
-        more.appendChild(btn);
-        if (refocus) btn.focus();
-      }
+      showMore(shown.length - rendered);
     }
 
     // --- the filter panel ---
@@ -2658,7 +2673,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-30-cards-1+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-30-cards-2+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

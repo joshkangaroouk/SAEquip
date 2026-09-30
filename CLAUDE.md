@@ -323,6 +323,13 @@ category template, or the page shows two listings.
 - **18 per page**, then a bordered "Load more products +N" that fills black on hover. Any
   change to the search or the filters resets to the first page — otherwise a narrowed result
   set keeps a button with nothing left to load.
+- ⚠️ **Loading more must not move the viewport at all.** Two separate things broke this, and
+  both are pinned by `widget:test` asserting node identity plus a zero `focus()` count:
+  rebuilding the grid sent the visitor to the TOP, and re-creating the button then refocusing
+  it sent them to the BOTTOM. `.focus()` scrolls its target into view, and a mouse click
+  focuses a button — so the "keyboard users press Enter on this" courtesy fired on every
+  click. The button is now created once and only its count changes, so there is no focus to
+  restore and nothing that can scroll.
 - ⚠️ **"Load more" APPENDS; it must never rebuild the grid.** Emptying the grid shrinks the
   document to almost nothing, so the browser clamps `scrollY` to the new maximum and the cards
   appended a moment later cannot put it back — the visitor is thrown to the top of the page.

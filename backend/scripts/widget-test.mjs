@@ -576,7 +576,20 @@ async function main() {
      */
     const firstBefore = d.querySelector(".saeh-pl-card");
     const eighteenthBefore = d.querySelectorAll(".saeh-pl-card")[17];
+    const btnBefore = moreBtn();
+    /*
+     * ⚠️ The button must be the SAME node too. A re-created one loses focus,
+     * and refocusing the replacement scrolled the viewport down to it — a
+     * click focuses a button, so that fired on every mouse click, not just
+     * keyboard use. Loading more is not navigation: nothing may move the view.
+     */
+    let focused = 0;
+    d.defaultView.HTMLElement.prototype.focus = function () {
+      focused++;
+    };
     moreBtn().dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(moreBtn() === btnBefore, "the load-more button is reused, never re-created");
+    check(focused === 0, "…so nothing calls focus(), which would scroll it into view");
     check(cards() === 36, "a click loads another 18", String(cards()));
     check(d.querySelector(".saeh-pl-card") === firstBefore,
       "the cards already on screen are APPENDED to, never re-created");
@@ -586,6 +599,7 @@ async function main() {
     moreBtn().dispatchEvent(new d.defaultView.MouseEvent("click"));
     check(cards() === 40, "the last click shows the rest");
     check(moreBtn() === null, "and the button goes away when nothing is left");
+    check(focused === 0, "…still without a single focus() call");
   }
   {
     const many = {
