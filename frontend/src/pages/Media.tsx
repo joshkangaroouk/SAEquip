@@ -220,7 +220,8 @@ export default function Media() {
       {/* States */}
       {/* The same 2/3/4-up grid and the same 8rem tile as a real asset card,
           so the library does not reflow the page as it arrives. */}
-      {lib.loading && (
+      {/* ⚠️ First load only — see the note on the grid below. */}
+      {lib.isInitialLoad && (
         <div
           className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
           aria-busy="true"
@@ -249,10 +250,21 @@ export default function Media() {
         </p>
       )}
 
-      {/* Grid */}
-      {!lib.loading && !lib.error && lib.items.length > 0 && (
+      {/*
+        * Grid. ⚠️ Rendered while loading too, NOT `!lib.loading && …`. That
+        * condition unmounted the whole grid AND the pager on every page click,
+        * so the page collapsed and sprang back and the buttons moved out from
+        * under the cursor. The current page stays put and dims until the next
+        * one lands.
+        */}
+      {!lib.error && lib.items.length > 0 && (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div
+            className={`mt-6 grid grid-cols-2 gap-4 transition-opacity sm:grid-cols-3 lg:grid-cols-4 ${
+              lib.loading ? "pointer-events-none opacity-50" : ""
+            }`}
+            aria-busy={lib.loading}
+          >
             {lib.items.map((a) => (
               <div key={a.id} className="flex flex-col rounded-xl border border-border bg-surface p-3">
                 <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg bg-surface-2">

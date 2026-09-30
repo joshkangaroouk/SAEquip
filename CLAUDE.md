@@ -1337,7 +1337,15 @@ worse than "Loading…" text, because it shifts the page as well as delaying it.
 table's placeholder thumbnail is 100px because the real one is.
 
 Applied on the list pages, which have a repeating structure to mimic: **Products**,
-**Categories**, **Quotes**, **Media**, **Logos**. `Loader` (the spinner) deliberately stays
+**Categories**, **Quotes**, **Media**, **Logos**.
+
+⚠️ **A skeleton is for the FIRST load, never for paging.** `useMediaLibrary` exposes
+`isInitialLoad` (`loading && data === null`) alongside `loading` for exactly this. Gating the
+grid on `loading` unmounted it on every page click — the Media Centre dialog collapsed to the
+height of a one-line "Loading…" and sprang back, taking the pager with it so the buttons
+moved out from under the cursor. Swapping the tiles for skeletons is the same flash in a
+different costume, because the grid still empties and refills. The current page stays
+mounted and dims (`opacity-50 pointer-events-none`, `aria-busy`) until the next one lands. `Loader` (the spinner) deliberately stays
 on **ProductDetail**, **ProductOptions** and **WebsiteEditor** — a single object with no
 repeating rows has no shape to stand in for, so a skeleton there would be inventing one.
 

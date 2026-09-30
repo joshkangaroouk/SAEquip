@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { uploadFile } from "../lib/upload";
-import { FileIcon, Input, Pagination, Select } from "./ui";
+import { FileIcon, Input, Pagination, Select, Skeleton } from "./ui";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
@@ -120,7 +120,22 @@ export function MediaPicker({
             </div>
           </div>
 
-          {lib.loading && <p className="text-sm text-muted">Loading…</p>}
+          {/*
+            * ⚠️ Skeletons only on the FIRST load. Paging keeps the current
+            * tiles on screen (see below) — swapping them for placeholders is
+            * the same flash in a different costume, since the grid still
+            * empties and refills.
+            */}
+          {lib.isInitialLoad && (
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4" aria-busy="true" aria-label="Loading media">
+              {Array.from({ length: 12 }, (_, i) => (
+                <div key={i} className="flex flex-col items-center rounded-lg border border-border p-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="mt-2 h-3 w-4/5" />
+                </div>
+              ))}
+            </div>
+          )}
           {lib.error && <p className="text-sm text-danger">{lib.error}</p>}
           {lib.isEmpty && (
             <p className="text-sm text-subtle">
@@ -129,9 +144,21 @@ export function MediaPicker({
                 : `No ${kind}s in the library yet — upload one above.`}
             </p>
           )}
-          {!lib.loading && !lib.error && lib.items.length > 0 && (
+          {/*
+            * ⚠️ Rendered while loading too, NOT `!lib.loading && …`. That
+            * condition unmounted the grid on every page click, so the dialog
+            * collapsed to the height of a one-line "Loading…" and sprang back.
+            * The previous page stays put and just dims until the next lands,
+            * so nothing moves.
+            */}
+          {!lib.error && lib.items.length > 0 && (
             <>
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              <div
+                className={`grid grid-cols-3 gap-3 transition-opacity sm:grid-cols-4 ${
+                  lib.loading ? "pointer-events-none opacity-50" : ""
+                }`}
+                aria-busy={lib.loading}
+              >
                 {lib.items.map((a) => (
                   <button
                     key={a.id}

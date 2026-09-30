@@ -125,6 +125,15 @@ export function useMediaLibrary({
     sort,
     setSort,
     loading,
+    /**
+     * True only while there is nothing to show yet.
+     *
+     * ⚠️ Page through on `loading` and the grid unmounts on every click — the
+     * dialog collapses to the height of a "Loading…" line and springs back,
+     * which is the flash. Paging should keep the current items on screen until
+     * the next ones arrive; only the FIRST load has nothing to keep.
+     */
+    isInitialLoad: loading && data === null,
     error,
     reload,
     showNewest,
