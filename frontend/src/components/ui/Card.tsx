@@ -17,15 +17,32 @@ export function AccordionBodyProvider({ children }: { children: React.ReactNode 
   return <InAccordion.Provider value={true}>{children}</InAccordion.Provider>;
 }
 
-/** Surface panel with a hairline border. Rounded corners, generous padding. */
-export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
+/**
+ * Surface panel with a hairline border. Rounded corners, generous padding.
+ *
+ * ⚠️ Use `padded={false}` for flush content — NOT `className="p-0"`. `cn()` is
+ * a plain string JOIN, not tailwind-merge, so `p-0` lands in the list beside
+ * this component's own `p-5` and loses on stylesheet order. That silently left
+ * 20px wrapping a table on three pages and read as a box inside a box. The
+ * same trap has cost `w-56` on an Input and `p-0` on AccordionCard; a real
+ * prop is the only form that cannot lose.
+ */
+export function Card({
+  className,
+  children,
+  padded = true,
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement> & { padded?: boolean }) {
   const bare = useContext(InAccordion);
   return (
     <div
       className={cn(
         // Inside an accordion the chrome belongs to the accordion, so this
         // collapses to a plain wrapper and keeps only a caller's own classes.
-        bare ? "" : "rounded-xl border border-border bg-surface p-5 shadow-xs",
+        bare ? "" : "rounded-xl border border-border bg-surface shadow-xs",
+        // overflow-hidden so flush content cannot square off the rounded
+        // corners it now sits against.
+        bare ? "" : padded ? "p-5" : "overflow-hidden",
         className,
       )}
       {...rest}

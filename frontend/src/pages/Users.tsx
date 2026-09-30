@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../lib/api";
-import { Badge, Button, Card, Table, TBody, TD, TH, THead, TR, toast } from "../components/ui";
+import { Badge, Button, Table, TBody, TD, TH, THead, TR, toast } from "../components/ui";
 
 interface StaffUser {
   id: string;
@@ -78,8 +78,10 @@ export default function Users() {
 
       {!users && !error && <p className="mt-8 text-muted">Loading users…</p>}
 
+      {/* No Card round the table: <Table> is already a bordered surface, and
+          wrapping it in one drew a second box with 20px between them. */}
       {users && (
-        <Card className="mt-6">
+        <div className="mt-6">
           <Table>
             <THead>
               <TR>
@@ -126,7 +128,7 @@ export default function Users() {
               ))}
             </TBody>
           </Table>
-        </Card>
+        </div>
       )}
     </>
   );

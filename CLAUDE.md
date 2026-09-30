@@ -1208,7 +1208,19 @@ re-syncing emptied both sides.
 
 ⚠️ **A section's `CardHeader` renders ONLY its actions inside an accordion.** The accordion header already carries the title, dirty badge, summary and description, so the section's own header repeated all of it — the same sentence twice, each with a bottom margin.
 
-⚠️ **`AccordionCard` declares its own card chrome instead of using `<Card className="p-0">`.** `cn()` is a **plain string join, not tailwind-merge**, so `p-0` landed in the class list *alongside* Card's `p-5` and lost on stylesheet order — leaving 22px of padding wrapping every accordion, header included. **This is the third time the same trap has bitten**: `w-56` on an `Input` losing to its `w-full`, and the `hidden` attribute losing to a `flex` utility. **Any `w-*`/`p-*`/`text-*` passed to a UI component can silently lose to that component's own base class.** Either swap `cn` for `tailwind-merge` (one dependency, fixes it everywhere — but existing overrides that are currently no-ops would start applying, so it needs a pass) or keep sizing the wrapper, as here.
+⚠️ **`AccordionCard` declares its own card chrome instead of using `<Card className="p-0">`.** `cn()` is a **plain string join, not tailwind-merge**, so `p-0` landed in the class list *alongside* Card's `p-5` and lost on stylesheet order — leaving 22px of padding wrapping every accordion, header included. **Any `w-*`/`p-*`/`text-*` passed to a UI component can silently lose to that component's own base class.** Either swap `cn` for `tailwind-merge` (one dependency, fixes it everywhere — but existing overrides that are currently no-ops would start applying, so it needs a pass) or express the intent as a real PROP, which is the only form that cannot lose.
+
+⚠️ **This trap has now bitten five times**, so prefer a prop over a class the moment a component fights you:
+
+| Override | Lost to | Fixed by |
+|---|---|---|
+| `w-56` on an `Input` | its `w-full` | sizing the wrapper |
+| `hidden` attribute | a `flex` utility | — |
+| `p-0` on `Card` (AccordionCard) | `p-5` | own chrome |
+| `p-0` on `Card` (Categories, ProductOptions) | `p-5` | **`padded={false}` prop** |
+| `border-0` on `Table` | nothing — landed on the wrong ELEMENT | removed |
+
+That last one is a different failure and worth knowing separately: **`Table` draws its border on its WRAPPER div while `className` goes to the inner `<table>`**, so `border-0` was never going to reach it. And because `Table` is already a bordered, rounded surface, **a `Table` must not be wrapped in a `Card`** — that is a literal box inside a box, which is what it looked like on Users, ProductOptions and Categories. `Card padded={false}` is for flush content that has no chrome of its own, like the category tree's grid.
 
 ⚠️ **`Card`/`CardHeader` render bare inside an accordion, via React context** (`AccordionBodyProvider`). Every section renders its own Card, so nesting would draw a card in a card and print the title twice. The alternative was threading a `bare` prop through eight unrelated section components; the accordion already knows, so it tells them.
 

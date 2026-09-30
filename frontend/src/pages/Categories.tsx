@@ -298,8 +298,8 @@ export default function Categories() {
 
       {/* The real Card and Table, so only the cell contents change on load. */}
       {loading && (
-        <Card className="mt-4 p-0" aria-busy="true" aria-live="polite" aria-label="Loading categories">
-          <Table className="border-0">
+        <div className="mt-4" aria-busy="true" aria-live="polite" aria-label="Loading categories">
+          <Table>
             <THead>
               <TR>
                 <TH className="w-10" />
@@ -331,7 +331,7 @@ export default function Categories() {
               ))}
             </TBody>
           </Table>
-        </Card>
+        </div>
       )}
       {error && (
         <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
@@ -340,7 +340,7 @@ export default function Categories() {
       )}
 
       {!loading && !error && nodes && (
-        <Card className="mt-4 p-0">
+        <Card className="mt-4" padded={false}>
           {nodes.length === 0 ? (
             <div className="p-5">
               <EmptyState

@@ -249,9 +249,9 @@ export default function ProductOptions() {
       )}
 
       {!loading && !error && catalog && (
-        <Card className="mt-4 p-0">
+        <div className="mt-4">
           {catalog.options.length === 0 ? (
-            <div className="p-5">
+            <Card>
               <EmptyState
                 title="No options yet"
                 description="Add one to give products selectable values like voltage or cable length."
@@ -261,9 +261,9 @@ export default function ProductOptions() {
                   </Button>
                 }
               />
-            </div>
+            </Card>
           ) : (
-            <Table className="border-0">
+            <Table>
               <THead>
                 <TR>
                   <TH className="w-64">Options ({catalog.count})</TH>
@@ -326,7 +326,7 @@ export default function ProductOptions() {
               </TBody>
             </Table>
           )}
-        </Card>
+        </div>
       )}
 
       <Modal
