@@ -327,8 +327,18 @@ category template, or the page shows two listings.
 - **"Search within category" is a real `<label for>`**, not an `aria-label`: the accessible
   name should be the one on screen. ⚠️ The input and its X sit in their own `.saeh-pl-sbox`
   positioning context — against `.saeh-pl-search` the X would centre on the label and input
-  together and sit low. Focus draws a `var(--color_7)` ring with `box-shadow`, not a border
-  change, so the field cannot shift by a pixel as it gains focus.
+  together and sit low. **Focus matches the dashboard's own field treatment** (`fieldBase` in
+  `components/ui/Input.tsx`): the border takes the ring colour and a 3px ring is drawn at
+  HALF opacity, both eased over 150ms. A ring rather than a thicker border because
+  `box-shadow` takes no layout space, so the field cannot shift by a pixel as it gains focus.
+  ⚠️ **The literal `rgba(254,210,23,.5)` fallback is its own rule and must stay that way.**
+  `color-mix` is what applies the alpha to the THEME colour rather than a hardcoded yellow,
+  but a browser that does not know `color-mix` drops the whole declaration — merged into one
+  rule that would leave no ring at all.
+- The panel heading and the group heading share one type treatment (`--saeh-body`, 14px/600,
+  sentence case): they are peers in the same panel, and two different treatments for two
+  labels a few pixels apart just reads as an inconsistency. The group heading renders the
+  category title **as stored**, so "Site Challenges" is not re-shouted by CSS.
 - **Search runs on ENTER**, over the product name AND its category titles, so "welding" finds
   the products under Welding Fume Control — the mockup's "Product or task". ⚠️ Deliberately
   not instant: re-rendering the grid mid-word makes the list jump under your thumb on a phone

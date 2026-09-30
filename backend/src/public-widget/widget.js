@@ -633,7 +633,7 @@
       ".saeh-pl-search{padding:14px 16px;border-bottom:1px solid #ececec}",
       ".saeh-pl-slabel{display:block;margin-bottom:8px;font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111}",
       ".saeh-pl-sbox{position:relative}",
-      ".saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px}",
+      ".saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px;transition:border-color .15s cubic-bezier(.4,0,.2,1),box-shadow .15s cubic-bezier(.4,0,.2,1)}",
       // The native search X cannot be styled to match the site, so it is
       // suppressed and replaced with an inline SVG that inherits currentColor.
       ".saeh-pl-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}",
@@ -642,9 +642,22 @@
       ".saeh-pl-clearq:hover{color:#666}",
       ".saeh-pl-clearq svg{display:block}",
       ".saeh-pl-search input::placeholder{color:#9a9a9a}",
-      // A ring rather than a border colour: box-shadow takes no layout space,
-      // so the field cannot shift by a pixel as it gains focus.
-      ".saeh-pl-search input:focus{outline:none;border-color:#111;box-shadow:0 0 0 3px var(--color_7,#fed217)}",
+      /*
+       * Matches the dashboard's field treatment (see `fieldBase` in
+       * components/ui/Input.tsx): the border takes the ring colour and a 3px
+       * ring is drawn at HALF opacity, both eased over 150ms. A ring rather
+       * than a thicker border because box-shadow takes no layout space, so the
+       * field cannot shift by a pixel as it gains focus.
+       */
+      ".saeh-pl-search input:focus{outline:none;border-color:var(--color_7,#fed217);box-shadow:0 0 0 3px rgba(254,210,23,.5)}",
+      /*
+       * ⚠️ Second rule, not a merged one. `color-mix` is what applies the half
+       * opacity to the THEME colour rather than to a hardcoded yellow, but a
+       * browser that does not know it drops the whole declaration — so the
+       * literal rgba above has to stand alone as the fallback, and this
+       * overrides it where supported.
+       */
+      ".saeh-pl-search input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--color_7,#fed217) 50%,transparent)}",
       ".saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}",
       ".saeh-pl-more:hover{background:#111;color:#fff}",
       ".saeh-pl-more span{color:#9a9a9a;font-weight:600}",
@@ -660,8 +673,8 @@
       ".saeh-pl-inner{padding:4px 16px 16px}",
       ".saeh-pl-group{margin-top:16px}",
       ".saeh-pl-group:first-child{margin-top:4px}",
-      ".saeh-pl-glabel{font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}",
-      ".saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:15px;color:#555;line-height:1.35}",
+      ".saeh-pl-glabel{font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}",
+      ".saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:14px;color:#555;line-height:1.35}",
       ".saeh-pl-opt:hover{color:#111}",
       // min-width:0 lets a long challenge name wrap instead of pushing its count
       // off the edge of a 268px sidebar.
@@ -741,7 +754,7 @@
         // sidebar off the row.
         // max-height + overflow is what makes sticky useful rather than nominal: a
         // filter list taller than the viewport would scroll the page past it.
-        ".saeh-pl-side{flex:0 0 268px;max-width:268px;position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}" +
+        ".saeh-pl-side{flex:0 0 300px;max-width:300px;position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}" +
         // Duda's theme colour 7, with the brand yellow as the fallback for
         // when the widget renders outside a themed page (the editor preview).
         ".saeh-pl-filter{border-top:5px solid var(--color_7,#fed217)}" +
@@ -755,7 +768,7 @@
         ".saeh-pl-inner{padding:16px}" +
       "}",
       "@media(prefers-reduced-motion:reduce){" +
-        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img{transition:none}" +
+        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img,.saeh-pl-search input{transition:none}" +
         ".saeh-pl-card{animation:none}" +
       "}",
       /*
@@ -2724,7 +2737,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-30-cards-3+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-30-sidebar-1+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

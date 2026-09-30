@@ -709,7 +709,8 @@ async function main() {
     // editor preview — hard-coding it would drift the day the theme changes.
     check(/\.saeh-pl-filter\{border-top:5px solid var\(--color_7,#fed217\)\}/.test(css),
       "a 5px theme-coloured rule tops the filter bar on desktop");
-    check(/\.saeh-pl-side\{[^}]*position:sticky;top:20px/.test(css), "the sidebar is sticky on desktop");
+    check(/\.saeh-pl-side\{flex:0 0 300px;max-width:300px/.test(css), "the sidebar is 300px on desktop");
+    check(/\.saeh-pl-side\{[^}]*position:sticky;top:20px/.test(css), "…and sticky");
     check(/\.saeh-pl-side\{[^}]*max-height:calc\(100vh - 40px\);overflow-y:auto/.test(css),
       "…and scrolls internally, so a long filter list cannot outrun the viewport");
     check(/@keyframes saeh-pl-in\{from\{opacity:0;transform:translateY\(12px\)\}/.test(css),
@@ -745,6 +746,13 @@ async function main() {
     check(input.placeholder === "Search products...", "placeholder", input.placeholder);
     const label = d.querySelector(".saeh-pl-slabel");
     check(label.textContent === "Search within category", "the input has a visible label");
+    // The group heading and the field label are peers in the panel, so they
+    // share one treatment rather than being two different ones.
+    const lbl = /\.saeh-pl-slabel\{[^}]*font-family:var\(--saeh-body\);font-size:14px;font-weight:600/.test(css);
+    const grp = /\.saeh-pl-glabel\{font-family:var\(--saeh-body\);font-size:14px;font-weight:600/.test(css);
+    check(lbl && grp, "the group heading matches the search label's type");
+    check(!/\.saeh-pl-glabel\{[^}]*text-transform:uppercase/.test(css),
+      "…including its case — the title renders as stored");
     // A real <label for>, not an aria-label: the accessible name should be the
     // one on screen.
     check(label.getAttribute("for") === input.id && !!input.id, "wired to the input by id");
@@ -753,10 +761,23 @@ async function main() {
     // the label and input together, and sit low.
     check(d.querySelector(".saeh-pl-sbox .saeh-pl-clearq") !== null, "the clear button positions against the input alone");
     check(/\.saeh-pl-sbox\{position:relative\}/.test(css), "which is what carries the positioning context");
-    // box-shadow, not a border change: it takes no layout space, so the field
-    // cannot shift by a pixel as it gains focus.
-    check(/\.saeh-pl-search input:focus\{[^}]*box-shadow:0 0 0 3px var\(--color_7,#fed217\)/.test(css),
-      "a theme-yellow ring on focus");
+    /*
+     * Matches the dashboard's field treatment: a 3px ring at HALF opacity plus
+     * a tinted border, eased. box-shadow rather than a thicker border because
+     * it takes no layout space, so the field cannot shift as it gains focus.
+     *
+     * ⚠️ The literal rgba must survive on its own. `color-mix` is what applies
+     * the alpha to the THEME colour, but a browser that does not know it drops
+     * the whole declaration — so the fallback cannot be merged into that rule.
+     */
+    check(/\.saeh-pl-search input:focus\{[^}]*box-shadow:0 0 0 3px rgba\(254,210,23,\.5\)\}/.test(css),
+      "a half-opacity ring on focus, with a literal fallback that stands alone");
+    check(/\.saeh-pl-search input:focus\{box-shadow:0 0 0 3px color-mix\(in srgb,var\(--color_7,#fed217\) 50%,transparent\)\}/.test(css),
+      "…overridden by the theme colour where color-mix is supported");
+    check(/\.saeh-pl-search input\{[^}]*transition:border-color \.15s/.test(css),
+      "…and eased, like the dashboard's fields");
+    check(/@media\(prefers-reduced-motion:reduce\)\{[^@]*\.saeh-pl-search input\{transition:none\}/.test(css),
+      "…but not for anyone who asked for less motion");
   }
 
   {
