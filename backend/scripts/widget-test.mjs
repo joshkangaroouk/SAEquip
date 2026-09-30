@@ -658,7 +658,11 @@ async function main() {
     check(/\.saeh-pl-more\{[^}]*background:transparent[^}]*border:1px solid #111/.test(css),
       "load more is bordered by default");
     check(/\.saeh-pl-more:hover\{background:#111;color:#fff\}/.test(css), "and fills black on hover");
-    check(/\.saeh-pl-empty\{[^}]*text-align:center/.test(css), "the empty message is centred in the grid column");
+    check(/\.saeh-pl-empty\{[^}]*text-align:center/.test(css), "the empty message is centred");
+    // ⚠️ Without this it is an ordinary grid item in column 1 of 3, and the
+    // auto margins centre it within that first third rather than the grid.
+    check(/\.saeh-pl-empty\{grid-column:1\/-1/.test(css),
+      "…across the WHOLE grid, where the products would sit");
     // Duda's theme colour, with the brand yellow only as a fallback for the
     // editor preview — hard-coding it would drift the day the theme changes.
     check(/\.saeh-pl-filter\{border-top:5px solid var\(--color_7,#fed217\)\}/.test(css),

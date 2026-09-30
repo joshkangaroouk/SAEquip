@@ -705,9 +705,14 @@
       ".saeh-pl-btn svg{width:19px;height:19px;flex:0 0 auto;display:block}",
       ".saeh-pl-card:hover .saeh-pl-chevwrap,.saeh-pl-card:focus-visible .saeh-pl-chevwrap{width:19px;opacity:1;margin-left:8px}",
       ".saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}",
-      // Centred in the grid column, with a max-width so the sentence breaks in a
-      // sensible place rather than at whatever width the column happens to be.
-      ".saeh-pl-empty{padding:56px 20px;margin:0 auto;max-width:34ch;text-align:center;font-size:16px;color:#878787}",
+      /*
+       * ⚠️ grid-column:1/-1 is what centres this. The message is a child of the
+       * GRID, so without it the message is an ordinary grid item sitting in
+       * column 1 of 3 — `margin:0 auto` then centres it within that first third,
+       * which looks centred until you notice it is a third of the way across.
+       * Spanning every column is what makes it centre where the products sit.
+       */
+      ".saeh-pl-empty{grid-column:1/-1;padding:56px 20px;margin:0 auto;max-width:50ch;text-align:center;font-size:16px;color:#878787}",
       /*
        * Cards fade up as they arrive — on first paint, on every filter change,
        * and for each newly loaded page. The stagger is capped at a few hundred
@@ -2660,7 +2665,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-30-categories-4+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-30-categories-5+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**
