@@ -110,17 +110,8 @@ export default function Login() {
           aria-hidden="true"
           className="absolute -top-24 left-1/2 h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-[#fed217]/20 blur-[110px]"
         />
-        <div className="relative flex flex-col items-center gap-5 px-10 text-center">
+        <div className="relative px-10">
           <img src={logoUrl} alt="SAEquip" className="h-32 w-auto" />
-          <div className="h-px w-10 bg-accent" />
-          <div>
-            <p className="text-small font-semibold uppercase tracking-widest text-white">
-              Product Manager
-            </p>
-            <p className="mx-auto mt-2 max-w-xs text-small text-white/50">
-              Manage products, media, and quote requests in one place.
-            </p>
-          </div>
         </div>
       </div>
 
