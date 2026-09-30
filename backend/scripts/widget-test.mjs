@@ -489,6 +489,18 @@ async function main() {
       "chips come from the filter group only, not every category",
     );
     check(card.querySelector(".saeh-pl-certs").textContent === "EX logo, IECEx", "certs render as text");
+    /*
+     * ⚠️ One span per certification, each nowrap. A single joined string lets
+     * the browser break anywhere — "Zone 1-2" wrapped as "Zone" / "1-2", which
+     * reads as two separate marks. The separator is its own text node, so the
+     * break opportunity is BETWEEN items and a comma never starts a line.
+     */
+    const certSpans = [...card.querySelectorAll(".saeh-pl-certs span")];
+    check(certSpans.length === 2, "one span per certification, not one joined string", String(certSpans.length));
+    check(certSpans.map((n) => n.textContent).join("|") === "EX logo|IECEx", "each carries only its own mark");
+    check(/\.saeh-pl-certs span\{white-space:nowrap\}/.test(css), "…and each is unbreakable");
+    check(/\.saeh-pl-chip\{[^}]*background:#fff/.test(css),
+      "chips are white — #f1f1f1 was invisible on the body's #f4f4f4");
     // h4: the card title sits under the page's own heading levels, not beside them.
     check(card.querySelector(".saeh-pl-name").tagName === "H4", "the product title is an h4");
     const second = d.querySelectorAll(".saeh-pl-card")[1];

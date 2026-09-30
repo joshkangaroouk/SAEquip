@@ -308,6 +308,13 @@ category template, or the page shows two listings.
   fill a square cuts the product out of frame) sitting flush with no padding and a small
   scale on card hover, chips from the filter group, an **h4** title, certification text, and
   **one** "View Product" button.
+- ⚠️ **Each certification is its own `nowrap` span, not one joined string.** A single text
+  node lets the browser break anywhere, and "Zone 1-2" wrapped as "Zone" / "1-2" — which
+  reads as two separate marks on hazardous-area equipment. `nowrap` also covers the hyphen,
+  which is its own break opportunity; a non-breaking space would not have. The separator is
+  a bare text node so the only break is BETWEEN items and a comma never starts a line.
+- ⚠️ **Chips are WHITE.** They were `#f1f1f1` on the body's `#f4f4f4` — three values apart,
+  so the Site Challenge label was effectively invisible.
 - ⚠️ **Certification text reads `Logo.alt || Logo.label`.** Every `alt` is empty today, so
   labels render — which means cards say "EX logo", "UKCA" and "Made in Britan" rather than
   ATEX/UKEX. The first two are deliberate (see the logo mapping note); filling `alt` on the

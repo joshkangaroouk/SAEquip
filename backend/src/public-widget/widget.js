@@ -692,9 +692,13 @@
       ".saeh-pl-card:hover .saeh-pl-shot img{transform:scale(1.045)}",
       ".saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px;background:#f4f4f4}",
       ".saeh-pl-chips{display:flex;flex-wrap:wrap;gap:6px}",
-      ".saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#f1f1f1;color:#444;padding:4px 8px}",
+      // ⚠️ WHITE, not a light grey. #f1f1f1 on the body's #f4f4f4 is three
+      // values apart — the chip was effectively invisible against it.
+      ".saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#fff;color:#444;padding:4px 8px}",
       ".saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}",
       ".saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}",
+      // ⚠️ Each certification is one unbreakable unit. See the markup.
+      ".saeh-pl-certs span{white-space:nowrap}",
       ".saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;text-transform:none;letter-spacing:normal;padding:13px}",
       /*
        * The chevron grows from zero width rather than just fading, so the
@@ -2004,7 +2008,22 @@
     }
     body.appendChild(el("h4", "saeh-pl-name", p.name || ""));
     if (p.certs && p.certs.length) {
-      body.appendChild(el("div", "saeh-pl-certs", p.certs.join(", ")));
+      /*
+       * ⚠️ One span per certification, each `white-space:nowrap`, rather than
+       * one joined string. A single text node lets the browser break wherever
+       * it likes: "Zone 1-2" wrapped as "Zone" / "1-2", which reads as two
+       * separate marks. Nowrap also covers the hyphen, which is its own break
+       * opportunity — a non-breaking space would not have.
+       *
+       * The separator is its own text node, so the only break opportunity is
+       * the space BETWEEN items and a comma never starts a line.
+       */
+      var certs = el("div", "saeh-pl-certs");
+      p.certs.forEach(function (c, i) {
+        if (i) certs.appendChild(document.createTextNode(", "));
+        certs.appendChild(el("span", null, c));
+      });
+      body.appendChild(certs);
     }
     a.appendChild(body);
     var cta = el("span", "saeh-pl-btn");
@@ -2705,7 +2724,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-30-filterbar-1+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-30-cards-3+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**
