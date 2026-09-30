@@ -79,14 +79,7 @@ const WIDGET_CSS = `
 .saeh-cp-track{flex:1;min-width:0;display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
 .saeh-cp-track{justify-content:safe center}
 .saeh-cp-track::-webkit-scrollbar{display:none}
-.saeh-cp-card{flex:0 0 100%;scroll-snap-align:start;display:flex;flex-direction:column;background:#fff;border:1px solid #ececec;text-decoration:none;color:inherit}
-.saeh-cp-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}
-.saeh-cp-shot img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
-.saeh-cp-body{padding:14px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;flex:1}
-.saeh-cp-name{font-family:var(--saeh-head);font-size:14px;font-weight:600;text-transform:none;letter-spacing:normal;color:#111;line-height:1.3}
-.saeh-cp-btn{margin-top:auto;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;padding:10px 18px;min-height:40px;font-size:14px;font-weight:500;line-height:1.2;display:inline-flex;align-items:center;gap:8px}
-.saeh-cp-btn img{width:16px;height:16px;display:block;flex:0 0 auto}
-.saeh-cp-card:hover .saeh-cp-btn{background:#f0c400}
+.saeh-cp-card{flex:0 0 100%;scroll-snap-align:start}
 .saeh-cp-nav{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #111;background:#fff;color:#111;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s ease,border-color .15s ease,color .15s ease}
 .saeh-cp-nav:hover:not([disabled]){background:#fed217;border-color:#fed217;color:#000}
 .saeh-cp-nav:focus-visible{outline:2px solid #111;outline-offset:2px}

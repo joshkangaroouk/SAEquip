@@ -362,6 +362,16 @@ widget's content panel.
 by both sources, which is what makes the layouts identical by construction rather than by two
 designs being kept in step. Only the `heading` differs, and it is a parameter.
 
+⚠️ **The carousel builds its cards with `productCard()` — the SAME function the listing grid
+uses** (2026-09-30). It previously had parallel markup and CSS for the same object, which is
+how the button ended up uppercase in one and sentence case in the other. `.saeh-cp-card` now
+carries ONLY the carousel's layout (`flex:0 0 100%;scroll-snap-align:start`, plus the
+breakpoint `flex-basis` rules); every visual rule comes from `.saeh-pl-card`. **Anything
+visual added back to `.saeh-cp-*` is a second copy waiting to drift** — `widget:test` asserts
+no `.saeh-cp-name`/`-body`/`-shot`/`-btn` rule exists. The compatible payload has no
+`categoryIds` or `certs`, and `productCard()` already omits both sections when they are
+empty.
+
 - `GET /public/products/by-category?category=<slug>` — the carousel payload. 404s an unknown
   category, which the widget treats as "nothing to show" and collapses; a content problem,
   not an error.

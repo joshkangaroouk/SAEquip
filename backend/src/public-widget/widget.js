@@ -443,10 +443,10 @@
       // Mobile is ONE card, full width — a phone-sized card at 2-up is too
       // small to read the product name or tap the button comfortably, and the
       // arrows moving below the track is what buys the room for it.
-      ".saeh-cp-card{flex:0 0 100%;scroll-snap-align:start;display:flex;flex-direction:column;background:#fff;border:1px solid #ececec;text-decoration:none;color:inherit}",
-      ".saeh-cp-shot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}",
-      ".saeh-cp-shot img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}",
-      ".saeh-cp-body{padding:14px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;flex:1}",
+      // ⚠️ LAYOUT ONLY. The card's appearance is `.saeh-pl-card` and the rules
+      // beside it — one design, shared with the listing grid. Anything visual
+      // added here is a second copy waiting to drift out of step.
+      ".saeh-cp-card{flex:0 0 100%;scroll-snap-align:start}",
       /*
        * The card shows the product's name AS STORED, because that casing is
        * now deliberate: 20 all-caps names were converted to sentence case in
@@ -458,10 +458,6 @@
        * rule that has to win if the host page ever uppercases a descendant,
        * and it records that the value is a decision, not a default.
        */
-      ".saeh-cp-name{font-family:var(--saeh-head);font-size:14px;font-weight:600;text-transform:none;letter-spacing:normal;color:#111;line-height:1.3}",
-      ".saeh-cp-btn{margin-top:auto;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;padding:10px 18px;min-height:40px;font-size:14px;font-weight:500;line-height:1.2;display:inline-flex;align-items:center;gap:8px}",
-      ".saeh-cp-btn img{width:16px;height:16px;display:block;flex:0 0 auto}",
-      ".saeh-cp-card:hover .saeh-cp-btn{background:#f0c400}",
       // The arrows sit OUTSIDE the track so they never cover a card.
       ".saeh-cp-nav{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #111;background:#fff;color:#111;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s ease,border-color .15s ease,color .15s ease}",
       ".saeh-cp-nav:hover:not([disabled]){background:#fed217;border-color:#fed217;color:#000}",
@@ -1509,43 +1505,19 @@
     var track = el("div", "saeh-cp-track");
 
     items.forEach(function (it) {
-      // The whole card is the link, so the button is decoration rather than a
-      // second tab stop for the same destination.
-      var card = document.createElement("a");
-      card.className = "saeh-cp-card";
-      card.href = it.url || "#";
-
-      var shot = el("div", "saeh-cp-shot");
-      if (it.imageUrl) {
-        var img = document.createElement("img");
-        img.src = it.imageUrl;
-        img.alt = it.name || "";
-        // setAttribute, not `img.loading =` — the property is not reflected
-        // to the attribute in every DOM implementation, so the property form
-        // silently produces no `loading` attribute at all in some engines.
-        img.setAttribute("loading", "lazy");
-        shot.appendChild(img);
-      }
-      card.appendChild(shot);
-
-      var body = el("div", "saeh-cp-body");
-      body.appendChild(el("div", "saeh-cp-name", it.name || ""));
-      var btn = el("span", "saeh-cp-btn");
-      btn.appendChild(el("span", null, "View Product"));
-      var ico = document.createElement("img");
-      ico.className = "saeh-cp-btn-icon";
-      ico.src = CHEVRON_ICON_SRC;
-      ico.alt = "";
-      ico.setAttribute("aria-hidden", "true");
-      ico.width = 16;
-      ico.height = 16;
-      ico.addEventListener("error", function () {
-        ico.style.display = "none";
-      });
-      btn.appendChild(ico);
-      body.appendChild(btn);
-      card.appendChild(body);
-
+      /*
+       * ⚠️ The SAME productCard() the listing grid uses, so the two designs
+       * cannot drift — this carousel and the grid previously had parallel
+       * markup and CSS for the same object, which is how the button ended up
+       * uppercase in one and sentence case in the other.
+       *
+       * `.saeh-cp-card` now carries ONLY the carousel's layout (flex basis and
+       * scroll snap); every visual rule comes from `.saeh-pl-card`. The
+       * compatible payload has no categoryIds or certs, and productCard()
+       * already omits both sections when they are empty.
+       */
+      var card = productCard(it, []);
+      card.className += " saeh-cp-card";
       track.appendChild(card);
     });
 
@@ -2686,7 +2658,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-30-categories-6+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-30-cards-1+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

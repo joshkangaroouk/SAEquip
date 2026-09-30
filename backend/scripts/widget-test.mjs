@@ -728,10 +728,17 @@ async function main() {
   {
     const { d } = await boot({ props: { section: "compatible", slug: "x" } });
     const css = d.getElementById("saeh-styles").textContent;
-    check(/\.saeh-cp-name\{[^}]*text-transform:none/.test(css),
+    check(!/\.saeh-pl-name\{[^}]*text-transform:uppercase/.test(css),
       "compatible cards show the product name as stored, not uppercased");
-    check(!/\.saeh-cp-name\{[^}]*text-transform:uppercase/.test(css),
-      "…and nothing re-shouts it");
+    // ⚠️ The carousel card must carry NO visual rules of its own. It shares
+    // .saeh-pl-card with the listing grid, and a second copy of the design is
+    // exactly how the button ended up uppercase in one and sentence case in
+    // the other.
+    check(/\.saeh-cp-card\{flex:0 0 100%;scroll-snap-align:start\}/.test(css),
+      "…because .saeh-cp-card is layout only");
+    for (const dead of ["saeh-cp-name", "saeh-cp-body", "saeh-cp-shot", "saeh-cp-btn"]) {
+      check(css.indexOf("." + dead) === -1, `no leftover .${dead} rule to drift from the grid`);
+    }
   }
 
   console.log("\n=== motion: sliding panel, sliding tab indicator ===");
@@ -991,24 +998,35 @@ async function main() {
     check(cards.every((c) => c.tagName === "A"), "the whole card is the link");
     check(cards[0].getAttribute("href") === "/product/trolley-for-ex-heater", "links to /product/<slug>",
       cards[0].getAttribute("href"));
-    const names = cards.map((c) => c.querySelector(".saeh-cp-name").textContent);
+    // ⚠️ The SAME card as the listing grid, by construction rather than by two
+    // designs being kept in step.
+    check(cards.every((c) => c.classList.contains("saeh-pl-card")),
+      "carousel cards ARE listing cards, plus the carousel's own sizing class");
+    const names = cards.map((c) => c.querySelector(".saeh-pl-name").textContent);
     check(names.join("|") === "Trolley for EX Heater|Duct Couplers|Manway Adaptor", "names in order", names.join("|"));
-    check(cards.every((c) => !!c.querySelector(".saeh-cp-btn")), "every card has a View Product button");
-    // Pinned because the casing lives in the STRING, not in CSS: .saeh-cp-btn
-    // carries no text-transform, so nothing else would catch a drift back to
-    // shouting. The rest of the widget's display type is uppercase, which is
-    // exactly what makes this easy to "correct" by accident.
+    check(cards.every((c) => c.querySelector(".saeh-pl-name").tagName === "H4"), "titles are h4, as in the grid");
+    check(cards.every((c) => !!c.querySelector(".saeh-pl-btn")), "every card has a View Product button");
+    // Pinned because the casing lives in the STRING: nothing in CSS uppercases
+    // it, so nothing else would catch a drift back to shouting. The rest of
+    // the widget's display type IS uppercase, which is what makes this easy to
+    // "correct" by accident.
     check(
-      cards[0].querySelector(".saeh-cp-btn span").textContent === "View Product",
+      cards[0].querySelector(".saeh-pl-btn").textContent === "View Product",
       "and its label is sentence case",
-      cards[0].querySelector(".saeh-cp-btn span").textContent,
+      cards[0].querySelector(".saeh-pl-btn").textContent,
     );
+    check(cards[0].querySelector(".saeh-pl-btn svg") !== null,
+      "…with the same inline double chevron the grid uses");
+    // The compatible payload carries neither, and the shared renderer must
+    // omit the section rather than leave an empty one.
+    check(cards[0].querySelector(".saeh-pl-chips") === null, "no chips — the payload has no categories");
+    check(cards[0].querySelector(".saeh-pl-certs") === null, "no cert line — the payload has no certs");
     // An item with no mirrored thumbnail must still render a card, not a
     // broken <img> — 96/96 have one today but a new product will not until
     // its first sync.
-    check(cards[2].querySelector("img.saeh-cp-shot img, .saeh-cp-shot img") === null,
+    check(cards[2].querySelector(".saeh-pl-shot img") === null,
       "an item with no imageUrl renders no <img>");
-    check(cards[0].querySelector(".saeh-cp-shot img").getAttribute("loading") === "lazy",
+    check(cards[0].querySelector(".saeh-pl-shot img").getAttribute("loading") === "lazy",
       "thumbnails are lazy — a carousel is mostly off-screen");
     const navs = [...d.querySelectorAll(".saeh-cp-nav")];
     check(navs.length === 2, "prev and next exist");
