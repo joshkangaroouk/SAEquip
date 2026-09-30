@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronRight, ImageOff } from "lucide-react";
-import { MediaPicker } from "../components/MediaPicker";
 import {
   Button,
   Card,
@@ -18,7 +18,6 @@ import {
   Table,
   TBody,
   TD,
-  Textarea,
   TH,
   THead,
   toast,
@@ -41,40 +40,14 @@ interface CategoryNode {
   subcategoryCount: number;
 }
 
-interface CategoryDetail {
-  id: string;
-  title: string;
-  parent_id: string;
-  description?: string;
-  image?: { alt: string; url: string } | null;
-  seo?: { url?: string; title?: string; description?: string };
-}
-
 interface FormState {
   title: string;
   parent_id: string;
-  description: string;
-  /**
-   * ⚠️ Empty string means "leave whatever Duda has", NOT "remove it". A
-   * category image CANNOT be removed once set — probed 2026-09-30: Duda
-   * accepts `image: null` and ignores it, and `{url:""}`, `{}` and
-   * `{url:null}` all 400. So the UI offers Replace, never Remove; a button
-   * that silently did nothing would be worse than its absence.
-   */
-  image_url: string;
-  seo_url: string;
-  seo_title: string;
-  seo_description: string;
 }
 
 const blankForm: FormState = {
   title: "",
   parent_id: ROOT,
-  description: "",
-  image_url: "",
-  seo_url: "",
-  seo_title: "",
-  seo_description: "",
 };
 
 /**
@@ -93,12 +66,9 @@ export default function Categories() {
   const didInitialCollapse = useRef(false);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
   const [busy, setBusy] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  /** What Duda already had, so an unchanged image is never re-sent. */
-  const originalImage = useRef("");
+  const navigate = useNavigate();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,76 +109,26 @@ export default function Categories() {
   }
 
   function openCreate(parentId: string = ROOT) {
-    originalImage.current = "";
-    setEditingId(null);
     setForm({ ...blankForm, parent_id: parentId });
     setFormOpen(true);
   }
 
-  async function openEdit(node: CategoryNode) {
-    originalImage.current = "";
-    setEditingId(node.id);
-    setForm({ ...blankForm, title: node.title, parent_id: node.parent_id });
-    setFormOpen(true);
-    try {
-      // Only the single-category GET carries description/image/seo.
-      const full = await apiJson<CategoryDetail>(`/api/categories/${node.id}`);
-      // Recorded before the form is set, so the "did the image change?" test
-      // on save compares against Duda rather than against the blank form.
-      originalImage.current = full.image?.url ?? "";
-      setForm({
-        title: full.title,
-        parent_id: full.parent_id,
-        description: full.description ?? "",
-        image_url: full.image?.url ?? "",
-        seo_url: full.seo?.url ?? "",
-        seo_title: full.seo?.title ?? "",
-        seo_description: full.seo?.description ?? "",
-      });
-    } catch {
-      toast.error("Couldn't load the full category — you can still rename it.");
-    }
-  }
 
+  /** Create only — everything else is edited on /categories/:id. */
   async function submit() {
     if (!form.title.trim() || busy) return;
     setBusy(true);
     try {
-      const body: Record<string, unknown> = {
-        title: form.title.trim(),
-        parent_id: form.parent_id,
-        description: form.description,
-      };
-      /*
-       * Only sent when it CHANGED. Re-sending the current value makes Duda
-       * re-fetch and re-host the same file on every save, orphaning the
-       * previous copy on its CDN — the same reason the product importer does
-       * not re-send unchanged gallery URLs.
-       */
-      if (form.image_url && form.image_url !== originalImage.current) {
-        body.image = { url: form.image_url };
-      }
-      // Only send seo when something is set; the backend merges it over the
-      // current value so the page URL is never blanked.
-      if (form.seo_url || form.seo_title || form.seo_description) {
-        body.seo = {
-          ...(form.seo_url ? { url: form.seo_url.trim() } : {}),
-          title: form.seo_title,
-          description: form.seo_description,
-        };
-      }
-
-      if (editingId) {
-        await apiJson(`/api/categories/${editingId}`, { method: "PATCH", body: JSON.stringify(body) });
-        toast.success("Category updated");
-      } else {
-        await apiJson("/api/categories", { method: "POST", body: JSON.stringify(body) });
-        toast.success(`Created “${form.title.trim()}”`);
-      }
+      const created = await apiJson<{ id: string }>("/api/categories", {
+        method: "POST",
+        body: JSON.stringify({ title: form.title.trim(), parent_id: form.parent_id }),
+      });
       setFormOpen(false);
-      await load();
+      toast.success(`Created “${form.title.trim()}”`);
+      // Straight to the page, which is where the rest of it is filled in.
+      navigate(`/categories/${created.id}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save the category");
+      toast.error(e instanceof Error ? e.message : "Could not create the category");
     } finally {
       setBusy(false);
     }
@@ -266,23 +186,6 @@ export default function Categories() {
     }
   }
 
-  /** Valid re-parent targets: anything but self and its own descendants. */
-  const parentChoices = useMemo(() => {
-    if (!nodes) return [];
-    if (!editingId) return nodes;
-    const banned = new Set<string>([editingId]);
-    let grew = true;
-    while (grew) {
-      grew = false;
-      for (const n of nodes) {
-        if (!banned.has(n.id) && banned.has(n.parent_id)) {
-          banned.add(n.id);
-          grew = true;
-        }
-      }
-    }
-    return nodes.filter((n) => !banned.has(n.id));
-  }, [nodes, editingId]);
 
   return (
     <>
@@ -358,7 +261,7 @@ export default function Categories() {
               nodes={nodes}
               collapsed={collapsed}
               onToggle={toggle}
-              onEdit={(n) => void openEdit(n)}
+              onEdit={(n) => navigate(`/categories/${n.id}`)}
               onAddChild={(id) => openCreate(id)}
               onRemove={(n) => void remove(n)}
               onReorder={reorder}
@@ -367,22 +270,17 @@ export default function Categories() {
         </Card>
       )}
 
-      {pickerOpen && (
-        <MediaPicker
-          kind="image"
-          onPick={(asset) => {
-            setForm((f) => ({ ...f, image_url: asset.url }));
-            setPickerOpen(false);
-          }}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
-
+      {/*
+        * ⚠️ CREATE ONLY. Editing moved to /categories/:id because choosing an
+        * image opens MediaPicker, and a picker inside a modal is two
+        * independent overlays: Modal closes on Escape, MediaPicker has no
+        * Escape handler, so Escape dismissed the form UNDERNEATH the picker.
+        * This one asks for a name and a parent and opens nothing.
+        */}
       <Modal
         open={formOpen}
         onClose={() => !busy && setFormOpen(false)}
-        size="lg"
-        title={editingId ? "Edit category" : "Create category"}
+        title="Create category"
         footer={
           <div className="flex items-center justify-end gap-2">
             <Button variant="ghost" onClick={() => setFormOpen(false)} disabled={busy}>
@@ -394,117 +292,40 @@ export default function Categories() {
               loading={busy}
               disabled={!form.title.trim()}
             >
-              {editingId ? "Save changes" : "Create category"}
+              Create category
             </Button>
           </div>
         }
       >
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Title" htmlFor="cat-title">
-              <Input
-                id="cat-title"
-                size="sm"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                autoFocus
-              />
-            </Field>
-            <Field label="Parent category" htmlFor="cat-parent" hint="Top level sits at the root of the store.">
-              <Select
-                id="cat-parent"
-                size="sm"
-                value={form.parent_id}
-                onChange={(e) => setForm((f) => ({ ...f, parent_id: e.target.value }))}
-              >
-                <option value={ROOT}>Top level</option>
-                {parentChoices.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {"— ".repeat(c.depth)}
-                    {c.title}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-
-          <Field
-            label="Image"
-            hint="Duda fetches the file and re-hosts its own copy, so the Media Centre original can be changed or deleted later without breaking the page."
-          >
-            <div className="flex items-center gap-3">
-              <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-subtle">
-                {form.image_url ? (
-                  <img src={form.image_url} alt="" className="h-full w-full object-contain" />
-                ) : (
-                  <ImageOff size={18} />
-                )}
-              </span>
-              <div>
-                <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-                  {form.image_url ? "Replace image" : "Choose image"}
-                </Button>
-                {/*
-                  * ⚠️ No Remove button, deliberately. A category image cannot
-                  * be cleared once set — probed 2026-09-30: Duda accepts
-                  * `image: null` and ignores it, and `{url:""}`, `{}` and
-                  * `{url:null}` all 400. A button that silently did nothing
-                  * would be worse than its absence.
-                  */}
-                {form.image_url && (
-                  <p className="mt-1 text-small text-subtle">
-                    An image can be replaced but not removed.
-                  </p>
-                )}
-              </div>
-            </div>
-          </Field>
-
-          <Field label="Description" htmlFor="cat-desc" hint="HTML, shown on the category page.">
-            <Textarea
-              id="cat-desc"
+        <div className="space-y-4">
+          <Field label="Title" htmlFor="cat-title">
+            <Input
+              id="cat-title"
               size="sm"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              className="h-20 font-mono"
-              spellCheck={false}
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              autoFocus
             />
           </Field>
-
-          <fieldset className="rounded-lg border border-border p-3">
-            <legend className="px-1.5 text-small font-medium text-muted">SEO</legend>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Field
-                label="Page URL"
-                htmlFor="cat-url"
-                hint={editingId ? "Duda won't allow this to be blank." : "Auto-generated from the title."}
-              >
-                <Input
-                  id="cat-url"
-                  size="sm"
-                  value={form.seo_url}
-                  onChange={(e) => setForm((f) => ({ ...f, seo_url: e.target.value }))}
-                  placeholder={editingId ? undefined : "auto"}
-                />
-              </Field>
-              <Field label="Title" htmlFor="cat-seo-title">
-                <Input
-                  id="cat-seo-title"
-                  size="sm"
-                  value={form.seo_title}
-                  onChange={(e) => setForm((f) => ({ ...f, seo_title: e.target.value }))}
-                />
-              </Field>
-              <Field label="Meta description" htmlFor="cat-seo-desc">
-                <Input
-                  id="cat-seo-desc"
-                  size="sm"
-                  value={form.seo_description}
-                  onChange={(e) => setForm((f) => ({ ...f, seo_description: e.target.value }))}
-                />
-              </Field>
-            </div>
-          </fieldset>
+          <Field label="Parent category" htmlFor="cat-parent" hint="Top level sits at the root of the store.">
+            <Select
+              id="cat-parent"
+              size="sm"
+              value={form.parent_id}
+              onChange={(e) => setForm((f) => ({ ...f, parent_id: e.target.value }))}
+            >
+              <option value={ROOT}>Top level</option>
+              {(nodes ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {"— ".repeat(c.depth) + c.title}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <p className="text-small text-subtle">
+            Description, image, SEO and products are edited on the category page after it
+            exists.
+          </p>
         </div>
       </Modal>
     </>

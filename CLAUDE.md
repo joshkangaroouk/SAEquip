@@ -1126,7 +1126,34 @@ without it Duda's own `products_count` and storefront read 0 under Products.
 The delete-then-recreate is scoped to the four categories this script owns, so an Industry or
 Site Challenge ticked by hand is never cleared.
 
-### The Categories page: image, drag-reorder, click-to-edit
+### `/categories/:id` — the category edit page
+
+⚠️ **A PAGE, not a modal, and the image is why.** Choosing one opens `MediaPicker`, and a
+picker inside a `Modal` is two independent overlays: **`Modal` closes on Escape and
+`MediaPicker` has no Escape handler at all**, so Escape dismissed the form *underneath* the
+open picker. Both are `z-50` and only `Modal` portals to `<body>`, so the picker also
+rendered behind it. The layering was one line; the focus trap, the scroll lock
+(`Modal` sets `body.style.overflow` and restores it on unmount) and the Escape ambiguity
+were not. **The create modal survives** because it asks for a name and a parent and opens
+nothing — it then navigates straight to the page.
+
+70/30, matching the product editor. Left: info, products, subcategories. Right: image, SEO.
+
+- **Category products** writes through `PUT /api/categories/:id/products` — Hub-side, like
+  the product-side route, so `duda:sync-categories` still pushes it.
+- ⚠️ **That write is scoped to the ONE category.** It adds and removes links for `:id` and
+  touches nothing else the product is in; rewriting each product's whole set from here would
+  silently clear the Industries and Site Challenges assigned from the product editor.
+  Verified on a throwaway product.
+- ⚠️ **`withAncestors()` (`services/categoryTree.ts`) now runs SERVER-SIDE on both routes.**
+  "A product is never in a child without its parent" was enforced only by the editor's
+  picker; with two ways in and stale tabs replaying old sets, a client-side-only rule holds
+  for none of them. Removing a product from a parent also clears that parent's whole
+  subtree — the other half of the same rule, which the category direction would otherwise
+  break. The reverse is NOT true: a product may sit in a parent with no child, so removing
+  it from a child leaves the parent alone.
+
+### The Categories tree: image, drag-reorder, click-to-edit
 
 - **Category image.** `PATCH /categories/{id}` with `{image:{url}}` makes Duda **fetch the
   file and re-host its own copy** on `irp.cdn-website.com`, exactly like a product image — so

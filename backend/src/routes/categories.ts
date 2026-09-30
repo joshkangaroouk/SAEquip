@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { CATEGORY_ROOT, duda, type DudaCategorySummary } from "../services/duda.js";
 import { prisma } from "../prisma.js";
+import { withAncestors } from "../services/categoryTree.js";
 
 export const categoriesRouter = Router();
 
@@ -268,6 +269,125 @@ categoriesRouter.put("/categories/reorder", async (req, res, next) => {
     const order = new Map(orderRows.map((o) => [o.dudaCategoryId, o.sortOrder]));
     const images = new Map(mirrorRows.map((m) => [m.dudaCategoryId, m.imageUrl]));
     res.json({ count: flat.length, categories: buildTree(flat, order, images) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const productsBody = z.object({ ids: z.array(z.string().trim().min(1)).max(1000) }).strict();
+
+/**
+ * GET /api/categories/:id/products — the Hub links for one category.
+ *
+ * ⚠️ From the HUB, not from Duda's own `products` array. Duda's copy is only
+ * as fresh as the last `duda:sync-categories` run, so reading it would show a
+ * category page that disagrees with the product editor.
+ */
+categoriesRouter.get("/categories/:id/products", async (req, res, next) => {
+  try {
+    const links = await prisma.productCategory.findMany({
+      where: { dudaCategoryId: req.params.id },
+      select: { hubProduct: { select: { dudaProductId: true } } },
+    });
+    res.json({ ids: links.map((l) => l.hubProduct.dudaProductId) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /api/categories/:id/products — replaces THIS category's product set.
+ *
+ * ⚠️ HUB-SIDE ONLY, exactly like the product-side route. Run
+ * `duda:sync-categories` to push it.
+ *
+ * ⚠️ Scoped to this ONE category: it adds and removes links for `:id` and
+ * touches nothing else a product is in. Rewriting each product's whole
+ * category set from here would silently clear the Industries and Site
+ * Challenges someone assigned from the product editor.
+ *
+ * ⚠️ Removing a product from a PARENT also removes it from that parent's
+ * descendants, which is the other half of "never in a child without its
+ * parent". Without it, unticking Site Challenges here would leave the product
+ * in Welding Fume Control and the invariant broken from this direction only.
+ */
+categoriesRouter.put("/categories/:id/products", async (req, res, next) => {
+  const parsed = productsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  const categoryId = req.params.id;
+
+  try {
+    const flat = await duda.listAllCategories();
+    if (!flat.some((c) => c.id === categoryId)) {
+      res.status(404).json({ error: "unknown_category" });
+      return;
+    }
+
+    const wanted = [...new Set(parsed.data.ids)];
+    const hubs = await prisma.hubProduct.findMany({
+      where: { dudaProductId: { in: wanted } },
+      select: { id: true, dudaProductId: true },
+    });
+    const missing = wanted.filter((d) => !hubs.some((h) => h.dudaProductId === d));
+    if (missing.length) {
+      // Rejected rather than dropped, so a stale tab cannot quietly save fewer
+      // products than it displayed.
+      res.status(400).json({
+        error: "unknown_products",
+        detail: `No Hub product for: ${missing.join(", ")}`,
+      });
+      return;
+    }
+
+    // Every category at or below this one — the set a removal has to clear.
+    const subtree = new Set<string>([categoryId]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const c of flat) {
+        if (subtree.has(c.parent_id) && !subtree.has(c.id)) {
+          subtree.add(c.id);
+          grew = true;
+        }
+      }
+    }
+    // Every ancestor of this one — the set an addition has to fill in.
+    const ancestors = withAncestors([categoryId], flat).filter((id) => id !== categoryId);
+
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.productCategory.findMany({
+        where: { dudaCategoryId: categoryId },
+        select: { hubProductId: true },
+      });
+      const had = new Set(before.map((b) => b.hubProductId));
+      const want = new Set(hubs.map((h) => h.id));
+
+      const removed = [...had].filter((id) => !want.has(id));
+      if (removed.length) {
+        await tx.productCategory.deleteMany({
+          where: { hubProductId: { in: removed }, dudaCategoryId: { in: [...subtree] } },
+        });
+      }
+
+      const added = [...want].filter((id) => !had.has(id));
+      if (added.length) {
+        await tx.productCategory.createMany({
+          data: added.flatMap((hubProductId) =>
+            [categoryId, ...ancestors].map((dudaCategoryId) => ({ hubProductId, dudaCategoryId })),
+          ),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    const links = await prisma.productCategory.findMany({
+      where: { dudaCategoryId: categoryId },
+      select: { hubProduct: { select: { dudaProductId: true } } },
+    });
+    res.json({ ids: links.map((l) => l.hubProduct.dudaProductId) });
   } catch (err) {
     next(err);
   }

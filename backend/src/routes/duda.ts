@@ -6,6 +6,7 @@ import { ensureHubProduct, findSlugConflict, syncHubProduct } from "../services/
 import { resolveUrl } from "../services/storage.js";
 import { cartesianSize, updateOptionsPreservingVariations } from "../services/productOptions.js";
 import { prisma } from "../prisma.js";
+import { withAncestors } from "../services/categoryTree.js";
 import { env } from "../env.js";
 
 /** A non-negative numeric string, e.g. "400.0". */
@@ -830,6 +831,11 @@ const idsBody = z.object({ ids: z.array(z.string().min(1)).max(200) }).strict();
  *
  * Unknown ids are rejected rather than dropped, so a stale editor tab cannot
  * quietly save fewer categories than it displayed.
+ *
+ * ⚠️ Ancestors are added server-side. The editor's picker already sends them,
+ * so this is normally a no-op — but the rule "a product is never in a child
+ * without its parent" has to be true of the DATA, not of one screen, now that
+ * the category page can write the same links from the other direction.
  */
 dudaRouter.put("/products/:id/categories", async (req, res, next) => {
   const parsed = idsBody.safeParse(req.body);
@@ -839,10 +845,11 @@ dudaRouter.put("/products/:id/categories", async (req, res, next) => {
   }
   try {
     const hub = await ensureHubProduct(req.params.id);
-    const wanted = [...new Set(parsed.data.ids)];
+    let wanted = [...new Set(parsed.data.ids)];
 
     if (wanted.length) {
-      const live = new Set((await duda.listAllCategories()).map((c) => c.id));
+      const flat = await duda.listAllCategories();
+      const live = new Set(flat.map((c) => c.id));
       const unknown = wanted.filter((id) => !live.has(id));
       if (unknown.length) {
         res.status(400).json({
@@ -851,6 +858,9 @@ dudaRouter.put("/products/:id/categories", async (req, res, next) => {
         });
         return;
       }
+      // Validate FIRST, then expand — expanding an unknown id would look up a
+      // parent that does not exist and quietly swallow the error above.
+      wanted = withAncestors(wanted, flat);
     }
 
     const saved = await prisma.$transaction(async (tx) => {
