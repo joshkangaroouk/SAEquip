@@ -6,6 +6,12 @@ export interface PickItem {
   label: string;
   /** Nesting level — categories use it; grouped items get one automatically. */
   depth?: number;
+  /**
+   * The item this one sits under. When present the list keeps the tree
+   * consistent on every toggle — see `toggle` below. Duda's top-level rows
+   * carry the sentinel `"ROOT"`, which matches no item and so ends the walk.
+   */
+  parentId?: string;
   /** Small right-aligned note, e.g. how many products use a tag. */
   hint?: string;
   /**
@@ -22,17 +28,11 @@ type Row = { kind: "heading"; label: string } | { kind: "item"; item: PickItem }
  * A searchable checkbox list, shared by the Categories and Tags panels so the
  * two cannot drift into looking like different controls for the same job.
  *
- * ⚠️ Selected items are pinned to the top — but WITHIN their group, not to the
- * top of the whole list. Pinning globally is what this did before groups
- * existed, and it directly fights grouping: a ticked Site Problems tag would
- * jump above the Industries heading and sit under the wrong one. Per-group
- * pinning keeps the reason the behaviour exists (a product in 8 of 40
- * categories can review its selections without a long scroll) without letting
- * an item appear somewhere it does not belong.
- *
- * Pinning applies only while unfiltered. During a search the list stays in its
- * natural order, because a search is a request to see things where they
- * belong — pinning mid-search makes the hierarchy jump around as you type.
+ * ⚠️ The order NEVER changes as you tick things. Selected items used to be
+ * pinned to the top, which is fine for a flat list and wrong for a tree: a
+ * ticked child jumped above its own parent, so the indentation pointed at
+ * nothing and the thing you just clicked moved out from under the cursor.
+ * Position is how you find a category again, so it has to be stable.
  */
 export function AssignPickList({
   items,
@@ -57,12 +57,7 @@ export function AssignPickList({
     const q = query.trim().toLowerCase();
     const matching = q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items;
 
-    if (!grouped) {
-      const ordered = q
-        ? matching
-        : [...matching.filter((i) => chosen.has(i.id)), ...matching.filter((i) => !chosen.has(i.id))];
-      return ordered.map((item) => ({ kind: "item", item }) as Row);
-    }
+    if (!grouped) return matching.map((item) => ({ kind: "item", item }) as Row);
 
     // Buckets in first-seen order, which is the order the server sent — it
     // already sorts groups then items, so no second ordering rule is needed.
@@ -78,16 +73,55 @@ export function AssignPickList({
       // A heading whose every item was filtered out would point at nothing.
       if (!bucket.length) continue;
       if (heading) out.push({ kind: "heading", label: heading });
-      const ordered = q
-        ? bucket
-        : [...bucket.filter((i) => chosen.has(i.id)), ...bucket.filter((i) => !chosen.has(i.id))];
-      for (const item of ordered) out.push({ kind: "item", item });
+      for (const item of bucket) out.push({ kind: "item", item });
     }
     return out;
   }, [items, query, chosen, grouped]);
 
-  const toggle = (id: string) =>
-    onChange(chosen.has(id) ? selected.filter((s) => s !== id) : [...selected, id]);
+  const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  const childrenOf = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const i of items) {
+      if (!i.parentId) continue;
+      const bucket = m.get(i.parentId);
+      if (bucket) bucket.push(i.id);
+      else m.set(i.parentId, [i.id]);
+    }
+    return m;
+  }, [items]);
+
+  /**
+   * ⚠️ A child can never be selected without its parent, in either direction:
+   * ticking one ticks its ancestors, and unticking a parent unticks everything
+   * beneath it. Half the rule would leave exactly the state it exists to
+   * prevent — tick a child, untick its parent, and the child is orphaned.
+   *
+   * Items with no `parentId` are unaffected, so a flat list behaves as before.
+   */
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) {
+      const stack = [id];
+      while (stack.length) {
+        const cur = stack.pop()!;
+        next.delete(cur);
+        for (const child of childrenOf.get(cur) ?? []) stack.push(child);
+      }
+    } else {
+      next.add(id);
+      let p = byId.get(id)?.parentId;
+      // `byId.has` also terminates on "ROOT" and on a parent deleted upstream.
+      while (p && byId.has(p) && !next.has(p)) {
+        next.add(p);
+        p = byId.get(p)!.parentId;
+      }
+    }
+    // ⚠️ Anything selected that is NOT in `items` is carried through untouched
+    // — a category deleted in Duda still has a row here, and silently dropping
+    // it would be an edit the user never made.
+    const unknown = selected.filter((s) => next.has(s) && !byId.has(s));
+    onChange([...items.filter((i) => next.has(i.id)).map((i) => i.id), ...unknown]);
+  };
 
   return (
     <div>

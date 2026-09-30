@@ -43,6 +43,20 @@ interface CategoryNode extends DudaCategorySummary {
  * Orphans (a parent_id pointing at something absent) are surfaced at the root
  * instead of being silently dropped.
  */
+/**
+ * Top-level order for the DASHBOARD's tree.
+ *
+ * ⚠️ Duda has no `sortOrder` on a category and its own list order is creation
+ * order — newest first — which puts Products, the branch people assign from
+ * most, at the bottom. Listed titles come first in this order; anything
+ * unlisted keeps Duda's order after them, so renaming a parent demotes it
+ * rather than breaking the list.
+ *
+ * This is display order only. It does not touch Duda, and the megamenu's
+ * column order is still arranged in Duda's own menu editor.
+ */
+const TOP_LEVEL_ORDER = ["products", "site challenges", "industries"];
+
 function buildTree(flat: DudaCategorySummary[]): CategoryNode[] {
   const byParent = new Map<string, DudaCategorySummary[]>();
   for (const c of flat) {
@@ -61,6 +75,15 @@ function buildTree(flat: DudaCategorySummary[]): CategoryNode[] {
       walk(c.id, depth + 1);
     }
   };
+
+  // Sort stably, so unlisted parents keep Duda's relative order among
+  // themselves rather than being shuffled.
+  const rank = (c: DudaCategorySummary) => {
+    const i = TOP_LEVEL_ORDER.indexOf(c.title.trim().toLowerCase());
+    return i === -1 ? TOP_LEVEL_ORDER.length : i;
+  };
+  const roots = byParent.get(CATEGORY_ROOT);
+  if (roots) byParent.set(CATEGORY_ROOT, [...roots].sort((a, b) => rank(a) - rank(b)));
 
   walk(CATEGORY_ROOT, 0);
 

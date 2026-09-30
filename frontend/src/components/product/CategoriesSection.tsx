@@ -7,6 +7,8 @@ interface CategoryNode {
   id: string;
   title: string;
   depth: number;
+  /** Duda's own key. Top-level rows carry the sentinel "ROOT", not null. */
+  parent_id: string;
   products_count?: number;
 }
 
@@ -58,7 +60,14 @@ export function CategoriesSection({
         <p className="text-small text-subtle">Loading categories…</p>
       ) : (
         <AssignPickList
-          items={(cats ?? []).map((c) => ({ id: c.id, label: c.title, depth: c.depth }))}
+          // parentId is what lets the list keep a child from being selected
+          // without its parent, in both directions.
+          items={(cats ?? []).map((c) => ({
+            id: c.id,
+            label: c.title,
+            depth: c.depth,
+            parentId: c.parent_id,
+          }))}
           selected={selected}
           onChange={onChange}
           searchPlaceholder="Search categories…"
