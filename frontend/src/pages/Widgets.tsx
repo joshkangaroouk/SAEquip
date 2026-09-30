@@ -137,15 +137,20 @@ const WIDGET_CSS = `
 .saeh-pl-count{font-size:15px;color:#878787}
 .saeh-pl-count b{color:#111;font-weight:600}
 .saeh-pl-filter{border:1px solid #e6e6e6;background:#fff}
-.saeh-pl-search{position:relative;padding:14px 16px;border-bottom:1px solid #ececec}
+.saeh-pl-title,.saeh-pl-rule{display:none}
+.saeh-pl-title{margin:0;padding:16px 16px 13px;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#111}
+.saeh-pl-rule{height:1px;margin:0 16px;background:#e6e6e6}
+.saeh-pl-search{padding:14px 16px;border-bottom:1px solid #ececec}
+.saeh-pl-slabel{display:block;margin-bottom:8px;font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111}
+.saeh-pl-sbox{position:relative}
 .saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px}
 .saeh-pl-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
-.saeh-pl-clearq{position:absolute;right:20px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:none;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}
+.saeh-pl-clearq{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:none;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}
 .saeh-pl-clearq.on{display:flex}
 .saeh-pl-clearq:hover{color:#666}
 .saeh-pl-clearq svg{display:block}
 .saeh-pl-search input::placeholder{color:#9a9a9a}
-.saeh-pl-search input:focus{outline:none;border-color:#111}
+.saeh-pl-search input:focus{outline:none;border-color:#111;box-shadow:0 0 0 3px var(--color_7,#fed217)}
 .saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
 .saeh-pl-more:hover{background:#111;color:#fff}
 .saeh-pl-more span{color:#9a9a9a;font-weight:600}
@@ -206,6 +211,8 @@ to{opacity:1;transform:none}
 .saeh-pl-filter{border-top:5px solid var(--color_7,#fed217)}
 .saeh-pl-grid{grid-template-columns:repeat(3,1fr)}
 .saeh-pl-toggle{display:none}
+.saeh-pl-title{display:block}
+.saeh-pl-rule{display:block}
 .saeh-pl-panel,.saeh-pl-panel.saeh-open{display:block;grid-template-rows:none;visibility:visible;transition:none}
 .saeh-pl-clip{overflow:visible}
 .saeh-pl-inner{padding:16px}

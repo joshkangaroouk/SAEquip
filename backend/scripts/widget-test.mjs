@@ -712,6 +712,41 @@ async function main() {
     );
   }
 
+  console.log("\n=== product listing: the filter panel's heading and search ===");
+  {
+    const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    const css = d.getElementById("saeh-styles").textContent;
+    const title = d.querySelector(".saeh-pl-title");
+    check(title.tagName === "H6", "the panel heading is an h6", title.tagName);
+    check(title.textContent === "Filter Products", "labelled Filter Products");
+    check(d.querySelector(".saeh-pl-rule") !== null, "with a divider under it");
+    check(/\.saeh-pl-rule\{height:1px;margin:0 16px/.test(css),
+      "…inset, so it lines up with the input rather than running edge to edge");
+    /*
+     * ⚠️ The h6 and the mobile toggle carry the SAME words, so exactly one may
+     * be visible at a time or the label is announced twice.
+     */
+    check(/\.saeh-pl-title,\.saeh-pl-rule\{display:none\}/.test(css), "heading hidden by default (mobile)…");
+    check(/\.saeh-pl-title\{display:block\}/.test(css), "…and shown on desktop, where the toggle is hidden");
+
+    const input = d.querySelector(".saeh-pl-search input");
+    check(input.placeholder === "Search products...", "placeholder", input.placeholder);
+    const label = d.querySelector(".saeh-pl-slabel");
+    check(label.textContent === "Search within category", "the input has a visible label");
+    // A real <label for>, not an aria-label: the accessible name should be the
+    // one on screen.
+    check(label.getAttribute("for") === input.id && !!input.id, "wired to the input by id");
+    check(input.getAttribute("aria-label") === null, "…so no redundant aria-label overrides it");
+    // ⚠️ Its own relative box. Against .saeh-pl-search the X would centre on
+    // the label and input together, and sit low.
+    check(d.querySelector(".saeh-pl-sbox .saeh-pl-clearq") !== null, "the clear button positions against the input alone");
+    check(/\.saeh-pl-sbox\{position:relative\}/.test(css), "which is what carries the positioning context");
+    // box-shadow, not a border change: it takes no layout space, so the field
+    // cannot shift by a pixel as it gains focus.
+    check(/\.saeh-pl-search input:focus\{[^}]*box-shadow:0 0 0 3px var\(--color_7,#fed217\)/.test(css),
+      "a theme-yellow ring on focus");
+  }
+
   {
     // "all" must not build this — it belongs to a category page, not a product.
     const { d } = await boot({ props: { section: "all", slug: "x" }, cataloguePayload: CATALOGUE });

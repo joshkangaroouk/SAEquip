@@ -623,17 +623,28 @@
        * a click is the one control people reach for first — so it stays visible
        * above the toggle there, and reads as the top of the sidebar on desktop.
        */
-      ".saeh-pl-search{position:relative;padding:14px 16px;border-bottom:1px solid #ececec}",
+      // Hidden by default: on mobile the toggle button is the heading. The
+      // desktop block below swaps which of the two shows, so the label is
+      // never rendered twice.
+      ".saeh-pl-title,.saeh-pl-rule{display:none}",
+      ".saeh-pl-title{margin:0;padding:16px 16px 13px;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#111}",
+      // Inset, so it lines up with the input rather than running edge to edge.
+      ".saeh-pl-rule{height:1px;margin:0 16px;background:#e6e6e6}",
+      ".saeh-pl-search{padding:14px 16px;border-bottom:1px solid #ececec}",
+      ".saeh-pl-slabel{display:block;margin-bottom:8px;font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111}",
+      ".saeh-pl-sbox{position:relative}",
       ".saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px}",
       // The native search X cannot be styled to match the site, so it is
       // suppressed and replaced with an inline SVG that inherits currentColor.
       ".saeh-pl-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}",
-      ".saeh-pl-clearq{position:absolute;right:20px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:none;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}",
+      ".saeh-pl-clearq{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:none;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}",
       ".saeh-pl-clearq.on{display:flex}",
       ".saeh-pl-clearq:hover{color:#666}",
       ".saeh-pl-clearq svg{display:block}",
       ".saeh-pl-search input::placeholder{color:#9a9a9a}",
-      ".saeh-pl-search input:focus{outline:none;border-color:#111}",
+      // A ring rather than a border colour: box-shadow takes no layout space,
+      // so the field cannot shift by a pixel as it gains focus.
+      ".saeh-pl-search input:focus{outline:none;border-color:#111;box-shadow:0 0 0 3px var(--color_7,#fed217)}",
       ".saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}",
       ".saeh-pl-more:hover{background:#111;color:#fff}",
       ".saeh-pl-more span{color:#9a9a9a;font-weight:600}",
@@ -733,6 +744,8 @@
         ".saeh-pl-grid{grid-template-columns:repeat(3,1fr)}" +
         // Desktop shows the filters outright: no toggle, no collapse, no slide.
         ".saeh-pl-toggle{display:none}" +
+        ".saeh-pl-title{display:block}" +
+        ".saeh-pl-rule{display:block}" +
         ".saeh-pl-panel,.saeh-pl-panel.saeh-open{display:block;grid-template-rows:none;visibility:visible;transition:none}" +
         ".saeh-pl-clip{overflow:visible}" +
         ".saeh-pl-inner{padding:16px}" +
@@ -2243,11 +2256,28 @@
     // --- the filter panel ---
     var filter = el("div", "saeh-pl-filter");
 
+    /*
+     * The panel heading. Hidden on mobile, where the toggle button carries the
+     * same label — exactly one of the two is visible at any width, so the
+     * label is never announced twice.
+     */
+    filter.appendChild(el("h6", "saeh-pl-title", "Filter Products"));
+    filter.appendChild(el("div", "saeh-pl-rule"));
+
     var search = el("div", "saeh-pl-search");
+    var sid = "saeh-q" + Math.random().toString(36).slice(2, 9);
+    // A real <label for>, so the accessible name is the visible one rather
+    // than an aria-label nobody can see.
+    var slabel = el("label", "saeh-pl-slabel", "Search within category");
+    slabel.setAttribute("for", sid);
+    // ⚠️ The input and its X get their OWN relative box. Positioning the X
+    // against `.saeh-pl-search` would centre it on the label + input together,
+    // so it would sit low.
+    var sbox = el("div", "saeh-pl-sbox");
     var input = document.createElement("input");
+    input.id = sid;
     input.type = "search";
-    input.placeholder = "Search products or tasks…";
-    input.setAttribute("aria-label", "Search products");
+    input.placeholder = "Search products...";
     var clearQ = document.createElement("button");
     clearQ.type = "button";
     clearQ.className = "saeh-pl-clearq";
@@ -2281,8 +2311,10 @@
       runSearch();
       input.focus();
     });
-    search.appendChild(input);
-    search.appendChild(clearQ);
+    sbox.appendChild(input);
+    sbox.appendChild(clearQ);
+    search.appendChild(slabel);
+    search.appendChild(sbox);
 
     var btn = document.createElement("button");
     btn.type = "button";
@@ -2673,7 +2705,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-30-cards-2+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-30-filterbar-1+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

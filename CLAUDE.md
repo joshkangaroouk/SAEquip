@@ -312,6 +312,16 @@ category template, or the page shows two listings.
   labels render — which means cards say "EX logo", "UKCA" and "Made in Britan" rather than
   ATEX/UKEX. The first two are deliberate (see the logo mapping note); filling `alt` on the
   Logos page changes the display without a code change.
+- **The panel is headed by an `h6` "Filter Products" with an inset divider**, then a labelled
+  search. ⚠️ **That heading and the mobile toggle carry the same words, so exactly one is
+  visible at a time** — the heading is `display:none` by default and the desktop block swaps
+  which shows, mirroring how the toggle is hidden there. Otherwise the label is rendered and
+  announced twice.
+- **"Search within category" is a real `<label for>`**, not an `aria-label`: the accessible
+  name should be the one on screen. ⚠️ The input and its X sit in their own `.saeh-pl-sbox`
+  positioning context — against `.saeh-pl-search` the X would centre on the label and input
+  together and sit low. Focus draws a `var(--color_7)` ring with `box-shadow`, not a border
+  change, so the field cannot shift by a pixel as it gains focus.
 - **Search runs on ENTER**, over the product name AND its category titles, so "welding" finds
   the products under Welding Fume Control — the mockup's "Product or task". ⚠️ Deliberately
   not instant: re-rendering the grid mid-word makes the list jump under your thumb on a phone
