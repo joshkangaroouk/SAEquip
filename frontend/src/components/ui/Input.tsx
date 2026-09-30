@@ -14,11 +14,20 @@ const fieldBase =
 /**
  * Control density. "sm" is used across the product editor, which packs a lot of
  * fields into one page; "md" stays the default so other pages are unchanged.
+ * "xs" is the same 32px box with 14px type, for toolbars where a control is
+ * secondary to the content it filters.
+ *
+ * ⚠️ Pick the density here rather than passing `text-small` through
+ * `className`. `cn()` is a plain string JOIN, not tailwind-merge, so the
+ * override would land beside `text-body` and the winner would be stylesheet
+ * order — the trap that has already cost `w-56` on an Input and `p-0` on a
+ * Card.
  */
-export type FieldSize = "sm" | "md";
+export type FieldSize = "xs" | "sm" | "md";
 
 // Matches the Button heights: 32px compact, 36px default.
 export const fieldSizes: Record<FieldSize, string> = {
+  xs: "h-8 px-2.5 text-small",
   sm: "h-8 px-2.5 text-body",
   md: "h-9 px-3 text-body",
 };

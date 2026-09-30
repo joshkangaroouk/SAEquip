@@ -5,7 +5,7 @@ import {
   Button,
   Highlight,
   Input,
-  Select,
+  SelectMenu,
   StatusBadge,
   Table,
   TBody,
@@ -192,12 +192,15 @@ export default function Products() {
           <span />
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full max-w-xs">
+        {/* One row: the three controls are narrow enough to sit together at
+            the widths this page is used at, and wrap as a group below the
+            count rather than splitting the pair from the sort. */}
+        <div className="flex items-center gap-2">
+        <div className="relative w-52">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle"
-            width="16"
-            height="16"
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-subtle"
+            width="14"
+            height="14"
             viewBox="0 0 16 16"
             fill="none"
             aria-hidden="true"
@@ -206,12 +209,12 @@ export default function Products() {
             <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
           <Input
-            size="sm"
+            size="xs"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or SKU…"
-            className="pl-9 pr-8"
+            placeholder="Search name or SKU…"
+            className="pl-8 pr-7"
           />
           {query && (
             <button
@@ -219,7 +222,7 @@ export default function Products() {
               onClick={() => setQuery("")}
               aria-label="Clear search"
               title="Clear search"
-              className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-subtle transition-colors hover:bg-surface-2 hover:text-text"
+              className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-base leading-none text-subtle transition-colors hover:bg-surface-2 hover:text-text"
             >
               ×
             </button>
@@ -228,35 +231,26 @@ export default function Products() {
 
         {/* ⚠️ A PARENT here matches everything beneath it — see the filter —
             so picking "Site Challenges" is not an empty result just because
-            products sit on the leaves. */}
-        <Select
-          size="sm"
-          className="w-auto"
+            products sit on the leaves. `depth` indents rather than padding the
+            label, so the tree survives the text being truncated. */}
+        <SelectMenu
+          className="w-44"
+          ariaLabel="Filter by category"
           value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          aria-label="Filter by category"
-        >
-          <option value="">All categories</option>
-          {cats.map((c) => (
-            <option key={c.id} value={c.id}>
-              {"\u00a0\u00a0".repeat(c.depth) + c.title}
-            </option>
-          ))}
-        </Select>
+          onChange={setCategoryId}
+          options={[
+            { value: "", label: "All categories" },
+            ...cats.map((c) => ({ value: c.id, label: c.title, depth: c.depth })),
+          ]}
+        />
 
-        <Select
-          size="sm"
-          className="w-auto"
+        <SelectMenu
+          className="w-36"
+          ariaLabel="Sort products"
           value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
-          aria-label="Sort products"
-        >
-          {SORTS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+          onChange={(v) => setSort(v as SortKey)}
+          options={SORTS.map((o) => ({ value: o.value, label: o.label }))}
+        />
         </div>
       </div>
 

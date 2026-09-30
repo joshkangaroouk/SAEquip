@@ -1161,6 +1161,21 @@ dropped (2026-09-30): both live on the product page, and neither is what you sca
   rows pointing at nothing. Those collapse into one red "N no longer in Duda" chip.
 - The filter's **parent matches everything beneath it**, so picking "Site Challenges" is not
   an empty result just because products sit on the leaves.
+- ⚠️ **The filter and sort are `SelectMenu`, not a native `<select>`.** A browser draws an
+  option list with OS chrome that no CSS reaches, so a 23-item category tree dropped an
+  unstyled, unbounded list over the page. `SelectMenu` portals to `<body>` (any ancestor with
+  `overflow` clips an absolute sibling, and no z-index fixes that), flips above when it will
+  not fit below, caps at 320px and scrolls, and indents by `depth` so the tree survives a
+  truncated label.
+  ⚠️ **Its close-on-scroll listener must ignore scrolls from inside the list.** A
+  capture-phase `scroll` handler sees the menu's own scrolling too, so without that check the
+  list closes the moment you scroll it — the reason `DropdownMenu`'s simpler version cannot
+  just be copied. The flip decision also uses the CAPPED height, or a 23-row list flips
+  upwards for a height it will never have.
+- ⚠️ **Toolbar controls use `size="xs"`** (32px box, 14px type). Pick a density rather than
+  passing `text-small` through `className`: `cn()` is a plain string JOIN, so the override
+  lands beside `fieldSizes`' own `text-body` and the winner is stylesheet order — the same
+  trap as `w-56` on an Input and `p-0` on a Card.
 
 ### ⚠️ Duda product ids are ULIDs — that is the only creation date there is
 

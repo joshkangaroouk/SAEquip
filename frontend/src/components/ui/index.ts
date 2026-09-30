@@ -20,4 +20,5 @@ export { Spinner, Loader } from "./Spinner";
 export { PageHeader } from "./PageHeader";
 export { Pagination } from "./Pagination";
 export { DropdownMenu, type MenuAction } from "./DropdownMenu";
+export { SelectMenu, type SelectOption } from "./SelectMenu";
 export { RichTextEditor } from "./RichTextEditor";

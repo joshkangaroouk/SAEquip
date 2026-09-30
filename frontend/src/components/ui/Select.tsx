@@ -21,7 +21,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         className={cn(
           "w-full appearance-none rounded-md bg-surface border border-input text-text",
           fieldSizes[size],
-          size === "sm" ? "pr-8" : "pr-9",
+          size === "md" ? "pr-9" : "pr-8",
           "shadow-xs transition-[color,box-shadow] outline-none",
           "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
           "disabled:cursor-not-allowed disabled:opacity-50",
@@ -34,7 +34,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       <svg
         className={cn(
           "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted",
-          size === "sm" ? "right-2.5" : "right-3",
+          size === "md" ? "right-3" : "right-2.5",
         )}
         width="14"
         height="14"
