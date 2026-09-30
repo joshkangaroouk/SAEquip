@@ -2142,6 +2142,8 @@
 
     var PAGE = 18;
     var shownCount = PAGE;
+    /** How many cards are actually in the DOM — where an append resumes from. */
+    var rendered = 0;
     var query = "";
     var chosen = {};
 
@@ -2183,7 +2185,18 @@
       });
     }
 
-    function paint() {
+    /**
+     * Render the grid.
+     *
+     * ⚠️ `append` is not an optimisation — it is what stops "load more"
+     * throwing the visitor back to the top of the page. Emptying the grid
+     * shrinks the document to almost nothing, the browser clamps scrollY to
+     * the new maximum, and the cards appended a moment later cannot put the
+     * scroll position back. Appending never shrinks the page, so there is
+     * nothing to clamp. It also means the already-visible cards are not
+     * re-created, so they do not replay their entry animation.
+     */
+    function paint(append) {
       var shown = base.filter(matches);
       count.innerHTML = "";
       count.appendChild(el("b", null, String(shown.length)));
@@ -2191,16 +2204,21 @@
         document.createTextNode(" product" + (shown.length === 1 ? "" : "s") + " of " + base.length),
       );
 
-      grid.textContent = "";
+      if (!append) {
+        grid.textContent = "";
+        rendered = 0;
+      }
+      // Keyboard users press Enter ON the button; re-creating it would drop
+      // focus to <body> and lose their place in the page.
+      var refocus = more.firstChild && document.activeElement === more.firstChild;
       more.textContent = "";
+
       if (!shown.length) {
         grid.appendChild(el("p", "saeh-pl-empty", "No products match those filters. Try removing one."));
         return;
       }
 
-      var page = shown.slice(0, shownCount);
-      var remaining = shown.length - page.length;
-      page.forEach(function (p) {
+      shown.slice(rendered, shownCount).forEach(function (p) {
         var chipTitles = filterParent
           ? (p.categoryIds || [])
               .map(function (id) {
@@ -2215,7 +2233,9 @@
           : [];
         grid.appendChild(productCard(p, chipTitles));
       });
+      rendered = Math.min(shownCount, shown.length);
 
+      var remaining = shown.length - rendered;
       if (remaining > 0) {
         var btn = document.createElement("button");
         btn.type = "button";
@@ -2226,9 +2246,10 @@
         btn.appendChild(el("span", null, "+" + remaining));
         btn.addEventListener("click", function () {
           shownCount += PAGE;
-          paint();
+          paint(true);
         });
         more.appendChild(btn);
+        if (refocus) btn.focus();
       }
     }
 
@@ -2665,7 +2686,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-30-categories-5+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-30-categories-6+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

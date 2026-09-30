@@ -567,8 +567,20 @@ async function main() {
     check(!!moreBtn(), "and offers load more");
     check(moreBtn().textContent.includes("+22"), "naming how many are left", moreBtn().textContent);
 
+    /*
+     * ⚠️ The already-rendered cards must be the SAME NODES afterwards. Emptying
+     * the grid shrinks the document to almost nothing, the browser clamps
+     * scrollY to the new maximum, and the cards appended a moment later cannot
+     * put it back — so "load more" threw the visitor to the top of the page.
+     * Appending never shrinks the page, so there is nothing to clamp.
+     */
+    const firstBefore = d.querySelector(".saeh-pl-card");
+    const eighteenthBefore = d.querySelectorAll(".saeh-pl-card")[17];
     moreBtn().dispatchEvent(new d.defaultView.MouseEvent("click"));
     check(cards() === 36, "a click loads another 18", String(cards()));
+    check(d.querySelector(".saeh-pl-card") === firstBefore,
+      "the cards already on screen are APPENDED to, never re-created");
+    check(d.querySelectorAll(".saeh-pl-card")[17] === eighteenthBefore, "…all the way to the last of them");
     check(moreBtn().textContent.includes("+4"), "and the remainder updates", moreBtn().textContent);
 
     moreBtn().dispatchEvent(new d.defaultView.MouseEvent("click"));
@@ -638,9 +650,13 @@ async function main() {
       })),
     };
     const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
+    const before = d.querySelector(".saeh-pl-card");
     d.querySelector(".saeh-pl-more").dispatchEvent(new d.defaultView.MouseEvent("click"));
     check(d.querySelectorAll(".saeh-pl-card").length === 36, "36 loaded");
     tick(d, "weld");
+    // A FILTER change does rebuild — the results are different products, so
+    // reusing the nodes would show the wrong ones.
+    check(d.querySelector(".saeh-pl-card") !== before, "a filter change rebuilds rather than appends");
     check(d.querySelectorAll(".saeh-pl-card").length === 18, "filtering resets to the first page", String(d.querySelectorAll(".saeh-pl-card").length));
   }
 

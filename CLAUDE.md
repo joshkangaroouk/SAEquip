@@ -323,6 +323,14 @@ category template, or the page shows two listings.
 - **18 per page**, then a bordered "Load more products +N" that fills black on hover. Any
   change to the search or the filters resets to the first page — otherwise a narrowed result
   set keeps a button with nothing left to load.
+- ⚠️ **"Load more" APPENDS; it must never rebuild the grid.** Emptying the grid shrinks the
+  document to almost nothing, so the browser clamps `scrollY` to the new maximum and the cards
+  appended a moment later cannot put it back — the visitor is thrown to the top of the page.
+  Appending never shrinks the page, so there is nothing to clamp; it also stops the
+  already-visible cards replaying their entry animation. A filter or search change *does*
+  rebuild, because those are different products. `paint(append)` carries the distinction and
+  `rendered` tracks where to resume; both cases are covered by `widget:test`, which asserts
+  the existing cards are the same DOM nodes afterwards.
 - Mobile-first: **stacked with a collapsible filter panel**, becoming a sticky sidebar only
   at 881px. Grid is 1 / 2 / 3 up at the house 561 / 881 breakpoints. The sidebar is
   `position:sticky` with `max-height:calc(100vh - 40px)` and its own scroll — ⚠️ sticky only
