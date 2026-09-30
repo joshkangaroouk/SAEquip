@@ -472,6 +472,7 @@ async function main() {
     };
     const { d } = await boot({ props: PL, cataloguePayload: only, url: CATEGORY("lighting-and-power") });
     check(d.querySelectorAll(".saeh-pl-opt").length === 0, "no challenges in scope means no options at all");
+    check(d.querySelector(".saeh-pl-clear") === null, "…and no Clear filters button offering to undo nothing");
     check(names(d).join(",") === "Solo", "…and the grid still renders");
   }
 
@@ -657,7 +658,7 @@ async function main() {
     check(/\.saeh-pl-more\{[^}]*background:transparent[^}]*border:1px solid #111/.test(css),
       "load more is bordered by default");
     check(/\.saeh-pl-more:hover\{background:#111;color:#fff\}/.test(css), "and fills black on hover");
-    check(/\.saeh-pl-empty\{[^}]*text-align:left/.test(css), "the empty message is left aligned, not centred");
+    check(/\.saeh-pl-empty\{[^}]*text-align:center/.test(css), "the empty message is centred in the grid column");
     // Duda's theme colour, with the brand yellow only as a fallback for the
     // editor preview — hard-coding it would drift the day the theme changes.
     check(/\.saeh-pl-filter\{border-top:5px solid var\(--color_7,#fed217\)\}/.test(css),

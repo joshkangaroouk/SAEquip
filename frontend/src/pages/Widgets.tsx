@@ -199,7 +199,7 @@ const WIDGET_CSS = `
 .saeh-pl-btn svg{width:19px;height:19px;flex:0 0 auto;display:block}
 .saeh-pl-card:hover .saeh-pl-chevwrap,.saeh-pl-card:focus-visible .saeh-pl-chevwrap{width:19px;opacity:1;margin-left:8px}
 .saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}
-.saeh-pl-empty{padding:32px 0;text-align:left;font-size:16px;color:#878787}
+.saeh-pl-empty{padding:56px 20px;margin:0 auto;max-width:34ch;text-align:center;font-size:16px;color:#878787}
 @keyframes saeh-pl-in{from{opacity:0;transform:translateY(12px)}
 to{opacity:1;transform:none}
 }

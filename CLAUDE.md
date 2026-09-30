@@ -290,7 +290,10 @@ category template, or the page shows two listings.
   content-panel edit rather than a deploy.
 - ⚠️ **Only options that appear in the base set are rendered.** An option matching nothing in
   this category is a dead click; the check is against the BASE set, not the current results,
-  so options do not vanish from under the cursor as boxes are ticked.
+  so options do not vanish from under the cursor as boxes are ticked. No options at all also
+  means no "Clear filters" button, which would otherwise sit alone in an empty panel.
+- **The empty state is centred in the grid column** with a `34ch` cap, so the sentence breaks
+  somewhere sensible rather than at whatever width the column happens to be.
 - **Filter semantics: OR.** Ticking a second challenge widens. With one axis there is nothing
   to AND across, and "must match all" empties the grid on nearly every real combination.
 - **Counts beside each option** are "how many would show if this were added", recomputed on

@@ -705,7 +705,9 @@
       ".saeh-pl-btn svg{width:19px;height:19px;flex:0 0 auto;display:block}",
       ".saeh-pl-card:hover .saeh-pl-chevwrap,.saeh-pl-card:focus-visible .saeh-pl-chevwrap{width:19px;opacity:1;margin-left:8px}",
       ".saeh-pl-card:hover .saeh-pl-btn{background:#f0c400}",
-      ".saeh-pl-empty{padding:32px 0;text-align:left;font-size:16px;color:#878787}",
+      // Centred in the grid column, with a max-width so the sentence breaks in a
+      // sensible place rather than at whatever width the column happens to be.
+      ".saeh-pl-empty{padding:56px 20px;margin:0 auto;max-width:34ch;text-align:center;font-size:16px;color:#878787}",
       /*
        * Cards fade up as they arrive — on first paint, on every filter change,
        * and for each newly loaded page. The stagger is capped at a few hundred
@@ -2322,19 +2324,24 @@
       }
     }
 
-    var clear = document.createElement("button");
-    clear.type = "button";
-    clear.className = "saeh-pl-clear";
-    clear.textContent = "Clear filters";
-    clear.addEventListener("click", function () {
-      chosen = {};
-      var boxes = inner.querySelectorAll("input[type=checkbox]");
-      for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
-      shownCount = PAGE;
-      paint();
-      updateCounts();
-    });
-    inner.appendChild(clear);
+    // Only when there is something to clear. A category with no challenges in
+    // scope renders no options, and the button then sat alone in an empty panel
+    // offering to undo nothing.
+    if (options.length) {
+      var clear = document.createElement("button");
+      clear.type = "button";
+      clear.className = "saeh-pl-clear";
+      clear.textContent = "Clear filters";
+      clear.addEventListener("click", function () {
+        chosen = {};
+        var boxes = inner.querySelectorAll("input[type=checkbox]");
+        for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
+        shownCount = PAGE;
+        paint();
+        updateCounts();
+      });
+      inner.appendChild(clear);
+    }
 
     clip.appendChild(inner);
     panel.appendChild(clip);
@@ -2653,7 +2660,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-29-categories-3+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-09-30-categories-4+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**
