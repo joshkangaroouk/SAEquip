@@ -1021,6 +1021,43 @@ no round trip per checkbox. The product card shape is identical to `compatible` 
 `by-tag`, so one renderer serves the carousel and the grid. Revisit only if the catalogue
 reaches the thousands.
 
+### `npm run duda:assign-product-types --workspace=backend`
+
+Derives each product's **product type** from the WooCommerce export and writes `ProductCategory`
+rows. Dry run by default. Result: **96/96 — 46 Lighting and Power, 39 Fume/Dust/LEV/Vapour,
+11 Climate Control and Heating**, plus every product linked to the **Products** parent (192
+links). Live in Duda since 2026-09-30.
+
+⚠️ **Product types ONLY.** Industries and Site Challenges have no equivalent in the export —
+"Welding Fume Control" appears nowhere in the source data — so those stay manual.
+
+⚠️ **The Hub row is resolved through the LEDGER (wpId → dudaProductId), never by SKU.** SKU
+cannot identify a product here: 3 of the 96 have none and 4 SKUs are shared by 9. The earlier
+SKU-keyed version silently collapsed each pair onto one row, assigning one twin twice and the
+other never, with nothing in the output to show it.
+
+Two sources, in order:
+- **The WooCommerce product category** (`Portable EX Lighting`, `Portable EX Heating`…) — 70
+  products. Rental variants fold into the same type; hire-vs-purchase is not this axis.
+- **The SA range**, for the 26 whose WooCommerce categories carry only industry sectors —
+  Lumin/Powernet → Lighting, Cyclone → Fume, Flexiheat → Climate. It reuses `saRangeLogos()`
+  rather than re-deriving the matching, which is also how the 2 SKU-less Tasklights get a type
+  (through that function's existing overrides). `Rental` is ignored: it is orthogonal to the
+  ranges and says nothing about what a product IS.
+
+⚠️ **SA ENDURE is the one range that is NOT a product type** — it is the non-EX/general-industrial
+line and spans both lighting (Worklamp, Tubelight) and extraction (Air Mover, LEV systems), so
+its 11 products need an explicit `ENDURE_TYPE` entry keyed on wpId. An ENDURE product missing
+from that map is a **hard failure**, not a keyword guess, so a new one must be classified
+deliberately. Both branches also fail if a product maps to two types; none does today.
+
+⚠️ **Every product is linked to the `Products` parent as well as its type.** The listing widget
+does not need this — it already scopes a parent page to the parent plus its children — but
+without it Duda's own `products_count` and storefront read 0 under Products.
+
+The delete-then-recreate is scoped to the four categories this script owns, so an Industry or
+Site Challenge ticked by hand is never cleared.
+
 ### `npm run duda:sync-categories --workspace=backend`
 
 Pushes `ProductCategory` rows into Duda, **one call per category** rather than per product,

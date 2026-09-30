@@ -38,6 +38,17 @@ function fail(message: string): never {
 const CSV = "../migration/wc-export-2026-09-07.csv";
 const LEDGER = "../migration/ledger.json";
 
+/**
+ * The top-level parent. Every product is linked to it as well as to its type,
+ * so Duda's own `products_count` and storefront see the full catalogue under
+ * Products rather than 0.
+ *
+ * ⚠️ The listing widget does NOT need this — it already scopes a parent page
+ * to the parent plus its children, so /category/products showed all 96 before
+ * these links existed. This is for Duda's side of the tree.
+ */
+const PARENT = "Products";
+
 const FUME = "Fume, Dust, LEV and Vapour Control";
 const LIGHT = "Lighting and Power";
 const CLIMATE = "Climate Control and Heating";
@@ -127,11 +138,15 @@ async function main() {
 
   const cats = await duda.listAllCategories();
   const idOf = new Map(cats.map((c) => [c.title.toLowerCase(), c.id]));
-  const typeIds = [FUME, LIGHT, CLIMATE].map((title) => {
+  // Every category this script OWNS — the three types plus their parent. The
+  // delete-then-recreate below is scoped to exactly these, so an Industry or a
+  // Site Challenge ticked by hand is never touched.
+  const ownedIds = [FUME, LIGHT, CLIMATE, PARENT].map((title) => {
     const id = idOf.get(title.toLowerCase());
     if (!id) fail(`No category titled “${title}” — run duda:seed-category-tree first.`);
     return id!;
   });
+  const parentId = idOf.get(PARENT.toLowerCase())!;
 
   const hubByDudaId = new Map(
     (await prisma.hubProduct.findMany({ select: { id: true, dudaProductId: true, name: true } })).map(
@@ -195,6 +210,7 @@ async function main() {
     }
 
     writes.push({ hubProductId: hub.id, dudaCategoryId: idOf.get(title.toLowerCase())! });
+    writes.push({ hubProductId: hub.id, dudaCategoryId: parentId });
     perType.set(title, (perType.get(title) ?? 0) + 1);
     bySource.set(source, (bySource.get(source) ?? 0) + 1);
     assigned++;
@@ -204,12 +220,13 @@ async function main() {
   for (const [title, n] of [...perType.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`  ${String(n).padStart(3)}  ${title}`);
   }
+  console.log(`  ${String(assigned).padStart(3)}  ${PARENT}  (the parent — every product also sits here)`);
   console.log(`\n  derived from:`);
   for (const [src, n] of [...bySource.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`  ${String(n).padStart(3)}  ${src}`);
   }
   console.log(`\n  products matched  : ${assigned} of ${products.length}`);
-  console.log(`  links to write    : ${writes.length}`);
+  console.log(`  links to write    : ${writes.length}  (one type + one parent each)`);
   console.log(`  no type derivable : ${unmatched.length}`);
   console.log(`  no Hub row        : ${noHub.length}`);
 
@@ -227,10 +244,10 @@ async function main() {
     return;
   }
 
-  // Replace only the THREE product-type links per product; anything else the
-  // product is in (an Industry, a Site Challenge) is untouched.
+  // Replace only the links this script owns; anything else the product is in
+  // (an Industry, a Site Challenge) is untouched.
   await prisma.$transaction(async (tx) => {
-    await tx.productCategory.deleteMany({ where: { dudaCategoryId: { in: typeIds } } });
+    await tx.productCategory.deleteMany({ where: { dudaCategoryId: { in: ownedIds } } });
     await tx.productCategory.createMany({ data: writes, skipDuplicates: true });
   });
   console.log(`\n  ✓ ${writes.length} link(s) written. Next: npm run duda:sync-categories --workspace=backend -- --confirm\n`);
