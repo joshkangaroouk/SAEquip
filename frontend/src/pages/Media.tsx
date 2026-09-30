@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { apiFetch } from "../lib/api";
 import { uploadFile } from "../lib/upload";
-import { FileIcon, Input, Pagination, Select, useConfirm } from "../components/ui";
+import { FileIcon, Input, Pagination, Select, Skeleton, useConfirm } from "../components/ui";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
@@ -218,7 +218,24 @@ export default function Media() {
       </div>
 
       {/* States */}
-      {lib.loading && <p className="mt-8 text-muted">Loading media…</p>}
+      {/* The same 2/3/4-up grid and the same 8rem tile as a real asset card,
+          so the library does not reflow the page as it arrives. */}
+      {lib.loading && (
+        <div
+          className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+          aria-busy="true"
+          aria-live="polite"
+          aria-label="Loading media"
+        >
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="flex flex-col rounded-xl border border-border bg-surface p-3">
+              <Skeleton className="h-32 w-full rounded-lg" />
+              <Skeleton className="mt-3 h-4 w-3/4" />
+              <Skeleton className="mt-2 h-3 w-1/2" />
+            </div>
+          ))}
+        </div>
+      )}
       {lib.error && (
         <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
           {lib.error}

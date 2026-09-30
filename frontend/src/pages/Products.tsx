@@ -6,6 +6,7 @@ import {
   Highlight,
   Input,
   SelectMenu,
+  Skeleton,
   StatusBadge,
   Table,
   TBody,
@@ -189,14 +190,19 @@ export default function Products() {
             {lowHeadroom && <span className="ml-1 text-danger">— approaching the limit</span>}
           </p>
         ) : (
-          <span />
+          // Same height and roughly the same width as the real line, so the
+          // controls beside it do not shift when the store call lands.
+          <Skeleton className="h-6 w-56" />
         )}
 
-        {/* One row: the three controls are narrow enough to sit together at
-            the widths this page is used at, and wrap as a group below the
-            count rather than splitting the pair from the sort. */}
-        <div className="flex items-center gap-2">
-        <div className="relative w-52">
+        {/*
+          * ⚠️ Fixed widths only from `sm` up. Below that the three controls
+          * total ~530px and simply ran off the side of a phone. Here the
+          * search takes the full row and the two menus split the next one, so
+          * nothing overflows and nothing is squeezed to unusable.
+          */}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <div className="relative w-full min-w-0 sm:w-52">
           <svg
             className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-subtle"
             width="14"
@@ -234,7 +240,7 @@ export default function Products() {
             products sit on the leaves. `depth` indents rather than padding the
             label, so the tree survives the text being truncated. */}
         <SelectMenu
-          className="w-44"
+          className="min-w-0 flex-1 sm:w-44 sm:flex-none"
           ariaLabel="Filter by category"
           value={categoryId}
           onChange={setCategoryId}
@@ -245,7 +251,7 @@ export default function Products() {
         />
 
         <SelectMenu
-          className="w-36"
+          className="min-w-0 flex-1 sm:w-36 sm:flex-none"
           ariaLabel="Sort products"
           value={sort}
           onChange={(v) => setSort(v as SortKey)}
@@ -255,7 +261,51 @@ export default function Products() {
       </div>
 
         {/* States */}
-        {loading && <p className="mt-6 text-muted">Loading products…</p>}
+        {/*
+          * ⚠️ The real table, with the real header and real row heights, so
+          * the only thing that changes on load is the cell contents. A
+          * "Loading…" line reflows the whole page the moment data arrives —
+          * which is the jump this exists to remove, not just a nicety.
+          */}
+        {loading && (
+          <div className="mt-4" aria-busy="true" aria-live="polite" aria-label="Loading products">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Product</TH>
+                  <TH>SKU</TH>
+                  <TH>Status</TH>
+                  <TH>Categories</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {Array.from({ length: 8 }, (_, i) => (
+                  <TR key={i}>
+                    <TD>
+                      <div className="flex items-center gap-3">
+                        {/* 100px matches the real thumbnail exactly. */}
+                        <Skeleton className="h-[100px] w-[100px] shrink-0" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      </div>
+                    </TD>
+                    <TD>
+                      <Skeleton className="h-4 w-24" />
+                    </TD>
+                    <TD>
+                      <Skeleton className="h-5 w-16" />
+                    </TD>
+                    <TD>
+                      <Skeleton className="h-5 w-40" />
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          </div>
+        )}
         {error && (
           <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
             {error}

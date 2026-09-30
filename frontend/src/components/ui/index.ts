@@ -21,4 +21,5 @@ export { PageHeader } from "./PageHeader";
 export { Pagination } from "./Pagination";
 export { DropdownMenu, type MenuAction } from "./DropdownMenu";
 export { SelectMenu, type SelectOption } from "./SelectMenu";
+export { Skeleton } from "./Skeleton";
 export { RichTextEditor } from "./RichTextEditor";

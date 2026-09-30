@@ -4,10 +4,11 @@ import { MediaPicker } from "../components/MediaPicker";
 import {
   DragHandle,
   RemoveButton,
+  Skeleton,
   SortableList,
   toast,
-  useConfirm,
   type DragHandleProps,
+  useConfirm,
 } from "../components/ui";
 import { apiJson } from "../lib/api";
 import type { LogoCatalogEntry, MediaAsset } from "../lib/types";
@@ -193,7 +194,24 @@ export default function Logos() {
           ))}
         </div>
 
-        {loading && <p className="mt-8 text-muted">Loading…</p>}
+        {/* The same 2/3/4-up grid and the same 8rem tile, so the real logos
+            drop straight into place. */}
+        {loading && (
+          <div
+            className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+            aria-busy="true"
+            aria-live="polite"
+            aria-label="Loading logos"
+          >
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="flex flex-col rounded-xl border border-border bg-surface p-3">
+                <Skeleton className="h-32 w-full rounded-lg" />
+                <Skeleton className="mt-3 h-4 w-3/4" />
+                <Skeleton className="mt-2 h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
+        )}
         {error && (
           <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>
         )}

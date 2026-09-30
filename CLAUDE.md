@@ -1186,6 +1186,12 @@ dropped (2026-09-30): both live on the product page, and neither is what you sca
   list closes the moment you scroll it — the reason `DropdownMenu`'s simpler version cannot
   just be copied. The flip decision also uses the CAPPED height, or a 23-row list flips
   upwards for a height it will never have.
+- ⚠️ **Fixed control widths only from `sm` up.** The three controls total ~530px, which ran
+  clean off the side of a phone. Below `sm` the search takes the full row and the two menus
+  split the next one (`flex-1 min-w-0`), so nothing overflows and nothing is squeezed to
+  unusable. `SelectMenu`'s portal clamps its own width to the viewport for the same reason —
+  its 200px minimum has to yield to the upper bound on a narrow screen, or the floor pushes
+  the list off the edge it was meant to stay inside.
 - ⚠️ **Toolbar controls use `size="xs"`** (32px box, 14px type). Pick a density rather than
   passing `text-small` through `className`: `cn()` is a plain string JOIN, so the override
   lands beside `fieldSizes`' own `text-body` and the winner is stylesheet order — the same
@@ -1204,6 +1210,26 @@ fractionally earlier. The single outlier is `COMPACT FILTRATION UNIT` at +76s �
 that hit Duda's duplicate-title rule and was created on a retry — so it corroborates rather
 than contradicts. `createdFromUlid()` returns null for anything that is not a ULID and the
 route falls back to the Hub row.
+
+### Loading states: skeletons on list pages, spinner elsewhere
+
+`Skeleton` (`components/ui/Skeleton.tsx`) is **just the primitive**; each page composes its
+own from the same `Table`/`Card`/grid components the real content uses, so the two cannot
+drift. A generic "table skeleton" would have to be told the column widths anyway, and would
+become a second place to keep them right.
+
+⚠️ **A skeleton only earns its place if it occupies the SAME space the real thing will** —
+the point is that nothing moves when the data lands, so a differently-sized placeholder is
+worse than "Loading…" text, because it shifts the page as well as delaying it. The product
+table's placeholder thumbnail is 100px because the real one is.
+
+Applied on the list pages, which have a repeating structure to mimic: **Products**,
+**Categories**, **Quotes**, **Media**, **Logos**. `Loader` (the spinner) deliberately stays
+on **ProductDetail**, **ProductOptions** and **WebsiteEditor** — a single object with no
+repeating rows has no shape to stand in for, so a skeleton there would be inventing one.
+
+The container carries `aria-busy` + `aria-live` + a label; the blocks themselves are
+`aria-hidden`, so the state is announced once rather than as a dozen grey rectangles.
 
 ## Known gaps / backlog (as of 2026-07-28)
 

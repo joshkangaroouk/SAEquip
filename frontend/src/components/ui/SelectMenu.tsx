@@ -67,7 +67,10 @@ export function SelectMenu({
     // the menu upwards on a list that will never actually be that tall.
     const h = Math.min(m.offsetHeight, MAX_H);
     const flip = r.bottom + GAP + h > window.innerHeight && r.top - GAP - h >= 0;
-    const width = Math.max(r.width, 200);
+    // ⚠️ Clamped at BOTH ends. The 200px floor keeps a narrow trigger from
+    // producing an unreadable list, but on a phone that floor is wider than
+    // the viewport allows, so it has to yield to the upper bound.
+    const width = Math.min(Math.max(r.width, 200), window.innerWidth - EDGE * 2);
     setPos({
       top: flip ? r.top - h - GAP : r.bottom + GAP,
       // Clamped so a trigger near the right edge cannot push the list off it.

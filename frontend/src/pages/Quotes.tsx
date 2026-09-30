@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
-import { Table, THead, TBody, TR, TH, TD, Badge, Modal, Button, Loader, EmptyState } from "../components/ui";
+import { Table, THead, TBody, TR, TH, TD, Badge, Modal, Button, Skeleton, EmptyState } from "../components/ui";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 
 function formatDate(iso: string): string {
@@ -182,7 +182,47 @@ export default function Quotes() {
         </div>
       )}
 
-      {loading && <Loader label="Loading quote requests…" />}
+      {/* The real table, so only the cells change when the data lands. */}
+      {loading && (
+        <div className="mt-6" aria-busy="true" aria-live="polite" aria-label="Loading quote requests">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Name</TH>
+                <TH>Email</TH>
+                <TH>Company</TH>
+                <TH>Items</TH>
+                <TH>Date</TH>
+                <TH>Emailed</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {Array.from({ length: 6 }, (_, i) => (
+                <TR key={i}>
+                  <TD>
+                    <Skeleton className="h-4 w-32" />
+                  </TD>
+                  <TD>
+                    <Skeleton className="h-4 w-44" />
+                  </TD>
+                  <TD>
+                    <Skeleton className="h-4 w-28" />
+                  </TD>
+                  <TD>
+                    <Skeleton className="h-4 w-8" />
+                  </TD>
+                  <TD>
+                    <Skeleton className="h-4 w-36" />
+                  </TD>
+                  <TD>
+                    <Skeleton className="h-5 w-14" />
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        </div>
+      )}
       {error && (
         <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
           {error}

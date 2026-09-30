@@ -7,18 +7,18 @@ import {
   EmptyState,
   Field,
   Input,
-  Loader,
   Modal,
   PageHeader,
   Select,
+  Skeleton,
   Table,
   TBody,
   TD,
+  Textarea,
   TH,
   THead,
-  TR,
-  Textarea,
   toast,
+  TR,
   useConfirm,
 } from "../components/ui";
 import { apiJson } from "../lib/api";
@@ -271,7 +271,43 @@ export default function Categories() {
         }
       />
 
-      {loading && <Loader label="Loading categories…" />}
+      {/* The real Card and Table, so only the cell contents change on load. */}
+      {loading && (
+        <Card className="mt-4 p-0" aria-busy="true" aria-live="polite" aria-label="Loading categories">
+          <Table className="border-0">
+            <THead>
+              <TR>
+                <TH className="w-10" />
+                <TH>Category title</TH>
+                <TH className="w-32">Subcategories</TH>
+                <TH className="w-24">Products</TH>
+                <TH className="w-12" />
+              </TR>
+            </THead>
+            <TBody>
+              {Array.from({ length: 8 }, (_, i) => (
+                <TR key={i}>
+                  <TD />
+                  <TD>
+                    {/* Alternating indent, so the placeholder reads as the
+                        tree it is about to become rather than a flat list. */}
+                    <div style={{ paddingLeft: i % 3 === 0 ? 0 : "1.5rem" }}>
+                      <Skeleton className="h-4 w-56" />
+                    </div>
+                  </TD>
+                  <TD>
+                    <Skeleton className="h-4 w-8" />
+                  </TD>
+                  <TD>
+                    <Skeleton className="h-4 w-8" />
+                  </TD>
+                  <TD />
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        </Card>
+      )}
       {error && (
         <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
           {error}
