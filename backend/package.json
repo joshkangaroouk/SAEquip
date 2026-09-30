@@ -29,7 +29,8 @@
     "duda:seo-fill": "tsx src/scripts/dudaSeoFill.ts",
     "logos:rebuild": "tsx src/scripts/rebuildLogoCatalogue.ts",
     "duda:sync-categories": "tsx src/scripts/syncCategories.ts",
-    "duda:assign-product-types": "tsx src/scripts/assignProductTypes.ts"
+    "duda:assign-product-types": "tsx src/scripts/assignProductTypes.ts",
+    "duda:category-seo": "tsx src/scripts/categorySeoFill.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

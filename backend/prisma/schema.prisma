@@ -271,6 +271,11 @@ model CategoryMirror {
   /// Position in Duda's own list order, which is the only order it exposes.
   position       Int      @default(0)
   syncedAt       DateTime @updatedAt
+  /// Duda's own re-hosted image URL, mirrored so the dashboard's category
+  /// list can show a thumbnail without a per-row Duda call. Written by
+  /// `duda:sync-categories` and by the dashboard's own create/update, so it is
+  /// fresh the moment someone sets one.
+  imageUrl       String?
 
   @@index([parentId])
 }
@@ -363,4 +368,26 @@ model DudaSsoAudit {
   ip              String?
   userAgent       String?
   createdAt       DateTime @default(now())
+}
+
+/// Hub-owned display order for Duda's categories.
+///
+/// ⚠️ Duda has NO ordering field on a category, and the PROBE is the point
+/// (2026-09-30): `position`, `order`, `sort`, `sort_order`, `index`, `rank`,
+/// `priority` and `display_order` are every one SILENTLY ACCEPTED on
+/// `PATCH /categories/{id}` and every one echoes back `null`. An attempt to
+/// store the order in Duda would look exactly like it had worked.
+///
+/// Deliberately NOT a column on CategoryMirror: that is a read-through cache
+/// of Duda, refreshed wholesale by `duda:sync-categories`, and an order
+/// someone set by hand must not be erased by a cache refresh.
+///
+/// No foreign key, for the same reason ProductCategory has none — categories
+/// live in Duda, so a row can outlive the category it names. A stale row is
+/// inert: nothing looks it up unless the category is in Duda's list.
+model CategoryOrder {
+  dudaCategoryId String   @id
+  /// Dense 0..n-1 within one parent. Order is only ever compared to siblings.
+  sortOrder      Int
+  updatedAt      DateTime @updatedAt
 }

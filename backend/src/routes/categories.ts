@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { CATEGORY_ROOT, duda, type DudaCategorySummary } from "../services/duda.js";
+import { prisma } from "../prisma.js";
 
 export const categoriesRouter = Router();
 
@@ -33,6 +34,13 @@ const updateSchema = createSchema.partial().strict();
 interface CategoryNode extends DudaCategorySummary {
   depth: number;
   subcategoryCount: number;
+  /**
+   * ⚠️ From the MIRROR, not from Duda. `listAllCategories()` omits the image
+   * entirely and only the single-category GET carries it, so showing a
+   * thumbnail per row would otherwise cost one Duda call per category on every
+   * page load. Null for a category never synced or written from here.
+   */
+  imageUrl?: string | null;
 }
 
 /**
@@ -57,7 +65,15 @@ interface CategoryNode extends DudaCategorySummary {
  */
 const TOP_LEVEL_ORDER = ["products", "site challenges", "industries"];
 
-function buildTree(flat: DudaCategorySummary[]): CategoryNode[] {
+/**
+ * @param order Hub-owned position per category id. Sparse: a category nobody
+ *   has dragged has no row, and keeps its fallback place.
+ */
+function buildTree(
+  flat: DudaCategorySummary[],
+  order: Map<string, number>,
+  images: Map<string, string | null>,
+): CategoryNode[] {
   const byParent = new Map<string, DudaCategorySummary[]>();
   for (const c of flat) {
     const key = c.parent_id || CATEGORY_ROOT;
@@ -71,26 +87,58 @@ function buildTree(flat: DudaCategorySummary[]): CategoryNode[] {
 
   const walk = (parentId: string, depth: number) => {
     for (const c of byParent.get(parentId) ?? []) {
-      ordered.push({ ...c, depth, subcategoryCount: (byParent.get(c.id) ?? []).length });
+      ordered.push({
+        ...c,
+        depth,
+        subcategoryCount: (byParent.get(c.id) ?? []).length,
+        imageUrl: images.get(c.id) ?? null,
+      });
       walk(c.id, depth + 1);
     }
   };
 
-  // Sort stably, so unlisted parents keep Duda's relative order among
-  // themselves rather than being shuffled.
+  /*
+   * Order within a parent, most specific first:
+   *   1. a Hub position someone set by dragging,
+   *   2. TOP_LEVEL_ORDER, for the three roots nobody has dragged yet,
+   *   3. Duda's own list order, which is creation order, newest first.
+   *
+   * ⚠️ Every sort is STABLE, so anything with no rule at all keeps Duda's
+   * relative order rather than being shuffled. A dragged category sorts ahead
+   * of an undragged one — there is no meaningful way to interleave the two,
+   * and the alternative is a new category silently landing mid-list.
+   */
   const rank = (c: DudaCategorySummary) => {
     const i = TOP_LEVEL_ORDER.indexOf(c.title.trim().toLowerCase());
     return i === -1 ? TOP_LEVEL_ORDER.length : i;
   };
-  const roots = byParent.get(CATEGORY_ROOT);
-  if (roots) byParent.set(CATEGORY_ROOT, [...roots].sort((a, b) => rank(a) - rank(b)));
+  for (const [parentId, bucket] of byParent) {
+    const fallback = (c: DudaCategorySummary) =>
+      parentId === CATEGORY_ROOT ? rank(c) : Number.MAX_SAFE_INTEGER;
+    byParent.set(
+      parentId,
+      [...bucket].sort((a, b) => {
+        const oa = order.get(a.id);
+        const ob = order.get(b.id);
+        if (oa != null && ob != null) return oa - ob;
+        if (oa != null) return -1;
+        if (ob != null) return 1;
+        return fallback(a) - fallback(b);
+      }),
+    );
+  }
 
   walk(CATEGORY_ROOT, 0);
 
   // Anything whose parent doesn't exist would otherwise never be walked.
   for (const c of flat) {
     if (c.parent_id === CATEGORY_ROOT || known.has(c.parent_id)) continue;
-    ordered.push({ ...c, depth: 0, subcategoryCount: (byParent.get(c.id) ?? []).length });
+    ordered.push({
+      ...c,
+      depth: 0,
+      subcategoryCount: (byParent.get(c.id) ?? []).length,
+      imageUrl: images.get(c.id) ?? null,
+    });
   }
 
   return ordered;
@@ -104,7 +152,122 @@ function buildTree(flat: DudaCategorySummary[]): CategoryNode[] {
 categoriesRouter.get("/categories", async (_req, res, next) => {
   try {
     const flat = await duda.listAllCategories();
-    res.json({ count: flat.length, categories: buildTree(flat) });
+    const [orderRows, mirrorRows] = await Promise.all([
+      prisma.categoryOrder.findMany(),
+      prisma.categoryMirror.findMany({ select: { dudaCategoryId: true, imageUrl: true } }),
+    ]);
+    const order = new Map(orderRows.map((o) => [o.dudaCategoryId, o.sortOrder]));
+    const images = new Map(mirrorRows.map((m) => [m.dudaCategoryId, m.imageUrl]));
+    res.json({ count: flat.length, categories: buildTree(flat, order, images) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Record a category's image in the mirror right after writing it to Duda.
+ *
+ * ⚠️ Duda RE-HOSTS the image on its own CDN, so the URL to store is the one
+ * Duda reports back, never the one we sent. Best-effort: a mirror that misses
+ * an update shows a stale thumbnail on one admin screen, which must not fail
+ * the write that actually landed.
+ */
+async function mirrorImage(id: string): Promise<void> {
+  try {
+    const full = (await duda.getCategory(id)) as unknown as {
+      title: string;
+      parent_id: string;
+      image?: { url?: string } | null;
+      seo?: { url?: string };
+    };
+    const data = {
+      title: full.title,
+      slug: full.seo?.url ?? id,
+      parentId: full.parent_id || CATEGORY_ROOT,
+      imageUrl: full.image?.url ?? null,
+    };
+    await prisma.categoryMirror.upsert({
+      where: { dudaCategoryId: id },
+      update: data,
+      create: { dudaCategoryId: id, position: 0, ...data },
+    });
+  } catch {
+    /* the write to Duda succeeded; a stale thumbnail is not worth a 500 */
+  }
+}
+
+const reorderSchema = z
+  .object({
+    /** "ROOT" for the top level. */
+    parentId: z.string().trim().min(1),
+    ids: z.array(z.string().trim().min(1)).min(1).max(500),
+  })
+  .strict();
+
+/**
+ * PUT /api/categories/reorder
+ * Set the display order of one parent's children.
+ *
+ * ⚠️ HUB-ONLY. Duda has no ordering field — see the CategoryOrder model for
+ * the probe. This drives the dashboard and anything the Hub renders; Duda's
+ * own storefront and the megamenu are ordered in Duda's menu editor.
+ *
+ * ⚠️ Rejects an id set that is not EXACTLY that parent's children, rather than
+ * ignoring strays. The same guard `routes/logos.ts` makes: without it a stale
+ * tab can renumber a sibling group it was not even showing, and re-parenting
+ * by drag — which the UI deliberately does not offer — would arrive here
+ * looking like an ordinary reorder.
+ */
+categoriesRouter.put("/categories/reorder", async (req, res, next) => {
+  const parsed = reorderSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid body" });
+    return;
+  }
+  const { parentId, ids } = parsed.data;
+
+  try {
+    const flat = await duda.listAllCategories();
+    const siblings = flat
+      .filter((c) => (c.parent_id || CATEGORY_ROOT) === parentId)
+      .map((c) => c.id);
+
+    const given = new Set(ids);
+    if (given.size !== ids.length) {
+      res.status(400).json({ error: "Duplicate category id in the order" });
+      return;
+    }
+    const missing = siblings.filter((id) => !given.has(id));
+    const foreign = ids.filter((id) => !siblings.includes(id));
+    if (missing.length || foreign.length) {
+      res.status(400).json({
+        error:
+          `The order must list exactly this parent's children. ` +
+          `${missing.length} missing, ${foreign.length} not a child of ${parentId}. ` +
+          `Reload the page and try again.`,
+      });
+      return;
+    }
+
+    // Dense 0..n-1, rewritten wholesale for this parent — the positions are
+    // only ever compared to siblings, so gaps would be harmless but confusing.
+    await prisma.$transaction(
+      ids.map((id, i) =>
+        prisma.categoryOrder.upsert({
+          where: { dudaCategoryId: id },
+          update: { sortOrder: i },
+          create: { dudaCategoryId: id, sortOrder: i },
+        }),
+      ),
+    );
+
+    const [orderRows, mirrorRows] = await Promise.all([
+      prisma.categoryOrder.findMany(),
+      prisma.categoryMirror.findMany({ select: { dudaCategoryId: true, imageUrl: true } }),
+    ]);
+    const order = new Map(orderRows.map((o) => [o.dudaCategoryId, o.sortOrder]));
+    const images = new Map(mirrorRows.map((m) => [m.dudaCategoryId, m.imageUrl]));
+    res.json({ count: flat.length, categories: buildTree(flat, order, images) });
   } catch (err) {
     next(err);
   }
@@ -144,7 +307,9 @@ categoriesRouter.post("/categories", async (req, res, next) => {
       }
     }
 
-    res.status(201).json(await duda.createCategory(parsed.data));
+    const created = await duda.createCategory(parsed.data);
+    await mirrorImage(created.id);
+    res.status(201).json(created);
   } catch (err) {
     next(err);
   }
@@ -203,7 +368,9 @@ categoriesRouter.patch("/categories/:id", async (req, res, next) => {
       payload.seo = { ...current.seo, ...payload.seo };
     }
 
-    res.json(await duda.updateCategory(req.params.id, payload));
+    const updated = await duda.updateCategory(req.params.id, payload);
+    await mirrorImage(req.params.id);
+    res.json(updated);
   } catch (err) {
     next(err);
   }
@@ -228,6 +395,17 @@ categoriesRouter.delete("/categories/:id", async (req, res, next) => {
     }
 
     await duda.deleteCategory(req.params.id);
+    /*
+     * Both Hub-side tables are keyed on the Duda id with no foreign key —
+     * categories live in Duda — so nothing cascades. A left-behind
+     * CategoryOrder row would silently reposition whichever category Duda
+     * later hands that id to, and a stale mirror row would show a thumbnail
+     * for a category that no longer exists.
+     */
+    await Promise.all([
+      prisma.categoryOrder.deleteMany({ where: { dudaCategoryId: req.params.id } }),
+      prisma.categoryMirror.deleteMany({ where: { dudaCategoryId: req.params.id } }),
+    ]);
     res.json({ deleted: true, subcategoriesAffected: children.length });
   } catch (err) {
     next(err);

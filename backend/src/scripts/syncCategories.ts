@@ -115,6 +115,8 @@ async function main() {
   const failures: string[] = [];
   /** Duda's own `seo.url` per category, read below. Never derived. */
   const slugOf = new Map<string, string>();
+  /** Duda's re-hosted image URL, so the dashboard list needs no per-row call. */
+  const imageOf = new Map<string, string>();
 
   for (const c of categories) {
     const want = (wanted.get(c.id) ?? []).map((p) => p.id);
@@ -129,9 +131,11 @@ async function main() {
       const full = (await duda.getCategory(c.id)) as unknown as {
         products?: { id: string }[];
         seo?: { url?: string };
+        image?: { url?: string } | null;
       };
       have = (full.products ?? []).map((p) => p.id);
       if (full.seo?.url) slugOf.set(c.id, full.seo.url);
+      if (full.image?.url) imageOf.set(c.id, full.image.url);
     } catch (err) {
       failures.push(`${c.title}: could not read — ${err instanceof Error ? err.message.slice(0, 120) : err}`);
       continue;
@@ -174,10 +178,18 @@ async function main() {
     seen.add(c.id);
     const slug = slugOf.get(c.id);
     if (!slug) continue; // never guessed — see the model comment
+    const imageUrl = imageOf.get(c.id) ?? null;
     await prisma.categoryMirror.upsert({
       where: { dudaCategoryId: c.id },
-      update: { title: c.title, slug, parentId: c.parent_id || "ROOT", position: i },
-      create: { dudaCategoryId: c.id, title: c.title, slug, parentId: c.parent_id || "ROOT", position: i },
+      update: { title: c.title, slug, parentId: c.parent_id || "ROOT", position: i, imageUrl },
+      create: {
+        dudaCategoryId: c.id,
+        title: c.title,
+        slug,
+        parentId: c.parent_id || "ROOT",
+        position: i,
+        imageUrl,
+      },
     });
   }
   // A category deleted in Duda must leave the mirror, or the listing offers a

@@ -1126,6 +1126,63 @@ without it Duda's own `products_count` and storefront read 0 under Products.
 The delete-then-recreate is scoped to the four categories this script owns, so an Industry or
 Site Challenge ticked by hand is never cleared.
 
+### The Categories page: image, drag-reorder, click-to-edit
+
+- **Category image.** `PATCH /categories/{id}` with `{image:{url}}` makes Duda **fetch the
+  file and re-host its own copy** on `irp.cdn-website.com`, exactly like a product image — so
+  the Media Centre original can change or be deleted later without breaking the page. A bare
+  string instead of `{url}` 400s.
+- ⚠️ **A category image CANNOT be removed once set.** Probed 2026-09-30: `image: null` is
+  accepted and silently ignored, and `{url:""}`, `{}` and `{url:null}` all 400. The UI
+  therefore offers **Replace, never Remove** — a button that did nothing would be worse than
+  its absence.
+- The image is only re-sent when it **changed**. Re-sending the current URL makes Duda
+  re-fetch and re-host the same file, orphaning the previous copy on its CDN.
+- `CategoryMirror.imageUrl` exists so the list can show a thumbnail without a Duda call per
+  row — `listAllCategories()` omits the image and only the single-category GET carries it.
+  Written by `duda:sync-categories` and by the dashboard's own create/update, so it is fresh
+  the moment someone sets one.
+- **Clicking the title opens the edit modal** — it is what you click when you mean "open
+  this"; the ⋯ menu keeps the other actions.
+
+### Drag-reorder, and why the page is no longer a `<table>`
+
+⚠️ **Duda has NO ordering field on a category, and the probe is the point** (2026-09-30):
+`position`, `order`, `sort`, `sort_order`, `index`, `rank`, `priority` and `display_order`
+are **every one silently accepted** on PATCH and every one echoes back `null`. Duda ignores
+unknown keys, so an attempt to store order there would look exactly like it had worked.
+Order therefore lives in `CategoryOrder` (Hub-owned), which is **display order only** — it
+drives the dashboard, never Duda's storefront or the megamenu.
+
+⚠️ **`CategoryOrder` is a separate table, not a column on `CategoryMirror`.** The mirror is a
+read-through cache refreshed wholesale by `duda:sync-categories`; an order set by hand must
+not be erased by a cache refresh.
+
+⚠️ **The rule "a subcategory cannot move to another top-level category" is STRUCTURAL.** The
+tree renders as two nested `SortableList`s, and each renders its own `DndContext` — so a drag
+started among a parent's children can never land in the top-level list. The server also
+rejects an id set that is not exactly that parent's children, but that is belt and braces for
+a stale tab, not the mechanism.
+
+⚠️ **That nesting is why the page is a grid, not a `<table>`.** A table gives one `<tbody>`
+per sortable context, and a tree needs the parent row and its children in the same visual
+sequence but different contexts — which multiple tbodies cannot express.
+
+Ordering within a parent falls back, most specific first: a Hub position, then
+`TOP_LEVEL_ORDER`, then Duda's own list order. Every sort is stable, so anything with no rule
+keeps Duda's relative order.
+
+### `npm run duda:category-seo --workspace=backend`
+
+Fills every category's `seo.title` with its own name. Dry run by default; `--force` to
+overwrite a human-set title. Applied 2026-09-30: **23/23, 0 failures, 0 slugs lost.**
+
+⚠️ **A category's `seo` is FULL REPLACEMENT** — unlike a *product's*, which was probed and
+found to merge. Sending `{title}` alone blanks `url` and Duda rejects with "Category page url
+cannot be blank", so the current `seo` is read and merged, never assumed. `seo` also only
+comes back from the single-category GET, so one read per category is unavoidable rather than
+an N+1 that could be batched away.
+
 ### `npm run duda:sync-categories --workspace=backend`
 
 Pushes `ProductCategory` rows into Duda, **one call per category** rather than per product,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { ChevronDown, ChevronRight, ImageOff } from "lucide-react";
+import { MediaPicker } from "../components/MediaPicker";
 import {
   Button,
   Card,
@@ -11,6 +12,9 @@ import {
   PageHeader,
   Select,
   Skeleton,
+  SortableList,
+  DragHandle,
+  type DragHandleProps,
   Table,
   TBody,
   TD,
@@ -27,6 +31,8 @@ const ROOT = "ROOT";
 
 /** Depth-annotated, pre-ordered by the backend so the tree renders directly. */
 interface CategoryNode {
+  /** From the MIRROR, not Duda's list — see the note on the backend type. */
+  imageUrl?: string | null;
   id: string;
   title: string;
   parent_id: string;
@@ -48,6 +54,14 @@ interface FormState {
   title: string;
   parent_id: string;
   description: string;
+  /**
+   * ⚠️ Empty string means "leave whatever Duda has", NOT "remove it". A
+   * category image CANNOT be removed once set — probed 2026-09-30: Duda
+   * accepts `image: null` and ignores it, and `{url:""}`, `{}` and
+   * `{url:null}` all 400. So the UI offers Replace, never Remove; a button
+   * that silently did nothing would be worse than its absence.
+   */
+  image_url: string;
   seo_url: string;
   seo_title: string;
   seo_description: string;
@@ -57,6 +71,7 @@ const blankForm: FormState = {
   title: "",
   parent_id: ROOT,
   description: "",
+  image_url: "",
   seo_url: "",
   seo_title: "",
   seo_description: "",
@@ -81,6 +96,9 @@ export default function Categories() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
   const [busy, setBusy] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  /** What Duda already had, so an unchanged image is never re-sent. */
+  const originalImage = useRef("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,35 +130,6 @@ export default function Categories() {
     void load();
   }, [load]);
 
-  /** Hide any row whose ancestor chain contains a collapsed node. */
-  const visible = useMemo(() => {
-    if (!nodes) return [];
-    const byId = new Map(nodes.map((n) => [n.id, n]));
-    return nodes.filter((n) => {
-      let parent = n.parent_id;
-      while (parent && parent !== ROOT) {
-        if (collapsed.has(parent)) return false;
-        parent = byId.get(parent)?.parent_id ?? ROOT;
-      }
-      return true;
-    });
-  }, [nodes, collapsed]);
-
-  const topLevel = useMemo(() => (nodes ?? []).filter((n) => n.parent_id === ROOT), [nodes]);
-
-  /**
-   * Row number for each top-level category, precomputed.
-   *
-   * This was `topLevel.indexOf(n)` inside the render loop — an O(n) scan per
-   * row, so O(n²) per paint. Invisible at 3 categories; the tree is 23 now and
-   * will grow every time a site challenge or industry is added.
-   */
-  const topLevelIndex = useMemo(() => {
-    const m = new Map<string, number>();
-    topLevel.forEach((n, i) => m.set(n.id, i + 1));
-    return m;
-  }, [topLevel]);
-
   function toggle(id: string) {
     setCollapsed((c) => {
       const next = new Set(c);
@@ -150,22 +139,28 @@ export default function Categories() {
   }
 
   function openCreate(parentId: string = ROOT) {
+    originalImage.current = "";
     setEditingId(null);
     setForm({ ...blankForm, parent_id: parentId });
     setFormOpen(true);
   }
 
   async function openEdit(node: CategoryNode) {
+    originalImage.current = "";
     setEditingId(node.id);
     setForm({ ...blankForm, title: node.title, parent_id: node.parent_id });
     setFormOpen(true);
     try {
       // Only the single-category GET carries description/image/seo.
       const full = await apiJson<CategoryDetail>(`/api/categories/${node.id}`);
+      // Recorded before the form is set, so the "did the image change?" test
+      // on save compares against Duda rather than against the blank form.
+      originalImage.current = full.image?.url ?? "";
       setForm({
         title: full.title,
         parent_id: full.parent_id,
         description: full.description ?? "",
+        image_url: full.image?.url ?? "",
         seo_url: full.seo?.url ?? "",
         seo_title: full.seo?.title ?? "",
         seo_description: full.seo?.description ?? "",
@@ -184,6 +179,15 @@ export default function Categories() {
         parent_id: form.parent_id,
         description: form.description,
       };
+      /*
+       * Only sent when it CHANGED. Re-sending the current value makes Duda
+       * re-fetch and re-host the same file on every save, orphaning the
+       * previous copy on its CDN — the same reason the product importer does
+       * not re-send unchanged gallery URLs.
+       */
+      if (form.image_url && form.image_url !== originalImage.current) {
+        body.image = { url: form.image_url };
+      }
       // Only send seo when something is set; the backend merges it over the
       // current value so the page URL is never blanked.
       if (form.seo_url || form.seo_title || form.seo_description) {
@@ -207,6 +211,27 @@ export default function Categories() {
       toast.error(e instanceof Error ? e.message : "Could not save the category");
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * Persist one parent's child order.
+   *
+   * ⚠️ Optimistic: the rows are already where the drag left them, so waiting
+   * for the round trip would snap them back and then forward again. On failure
+   * the server's own tree replaces the local one, which is the honest outcome
+   * — the order did not save, so it must not look like it did.
+   */
+  async function reorder(parentId: string, ids: string[]) {
+    try {
+      const res = await apiJson<{ categories: CategoryNode[] }>("/api/categories/reorder", {
+        method: "PUT",
+        body: JSON.stringify({ parentId, ids }),
+      });
+      setNodes(res.categories);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the new order");
+      await load();
     }
   }
 
@@ -329,67 +354,28 @@ export default function Categories() {
               />
             </div>
           ) : (
-            <Table className="border-0">
-              <THead>
-                <TR>
-                  <TH className="w-10" />
-                  <TH>Category title</TH>
-                  <TH className="w-32">Subcategories</TH>
-                  <TH className="w-24">Products</TH>
-                  <TH className="w-12" />
-                </TR>
-              </THead>
-              <TBody>
-                {visible.map((n) => {
-                  const isCollapsed = collapsed.has(n.id);
-                  const topIndex = n.depth === 0 ? (topLevelIndex.get(n.id) ?? null) : null;
-                  return (
-                    <TR key={n.id}>
-                      <TD className="text-subtle">{topIndex ?? ""}</TD>
-                      <TD>
-                        <div
-                          className="flex items-center gap-2"
-                          // Indent by depth so nesting is readable without a
-                          // separate tree column.
-                          style={{ paddingLeft: `${n.depth * 1.5}rem` }}
-                        >
-                          {n.subcategoryCount > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => toggle(n.id)}
-                              aria-label={isCollapsed ? "Expand" : "Collapse"}
-                              aria-expanded={!isCollapsed}
-                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted transition-colors hover:bg-surface-2 hover:text-text"
-                            >
-                              {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                            </button>
-                          ) : (
-                            <span className="h-5 w-5 shrink-0" />
-                          )}
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-surface-2 text-subtle">
-                            <ImageOff size={14} />
-                          </span>
-                          <span className="font-medium text-text">{n.title}</span>
-                        </div>
-                      </TD>
-                      <TD className="text-muted">{n.subcategoryCount}</TD>
-                      <TD className="text-muted">{n.products_count}</TD>
-                      <TD>
-                        <DropdownMenu
-                          actions={[
-                            { label: "Edit", onSelect: () => void openEdit(n) },
-                            { label: "Add subcategory", onSelect: () => openCreate(n.id) },
-                            { label: "Delete", onSelect: () => void remove(n), danger: true },
-                          ]}
-                        />
-                      </TD>
-                    </TR>
-                  );
-                })}
-              </TBody>
-            </Table>
+            <CategoryTree
+              nodes={nodes}
+              collapsed={collapsed}
+              onToggle={toggle}
+              onEdit={(n) => void openEdit(n)}
+              onAddChild={(id) => openCreate(id)}
+              onRemove={(n) => void remove(n)}
+              onReorder={reorder}
+            />
           )}
         </Card>
+      )}
+
+      {pickerOpen && (
+        <MediaPicker
+          kind="image"
+          onPick={(asset) => {
+            setForm((f) => ({ ...f, image_url: asset.url }));
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
       )}
 
       <Modal
@@ -442,6 +428,38 @@ export default function Categories() {
             </Field>
           </div>
 
+          <Field
+            label="Image"
+            hint="Duda fetches the file and re-hosts its own copy, so the Media Centre original can be changed or deleted later without breaking the page."
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-subtle">
+                {form.image_url ? (
+                  <img src={form.image_url} alt="" className="h-full w-full object-contain" />
+                ) : (
+                  <ImageOff size={18} />
+                )}
+              </span>
+              <div>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
+                  {form.image_url ? "Replace image" : "Choose image"}
+                </Button>
+                {/*
+                  * ⚠️ No Remove button, deliberately. A category image cannot
+                  * be cleared once set — probed 2026-09-30: Duda accepts
+                  * `image: null` and ignores it, and `{url:""}`, `{}` and
+                  * `{url:null}` all 400. A button that silently did nothing
+                  * would be worse than its absence.
+                  */}
+                {form.image_url && (
+                  <p className="mt-1 text-small text-subtle">
+                    An image can be replaced but not removed.
+                  </p>
+                )}
+              </div>
+            </div>
+          </Field>
+
           <Field label="Description" htmlFor="cat-desc" hint="HTML, shown on the category page.">
             <Textarea
               id="cat-desc"
@@ -490,5 +508,127 @@ export default function Categories() {
         </div>
       </Modal>
     </>
+  );
+}
+
+/** Grid template shared by the header and every row, so they cannot drift. */
+const COLS = "grid grid-cols-[2rem_1fr_7rem_5rem_3rem] items-center gap-2 px-3";
+
+/**
+ * The category tree, drag-reorderable.
+ *
+ * ⚠️ TWO NESTED SortableLists, and the nesting is what enforces the rule.
+ * `SortableList` renders its own `DndContext`, so a drag started among a
+ * parent's children can never land in the top-level list — "you cannot move a
+ * subcategory to another top-level category" is structural here, not a check
+ * that could be forgotten or bypassed. Validating it server-side as well is
+ * belt and braces for a stale tab, not the mechanism.
+ *
+ * ⚠️ Not a `<table>` any more. A table gives one `<tbody>` per sortable
+ * context, and a tree needs a parent row and its children in the SAME visual
+ * sequence but DIFFERENT contexts — which multiple tbodies cannot express.
+ * The grid reproduces the columns exactly.
+ */
+function CategoryTree({
+  nodes,
+  collapsed,
+  onToggle,
+  onEdit,
+  onAddChild,
+  onRemove,
+  onReorder,
+}: {
+  nodes: CategoryNode[];
+  collapsed: Set<string>;
+  onToggle: (id: string) => void;
+  onEdit: (n: CategoryNode) => void;
+  onAddChild: (id: string) => void;
+  onRemove: (n: CategoryNode) => void;
+  onReorder: (parentId: string, ids: string[]) => void;
+}) {
+  const topLevel = nodes.filter((n) => n.depth === 0);
+  const childrenOf = (id: string) => nodes.filter((n) => n.parent_id === id);
+
+  const row = (n: CategoryNode, handle: DragHandleProps, child: boolean) => {
+    const isCollapsed = collapsed.has(n.id);
+    const kids = childrenOf(n.id);
+    return (
+      <div className={`${COLS} border-b border-border py-2.5 last:border-b-0 hover:bg-surface-2`}>
+        <DragHandle handle={handle} />
+        <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: child ? "1.5rem" : 0 }}>
+          {kids.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => onToggle(n.id)}
+              aria-label={isCollapsed ? "Expand" : "Collapse"}
+              aria-expanded={!isCollapsed}
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted transition-colors hover:bg-surface hover:text-text"
+            >
+              {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+            </button>
+          ) : (
+            <span className="h-5 w-5 shrink-0" />
+          )}
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-subtle">
+            {n.imageUrl ? (
+              <img src={n.imageUrl} alt="" className="h-full w-full object-contain" />
+            ) : (
+              <ImageOff size={14} />
+            )}
+          </span>
+          {/* The title is the edit affordance — it is what you click when you
+              mean "open this", and the ⋯ menu keeps the other actions. */}
+          <button
+            type="button"
+            onClick={() => onEdit(n)}
+            className="truncate text-left font-medium text-text underline-offset-2 hover:underline"
+          >
+            {n.title}
+          </button>
+        </div>
+        <span className="text-muted">{n.subcategoryCount}</span>
+        <span className="text-muted">{n.products_count}</span>
+        <DropdownMenu
+          actions={[
+            { label: "Edit", onSelect: () => onEdit(n) },
+            { label: "Add subcategory", onSelect: () => onAddChild(n.id) },
+            { label: "Delete", onSelect: () => onRemove(n), danger: true },
+          ]}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className={`${COLS} border-b border-border py-2 text-small font-semibold text-muted`}>
+        <span />
+        <span>Category title</span>
+        <span>Subcategories</span>
+        <span>Products</span>
+        <span />
+      </div>
+
+      <SortableList
+        items={topLevel}
+        getId={(n) => n.id}
+        className=" "
+        onReorder={(next) => onReorder(ROOT, next.map((n) => n.id))}
+        renderItem={(n, handle) => (
+          <>
+            {row(n, handle, false)}
+            {!collapsed.has(n.id) && childrenOf(n.id).length > 0 && (
+              <SortableList
+                items={childrenOf(n.id)}
+                getId={(c) => c.id}
+                className=" "
+                onReorder={(next) => onReorder(n.id, next.map((c) => c.id))}
+                renderItem={(c, h) => row(c, h, true)}
+              />
+            )}
+          </>
+        )}
+      />
+    </div>
   );
 }
