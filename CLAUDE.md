@@ -89,7 +89,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   // question and cost three round trips to tell apart once already.
   (window.__saehData || (window.__saehData = {}))[section] = data;
 
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=21';
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=22';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');
@@ -108,9 +108,9 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 
 - The five sections: `sa-logos`, `cert-logos`, `tabs`, `3d-viewer`, `compatible`.
 - **`compatible` also runs on STATIC pages** (the Industries pages), driven by a
-  tag instead of by the page's product — see "Tag mode" below. It takes three
-  extra content-panel values, so its shim is the full thing below rather than a
-  variant of the one above:
+  **category** instead of by the page's product — see "Category mode" below. It
+  takes three extra content-panel values, so its shim is the full thing below
+  rather than a variant of the one above:
 
   ```js
   (function (el, section, inEditor, cfg) {
@@ -121,9 +121,9 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
     (window.__saehData || (window.__saehData = {}))[section] = data;
 
     // Read into primitives NOW, at evaluation time — see the warning below.
-    var singlePage = cfg.singlePage, productTag = cfg.productTag, heading = cfg.heading;
+    var singlePage = cfg.singlePage, productCategory = cfg.productCategory, heading = cfg.heading;
 
-    var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=21';
+    var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=22';
     var L = window.__saehLoader || (window.__saehLoader = {});
     if (!L.p) L.p = new Promise(function (res, rej) {
       var s = document.createElement('script');
@@ -137,7 +137,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
           section: section,
           inEditor: inEditor,
           singlePage: singlePage,
-          productTag: productTag,
+          productCategory: productCategory,
           heading: heading
         }
       });
@@ -177,7 +177,9 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   inferred from the parts of it that already work.
 
   Confirmed working live 2026-09-15: `widgetVersion` 7, `config`
-  `{singlePage:true, heading:"Aviation", productTag:"aviation"}`.
+  `{singlePage:true, heading:"Aviation", productTag:"aviation"}` — that was the
+  TAG-era shape; the field is `productCategory` since tags were retired, but the
+  measurement of where the values live is unchanged.
 
   ⚠️ **Read the values into primitives at evaluation time**, as above, rather
   than reaching into `cfg` inside the `.then()`. Every shim on a page is
@@ -186,12 +188,13 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   viewer's content on the live page while the editor looked fine.
 
   Duda supplies a real boolean for a checkbox and a bare string for a dynamic
-  dropdown's value (verified: `{"singlePage":true,"productTag":"aviation"}`).
+  dropdown's value (verified at the time as `{"singlePage":true,"productTag":"aviation"}`;
+  the key is `productCategory` now).
   `truthyProp()` and the object-shape handling in `init()` are defence against
   other representations, not descriptions of what actually arrives.
 
   with the matching extra parameters on the function and
-  `props: { …, singlePage: singlePage, productTag: productTag, heading: heading }`.
+  `props: { …, singlePage: singlePage, productCategory: productCategory, heading: heading }`.
   ⚠️ Read synchronously into the IIFE's parameters like `section` is, and for the
   same reason.
 - The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`. **Bump it whenever the widget changes** or Duda serves the cached copy.
@@ -251,7 +254,7 @@ a product grid, pre-filtered to the category the page is for.
 
   var category = cfg.category, filterGroup = cfg.filterGroup;
 
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=21';
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=22';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');
