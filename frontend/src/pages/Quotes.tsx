@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
-import { Table, THead, TBody, TR, TH, TD, Badge, Modal, Button, Skeleton, EmptyState } from "../components/ui";
+import { Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 
 function formatDate(iso: string): string {
@@ -56,9 +56,6 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-text">{quote.name}</h3>
-        <Badge tone={quote.emailSent ? "success" : "neutral"}>
-          {quote.emailSent ? "Emailed" : "Not emailed"}
-        </Badge>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -159,28 +156,18 @@ export default function Quotes() {
           Export CSV
         </Button>
       </div>
-      <p className="mt-1 text-sm text-muted">Submissions captured from the public basket-page widget.</p>
+      {/*
+        * ⚠️ No email-status banner, badge or column. Resend is not being set
+        * up — these will feed SAEquip's own CRM later — so `emailSent` is
+        * false on every row and a column of "No" reads as a fault rather than
+        * a setting nobody chose. The backend still stores every submission
+        * independently of email, which is what makes leaving it off safe.
+        */}
+      <p className="mt-1 text-sm text-muted">
+        Submissions captured from the public basket-page widget. Every request is stored here
+        regardless of any notification setup.
+      </p>
 
-      {data && !data.emailEnabled && (
-        <div className="mt-6 flex items-start gap-3 rounded-lg border border-accent/50 bg-accent/10 px-4 py-3 text-sm text-text">
-          <svg className="mt-0.5 h-5 w-5 shrink-0 text-accent-hover" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M12 9v4m0 4h.01M10.29 3.86l-8.18 14.18A1.5 1.5 0 0 0 3.5 20.5h17a1.5 1.5 0 0 0 1.39-2.46L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>
-            Email notifications are not active yet. Quote requests are still being captured below — add{" "}
-            <code className="rounded bg-surface px-1 py-0.5 text-xs">RESEND_API_KEY</code>,{" "}
-            <code className="rounded bg-surface px-1 py-0.5 text-xs">QUOTE_NOTIFY_FROM</code>, and{" "}
-            <code className="rounded bg-surface px-1 py-0.5 text-xs">QUOTE_NOTIFY_TO</code> to the backend
-            environment to enable email alerts.
-          </span>
-        </div>
-      )}
 
       {/* The real table, so only the cells change when the data lands. */}
       {loading && (
@@ -193,7 +180,6 @@ export default function Quotes() {
                 <TH>Company</TH>
                 <TH>Items</TH>
                 <TH>Date</TH>
-                <TH>Emailed</TH>
               </TR>
             </THead>
             <TBody>
@@ -213,9 +199,6 @@ export default function Quotes() {
                   </TD>
                   <TD>
                     <Skeleton className="h-4 w-36" />
-                  </TD>
-                  <TD>
-                    <Skeleton className="h-5 w-14" />
                   </TD>
                 </TR>
               ))}
@@ -246,7 +229,6 @@ export default function Quotes() {
                 <TH>Company</TH>
                 <TH>Items</TH>
                 <TH>Date</TH>
-                <TH>Emailed</TH>
               </TR>
             </THead>
             <TBody>
@@ -257,9 +239,7 @@ export default function Quotes() {
                   <TD>{q.company || "—"}</TD>
                   <TD>{q.items.length}</TD>
                   <TD>{formatDate(q.createdAt)}</TD>
-                  <TD>
-                    <Badge tone={q.emailSent ? "success" : "neutral"}>{q.emailSent ? "Yes" : "No"}</Badge>
-                  </TD>
+
                 </TR>
               ))}
             </TBody>

@@ -6,7 +6,6 @@ import {
   FolderTree,
   Globe,
   Images,
-  LayoutGrid,
   LogOut,
   Menu,
   Package,
@@ -61,7 +60,12 @@ const NAV: NavItem[] = [
       { to: "/logos", label: "Logos", icon: ShieldCheck },
     ],
   },
-  { to: "/widgets", label: "Widgets", icon: LayoutGrid },
+  /*
+   * ⚠️ /widgets is deliberately NOT in the sidebar. It documents the embed
+   * snippets and is Kangaroo's reference, not something SAEquip staff should
+   * be changing — but the ROUTE stays, so it is still reachable by URL. Same
+   * treatment as pages/UIShowcase.tsx, which is unrouted for the same reason.
+   */
   { to: "/quotes", label: "Quote Requests", icon: BarChart3 },
   { to: "/users", label: "Users", icon: Users },
   { to: "/security", label: "Security", icon: KeyRound },
