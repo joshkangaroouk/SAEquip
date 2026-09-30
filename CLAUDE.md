@@ -532,6 +532,20 @@ The `/website` page (top of the sidebar) lets a staff member SSO straight into t
   This is why `DudaEditorAccount` has separate `staffEmail` and `dudaAccountName` columns. ⚠️ **Anything looking a mapping up must query `staffEmail`, and anything calling Duda must use `dudaAccountName`.** `--check` and `--revoke` both got this wrong: they queried `dudaAccountName` with the login address, so `--check` reported "no access" for a fully granted account, and **`--revoke` would have asked Duda about an account that never held the grant, taken `ResourceNotExist` as "nothing to revoke", and deleted the Hub mapping while the real customer account kept all 11 permissions on the live site** — the same silent-revoke failure recorded below, reached through a different door.
 
 - **Provisioning is CLI-only, deliberately.** Creating Duda accounts and granting permissions are the privilege-escalating operations; as an HTTP route, any allowed-domain session could self-provision. Use `npm run duda:editor-provision --workspace=backend -- --email <staff> --supabase-user-id <uuid> --confirm` (also `--check` read-only, and `--revoke`). `GRANTABLE_SITES` in that script hard-limits which sites can be granted — the retired `099434f3` is deliberately absent. The allowlist check runs **after** the revoke branch on purpose: a retired site is exactly when you still need to take access away.
+- ⚠️ **`--check` takes `--duda-account` too, and it matters MOST when there is no mapping** —
+  which is exactly when you are asking whether Duda still holds a grant the Hub has lost.
+  Without it the check falls back to the LOGIN address, and Duda answers "does not have
+  access" for a staff login whatever the customer account holds. That is the **third** door
+  onto the same wrong answer this script has produced before, and it was live: after the
+  2026-09-29 database wipe the first check reported no access while
+  `josh+saequip@kangaroouk.com` still held all 11 permissions. The account actually queried
+  is now always printed.
+- ⚠️ **Wiping the Hub's DB does NOT revoke anything on Duda.** The mapping rows are the
+  Hub's authorization, not Duda's: after the wipe `/website` 403'd while the grant was
+  untouched on Duda's side. Restoring was re-running `duda:editor-provision --confirm` — no
+  Duda change needed, and `update_site_permissions` being full replacement makes the
+  re-grant idempotent. The mirror of the offboarding trap below: deleting rows here leaves
+  editor access alive.
 - ⚠️ **A revoke must be verified, never assumed.** Revoke is `DELETE .../permissions`; the plausible-looking `DELETE /accounts/{name}/sites/{site}` 404s. The script originally logged a 404 as "may already be revoked", so a wrong path printed a success tick while the account kept all 11 permissions on the site — caught only by asking Duda directly. It now hard-fails on any 404 that isn't an explicit `ResourceNotExist`, then re-reads the permissions to confirm the grant is actually gone.
 
 ### Verified account-scoped Duda paths (probed live, `npm run duda:probe-sso`)

@@ -66,7 +66,16 @@ async function findMapping(email: string) {
   });
 }
 
-async function check(email: string, site: string) {
+/**
+ * ⚠️ `override` is `--duda-account`, and it matters most when there is NO
+ * mapping — which is exactly when you are checking whether Duda still holds a
+ * grant the Hub has lost. Without it this fell back to the LOGIN address, and
+ * Duda answers "does not have access" for a staff login whatever the customer
+ * account holds. That is the third door onto the same wrong answer this script
+ * has already produced twice: a confident "no access" for a fully granted
+ * account. Report which name was asked about, always.
+ */
+async function check(email: string, site: string, override?: string) {
   const mapping = await findMapping(email);
 
   console.log("\n--- Hub mapping (this DB) ---");
@@ -81,8 +90,15 @@ async function check(email: string, site: string) {
 
   console.log("\n--- Duda's view (source of truth for permissions) ---");
   // Ask about the DUDA account name, which is what actually holds the grant.
-  const dudaAccount = mapping?.dudaAccountName ?? email;
-  if (dudaAccount !== email) console.log(`  (querying Duda account ${dudaAccount})`);
+  // The explicit flag wins over the mapping: with no mapping there is nothing
+  // else to go on, and the login address is the one answer guaranteed wrong.
+  const dudaAccount = override ?? mapping?.dudaAccountName ?? email;
+  console.log(`  (querying Duda account ${dudaAccount})`);
+  if (!mapping && !override) {
+    console.log("  ⚠ no mapping and no --duda-account, so this is the LOGIN address.");
+    console.log("    If this person has a separate customer account, pass --duda-account");
+    console.log("    or the answer below is meaningless.");
+  }
   try {
     const perms = await dudaSso.getSitePermissions(dudaAccount, site);
     console.log(`  ${site}: ${JSON.stringify(perms)}`);
@@ -301,7 +317,7 @@ async function main() {
   if (!email) fail("--email is required");
 
   if (flag("check")) {
-    await check(email!, site);
+    await check(email!, site, arg("duda-account"));
     return;
   }
 
