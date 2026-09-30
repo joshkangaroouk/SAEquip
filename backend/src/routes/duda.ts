@@ -231,27 +231,88 @@ dudaRouter.get("/store", async (_req, res, next) => {
   }
 });
 
+/** Crockford base32, as ULID uses it — no I, L, O or U. */
+const ULID_B32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/**
+ * When Duda created a product, decoded from its id.
+ *
+ * ⚠️ Duda returns NO date field on a product, and `HubProduct.createdAt` is
+ * when the Hub row was written — which for the whole catalogue is the database
+ * rebuild of 2026-09-29, not the import. Duda's ids are ULIDs, whose first 10
+ * characters are a 48-bit millisecond timestamp.
+ *
+ * Verified against `migration/ledger.json`: for 95 of the 96 imported products
+ * the decoded time is within ~200ms of the moment the importer recorded the
+ * create, always fractionally earlier. The one outlier is COMPACT FILTRATION
+ * UNIT at +76s, which is the product that hit Duda's duplicate-title rule and
+ * was created on a retry — so it corroborates rather than contradicts.
+ *
+ * Returns null for anything that is not a ULID, so the caller can fall back.
+ */
+function createdFromUlid(id: string): Date | null {
+  if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) return null;
+  let ms = 0;
+  for (const ch of id.slice(0, 10)) {
+    const i = ULID_B32.indexOf(ch);
+    if (i < 0) return null;
+    ms = ms * 32 + i;
+  }
+  // A timestamp outside any plausible range means the id is 26 valid
+  // characters that simply are not a ULID.
+  return ms > 0 && ms < Date.now() + 86_400_000 ? new Date(ms) : null;
+}
+
 /**
  * GET /api/products
  * List of lightweight summaries for the products table.
  */
 dudaRouter.get("/products", async (_req, res, next) => {
   try {
-    // Pages internally — Duda clamps a single page to 200 and the store now
-    // allows up to 1000 products, so one listProducts() call would truncate.
-    const results = await duda.listAllProducts();
+    /*
+     * ⚠️ Category ids come from the HUB, never from Duda's own `categories`
+     * array on the product. The Hub is the source of truth for assignment;
+     * Duda's copy is only as fresh as the last `duda:sync-categories` run, so
+     * reading it would show a listing that disagrees with the editor.
+     *
+     * ONE query for every product's links and timestamp — a per-product query
+     * here is the trap that made GET /api/media take 7s after the import.
+     * The listing renders TITLES by joining against /api/categories in the
+     * browser, which keeps the names fresh without a second Duda call here.
+     */
+    const [results, hub] = await Promise.all([
+      // Pages internally — Duda clamps a single page to 200 and the store now
+      // allows up to 1000 products, so one listProducts() call would truncate.
+      duda.listAllProducts(),
+      prisma.hubProduct.findMany({
+        select: {
+          dudaProductId: true,
+          createdAt: true,
+          categories: { select: { dudaCategoryId: true } },
+        },
+      }),
+    ]);
 
-    const summaries = results.map((p) => ({
-      id: p.id,
-      name: p.name,
-      sku: p.sku,
-      status: p.status,
-      stock_status: p.stock_status,
-      type: p.type,
-      price: formatFirstPrice(p.prices),
-      thumbnail: p.images?.[0]?.url ?? null,
-      variation_count: p.variations?.length ?? 0,
-    }));
+    const hubBy = new Map(hub.map((h) => [h.dudaProductId, h]));
+
+    const summaries = results.map((p) => {
+      const h = hubBy.get(p.id);
+      return {
+        id: p.id,
+        name: p.name,
+        sku: p.sku,
+        status: p.status,
+        stock_status: p.stock_status,
+        type: p.type,
+        price: formatFirstPrice(p.prices),
+        thumbnail: p.images?.[0]?.url ?? null,
+        variation_count: p.variations?.length ?? 0,
+        category_ids: (h?.categories ?? []).map((c) => c.dudaCategoryId),
+        // Duda's own creation time from the ULID, falling back to the Hub
+        // row for any id that is not one. See createdFromUlid above.
+        created_at: (createdFromUlid(p.id) ?? h?.createdAt)?.toISOString() ?? null,
+      };
+    });
 
     res.json(summaries);
   } catch (err) {

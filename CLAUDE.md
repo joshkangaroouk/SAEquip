@@ -1139,6 +1139,43 @@ Rules the generator follows, each of which came from a bad first draft:
 - **Short accessory copy gets a context sentence** rather than shipping an 40-char fragment.
 - **A final de-duplication pass** disambiguates by SKU. Before the name rule, five products shared a description verbatim — several "Purchase Only" items with identical disclaimer text — which search engines treat as duplicate content.
 
+### The products listing (`/products`)
+
+Columns are Product / SKU / Status / **Categories** — price and variation count were
+dropped (2026-09-30): both live on the product page, and neither is what you scan a
+96-row list for now that assignment is the active work.
+
+- ⚠️ **Category ids come from the HUB, never Duda's `categories` array on the product.**
+  The Hub is the source of truth; Duda's copy is only as fresh as the last
+  `duda:sync-categories` run, so reading it would show a listing that disagrees with the
+  editor. One `findMany` for every product's links — a per-product query here is the trap
+  that made `GET /api/media` take 7s after the import.
+- **Titles are joined in the BROWSER** against `/api/categories`, which the page already
+  needs for the filter dropdown. That keeps names fresh without a second Duda call inside
+  the products route, and the categories fetch is a *soft* dependency — if it fails the
+  table still renders and the column goes quiet.
+- ⚠️ **A category that is the PARENT of another selected one is not shown.** Every product
+  carries "Products" as well as its type, and printing both says nothing the child does
+  not. A top-level category selected alone still shows.
+- `ProductCategory.dudaCategoryId` has no foreign key, so a category deleted in Duda leaves
+  rows pointing at nothing. Those collapse into one red "N no longer in Duda" chip.
+- The filter's **parent matches everything beneath it**, so picking "Site Challenges" is not
+  an empty result just because products sit on the leaves.
+
+### ⚠️ Duda product ids are ULIDs — that is the only creation date there is
+
+`GET /products` returns **no date field**, and `HubProduct.createdAt` is when the Hub row was
+written — for the whole catalogue that is the 2026-09-29 database rebuild, not the import.
+So "Recently added" decodes the timestamp out of the id: a ULID's first 10 characters are a
+48-bit millisecond value in Crockford base32.
+
+Verified against `migration/ledger.json`, not assumed: for **95 of the 96** imported products
+the decoded time is within ~200ms of the moment the importer recorded the create, and always
+fractionally earlier. The single outlier is `COMPACT FILTRATION UNIT` at +76s — the product
+that hit Duda's duplicate-title rule and was created on a retry — so it corroborates rather
+than contradicts. `createdFromUlid()` returns null for anything that is not a ULID and the
+route falls back to the Hub row.
+
 ## Known gaps / backlog (as of 2026-07-28)
 
 - Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).

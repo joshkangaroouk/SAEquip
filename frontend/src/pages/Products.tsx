@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import {
   Button,
   Highlight,
   Input,
+  Select,
   StatusBadge,
   Table,
   TBody,
@@ -15,10 +16,37 @@ import {
 } from "../components/ui";
 import type { ProductSummary, StoreInfo } from "../lib/types";
 
+interface CategoryNode {
+  id: string;
+  title: string;
+  depth: number;
+  /** Duda's sentinel for a top-level row is the string "ROOT", not null. */
+  parent_id: string;
+}
+
+type SortKey = "recent" | "oldest" | "name" | "name-desc";
+
+/** One category pill on a row. `stale` marks an id Duda no longer knows. */
+interface Chip {
+  key: string;
+  label: string;
+  stale?: boolean;
+}
+
+const SORTS: { value: SortKey; label: string }[] = [
+  { value: "recent", label: "Recently added" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "name", label: "Name A–Z" },
+  { value: "name-desc", label: "Name Z–A" },
+];
+
 export default function Products() {
   const navigate = useNavigate();
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [products, setProducts] = useState<ProductSummary[] | null>(null);
+  const [cats, setCats] = useState<CategoryNode[]>([]);
+  const [categoryId, setCategoryId] = useState("");
+  const [sort, setSort] = useState<SortKey>("recent");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -30,9 +58,10 @@ export default function Products() {
       setLoading(true);
       setError(null);
       try {
-        const [storeRes, productsRes] = await Promise.all([
+        const [storeRes, productsRes, catsRes] = await Promise.all([
           apiFetch("/api/store"),
           apiFetch("/api/products"),
+          apiFetch("/api/categories"),
         ]);
         if (!storeRes.ok) throw new Error(`/api/store returned ${storeRes.status}`);
         if (!productsRes.ok) throw new Error(`/api/products returned ${productsRes.status}`);
@@ -41,6 +70,10 @@ export default function Products() {
         if (cancelled) return;
         setStore(storeData);
         setProducts(productsData);
+        // ⚠️ Categories are a SOFT dependency: the products table must still
+        // render if this one fails, so it is checked separately rather than
+        // thrown with the other two. The Categories column just goes quiet.
+        if (catsRes.ok) setCats((await catsRes.json()).categories ?? []);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load products");
       } finally {
@@ -56,18 +89,68 @@ export default function Products() {
 
   const lowHeadroom = store?.remaining != null && store.remaining <= 10;
 
+  const catById = useMemo(() => new Map(cats.map((c) => [c.id, c])), [cats]);
+
+  /**
+   * Which categories to show on a row.
+   *
+   * ⚠️ A category that is the PARENT of another selected one is dropped —
+   * every product carries "Products" as well as its type, and printing both
+   * says nothing the child does not. A top-level category selected on its own
+   * still shows, so nothing is ever hidden entirely.
+   */
+  const chipsFor = (p: ProductSummary): Chip[] => {
+    // ⚠️ Without the categories list every id looks unknown, which would put a
+    // false "no longer in Duda" on every row. The column goes quiet instead.
+    if (!cats.length) return [];
+
+    const parents = new Set(
+      p.category_ids.map((id) => catById.get(id)?.parent_id).filter((x): x is string => !!x),
+    );
+    const chips: Chip[] = p.category_ids
+      .filter((id) => catById.has(id) && !parents.has(id))
+      .map((id) => ({ key: id, label: catById.get(id)!.title }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    // `ProductCategory.dudaCategoryId` has no foreign key — categories live in
+    // Duda — so a category deleted there leaves rows pointing at nothing. One
+    // chip rather than N identical ones.
+    const stale = p.category_ids.filter((id) => !catById.has(id)).length;
+    if (stale) chips.push({ key: "__stale", label: `${stale} no longer in Duda`, stale: true });
+    return chips;
+  };
+
   const q = query.trim().toLowerCase();
-  const filtered =
-    products && q
-      ? products.filter(
-          // sku is null for products that don't have one, and name is only
-          // guaranteed by Duda's create API — neither is safe to call a method
-          // on directly.
-          (p) =>
-            (p.name ?? "").toLowerCase().includes(q) ||
-            (p.sku ?? "").toLowerCase().includes(q),
-        )
-      : products;
+  const filtered = useMemo(() => {
+    if (!products) return products;
+    let out = products;
+    if (q) {
+      // sku is null for products that don't have one, and name is only
+      // guaranteed by Duda's create API — neither is safe to call a method
+      // on directly.
+      out = out.filter(
+        (p) => (p.name ?? "").toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q),
+      );
+    }
+    if (categoryId) {
+      // A PARENT matches everything beneath it, so picking "Site Challenges"
+      // is not an empty result just because products sit on the leaves.
+      const wanted = new Set([categoryId, ...cats.filter((c) => c.parent_id === categoryId).map((c) => c.id)]);
+      out = out.filter((p) => p.category_ids.some((id) => wanted.has(id)));
+    }
+    const byName = (a: ProductSummary, b: ProductSummary) =>
+      (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" });
+    // created_at is null for a product with no Hub row; sort those last rather
+    // than letting an empty string win the comparison.
+    const byDate = (a: ProductSummary, b: ProductSummary) =>
+      (b.created_at ?? "").localeCompare(a.created_at ?? "");
+    const sorted = [...out];
+    if (sort === "name") sorted.sort(byName);
+    else if (sort === "name-desc") sorted.sort((a, b) => byName(b, a));
+    else if (sort === "oldest") sorted.sort((a, b) => byDate(b, a));
+    else sorted.sort(byDate);
+    return sorted;
+  }, [products, q, categoryId, sort, cats]);
 
   const storeFull = store?.remaining != null && store.remaining <= 0;
 
@@ -93,7 +176,23 @@ export default function Products() {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        {/*
+          * Out of its box deliberately: a count that is fine 99% of the time is
+          * context, not an alert, and a bordered panel gives it the weight of
+          * one. It only takes emphasis when the headroom is genuinely low.
+          */}
+        {store ? (
+          <p className={`text-body ${lowHeadroom ? "font-semibold text-text" : "text-muted"}`}>
+            {store.product_count} / {store.max_products ?? "?"} products used
+            {store.remaining != null && <span className="ml-1">· {store.remaining} remaining</span>}
+            {lowHeadroom && <span className="ml-1 text-danger">— approaching the limit</span>}
+          </p>
+        ) : (
+          <span />
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full max-w-xs">
           <svg
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle"
@@ -126,26 +225,40 @@ export default function Products() {
             </button>
           )}
         </div>
-      </div>
 
-        {/* Headroom banner */}
-        {store && (
-          <div
-            className={`mt-4 rounded-lg border px-3 py-2 text-body ${
-              lowHeadroom
-                ? "border border-accent/50 bg-accent/10 text-text"
-                : "border-border bg-surface text-muted"
-            }`}
-          >
-            <span className="font-semibold">
-              {store.product_count} / {store.max_products ?? "?"} products used
-            </span>
-            {store.remaining != null && (
-              <span className="ml-1">· {store.remaining} remaining</span>
-            )}
-            {lowHeadroom && <span className="ml-1 font-semibold">— approaching the limit</span>}
-          </div>
-        )}
+        {/* ⚠️ A PARENT here matches everything beneath it — see the filter —
+            so picking "Site Challenges" is not an empty result just because
+            products sit on the leaves. */}
+        <Select
+          size="sm"
+          className="w-auto"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          aria-label="Filter by category"
+        >
+          <option value="">All categories</option>
+          {cats.map((c) => (
+            <option key={c.id} value={c.id}>
+              {"\u00a0\u00a0".repeat(c.depth) + c.title}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          size="sm"
+          className="w-auto"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortKey)}
+          aria-label="Sort products"
+        >
+          {SORTS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+        </div>
+      </div>
 
         {/* States */}
         {loading && <p className="mt-6 text-muted">Loading products…</p>}
@@ -159,9 +272,16 @@ export default function Products() {
         )}
         {!loading && !error && products && products.length > 0 && filtered && filtered.length === 0 && (
           <p className="mt-6 text-muted">
-            No products match "{query}".{" "}
-            <button type="button" onClick={() => setQuery("")} className="text-text underline underline-offset-2 hover:text-muted">
-              Clear search
+            No products match {query ? `"${query}"` : "that category"}.{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setCategoryId("");
+              }}
+              className="text-text underline underline-offset-2 hover:text-muted"
+            >
+              Clear filters
             </button>
           </p>
         )}
@@ -175,12 +295,13 @@ export default function Products() {
                   <TH>Product</TH>
                   <TH>SKU</TH>
                   <TH>Status</TH>
-                  <TH>Price</TH>
-                  <TH>Variations</TH>
+                  <TH>Categories</TH>
                 </TR>
               </THead>
               <TBody>
-                {filtered.map((p) => (
+                {filtered.map((p) => {
+                  const chips = chipsFor(p);
+                  return (
                   <TR key={p.id} hover onClick={() => navigate(`/products/${p.id}`)}>
                     <TD>
                       <div className="flex items-center gap-3">
@@ -207,10 +328,29 @@ export default function Products() {
                     <TD>
                       <StatusBadge status={p.status} />
                     </TD>
-                    <TD className="text-text">{p.price ?? "—"}</TD>
-                    <TD className="text-muted">{p.variation_count}</TD>
+                    <TD>
+                      {chips.length === 0 ? (
+                        <span className="text-subtle">—</span>
+                      ) : (
+                        <div className="flex max-w-xs flex-wrap gap-1">
+                          {chips.map((c) => (
+                            <span
+                              key={c.key}
+                              className={`rounded-md border px-1.5 py-0.5 text-xs ${
+                                c.stale
+                                  ? "border-danger/30 bg-danger/10 text-danger"
+                                  : "border-border bg-surface-2 text-muted"
+                              }`}
+                            >
+                              {c.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </TD>
                   </TR>
-                ))}
+                  );
+                })}
               </TBody>
             </Table>
           </div>

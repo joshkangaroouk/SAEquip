@@ -16,6 +16,13 @@ export interface ProductSummary {
   price: string | null;
   thumbnail: string | null;
   variation_count: number;
+  /** Hub-side category assignment. Titles come from GET /api/categories. */
+  category_ids: string[];
+  /**
+   * When Duda created the product, decoded from its ULID id — Duda returns no
+   * date field at all. Falls back to the Hub row's own timestamp.
+   */
+  created_at: string | null;
 }
 
 export interface MediaAsset {
