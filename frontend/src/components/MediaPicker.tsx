@@ -177,7 +177,7 @@ export function MediaPicker({
                         <FileIcon className="h-8 w-8" />
                       </span>
                     )}
-                    <span className="mt-1 w-full truncate text-center text-xs text-muted" title={a.filename}>
+                    <span className="mt-1 w-full text-center text-xs text-muted [overflow-wrap:anywhere]" title={a.filename}>
                       {a.filename}
                     </span>
                   </button>

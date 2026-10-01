@@ -291,9 +291,11 @@ export default function Media() {
                 </div>
 
                 <div className="mt-2 flex-1">
-                  <p className="truncate text-sm font-semibold text-text" title={a.filename}>
-                    {a.filename}
-                  </p>
+                  {/* The WHOLE name. Imported filenames carry the product code,
+                      range and document type, so truncating them hid exactly
+                      the part that tells two files apart. overflow-wrap:anywhere
+                      because they have no spaces to break at. */}
+                  <p className="text-sm font-semibold text-text [overflow-wrap:anywhere]">{a.filename}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted">
                     <span>{formatBytes(a.sizeBytes)}</span>
                     <UsageNote asset={a} />
@@ -301,12 +303,22 @@ export default function Media() {
                   {a.alt && <p className="mt-1 truncate text-xs text-subtle">alt: {a.alt}</p>}
                 </div>
 
-                <button
-                  onClick={() => onDelete(a)}
-                  className="mt-2 rounded-md border border-border px-2 py-1 text-body font-semibold text-danger hover:bg-danger/10"
-                >
-                  Delete
-                </button>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md border border-border px-2 py-1 text-center text-body font-semibold text-text hover:bg-surface-2"
+                  >
+                    Preview
+                  </a>
+                  <button
+                    onClick={() => onDelete(a)}
+                    className="rounded-md border border-border px-2 py-1 text-body font-semibold text-danger hover:bg-danger/10"
+                  >
+                    Delete
+                  </button>
+                </div>
                 {deleteErrors[a.id] && <p className="mt-1 text-xs text-danger">{deleteErrors[a.id]}</p>}
               </div>
             ))}

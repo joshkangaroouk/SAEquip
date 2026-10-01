@@ -98,7 +98,10 @@ export function DownloadsSection({
       {value.length === 0 ? (
         <p className="text-body text-subtle">No downloads on this product yet.</p>
       ) : (
-        <div className="rounded-md border border-border">
+        <div className="overflow-hidden rounded-md border border-border">
+          {/* overflow-hidden clips the rows' square backgrounds to the rounded
+              border; without it they paint over the corners, which is what
+              read as the edge being cut off. */}
           <SortableList
             as="div"
             className="divide-y divide-border"
