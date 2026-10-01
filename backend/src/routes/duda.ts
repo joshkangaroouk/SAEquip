@@ -7,6 +7,7 @@ import { resolveUrl } from "../services/storage.js";
 import { cartesianSize, updateOptionsPreservingVariations } from "../services/productOptions.js";
 import { prisma } from "../prisma.js";
 import { withAncestors } from "../services/categoryTree.js";
+import { shapeHubDownload } from "../services/downloads.js";
 import { env } from "../env.js";
 
 /** A non-negative numeric string, e.g. "400.0". */
@@ -630,7 +631,7 @@ dudaRouter.put("/products/:id/variations", async (req, res, next) => {
 /**
  * GET /api/products/:id/custom
  * Hub-side custom content for a product. Ensures the HubProduct row exists,
- * then returns the six content groups (all empty until editors are added).
+ * then returns everything the product editor loads beyond Duda's own fields.
  */
 dudaRouter.get("/products/:id/custom", async (req, res, next) => {
   try {
@@ -669,23 +670,10 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       })),
     );
 
-    const downloads = await Promise.all(
-      full.downloads.map(async (d) => ({
-        id: d.id,
-        title: d.title,
-        gated: d.gated,
-        sortOrder: d.sortOrder,
-        mediaAssetId: d.mediaAssetId,
-        file: {
-          filename: d.mediaAsset.filename,
-          mimeType: d.mediaAsset.mimeType,
-          sizeBytes: d.mediaAsset.sizeBytes,
-          // Withhold the URL for gated downloads — the public widget fetches the
-          // file only after lead capture (Step 11). Non-gated get a signed URL.
-          url: d.gated ? null : await resolveUrl(d.mediaAsset.kind, d.mediaAsset.storagePath),
-        },
-      })),
-    );
+    // ⚠️ Shared with PUT /products/:id/downloads, and resilient per item: this
+    // response loads the WHOLE editor, so one unsignable file must not stop it
+    // opening. See shapeHubDownload.
+    const downloads = await Promise.all(full.downloads.map(shapeHubDownload));
 
     const model3d = full.glbAsset
       ? {

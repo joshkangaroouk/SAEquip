@@ -167,6 +167,13 @@ model Download {
   hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
   mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
   leads        Lead[]
+
+  /// One product never lists the same file twice. Verified safe before it was
+  /// added (2026-10-01): no WordPress product repeated a file, and the Hub had
+  /// no Download rows. It is what makes the import's re-run safe STRUCTURALLY
+  /// rather than only by its skip-if-populated check — and its leading column
+  /// also serves every per-product lookup, so no separate index is needed.
+  @@unique([hubProductId, mediaAssetId])
 }
 
 /// A lead captured by a gated download's form.

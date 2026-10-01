@@ -412,8 +412,21 @@ publicRouter.get("/test.html", (_req, res) => {
 
 /**
  * GET /public/products/content?slug=|sku=|dudaId=
- * Public render payload. Exactly one identifier required. Gated downloads
- * NEVER include a file URL.
+ * Public render payload. Exactly one identifier required.
+ *
+ * ⚠️ `downloads` is always an EMPTY array, deliberately (2026-10-01). No public
+ * widget renders downloads now — a separate Download List widget is planned —
+ * and serving them here cost three things for nothing:
+ *   - every content request signed every file URL against Supabase, on the
+ *     public hot path, for a section nobody displays;
+ *   - the signing ran inside `Promise.all`, so ONE object missing from
+ *     `product-files` 502'd the product's whole payload — tabs, logos, 3D and
+ *     compatible along with it;
+ *   - the legacy `data-section="all"` embed still includes downloads in its
+ *     expansion, so 176 imported files would have appeared on any live page
+ *     carrying one, unasked.
+ * The key stays, as an empty array, so any widget code that reads it cannot
+ * throw — the section simply renders nothing and collapses.
  */
 publicRouter.get("/products/content", contentLimiter, async (req, res, next) => {
   const candidates: Array<[string, unknown]> = [
@@ -444,7 +457,6 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
         logos: { include: { logo: { include: { mediaAsset: true } } } },
         specRows: { orderBy: { sortOrder: "asc" } },
         textItems: { orderBy: { sortOrder: "asc" } },
-        downloads: { include: { mediaAsset: true }, orderBy: { sortOrder: "asc" } },
         glbAsset: true,
         compatible: {
           orderBy: { sortOrder: "asc" },
@@ -469,21 +481,6 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
     const sa = activeLogos.filter((l) => l.kind === "SA_LOGO").map(shapeLogo);
     const cert = activeLogos.filter((l) => l.kind === "CERT_LOGO").map(shapeLogo);
 
-    // Downloads: only NON-gated require a (network) signed URL; gated get none.
-    console.time("[public/content] sign");
-    const downloads = await Promise.all(
-      full.downloads.map(async (d) =>
-        d.gated
-          ? { id: d.id, title: d.title, gated: true as const }
-          : {
-              id: d.id,
-              title: d.title,
-              gated: false as const,
-              fileUrl: await signedFileUrl(d.mediaAsset.storagePath, 3600),
-            },
-      ),
-    );
-    console.timeEnd("[public/content] sign");
 
     // Short freshness window + background revalidation: visitors get an instant
     // (at most 5s-stale) response, and edits (e.g. toggling a logo) propagate
@@ -522,7 +519,8 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       specs: full.specRows.map((s) => ({ label: s.label, value: s.value })),
       benefits: full.textItems.filter((t) => t.kind === "BENEFIT").map((t) => t.text),
       applications: full.textItems.filter((t) => t.kind === "APPLICATION").map((t) => t.text),
-      downloads,
+      // Withheld — see the note above this route.
+      downloads: [],
       model3dUrl: full.glbAsset ? publicModelUrl(full.glbAsset.storagePath) : null,
       /*
        * Compatible products: name, page URL and thumbnail.
