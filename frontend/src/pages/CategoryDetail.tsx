@@ -268,7 +268,7 @@ export default function CategoryDetail() {
               description="Stored in the Hub. Run duda:sync-categories to push it to Duda's storefront."
             />
             <AssignPickList
-              items={products.map((p) => ({ id: p.id, label: p.name }))}
+              items={products.map((p) => ({ id: p.id, label: p.name, imageUrl: p.thumbnail }))}
               selected={draft.productIds}
               onChange={(next) => set("productIds", next)}
               searchPlaceholder="Search products…"

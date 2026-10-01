@@ -1057,6 +1057,15 @@ all 3 categories** while the Hub holds the real assignments.
 - `PATCH /api/tags/:id` distinguishes **absent** `groupId` (leave the group alone) from explicit **null** (move to Ungrouped) with `in`. `?? null` would silently ungroup a tag on a plain rename.
 - `GET /api/tags` stays a **flat, pre-ordered array** carrying `groupId`/`groupName` — group order, then tag order, ungrouped last. Ordering is derived once server-side, the same contract `buildTree()` uses in `routes/categories.ts`, so the Tags page and the editor's picker cannot disagree.
 - ⚠️ **`AssignPickList` never reorders as you tick** (changed 2026-09-30). Selected items used to be pinned to the top, which is fine for a flat list and wrong for a tree: a ticked child jumped above its own parent, so the indentation pointed at nothing and the row you just clicked moved out from under the cursor. Position is how you find a category again.
+- **`AssignPickList` shows a thumbnail only when the caller supplies one** (`PickItem.imageUrl`).
+  The categories picker has none, and a column of empty placeholders is worse than no column.
+  ⚠️ The image goes INSIDE the `Checkbox` label, so the row stays one click target rather
+  than the thumbnail becoming dead space beside the checkbox.
+- **"Only show selected"** appears with the search, on the same `searchThreshold` — a list
+  short enough to read whole needs neither. ⚠️ It is not reset when the last item is
+  unticked: that leaves an empty list with the toggle still on, which is honest, whereas
+  flipping it back would be the control changing itself under the cursor. The empty message
+  distinguishes "nothing selected yet" from "nothing selected matches that search".
 - ⚠️ **A child can never be selected without its parent, in BOTH directions** — ticking one ticks its ancestors, unticking a parent unticks everything beneath it. Half the rule leaves exactly the state it exists to prevent: tick a child, untick its parent, child orphaned. Driven by `PickItem.parentId`; items without one behave as a flat list. Anything in `selected` that is not in `items` (a category deleted in Duda) is carried through untouched, since dropping it would be an edit the user never made.
 - ⚠️ **Top-level order in the dashboard is `TOP_LEVEL_ORDER` in `routes/categories.ts`** — Products, Site Challenges, Industries. Duda has no `sortOrder` on a category and its own list order is creation order (newest first), which put Products last. Unlisted parents keep Duda's order after the listed ones (the sort is stable), so renaming a parent demotes it rather than breaking the list. **Display order only** — it never touches Duda, and the megamenu's column order is still arranged in Duda's own menu editor.
 

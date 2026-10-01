@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { Checkbox, Input } from "../ui";
+import { useId, useMemo, useState } from "react";
+import { ImageOff } from "lucide-react";
+import { Checkbox, Input, Toggle } from "../ui";
 
 export interface PickItem {
   id: string;
@@ -19,6 +20,11 @@ export interface PickItem {
    * headings; categories pass none and render exactly as before.
    */
   group?: string;
+  /**
+   * Thumbnail. Opt-in per caller: the categories picker has no images, and a
+   * column of empty placeholders is worse than no column.
+   */
+  imageUrl?: string | null;
 }
 
 /** A heading row, or a selectable item. Headings are never selectable. */
@@ -49,13 +55,26 @@ export function AssignPickList({
   emptyText: string;
   searchThreshold?: number;
 }) {
+  const onlyId = useId();
   const [query, setQuery] = useState("");
+  /**
+   * ⚠️ Not persisted and not reset by `selected` changing. Unticking the last
+   * item while this is on leaves an empty list and the toggle still on, which
+   * is honest — turning it off is one click, whereas flipping it for you would
+   * be the control changing itself under the cursor.
+   */
+  const [onlySelected, setOnlySelected] = useState(false);
   const chosen = useMemo(() => new Set(selected), [selected]);
   const grouped = useMemo(() => items.some((i) => i.group), [items]);
+  const withImages = useMemo(() => items.some((i) => i.imageUrl !== undefined), [items]);
+  // Same threshold as the search: a list short enough to read whole needs
+  // neither control.
+  const showTools = items.length >= searchThreshold;
 
   const rows = useMemo<Row[]>(() => {
     const q = query.trim().toLowerCase();
-    const matching = q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items;
+    let matching = q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items;
+    if (onlySelected) matching = matching.filter((i) => chosen.has(i.id));
 
     if (!grouped) return matching.map((item) => ({ kind: "item", item }) as Row);
 
@@ -76,7 +95,7 @@ export function AssignPickList({
       for (const item of bucket) out.push({ kind: "item", item });
     }
     return out;
-  }, [items, query, chosen, grouped]);
+  }, [items, query, chosen, grouped, onlySelected]);
 
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const childrenOf = useMemo(() => {
@@ -125,21 +144,38 @@ export function AssignPickList({
 
   return (
     <div>
-      {items.length >= searchThreshold && (
-        <Input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={searchPlaceholder}
-          aria-label={searchPlaceholder}
-          className="mb-2"
-        />
+      {showTools && (
+        <>
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            className="mb-2"
+          />
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <Toggle
+              id={onlyId}
+              checked={onlySelected}
+              onChange={setOnlySelected}
+              label="Only show selected"
+            />
+            <span className="text-small text-subtle">{selected.length} selected</span>
+          </div>
+        </>
       )}
 
       {items.length === 0 ? (
         <p className="text-small text-subtle">{emptyText}</p>
       ) : rows.length === 0 ? (
-        <p className="text-small text-subtle">Nothing matches that search.</p>
+        <p className="text-small text-subtle">
+          {onlySelected && !selected.length
+            ? "Nothing is selected yet."
+            : onlySelected
+              ? "Nothing selected matches that search."
+              : "Nothing matches that search."}
+        </p>
       ) : (
         <div className="max-h-80 overflow-y-auto rounded-md border border-border">
           {rows.map((row) =>
@@ -170,7 +206,32 @@ export function AssignPickList({
                 <Checkbox
                   checked={chosen.has(row.item.id)}
                   onChange={() => toggle(row.item.id)}
-                  label={row.item.label}
+                  /*
+                   * The thumbnail goes INSIDE the label, so the whole row stays
+                   * one click target rather than the image becoming dead space
+                   * beside the checkbox.
+                   */
+                  label={
+                    withImages ? (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-subtle">
+                          {row.item.imageUrl ? (
+                            <img
+                              src={row.item.imageUrl}
+                              alt=""
+                              loading="lazy"
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            <ImageOff size={14} />
+                          )}
+                        </span>
+                        <span className="min-w-0">{row.item.label}</span>
+                      </span>
+                    ) : (
+                      row.item.label
+                    )
+                  }
                   className="min-w-0 flex-1 text-xs"
                 />
                 {row.item.hint && (
