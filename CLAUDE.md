@@ -786,7 +786,7 @@ Related: **Preview deployments inherit the same env vars**, so anyone who can op
 ### Rate limiting is split on purpose
 
 - **The SSO limiter is Postgres-backed** (`middleware/pgRateLimitStore.ts`). `express-rate-limit`'s default store is in-process memory, which is useless on serverless: each of many short-lived instances keeps its own counter, so "10 per minute" becomes "10 per minute *per instance*" and resets on every recycle. That is unacceptable for the one route that **mints a live Duda credential**. The increment is a single atomic `INSERT … ON CONFLICT` because read-then-write loses hits under exactly the concurrency serverless makes normal (verified: 20 concurrent hits all counted).
-- **The three public limiters (content/lead/quote) stay in-memory**, and are best-effort only. A DB write per page view is the wrong trade on the one endpoint that has to stay fast. Real protection for those belongs at the edge — **Vercel Firewall rate-limit rules**, which run before the function is even invoked and are therefore both cheaper and actually effective.
+- **The CONTENT limiter stays in-memory**, and is best-effort only — a DB write per page view is the wrong trade on the one endpoint that has to stay fast. ⚠️ The two **form-post** limiters (lead, quote) are **Postgres-backed** (`PgRateLimitStore`), as the quote-abuse section describes; this line used to say all three were in-memory, which was out of date. Real protection for those belongs at the edge — **Vercel Firewall rate-limit rules**, which run before the function is even invoked and are therefore both cheaper and actually effective.
 
 ## Deployment gotchas (Railway) — HISTORICAL, Railway was deleted 2026-09-08
 
@@ -1008,9 +1008,109 @@ The heading is an `h3` (`.saeh-cp-h`) — sentence case, centred, 20px above the
 
 This **replaced** a `scrollWidth`-vs-`clientWidth` measurement, and the reason matters: measuring is correct in principle but has to run after layout, and when it did not run the arrows stayed in their default state — two live arrows beside two cards with nothing to scroll, on the live site, while the editor looked fine. A rule that cannot run at the wrong time cannot be wrong. The cost is the breakpoints being stated twice (card width, and the hide rules); they sit adjacent for that reason. JS now only sets the `disabled` end-of-travel state, where running late is harmless.
 
+### Stage 3e — downloads (done 2026-10-01)
+
+**176 downloads across 59 products, 126 unique PDFs (98.5MB)**, now in the Hub's private
+`product-files` bucket and linked per product in the order the old pages showed them. All
+`gated: false`. Two steps, the same scrape-then-import split as compatible products:
+
+```
+npm run wp:scrape-downloads --workspace=backend       # → migration/downloads.json
+npm run downloads:import --workspace=backend          # dry run
+npm run downloads:import --workspace=backend -- --confirm
+npm run downloads:import --workspace=backend -- --verify
+```
+
+⚠️ **The CSV cannot do this on its own.** `Meta: downloads_<n>_download_file` holds WordPress
+**attachment IDs** (`13877`), not URLs, with no title or type. The six named fields
+(`download_datasheet`, `_user_manual`, `_brochure`, `_iecex_cert`, `_ex_cert`, `_inmetro`) are
+**empty for every product** — only their ACF field keys survive. So the live product page is
+the source: each download is a Contact Form 7 block pairing a visible label with a hidden
+`your-download` input holding the PDF URL. The page URL is fetched **by wpId** through
+`/wp-json/wp/v2/product/<id>?_fields=link`, which sidesteps the 13 slug mismatches the
+compatible scraper had to title-map.
+
+⚠️ **The WP REST API is a cross-check, not the source.** `/wp-json/wp/v2/media/<id>` resolves
+164 of the 176 references; the other 12 point at 6 attachments whose **metadata returns 401** to
+anonymous requests, though **the files themselves download fine**. Its titles are raw filenames,
+not what visitors saw. Every attachment it CAN resolve must appear on that product's page.
+
+**Labels are a closed set**, mapped to stored titles and failing on anything unknown:
+Datasheet 59, ATEX Certificate 27, User Manual 25, IECEx Certificate 24, UKEX Certificate 20,
+INMETRO Certificate 19, Certificate 2. IECEx uses the scheme's own casing.
+
+Traps the scraper had to handle, each of which a real result motivated:
+- ⚠️ **A failed fetch must THROW, never read as "no downloads".** The read-only survey that
+  preceded it had one page fetch fail transiently and come back empty — recorded as data, that
+  silently drops 5 files. The scraper retries, then fails the product by name, and **writes
+  nothing at all if any product failed**: a partial file would be read as the whole truth.
+- **Bound each item to its own form.** Split on the `<li class="col-lg-6">` alone and the last
+  item runs on into the compatible carousel 26KB later.
+- **Anchor on the input's `value`.** `name="your-download"` also matches the CF7 wrapper's
+  `data-name="your-download"`, so it occurs twice per download.
+- `--only` never writes the aggregate file — the trap that once truncated the compatible map.
+
+The import:
+- **One MediaAsset per unique file** — 28 range certificates are shared by up to 5 products —
+  at `files/wp/<uploads-relative path>`, the same deterministic scheme as `images/wp/`, kept
+  with its year/month folders because two files can share a basename. Also archived to
+  `migration/downloads/`, so the Hub no longer depends on WordPress for any of them.
+- ⚠️ **Each file is checked before it becomes a row**: the `%PDF-` header, its byte count
+  against the server's content-length, and the 25MB ceiling. A truncated compliance document
+  would upload, list in the editor, and fail only when a buyer opened it.
+- ⚠️ **An object that already exists is adopted only if its size matches.** The images
+  importer treats "already exists" as success outright; here a stale object under the same
+  path would otherwise be attached silently.
+- A product whose files did not all upload is **skipped whole** — a partial set is worse than
+  none. Rows resolve through the **ledger, never SKU**. `--force` replaces a populated
+  product's set and snapshots its rows to `migration/` first.
+
+`@@unique([hubProductId, mediaAssetId])` was added first — safe because no product repeated a
+file and the Hub had no Download rows. It makes a re-run safe structurally, and it makes the
+**file a natural key within a product**, which the editor's PUT relies on.
+
+### Downloads in the product editor, and the PUT behind it
+
+`DownloadsSection.tsx` — rename, drag to reorder, remove, add from the Media Centre. Joined to
+the unified save (`SectionKey "downloads"`, `downloadsFrom()`, a `project()` case, `validate()`,
+a save task). No gated toggle and no lead count while gating is off.
+
+`PUT /api/products/:id/downloads` takes `{items: [{mediaAssetId, title}]}` in display order.
+- ⚠️ **Keyed on `mediaAssetId`, not row ids.** That is what makes it idempotent when a response
+  is lost: a retry finds the rows the first attempt created by their file instead of
+  re-creating them into the unique index. The unified save requires a retried save to converge.
+- ⚠️ **A diff, not delete-all-then-recreate** (unlike specs). A surviving download keeps its
+  id, because `Lead.downloadId` is `SetNull` — recreating every row on every save would detach
+  every captured lead once gating returns. Deletes run before creates, so removing and
+  re-adding a file in one save cannot trip the unique index.
+- ⚠️ **`project()` compares only `{mediaAssetId, title}`.** The preview URL is re-signed on
+  every response; had it leaked into the comparison the section would read "Unsaved" forever
+  after any save. Proven: two loads of EX Heater carry different URLs yet project identically,
+  and what a save banks equals what the next load reads.
+
+⚠️ **Signing is caught per item** (`services/downloads.ts` `shapeHubDownload`). `/custom` loads
+the WHOLE product editor and signed every download inside a `Promise.all`, so one object missing
+from `product-files` would have stopped the editor opening at all. A file that cannot be signed
+now comes back `url: null` and shows "File missing" on its own row.
+
+### ⚠️ Downloads are withheld from the public payload
+
+`/public/products/content` returns **`downloads: []`** (since 2026-10-01). No public widget
+shows downloads now, and serving them cost three things for nothing: every content request
+signed every file URL on the public hot path; the signing ran inside `Promise.all`, so **one
+missing object 502'd the product's whole payload** — tabs, logos, 3D and compatible with it;
+and the legacy `data-section="all"` embed still includes downloads in its expansion, so the
+import would have put 176 files on any live page carrying one. The key stays as an empty array
+so widget code that reads it cannot throw.
+
+**When the Download List widget is built**, it should fetch download data through its own
+path — signing lazily or per item, never in an all-or-nothing `Promise.all` on the content
+endpoint — and the old `downloads` section in `widget.js` (still in `ALL_SECTIONS`) should be
+replaced or removed rather than revived as-is.
+
 ### Data waiting for later stages
 
-176 downloads. **Logos are surveyed in the section below.** Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
+Downloads are done — see Stage 3e below. **Logos are surveyed in the section below.** Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
 
 Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO was barely populated** in WordPress (title on 4/96, meta description on 12/96) — so SEO titles and descriptions were authored rather than migrated. See the SEO section below.
 
@@ -1393,9 +1493,9 @@ The container carries `aria-busy` + `aria-live` + a label; the blocks themselves
 
 - Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).
 - No admin UI to view captured `Lead` rows from gated downloads yet (they're stored and now survive product deletion, just not surfaced — unlike `QuoteRequest`, which has a `/quotes` page). More valuable now that retained leads can outlive their product.
-- Per-product **Downloads editor was removed**; the Downloads widget is parked as visibly disabled on `/widgets`. Backend routes, leads, `/custom` payload and the widget's downloads section all still work, so restoring it is a UI-only change (`git show d68e28b~1:frontend/src/components/DownloadsEditor.tsx` for the old implementation).
-- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs) and 3c (logos) are done for all 96 published products; **still to do: downloads (176 rows) and options**, so products now have a name, gallery, description, benefits, applications, a spec table and their logos. `/products/new` remains the path for genuinely new one-off products.
-- Downloads (176 rows) is the last unimported stage. ⚠️ It needs a decision first: each download has a `gated` flag (default **true**) that withholds the file until a visitor submits a lead form, and the CSV cannot say which datasheets should be gated. The per-product Downloads *editor* was also removed from the UI (backend routes, leads and the widget section all still work), so restoring it is UI-only — `git show d68e28b~1:frontend/src/components/DownloadsEditor.tsx`.
+- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done; **still to do: options**. `/products/new` remains the path for genuinely new one-off products.
+- ⚠️ **No public widget shows downloads yet** — a **Download List** widget is planned and will be specified separately. Until then `/public/products/content` returns `downloads: []`; see Stage 3e for why, and for what that widget will need to bring back.
+- **Gating is OFF** (every download `gated: false`, no toggle in the editor). The `gated` column, the lead endpoint and its Postgres limiter all remain, so turning it back on is UI work. Captured `Lead` rows have no admin page; that waits for the CRM integration, like quote requests.
 - Widget visual styling is functional but not deeply brand-tuned.
 - ⚠️ **`/widgets` is routed but deliberately NOT in the sidebar** (2026-09-30). It documents the embed snippets and is Kangaroo's reference, not something SAEquip staff should change — reachable by URL, invisible in the menu. Same treatment as `pages/UIShowcase.tsx`, which is unrouted for the same reason.
 - No optimistic-concurrency check: because array writes are full replacement, a stale dashboard tab can overwrite edits made in Duda. Mitigated only by the "loaded HH:MM / refresh" control in the product header.
