@@ -8,6 +8,8 @@ import { cartesianSize, updateOptionsPreservingVariations } from "../services/pr
 import { prisma } from "../prisma.js";
 import { withAncestors } from "../services/categoryTree.js";
 import { shapeHubDownload } from "../services/downloads.js";
+import { toCsv } from "../services/csv.js";
+import { treeFrom } from "./categories.js";
 import { env } from "../env.js";
 
 /** A non-negative numeric string, e.g. "400.0". */
@@ -317,6 +319,179 @@ dudaRouter.get("/products", async (_req, res, next) => {
     });
 
     res.json(summaries);
+  } catch (err) {
+    next(err);
+  }
+});
+
+const exportSchema = z
+  .object({
+    // The rows the dashboard is showing, in the order it shows them. Capped at
+    // the store's own product limit.
+    ids: z.array(z.string().min(1)).max(1000),
+  })
+  .strict();
+
+/**
+ * POST /api/products/export — the products list as CSV.
+ *
+ * ⚠️ The CLIENT says which rows and in what order; the server says what is in
+ * them. The page's search, category filter and sort already live in the
+ * browser, and re-implementing them here would be a second copy of the same
+ * rules waiting to disagree — the parent-matches-its-subtree rule especially.
+ * So the browser sends the ids it is displaying and this fills them in.
+ *
+ * POST rather than GET because 1000 ids do not fit in a URL, and because the
+ * download has to carry the bearer token, which a plain link cannot.
+ *
+ * Every Hub count comes from ONE query, never one per product.
+ */
+dudaRouter.post("/products/export", async (req, res, next) => {
+  const parsed = exportSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  const ids = [...new Set(parsed.data.ids)];
+
+  try {
+    const [products, hub, flat] = await Promise.all([
+      duda.listAllProducts(),
+      prisma.hubProduct.findMany({
+        where: { dudaProductId: { in: ids } },
+        select: {
+          id: true,
+          dudaProductId: true,
+          slug: true,
+          glbAssetId: true,
+          categories: { select: { dudaCategoryId: true } },
+          _count: {
+            select: {
+              specRows: true,
+              downloads: true,
+              compatible: true,
+              textItems: { where: { kind: "BENEFIT" } },
+              logos: { where: { logo: { kind: "SA_LOGO" } } },
+            },
+          },
+        },
+      }),
+      duda.listAllCategories(),
+    ]);
+    // Counts Prisma cannot express as a second filtered _count on the same
+    // relation in one select — still one query each, not one per product.
+    const [applications, certLogos, tree] = await Promise.all([
+      prisma.productTextItem.groupBy({
+        by: ["hubProductId"],
+        where: { kind: "APPLICATION", hubProduct: { dudaProductId: { in: ids } } },
+        _count: true,
+      }),
+      prisma.productLogo.groupBy({
+        by: ["hubProductId"],
+        where: { logo: { kind: "CERT_LOGO" }, hubProduct: { dudaProductId: { in: ids } } },
+        _count: true,
+      }),
+      treeFrom(flat),
+    ]);
+    const appCount = new Map(applications.map((a) => [a.hubProductId, a._count]));
+    const certCount = new Map(certLogos.map((c) => [c.hubProductId, c._count]));
+
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const hubBy = new Map(hub.map((h) => [h.dudaProductId, h]));
+
+    /*
+     * One column per TOP-LEVEL category, in the dashboard's own order, holding
+     * the product's categories beneath it — so "Product type", "Site
+     * challenges" and "Industries" become columns a spreadsheet can filter on.
+     * Taken from the tree, not hard-coded, so renaming or adding a top-level
+     * category renames or adds a column.
+     */
+    const roots = tree.filter((c) => c.depth === 0);
+    const nodeById = new Map(tree.map((c) => [c.id, c]));
+    const rootOf = (id: string): string | null => {
+      let n = nodeById.get(id);
+      while (n && n.depth > 0) n = nodeById.get(n.parent_id);
+      return n?.id ?? null;
+    };
+
+    const header = [
+      "Name",
+      "SKU",
+      "Status",
+      "Type",
+      "Price",
+      "Currency",
+      "Stock status",
+      ...roots.map((r) => r.title),
+      "Slug",
+      "Created",
+      "Images",
+      "Variations",
+      "Specs",
+      "Key benefits",
+      "Applications",
+      "Downloads",
+      "SA logos",
+      "Cert logos",
+      "Compatible",
+      "3D model",
+      "SEO title",
+      "SEO description",
+      "Duda product ID",
+    ];
+
+    const rows = ids.flatMap((id) => {
+      const p = byId.get(id);
+      if (!p) return []; // deleted since the page loaded — nothing to export
+      const h = hubBy.get(id);
+      const hid = h?.id;
+      const assigned = new Set((h?.categories ?? []).map((c) => c.dudaCategoryId));
+      // The same rule as the listing: a category that is the parent of another
+      // assigned one says nothing the child does not, so only the leaves show.
+      const parents = new Set([...assigned].map((c) => nodeById.get(c)?.parent_id).filter(Boolean) as string[]);
+      const perRoot = roots.map((r) =>
+        [...assigned]
+          .filter((c) => nodeById.has(c) && !parents.has(c) && rootOf(c) === r.id && c !== r.id)
+          .map((c) => nodeById.get(c)!.title)
+          .sort((a, b) => a.localeCompare(b))
+          .join("; "),
+      );
+      const price = Number(p.prices?.[0]?.price);
+      const created = createdFromUlid(p.id);
+      return [[
+        p.name,
+        p.sku,
+        p.status,
+        p.type,
+        Number.isFinite(price) ? price : null,
+        p.prices?.[0]?.currency ?? null,
+        p.stock_status,
+        ...perRoot,
+        h?.slug ?? p.seo?.product_url ?? null,
+        created ? created.toISOString().slice(0, 10) : null,
+        p.images?.length ?? 0,
+        p.variations?.length ?? 0,
+        h?._count.specRows ?? 0,
+        h?._count.textItems ?? 0,
+        hid ? (appCount.get(hid) ?? 0) : 0,
+        h?._count.downloads ?? 0,
+        h?._count.logos ?? 0,
+        hid ? (certCount.get(hid) ?? 0) : 0,
+        h?._count.compatible ?? 0,
+        h?.glbAssetId ? "Yes" : "No",
+        p.seo?.title ?? null,
+        p.seo?.description ?? null,
+        p.id,
+      ]];
+    });
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="saequip-products-${stamp}.csv"`);
+    // Tells the client how many rows actually went out, so it can say so.
+    res.setHeader("X-Export-Rows", String(rows.length));
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition, X-Export-Rows");
+    res.send(toCsv(header, rows));
   } catch (err) {
     next(err);
   }

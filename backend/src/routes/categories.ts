@@ -32,7 +32,7 @@ const createSchema = z
 const updateSchema = createSchema.partial().strict();
 
 /** A category plus the derived tree metadata Duda doesn't give us. */
-interface CategoryNode extends DudaCategorySummary {
+export interface CategoryNode extends DudaCategorySummary {
   depth: number;
   subcategoryCount: number;
   /**
@@ -159,6 +159,28 @@ function buildTree(
 }
 
 /**
+ * The dashboard's ordered category tree from an already-fetched flat list.
+ *
+ * ONE place for it: the Categories page, the reorder response and the products
+ * CSV export all need the same tree in the same order, and this assembly — the
+ * Hub order, the mirrored images, the Hub's own product counts — used to be
+ * pasted into each route that wanted it.
+ */
+export async function treeFrom(flat: DudaCategorySummary[]): Promise<CategoryNode[]> {
+  const [orderRows, mirrorRows, countRows] = await Promise.all([
+    prisma.categoryOrder.findMany(),
+    prisma.categoryMirror.findMany({ select: { dudaCategoryId: true, imageUrl: true } }),
+    // ONE grouped query, never a count per category — the trap that made
+    // GET /api/media take 7s after the import.
+    prisma.productCategory.groupBy({ by: ["dudaCategoryId"], _count: true }),
+  ]);
+  const order = new Map(orderRows.map((o) => [o.dudaCategoryId, o.sortOrder]));
+  const images = new Map(mirrorRows.map((m) => [m.dudaCategoryId, m.imageUrl]));
+  const hubCounts = new Map(countRows.map((g) => [g.dudaCategoryId, g._count]));
+  return buildTree(flat, order, images, hubCounts);
+}
+
+/**
  * GET /api/categories
  * The whole catalog as a depth-annotated, pre-ordered flat list ready to render
  * as a tree.
@@ -166,17 +188,7 @@ function buildTree(
 categoriesRouter.get("/categories", async (_req, res, next) => {
   try {
     const flat = await duda.listAllCategories();
-    const [orderRows, mirrorRows, countRows] = await Promise.all([
-      prisma.categoryOrder.findMany(),
-      prisma.categoryMirror.findMany({ select: { dudaCategoryId: true, imageUrl: true } }),
-      // ONE grouped query, never a count per category — the trap that made
-      // GET /api/media take 7s after the import.
-      prisma.productCategory.groupBy({ by: ["dudaCategoryId"], _count: true }),
-    ]);
-    const order = new Map(orderRows.map((o) => [o.dudaCategoryId, o.sortOrder]));
-    const images = new Map(mirrorRows.map((m) => [m.dudaCategoryId, m.imageUrl]));
-    const hubCounts = new Map(countRows.map((g) => [g.dudaCategoryId, g._count]));
-    res.json({ count: flat.length, categories: buildTree(flat, order, images, hubCounts) });
+    res.json({ count: flat.length, categories: await treeFrom(flat) });
   } catch (err) {
     next(err);
   }
@@ -279,17 +291,7 @@ categoriesRouter.put("/categories/reorder", async (req, res, next) => {
       ),
     );
 
-    const [orderRows, mirrorRows, countRows] = await Promise.all([
-      prisma.categoryOrder.findMany(),
-      prisma.categoryMirror.findMany({ select: { dudaCategoryId: true, imageUrl: true } }),
-      // ONE grouped query, never a count per category — the trap that made
-      // GET /api/media take 7s after the import.
-      prisma.productCategory.groupBy({ by: ["dudaCategoryId"], _count: true }),
-    ]);
-    const order = new Map(orderRows.map((o) => [o.dudaCategoryId, o.sortOrder]));
-    const images = new Map(mirrorRows.map((m) => [m.dudaCategoryId, m.imageUrl]));
-    const hubCounts = new Map(countRows.map((g) => [g.dudaCategoryId, g._count]));
-    res.json({ count: flat.length, categories: buildTree(flat, order, images, hubCounts) });
+    res.json({ count: flat.length, categories: await treeFrom(flat) });
   } catch (err) {
     next(err);
   }

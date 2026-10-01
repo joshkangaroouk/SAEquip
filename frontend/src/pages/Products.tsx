@@ -14,6 +14,7 @@ import {
   TH,
   THead,
   TR,
+  toast,
 } from "../components/ui";
 import type { ProductSummary, StoreInfo } from "../lib/types";
 
@@ -48,6 +49,7 @@ export default function Products() {
   const [cats, setCats] = useState<CategoryNode[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [sort, setSort] = useState<SortKey>("recent");
+  const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -155,12 +157,71 @@ export default function Products() {
 
   const storeFull = store?.remaining != null && store.remaining <= 0;
 
+  /**
+   * Download what the table is showing, as CSV.
+   *
+   * ⚠️ Sends the ids of the FILTERED, SORTED rows rather than asking the
+   * server to filter: search, the category filter (with its parent-matches-
+   * its-subtree rule) and the sort live here, and a second copy of them on the
+   * server would be a second set of rules waiting to disagree with this one.
+   * The server fills the rows in; this decides which rows and in what order.
+   *
+   * fetch + blob rather than a link, because the request must carry the
+   * bearer token and a plain <a href> cannot.
+   */
+  async function exportCsv() {
+    if (!filtered?.length || exporting) return;
+    setExporting(true);
+    try {
+      const res = await apiFetch("/api/products/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: filtered.map((p) => p.id) }),
+      });
+      if (!res.ok) throw new Error(`Export failed (HTTP ${res.status})`);
+      const blob = await res.blob();
+      const name =
+        /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "saequip-products.csv";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Revoked on the next tick, not immediately: some browsers start the
+      // download asynchronously and an instant revoke cancels it.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      const rows = Number(res.headers.get("X-Export-Rows") ?? filtered.length);
+      toast.success(`Exported ${rows} product${rows === 1 ? "" : "s"}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const filteredBy = query.trim() || categoryId;
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-h1 font-semibold text-text">Products</h1>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void exportCsv()}
+            disabled={!filtered?.length || exporting}
+            title={
+              filteredBy
+                ? `Exports the ${filtered?.length ?? 0} products matching the current search and filter`
+                : "Exports every product"
+            }
+          >
+            {exporting ? "Exporting…" : filteredBy ? `Export CSV (${filtered?.length ?? 0})` : "Export CSV"}
+          </Button>
           <Button
             variant="primary"
             size="sm"
