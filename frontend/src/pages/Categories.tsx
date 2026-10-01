@@ -38,6 +38,8 @@ interface CategoryNode {
   products_count: number;
   depth: number;
   subcategoryCount: number;
+  /** The HUB's count — see the note on the backend type. */
+  hubProductCount: number;
 }
 
 interface FormState {
@@ -408,7 +410,22 @@ function CategoryTree({
           </button>
         </div>
         <span className="text-muted">{n.subcategoryCount}</span>
-        <span className="text-muted">{n.products_count}</span>
+        {/*
+          * ⚠️ The HUB's count, not Duda's. The two differ by design between
+          * syncs, and showing Duda's made this column report a product the
+          * edit page could not find — it reads the Hub, as does the public
+          * widget. The dot says a sync is pending rather than leaving the
+          * difference invisible.
+          */}
+        <span className="flex items-center gap-1.5 text-muted">
+          {n.hubProductCount}
+          {n.hubProductCount !== n.products_count && (
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+              title={`Duda has ${n.products_count}. Run duda:sync-categories to push the Hub's ${n.hubProductCount}.`}
+            />
+          )}
+        </span>
         <DropdownMenu
           actions={[
             { label: "Edit", onSelect: () => onEdit(n) },

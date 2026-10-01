@@ -808,6 +808,22 @@ Kept because two of these are platform-independent and still bite: `prisma gener
 
 **Rule going forward: every verification/test must use a dedicated throwaway product (create hidden → test → delete), never the live EX Heater** — and never run a replace-whole-set write against real data without snapshotting first. Read-only checks against EX Heater are fine.
 
+⚠️ **A throwaway PRODUCT is not enough when the write is scoped by something else.** On
+2026-09-30 a verification of `PUT /api/categories/:id/products` used a throwaway product
+correctly — and still destroyed real data, because that route replaces **the whole product
+list of a CATEGORY**. Calling it with `[]` to prove "removing from a parent clears the
+subtree" cleared *every* product in Site Challenges, including the one real assignment, not
+just the throwaway. It went unnoticed because Duda still showed `products_count: 1` from the
+last sync, so the tree looked right while the edit page and the public widget were empty.
+
+**Ask what the endpoint's unit of replacement is, and make a throwaway of THAT.** For a
+category-scoped write that means a throwaway category as well as a throwaway product. Where
+a throwaway is impractical, snapshot the affected rows first and restore them.
+
+(Recoverable only because `duda:sync-categories` had already pushed to Duda, so Duda held
+the surviving copy of a Hub-owned fact. That is luck, not a backup — the sync is one-way and
+the next run would have overwritten it.)
+
 ## WordPress → Duda catalogue migration (started 2026-09-07)
 
 The ~96-product legacy catalogue is being moved off the WordPress/WooCommerce site in **stages**, driven by a WooCommerce CSV export rather than by hand.
@@ -1293,6 +1309,13 @@ dropped (2026-09-30): both live on the product page, and neither is what you sca
   rows pointing at nothing. Those collapse into one red "N no longer in Duda" chip.
 - The filter's **parent matches everything beneath it**, so picking "Site Challenges" is not
   an empty result just because products sit on the leaves.
+- ⚠️ **The categories tree's Products column is the HUB's count, not Duda's
+  `products_count`.** The two differ by design between syncs — assignment happens in the Hub
+  and `duda:sync-categories` is manual — and showing Duda's made the tree report a product
+  the category page then could not find, because that page and the public widget both read
+  the Hub. A small dot marks a category whose Duda count differs, so a pending sync is
+  visible rather than silently wrong in whichever direction. One `groupBy` for every count,
+  never one per category.
 - ⚠️ **The filter and sort are `SelectMenu`, not a native `<select>`.** A browser draws an
   option list with OS chrome that no CSS reaches, so a 23-item category tree dropped an
   unstyled, unbounded list over the page. `SelectMenu` portals to `<body>` (any ancestor with

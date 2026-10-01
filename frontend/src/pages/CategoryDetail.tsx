@@ -29,6 +29,7 @@ interface CategoryNode {
   depth: number;
   subcategoryCount: number;
   products_count: number;
+  hubProductCount: number;
   imageUrl?: string | null;
 }
 
@@ -308,7 +309,7 @@ export default function CategoryDetail() {
                     >
                       {c.title}
                     </Link>
-                    <span className="shrink-0 text-small text-muted">{c.products_count} products</span>
+                    <span className="shrink-0 text-small text-muted">{c.hubProductCount} products</span>
                   </div>
                 )}
               />
