@@ -30,7 +30,8 @@
     "logos:rebuild": "tsx src/scripts/rebuildLogoCatalogue.ts",
     "duda:sync-categories": "tsx src/scripts/syncCategories.ts",
     "duda:assign-product-types": "tsx src/scripts/assignProductTypes.ts",
-    "duda:category-seo": "tsx src/scripts/categorySeoFill.ts"
+    "duda:category-seo": "tsx src/scripts/categorySeoFill.ts",
+    "wp:scrape-downloads": "tsx src/scripts/wpScrapeDownloads.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
