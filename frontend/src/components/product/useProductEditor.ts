@@ -4,6 +4,7 @@ import { toast } from "../ui";
 import type {
   HubCompatible,
   HubCustomPayload,
+  HubDownload,
   HubModel3D,
   HubSpecRow,
   HubTextItem,
@@ -19,6 +20,7 @@ import {
   itemsFrom,
   logoDiff,
   model3dFrom,
+  downloadsFrom,
   nativeFromProduct,
   optionsFrom,
   specsFrom,
@@ -51,6 +53,7 @@ const SECTION_KEYS: SectionKey[] = [
   "applications",
   "logos",
   "model3d",
+  "downloads",
 ];
 
 const emptyDirty: DirtyMap = {
@@ -65,6 +68,7 @@ const emptyDirty: DirtyMap = {
   applications: false,
   logos: false,
   model3d: false,
+  downloads: false,
 };
 
 /** One unit of work in a save, plus the sections it banks on success. */
@@ -128,6 +132,7 @@ export function useProductEditor(
         applications: itemsFrom(custom.applications),
         logos: { SA_LOGO: activeLogoIds(sa), CERT_LOGO: activeLogoIds(cert) },
         model3d: model3dFrom(custom.model3d),
+        downloads: downloadsFrom(custom.downloads),
       };
 
       setContext({
@@ -478,6 +483,24 @@ export function useProductEditor(
             { method: "PUT", body: JSON.stringify({ mediaAssetId: draft.model3d.mediaAssetId }) },
           );
           return { model3d: model3dFrom(res.model3d) };
+        },
+      });
+    }
+
+    if (dirty.downloads) {
+      tasks.push({
+        keys: ["downloads"],
+        label: "Downloads",
+        run: async () => {
+          // The whole list in display order. Keyed on the file server-side, so
+          // a retry after a lost response converges instead of duplicating.
+          const res = await apiJson<HubDownload[]>(`/api/products/${productId}/downloads`, {
+            method: "PUT",
+            body: JSON.stringify({
+              items: draft.downloads.map((d) => ({ mediaAssetId: d.mediaAssetId, title: d.title.trim() })),
+            }),
+          });
+          return { downloads: downloadsFrom(res) };
         },
       });
     }

@@ -158,16 +158,6 @@ export interface HubDownload {
   file: { filename: string; mimeType: string; sizeBytes: number; url: string | null };
 }
 
-/** A download in the admin editor (always has a signed preview URL + leadCount). */
-export interface DownloadItem {
-  id: string;
-  title: string;
-  gated: boolean;
-  sortOrder: number;
-  mediaAssetId: string;
-  file: { filename: string; mimeType: string; sizeBytes: number; url: string };
-  leadCount: number;
-}
 
 /** A product's attached 3D model (.glb), or null if none. */
 export interface HubModel3D {

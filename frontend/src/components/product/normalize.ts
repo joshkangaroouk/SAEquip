@@ -1,5 +1,6 @@
 import type {
   HubCompatible,
+  HubDownload,
   HubModel3D,
   HubSpecRow,
   HubTextItem,
@@ -7,6 +8,7 @@ import type {
   ProductLogoEntry,
 } from "../../lib/types";
 import type {
+  DownloadDraft,
   EditorSnapshot,
   ErrorMap,
   ImageDraft,
@@ -154,6 +156,15 @@ export const itemsFrom = (items: HubTextItem[]): TextItemDraft[] =>
 export const activeLogoIds = (entries: ProductLogoEntry[]): string[] =>
   entries.filter((e) => e.active).map((e) => e.id);
 
+export const downloadsFrom = (items: HubDownload[]): DownloadDraft[] =>
+  items.map((d) => ({
+    mediaAssetId: d.mediaAssetId,
+    title: d.title,
+    filename: d.file.filename,
+    sizeBytes: d.file.sizeBytes,
+    url: d.file.url,
+  }));
+
 export const model3dFrom = (m: HubModel3D | null): Model3DDraft =>
   m
     ? { mediaAssetId: m.mediaAssetId, filename: m.filename, url: m.url }
@@ -208,6 +219,11 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
     // against a baseline that happened to load B then A.
     case "categories":
       return [...snapshot.categoryIds].sort();
+    case "downloads":
+      // ORDER is meaningful (it is the display order), so compared as-is.
+      // filename/size/url are display only; a re-signed url after a save must
+      // never read as a change.
+      return snapshot.downloads.map(({ mediaAssetId, title }) => ({ mediaAssetId, title }));
   }
 }
 
@@ -300,6 +316,16 @@ export function validate(
     errors.specs = "Every spec needs a label.";
 
   if (draft.compatible.length > 40) errors.compatible = "Max 40 compatible products.";
+
+  // Mirrors the PUT's zod rules, so a bad draft is caught here rather than
+  // as a 400 after the user has pressed Save.
+  if (draft.downloads.length > 50) errors.downloads = "Max 50 downloads.";
+  else if (draft.downloads.some((d) => !d.title.trim()))
+    errors.downloads = "Every download needs a title.";
+  else if (draft.downloads.some((d) => d.title.trim().length > 200))
+    errors.downloads = "Download titles must be 200 characters or fewer.";
+  else if (new Set(draft.downloads.map((d) => d.mediaAssetId)).size !== draft.downloads.length)
+    errors.downloads = "The same file is listed twice.";
 
   if (draft.benefits.length > 100) errors.benefits = "Max 100 items.";
   else if (!draft.benefits.every(textItemValid))

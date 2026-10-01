@@ -10,6 +10,7 @@ import { DangerZoneSection } from "../components/product/DangerZoneSection";
 import { DescriptionSection } from "../components/product/DescriptionSection";
 import { ImagesSection } from "../components/product/ImagesSection";
 import { Model3DSection } from "../components/product/Model3DSection";
+import { DownloadsSection } from "../components/product/DownloadsSection";
 import { OptionsSection } from "../components/product/OptionsSection";
 import { VariationsSection } from "../components/product/VariationsSection";
 import { ProductDetailsSection } from "../components/product/ProductDetailsSection";
@@ -258,6 +259,21 @@ export default function ProductDetail() {
                     onChange={(next) => setSection("model3d", next)}
                     dirty={dirty.model3d}
                     error={saveErrors.model3d}
+                  />
+                </AccordionCard>
+
+                <AccordionCard
+                  title="Downloads"
+                  description="Datasheets, manuals and certificates."
+                  summary={draft.downloads.length ? `${draft.downloads.length} files` : undefined}
+                  dirty={dirty.downloads}
+                  error={saveErrors.downloads ?? validationErrors.downloads}
+                >
+                  <DownloadsSection
+                    value={draft.downloads}
+                    onChange={(next) => setSection("downloads", next)}
+                    dirty={dirty.downloads}
+                    error={saveErrors.downloads ?? validationErrors.downloads}
                   />
                 </AccordionCard>
 

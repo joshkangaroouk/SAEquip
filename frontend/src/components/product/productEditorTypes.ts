@@ -12,7 +12,8 @@ export type SectionKey =
   | "logos"
   | "model3d"
   | "compatible"
-  | "categories";
+  | "categories"
+  | "downloads";
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
   details: "Details",
@@ -26,6 +27,7 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   model3d: "3D Model",
   compatible: "Compatible Products",
   categories: "Categories",
+  downloads: "Downloads",
 };
 
 export type LogoKind = "SA_LOGO" | "CERT_LOGO";
@@ -142,6 +144,24 @@ export interface Model3DDraft {
   url: string | null;
 }
 
+/**
+ * One downloadable file on the product.
+ *
+ * Identified by `mediaAssetId`: `@@unique([hubProductId, mediaAssetId])` makes
+ * the file a natural key within a product, so it doubles as the React key and
+ * the dnd id with no cosmetic id needed. The PUT is keyed on it too, which is
+ * what makes a retried save converge. `filename`/`sizeBytes`/`url` are display
+ * only — `project()` compares `{mediaAssetId, title}` in order.
+ */
+export interface DownloadDraft {
+  mediaAssetId: string;
+  title: string;
+  filename: string;
+  sizeBytes: number;
+  /** A signed preview link, or null when the file could not be signed. */
+  url: string | null;
+}
+
 /** Everything editable on the product page, in one comparable shape. */
 export interface EditorSnapshot {
   details: NativeForm;
@@ -156,6 +176,7 @@ export interface EditorSnapshot {
   applications: TextItemDraft[];
   logos: LogosDraft;
   model3d: Model3DDraft;
+  downloads: DownloadDraft[];
 }
 
 /** A store-level option in the shared catalog, with its usage across products. */
