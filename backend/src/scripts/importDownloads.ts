@@ -64,7 +64,23 @@ interface Source {
 function storagePathFor(url: string): string {
   const m = /\/wp-content\/uploads\/(.+)$/.exec(url);
   if (!m) fail(`not a WordPress upload URL: ${url}`);
-  return `files/wp/${decodeURIComponent(m[1]).replace(/[^a-zA-Z0-9._/-]/g, "_")}`;
+  return `files/wp/${safeDecode(m[1]).replace(/[^a-zA-Z0-9._/-]/g, "_")}`;
+}
+
+/**
+ * ⚠️ The scraper's `normUrl()` has ALREADY run `decodeURI`, so a file named
+ * `100%25_cotton.pdf` arrives here as `100%_cotton.pdf` — and decoding it a
+ * second time throws `URI malformed`. That throw happened while the file list
+ * was built, outside any per-file catch, so it aborted the whole import (and
+ * --verify) for every product. None of the 126 contained a `%`; the next
+ * import might.
+ */
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
 }
 
 /** The local archive keeps the same relative layout as the bucket. */
@@ -107,8 +123,11 @@ async function main() {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  if (!existsSync(SOURCE)) fail(`${SOURCE} is missing — run wp:scrape-downloads first.`);
-  const source = JSON.parse(readFileSync(SOURCE, "utf8")) as Source;
+  // `--source` points at a different scrape file — for a re-scrape kept beside
+  // the original, or a crafted file that exercises the guards below.
+  const sourcePath = arg("source") ?? SOURCE;
+  if (!existsSync(sourcePath)) fail(`${sourcePath} is missing — run wp:scrape-downloads first.`);
+  const source = JSON.parse(readFileSync(sourcePath, "utf8")) as Source;
   const ledger = JSON.parse(readFileSync(LEDGER, "utf8")) as Record<string, { dudaProductId: string }>;
 
   const entries = Object.entries(source.products).filter(([wpId]) => !only || only.includes(wpId));
@@ -122,9 +141,27 @@ async function main() {
     }
   }
 
+  /*
+   * ⚠️ Two DIFFERENT files must never share a storage path. storagePathFor()
+   * replaces every character outside [a-zA-Z0-9._/-] with "_", so
+   * `ATEX Cert.pdf` and `ATEX_Cert.pdf` collapse onto one path — and the
+   * second would quietly adopt the first's asset, badging a product with a
+   * certificate that is not its own. On hazardous-area equipment that is the
+   * worst thing to get silently wrong, so it fails before anything is
+   * written. (Checked: the 126 imported files map to 126 distinct paths.)
+   */
+  const byPath = new Map<string, string>();
+  for (const f of files.values()) {
+    const other = byPath.get(f.storagePath);
+    if (other && other !== f.url) {
+      fail(`two different files map to ${f.storagePath}:\n    ${other}\n    ${f.url}\n  Rename one at the source, or extend storagePathFor().`);
+    }
+    byPath.set(f.storagePath, f.url);
+  }
+
   if (verifyOnly) return verify(entries, files, ledger);
 
-  console.log(`\n${confirm ? "Importing" : "Dry run —"} downloads from ${SOURCE} (scraped ${source.generatedAt})`);
+  console.log(`\n${confirm ? "Importing" : "Dry run —"} downloads from ${sourcePath} (scraped ${source.generatedAt})`);
   console.log(`  products: ${entries.length}   downloads: ${entries.reduce((n, [, p]) => n + p.items.length, 0)}   unique files: ${files.size}`);
   console.log(`  ${force ? "--force: products that already have downloads WILL be replaced" : "products that already have downloads are skipped (--force to replace)"}\n`);
 
@@ -138,8 +175,22 @@ async function main() {
 
   for (const f of files.values()) {
     const name = f.storagePath.split("/").pop()!;
-    const existing = await prisma.mediaAsset.findUnique({ where: { storagePath: f.storagePath }, select: { id: true } });
+    const existing = await prisma.mediaAsset.findUnique({
+      where: { storagePath: f.storagePath },
+      select: { id: true, sizeBytes: true },
+    });
     if (existing) {
+      /*
+       * ⚠️ Adopt an existing row only if it IS this file. The upload path
+       * already checked size on "already exists"; this branch — an earlier
+       * run's row at the same path — used to adopt on the path alone, so a
+       * stale row would be linked without anything being reported.
+       */
+      if (existing.sizeBytes !== f.sizeBytes) {
+        fileFailures.push(`${name}: a MediaAsset already exists at ${f.storagePath} but is ${existing.sizeBytes} bytes, not ${f.sizeBytes}`);
+        console.log(`  ✗ ${name}: existing row is a different size — not adopted`);
+        continue;
+      }
       assetIdOf.set(f.url, existing.id);
       present++;
       continue;

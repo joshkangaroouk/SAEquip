@@ -32,8 +32,11 @@ export async function renderFirstPage(pdf: Buffer): Promise<Buffer> {
   // (v6 dropped `isEvalSupported` along with the eval-based font path it
   // controlled, and moved `destroy()` onto the loading task.)
   const task = getDocument({ data: new Uint8Array(pdf), disableFontFace: true, verbosity: 0 });
-  const doc = await task.promise;
+  // ⚠️ Awaited INSIDE the try. Outside it, a corrupt or encrypted PDF rejected
+  // here and never reached `destroy()`, leaking a loading task and its fake
+  // worker for every failure across a 126-file loop.
   try {
+    const doc = await task.promise;
     const page = await doc.getPage(1);
     const base = page.getViewport({ scale: 1 });
     const scale = Math.min(MAX_W / base.width, MAX_H / base.height);

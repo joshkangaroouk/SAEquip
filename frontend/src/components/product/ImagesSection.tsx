@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { rectSortingStrategy } from "@dnd-kit/sortable";
-import { Badge, Button, Card, CardHeader, EmptyState, FileDropzone, SortableList } from "../ui";
+import { Badge, Button, Card, CardHeader, EmptyState, FileDropzone, SortableList, toast } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import { ImageCard } from "./ImageCard";
 import type { ImageDraft } from "./productEditorTypes";
@@ -38,6 +38,19 @@ export function ImagesSection({
     onChange(images.map((img) => (img.key === key ? { ...img, alt } : img)));
 
   const remove = (key: string) => onChange(images.filter((img) => img.key !== key));
+
+  /**
+   * Add a library image to the gallery. Duda ingests a gallery image by
+   * FETCHING its URL on save, so a URL that could not be resolved is refused
+   * here rather than reaching Duda as a broken image.
+   */
+  function addAsset(asset: MediaAsset) {
+    if (!asset.url) {
+      toast.error(`“${asset.filename}” has no usable URL, so it cannot be added.`);
+      return;
+    }
+    append(asset.url, asset.alt ?? "");
+  }
 
   return (
     <>
@@ -94,7 +107,7 @@ export function ImagesSection({
             multiple
             label="Drop images here or click to browse"
             hint="PNG, JPEG or WebP, up to 25MB. They upload now and transfer to Duda when you save."
-            onUploaded={(asset: MediaAsset) => append(asset.url, asset.alt ?? "")}
+            onUploaded={(asset: MediaAsset) => addAsset(asset)}
           />
         </div>
       </Card>
@@ -103,7 +116,7 @@ export function ImagesSection({
         <MediaPicker
           kind="image"
           onPick={(asset) => {
-            append(asset.url, asset.alt ?? "");
+            addAsset(asset);
             setPickerOpen(false);
           }}
           onClose={() => setPickerOpen(false)}

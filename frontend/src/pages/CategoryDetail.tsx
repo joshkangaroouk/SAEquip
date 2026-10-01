@@ -388,8 +388,14 @@ export default function CategoryDetail() {
         <MediaPicker
           kind="image"
           onPick={(asset) => {
-            set("image_url", asset.url);
             setPickerOpen(false);
+            // Duda fetches a category image by its URL, so an unresolved one
+            // is refused rather than sent.
+            if (!asset.url) {
+              toast.error(`“${asset.filename}” has no usable URL, so it cannot be used.`);
+              return;
+            }
+            set("image_url", asset.url);
           }}
           onClose={() => setPickerOpen(false)}
         />

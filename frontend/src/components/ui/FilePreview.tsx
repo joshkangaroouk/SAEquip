@@ -45,7 +45,11 @@ export function FileTypeIcon({
 }) {
   const t = typeOf(filename, mimeType);
   return (
-    <svg viewBox="0 0 32 40" className={cn("h-10 w-8 shrink-0", className)} role="img" aria-label={`${t.label} file`}>
+    // ⚠️ The default size applies only when NO size is passed — never both.
+    // cn() is a plain string join, so a caller's "h-9 w-7" sat beside a base
+    // "h-10 w-8" and stylesheet order decided: the height override won and the
+    // width override silently lost. The trap CLAUDE.md lists five times over.
+    <svg viewBox="0 0 32 40" className={cn("shrink-0", className ?? "h-10 w-8")} role="img" aria-label={`${t.label} file`}>
       <path d="M4 1h17l10 10v26a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2Z" fill="#fff" stroke="#D4D4D4" strokeWidth="1.2" />
       <path d="M21 1v8a2 2 0 0 0 2 2h8" fill="none" stroke="#D4D4D4" strokeWidth="1.2" />
       <rect x="0" y="22" width="25" height="11" rx="1.5" fill={t.color} />

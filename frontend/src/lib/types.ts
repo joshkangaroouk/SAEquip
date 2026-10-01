@@ -35,7 +35,16 @@ export interface MediaAsset {
   alt: string | null;
   uploadedBy: string | null;
   createdAt: string;
-  url: string; // public (image/model) or short-lived signed (file)
+  /**
+   * Public (image/model) or short-lived signed (file).
+   *
+   * ⚠️ NULL for a file that could not be signed — GET /api/media catches
+   * signing per item so one missing object cannot fail the whole page. It was
+   * typed `string` after that change, which hid the null case from every
+   * consumer; CLAUDE.md's rule is to fix the type in every mirror, not just
+   * the crash site.
+   */
+  url: string | null;
   /** A file's first-page preview, or null — images are their own preview. */
   thumbnailUrl?: string | null;
   usage: number;

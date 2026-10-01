@@ -167,7 +167,7 @@ export function MediaPicker({
                   >
                     {a.kind === "image" ? (
                       <img
-                        src={a.url}
+                        src={a.url ?? undefined}
                         alt={a.alt || a.filename}
                         loading="lazy"
                         className="h-24 w-full object-contain"

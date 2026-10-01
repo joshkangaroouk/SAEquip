@@ -119,10 +119,27 @@ export async function uploadFile(
   });
 
   if (asset.kind === "file" && isPdf(file)) {
-    asset.thumbnailUrl = await attachPdfPreview(asset.id, file);
+    /*
+     * ⚠️ BOUNDED. The upload has already succeeded here, so a best-effort
+     * preview must not be able to hold it hostage: awaiting it outright meant a
+     * large PDF kept the spinner up while pdf.js loaded and parsed, and one
+     * whose getDocument() never settled left the upload pending forever.
+     * After PREVIEW_WAIT_MS the upload returns without a preview; the render
+     * carries on and still stores one if it finishes, so the next load shows
+     * it. attachPdfPreview() catches its own errors, so nothing rejects
+     * unhandled in the background.
+     */
+    const preview = attachPdfPreview(asset.id, file);
+    asset.thumbnailUrl = await Promise.race([
+      preview,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), PREVIEW_WAIT_MS)),
+    ]);
   }
   return asset;
 }
+
+/** How long an upload waits for its preview before returning without one. */
+const PREVIEW_WAIT_MS = 8_000;
 
 /**
  * Render and store a PDF's first-page preview.

@@ -1141,6 +1141,46 @@ format in the colours people already read files by (PDF red, Word blue, Excel gr
 a `Promise.all`, so one object missing from `product-files` would 502 the whole Media Centre
 page — the same all-or-nothing failure fixed in `/custom`. Harmless at 0 files, not at 126.
 
+### Audit of the downloads work (2026-10-01)
+
+Code review across the whole run (scrape → import → PUT → editor → previews → export) raised
+**10 findings; 9 fixed, 1 accepted.** Each was checked against reality before fixing:
+
+| Finding | Reality | Fix |
+|---|---|---|
+| Two URLs sanitise to one storage path, and the second silently adopts the first's file | latent — the 126 map to 126 distinct paths | hard failure naming both, before any write; proven on a crafted pair |
+| A literal `%` makes `decodeURIComponent` throw and abort the whole import | latent — no URL contains `%` | `safeDecode`; proven on a crafted file |
+| An existing row at the path was adopted without checking it is the same file | latent | adopted only if its size matches |
+| `MediaAsset.url` became nullable but was still typed `string` | real — 7 consumers | typed `string \| null`; images guarded before Duda fetches them; files show "File missing" |
+| `FileTypeIcon`'s size override lost to its base on stylesheet order | real — width lost | default size only when none is passed |
+| GET/POST/reorder/PATCH used a second, non-resilient download shaper | real | built on `shapeHubDownload` |
+| An upload waited on the best-effort preview, forever if pdf.js hung | real | bounded at 8s; the render carries on in the background |
+| The export dropped a top-level category assigned on its own | real | same leaf rule as the listing |
+| A PDF that failed to parse never destroyed its pdf.js task | real, no impact (0 failures) | awaited inside the `try` |
+| The export ran two count queries in a second round trip | real | one wave |
+
+**Accepted, not fixed:** the editor's PUT removes a download without the `has_leads` 409 that
+`DELETE /downloads/:id` still enforces. With gating off there are 0 leads and none can be
+captured, and `Lead.downloadId` is `SetNull` so a lead would survive with its snapshot — only
+its link is lost. ⚠️ **Revisit when gating returns**: the editor should warn before removing a
+download that has leads, or the PUT should report `detachedLeads`.
+
+**Data, reconciled independently** of the import script: 176/176 rows match the old pages by
+title, file and order, all ungated; 126/126 files present at the right size and
+**byte-identical (SHA-256) to the archive**; 0 unlinked files, 0 duplicate (product, file), 0
+previews on non-files, 0 leads.
+
+**Security, probed live**: the three new admin routes return 401 with no credentials and with a
+forged token; a private PDF returns 400 fetched directly, with or without a valid anon key; and
+an anonymous LIST of either bucket returns nothing — `thumbs/` holds 126 objects yet lists
+empty, so it is policy, not an empty folder, and preview paths are genuinely unguessable.
+
+⚠️ **Supabase Storage has its own database connection pool, and a bulk script can exhaust
+it.** ~380 *sequential* storage calls (info + download per file) failed partway with
+"Too many connections issued to the database" — from Storage, not from Postgres directly.
+Nothing the app does comes close (the busiest page signs 24), but **any script that walks the
+buckets must pace its calls** and retry that specific error with backoff.
+
 ### ⚠️ Downloads are withheld from the public payload
 
 `/public/products/content` returns **`downloads: []`** (since 2026-10-01). No public widget
@@ -1422,7 +1462,7 @@ re-syncing emptied both sides.
 
 ⚠️ **`AccordionCard` declares its own card chrome instead of using `<Card className="p-0">`.** `cn()` is a **plain string join, not tailwind-merge**, so `p-0` landed in the class list *alongside* Card's `p-5` and lost on stylesheet order — leaving 22px of padding wrapping every accordion, header included. **Any `w-*`/`p-*`/`text-*` passed to a UI component can silently lose to that component's own base class.** Either swap `cn` for `tailwind-merge` (one dependency, fixes it everywhere — but existing overrides that are currently no-ops would start applying, so it needs a pass) or express the intent as a real PROP, which is the only form that cannot lose.
 
-⚠️ **This trap has now bitten five times**, so prefer a prop over a class the moment a component fights you:
+⚠️ **This trap has now bitten six times**, so prefer a prop over a class the moment a component fights you:
 
 | Override | Lost to | Fixed by |
 |---|---|---|
@@ -1431,6 +1471,7 @@ re-syncing emptied both sides.
 | `p-0` on `Card` (AccordionCard) | `p-5` | own chrome |
 | `p-0` on `Card` (Categories, ProductOptions) | `p-5` | **`padded={false}` prop** |
 | `border-0` on `Table` | nothing — landed on the wrong ELEMENT | removed |
+| `h-9 w-7` on `FileTypeIcon` | its `h-10 w-8` — height won, **width lost** | default applies only when no size is passed |
 
 That last one is a different failure and worth knowing separately: **`Table` draws its border on its WRAPPER div while `className` goes to the inner `<table>`**, so `border-0` was never going to reach it. And because `Table` is already a bordered, rounded surface, **a `Table` must not be wrapped in a `Card`** — that is a literal box inside a box, which is what it looked like on Users, ProductOptions and Categories. `Card padded={false}` is for flush content that has no chrome of its own, like the category tree's grid.
 

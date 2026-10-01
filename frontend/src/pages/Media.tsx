@@ -270,17 +270,17 @@ export default function Media() {
                 <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
                   {a.kind === "image" ? (
                     <img
-                      src={a.url}
+                      src={a.url ?? undefined}
                       alt={a.alt || a.filename}
                       loading="lazy"
                       className="max-h-32 max-w-full object-contain"
                     />
                   ) : (
                     <a
-                      href={a.url}
+                      href={a.url ?? undefined}
                       target="_blank"
                       rel="noreferrer"
-                      title={`Open ${a.filename}`}
+                      title={a.url ? `Open ${a.filename}` : undefined}
                       className="block h-full w-full"
                     >
                       <FilePreview
@@ -308,14 +308,25 @@ export default function Media() {
                 </div>
 
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <a
-                    href={a.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-md border border-border px-2 py-1 text-center text-body font-semibold text-text hover:bg-surface-2"
-                  >
-                    Preview
-                  </a>
+                  {/* A file that could not be signed comes back url: null —
+                      say so rather than offering a link that goes nowhere. */}
+                  {a.url ? (
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-md border border-border px-2 py-1 text-center text-body font-semibold text-text hover:bg-surface-2"
+                    >
+                      Preview
+                    </a>
+                  ) : (
+                    <span
+                      className="rounded-md border border-danger/30 px-2 py-1 text-center text-body font-semibold text-danger"
+                      title="This file could not be found in storage."
+                    >
+                      File missing
+                    </span>
+                  )}
                   <button
                     onClick={() => onDelete(a)}
                     className="rounded-md border border-border px-2 py-1 text-body font-semibold text-danger hover:bg-danger/10"

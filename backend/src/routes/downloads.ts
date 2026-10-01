@@ -3,7 +3,6 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ensureHubProduct } from "../services/hubProduct.js";
-import { resolveUrl } from "../services/storage.js";
 import { shapeHubDownload } from "../services/downloads.js";
 
 export const downloadsRouter = Router();
@@ -15,21 +14,17 @@ const downloadInclude = {
 
 type DownloadWithAsset = Prisma.DownloadGetPayload<{ include: typeof downloadInclude }>;
 
+/**
+ * The shared admin shape plus a lead count.
+ *
+ * ⚠️ BUILT ON shapeHubDownload, not a second copy of it. This used to be its
+ * own shaper that signed the URL uncaught inside a `Promise.all` — so one
+ * missing object 500'd GET / reorder / PATCH for the whole list, while /custom
+ * and the PUT had already been made to survive it — and the two shapes had
+ * started to drift (a preview URL on one, a lead count on the other).
+ */
 async function shapeDownload(d: DownloadWithAsset) {
-  return {
-    id: d.id,
-    title: d.title,
-    gated: d.gated,
-    sortOrder: d.sortOrder,
-    mediaAssetId: d.mediaAssetId,
-    file: {
-      filename: d.mediaAsset.filename,
-      mimeType: d.mediaAsset.mimeType,
-      sizeBytes: d.mediaAsset.sizeBytes,
-      url: await resolveUrl(d.mediaAsset.kind, d.mediaAsset.storagePath), // signed for admin preview
-    },
-    leadCount: d._count.leads,
-  };
+  return { ...(await shapeHubDownload(d)), leadCount: d._count.leads };
 }
 
 const createSchema = z

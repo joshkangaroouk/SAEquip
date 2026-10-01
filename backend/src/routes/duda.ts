@@ -355,7 +355,8 @@ dudaRouter.post("/products/export", async (req, res, next) => {
   const ids = [...new Set(parsed.data.ids)];
 
   try {
-    const [products, hub, flat] = await Promise.all([
+    // One wave: only treeFrom() has to wait, because it needs the flat list.
+    const [products, hub, flat, applications, certLogos] = await Promise.all([
       duda.listAllProducts(),
       prisma.hubProduct.findMany({
         where: { dudaProductId: { in: ids } },
@@ -377,10 +378,8 @@ dudaRouter.post("/products/export", async (req, res, next) => {
         },
       }),
       duda.listAllCategories(),
-    ]);
-    // Counts Prisma cannot express as a second filtered _count on the same
-    // relation in one select — still one query each, not one per product.
-    const [applications, certLogos, tree] = await Promise.all([
+      // Counts Prisma cannot express as a second filtered _count on the same
+      // relation in one select — still one query each, not one per product.
       prisma.productTextItem.groupBy({
         by: ["hubProductId"],
         where: { kind: "APPLICATION", hubProduct: { dudaProductId: { in: ids } } },
@@ -391,8 +390,8 @@ dudaRouter.post("/products/export", async (req, res, next) => {
         where: { logo: { kind: "CERT_LOGO" }, hubProduct: { dudaProductId: { in: ids } } },
         _count: true,
       }),
-      treeFrom(flat),
     ]);
+    const tree = await treeFrom(flat);
     const appCount = new Map(applications.map((a) => [a.hubProductId, a._count]));
     const certCount = new Map(certLogos.map((c) => [c.hubProductId, c._count]));
 
@@ -450,8 +449,12 @@ dudaRouter.post("/products/export", async (req, res, next) => {
       // assigned one says nothing the child does not, so only the leaves show.
       const parents = new Set([...assigned].map((c) => nodeById.get(c)?.parent_id).filter(Boolean) as string[]);
       const perRoot = roots.map((r) =>
+        // ⚠️ No `c !== r.id`: a top-level category ticked on its own (in
+        // Industries, but no industry yet) is a LEAF here, and the listing
+        // shows it. Excluding it left the column blank and the spreadsheet
+        // disagreeing with the page it was exported from.
         [...assigned]
-          .filter((c) => nodeById.has(c) && !parents.has(c) && rootOf(c) === r.id && c !== r.id)
+          .filter((c) => nodeById.has(c) && !parents.has(c) && rootOf(c) === r.id)
           .map((c) => nodeById.get(c)!.title)
           .sort((a, b) => a.localeCompare(b))
           .join("; "),
