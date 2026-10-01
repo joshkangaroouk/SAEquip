@@ -1103,6 +1103,13 @@ and the legacy `data-section="all"` embed still includes downloads in its expans
 import would have put 176 files on any live page carrying one. The key stays as an empty array
 so widget code that reads it cannot throw.
 
+⚠️ **Deploy the guard BEFORE running the import against production.** On 2026-10-01 the
+import was run while the `downloads: []` change was only committed locally, so for ~15 minutes
+the deployed endpoint signed and served all 176 files — the exact cost the change exists to
+prevent. Harmless this time (no live widget renders downloads, and they are ungated anyway),
+but the order generalises: when a data import changes what a public endpoint would serve,
+push and confirm the endpoint change first, *then* write the data.
+
 **When the Download List widget is built**, it should fetch download data through its own
 path — signing lazily or per item, never in an all-or-nothing `Promise.all` on the content
 endpoint — and the old `downloads` section in `widget.js` (still in `ALL_SECTIONS`) should be
