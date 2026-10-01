@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { uploadFile } from "../lib/upload";
-import { FileIcon, Input, Pagination, Select, Skeleton } from "./ui";
+import { FilePreview, Input, Pagination, Select, Skeleton } from "./ui";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
@@ -170,12 +170,15 @@ export function MediaPicker({
                         src={a.url}
                         alt={a.alt || a.filename}
                         loading="lazy"
-                        className="h-16 w-full object-contain"
+                        className="h-24 w-full object-contain"
                       />
                     ) : (
-                      <span className="flex h-16 items-center">
-                        <FileIcon className="h-8 w-8" />
-                      </span>
+                      <FilePreview
+                        thumbnailUrl={a.thumbnailUrl}
+                        filename={a.filename}
+                        mimeType={a.mimeType}
+                        className="h-24 w-full rounded"
+                      />
                     )}
                     <span className="mt-1 w-full text-center text-xs text-muted [overflow-wrap:anywhere]" title={a.filename}>
                       {a.filename}

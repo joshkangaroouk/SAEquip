@@ -36,6 +36,8 @@ export interface MediaAsset {
   uploadedBy: string | null;
   createdAt: string;
   url: string; // public (image/model) or short-lived signed (file)
+  /** A file's first-page preview, or null — images are their own preview. */
+  thumbnailUrl?: string | null;
   usage: number;
 }
 
@@ -155,7 +157,14 @@ export interface HubDownload {
   gated: boolean;
   sortOrder: number;
   mediaAssetId: string;
-  file: { filename: string; mimeType: string; sizeBytes: number; url: string | null };
+  file: {
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+    url: string | null;
+    /** First-page preview, or null if none has been rendered. */
+    thumbnailUrl?: string | null;
+  };
 }
 
 

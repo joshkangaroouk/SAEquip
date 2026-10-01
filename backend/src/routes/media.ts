@@ -1,19 +1,41 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
+import { THUMB_EXT, THUMB_MAX_BYTES, ThumbnailError, storeThumbnail } from "../services/thumbnails.js";
 import {
   ALLOWED_FILE_MIME,
   ALLOWED_IMAGE_MIME,
   MAX_BYTES,
   createUploadTarget,
   objectInfo,
+  publicImageUrl,
   removeObject,
   resolveUrl,
   type BucketKind,
 } from "../services/storage.js";
 
 export const mediaRouter = Router();
+
+/** A file's first-page preview, or null — see MediaAsset.thumbnailPath. */
+const thumbnailUrlOf = (a: { thumbnailPath: string | null }) =>
+  a.thumbnailPath ? publicImageUrl(a.thumbnailPath) : null;
+
+/**
+ * A URL for an asset, or null if it cannot be signed.
+ *
+ * ⚠️ Caught per item. The list below signs every FILE inside a `Promise.all`,
+ * so one object missing from `product-files` used to fail the whole page — the
+ * same all-or-nothing failure that once threatened the product editor via
+ * /custom. Harmless with no files; not with 126.
+ */
+async function urlOrNull(kind: string, storagePath: string): Promise<string | null> {
+  try {
+    return await resolveUrl(kind, storagePath);
+  } catch {
+    return null;
+  }
+}
 
 const IMAGE_MIME = new Set(ALLOWED_IMAGE_MIME);
 const FILE_MIME = new Set(ALLOWED_FILE_MIME);
@@ -236,7 +258,7 @@ mediaRouter.post("/media", async (req, res, next) => {
     });
 
     const url = await resolveUrl(asset.kind, asset.storagePath);
-    res.status(201).json({ ...asset, url, usage: 0 });
+    res.status(201).json({ ...asset, url, thumbnailUrl: null, usage: 0 });
   } catch (err) {
     next(err);
   }
@@ -317,7 +339,8 @@ mediaRouter.get("/media", async (req, res, next) => {
     const items = await Promise.all(
       assets.map(async (a) => ({
         ...a,
-        url: await resolveUrl(a.kind, a.storagePath),
+        url: await urlOrNull(a.kind, a.storagePath),
+        thumbnailUrl: thumbnailUrlOf(a),
         usage: usage.get(a.id) ?? 0,
       })),
     );
@@ -346,11 +369,51 @@ mediaRouter.get("/media/:id", async (req, res, next) => {
       resolveUrl(asset.kind, asset.storagePath),
       mediaReferences(asset.id),
     ]);
-    res.json({ ...asset, url, usage: references.length, references });
+    res.json({ ...asset, url, thumbnailUrl: thumbnailUrlOf(asset), usage: references.length, references });
   } catch (err) {
     next(err);
   }
 });
+
+/**
+ * PUT /api/media/:id/thumbnail — store a FILE's first-page preview.
+ *
+ * The browser renders it at upload time (lib/pdfThumbnail.ts) and the
+ * backfill script renders the imported ones. Rendering on the server instead
+ * would put a ~30MB native renderer into the ONE function that also serves the
+ * whole dashboard and the public widget, paying for it on every cold start.
+ *
+ * ⚠️ RAW image bytes, not JSON. `express.json()` runs globally with its 100KB
+ * default, ahead of any route, so a base64 preview of a certificate (~55KB as
+ * WebP, ~300KB as PNG) could be refused before reaching here — and base64
+ * would add a third to every upload besides.
+ */
+mediaRouter.put(
+  "/media/:id/thumbnail",
+  express.raw({ type: Object.keys(THUMB_EXT), limit: THUMB_MAX_BYTES }),
+  async (req, res, next) => {
+    try {
+      const buf = req.body as unknown;
+      if (!Buffer.isBuffer(buf) || buf.length === 0) {
+        res.status(400).json({ error: "expected_image", detail: "Send the preview as raw WebP, PNG or JPEG bytes." });
+        return;
+      }
+      const asset = await prisma.mediaAsset.findUnique({ where: { id: req.params.id } });
+      if (!asset) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const updated = await storeThumbnail(asset, buf);
+      res.json({ thumbnailUrl: thumbnailUrlOf(updated) });
+    } catch (err) {
+      if (err instanceof ThumbnailError) {
+        res.status(400).json({ error: err.code, detail: err.message });
+        return;
+      }
+      next(err);
+    }
+  },
+);
 
 /**
  * DELETE /api/media/:id
@@ -374,6 +437,9 @@ mediaRouter.delete("/media/:id", async (req, res, next) => {
     const bucketKind = asset.kind === "image" || asset.kind === "model" ? asset.kind : "file";
     await removeObject(bucketKind, asset.storagePath);
     await prisma.mediaAsset.delete({ where: { id: asset.id } });
+    // Best effort: a preview left behind is an orphan in a public bucket, not
+    // a broken page, and must not turn a successful delete into an error.
+    if (asset.thumbnailPath) await removeObject("image", asset.thumbnailPath).catch(() => {});
     res.status(204).send();
   } catch (err) {
     next(err);

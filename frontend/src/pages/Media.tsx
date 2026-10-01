@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { apiFetch } from "../lib/api";
 import { uploadFile } from "../lib/upload";
-import { FileIcon, Input, Pagination, Select, Skeleton, useConfirm } from "../components/ui";
+import { FilePreview, Input, Pagination, Select, Skeleton, useConfirm } from "../components/ui";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
@@ -280,12 +280,16 @@ export default function Media() {
                       href={a.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex flex-col items-center text-muted hover:text-text"
+                      title={`Open ${a.filename}`}
+                      className="block h-full w-full"
                     >
-                      <FileIcon className="h-10 w-10" />
-                      <span className="mt-1 text-xs">
-                        {a.kind === "model" ? "Open model" : "Open file"}
-                      </span>
+                      <FilePreview
+                        thumbnailUrl={a.thumbnailUrl}
+                        filename={a.filename}
+                        mimeType={a.mimeType}
+                        className="h-full w-full"
+                        iconClassName="h-14 w-11"
+                      />
                     </a>
                   )}
                 </div>

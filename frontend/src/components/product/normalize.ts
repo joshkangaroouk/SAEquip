@@ -163,6 +163,7 @@ export const downloadsFrom = (items: HubDownload[]): DownloadDraft[] =>
     filename: d.file.filename,
     sizeBytes: d.file.sizeBytes,
     url: d.file.url,
+    thumbnailUrl: d.file.thumbnailUrl ?? null,
   }));
 
 export const model3dFrom = (m: HubModel3D | null): Model3DDraft =>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, DragHandle, FileIcon, Input, SortableList } from "../ui";
+import { Badge, Button, Card, CardHeader, DragHandle, FilePreview, Input, SortableList } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import type { MediaAsset } from "../../lib/types";
 import type { DownloadDraft } from "./productEditorTypes";
@@ -66,6 +66,7 @@ export function DownloadsSection({
         filename: asset.filename,
         sizeBytes: asset.sizeBytes,
         url: asset.url,
+        thumbnailUrl: asset.thumbnailUrl ?? null,
       },
     ]);
   }
@@ -111,7 +112,12 @@ export function DownloadsSection({
             renderItem={(d, handle) => (
               <div className="flex items-center gap-2.5 bg-surface px-2.5 py-2">
                 <DragHandle handle={handle} />
-                <FileIcon className="h-6 w-6" />
+                <FilePreview
+                  thumbnailUrl={d.thumbnailUrl}
+                  filename={d.filename}
+                  className="h-14 w-11 shrink-0 rounded border border-border"
+                  iconClassName="h-9 w-7"
+                />
                 <div className="min-w-0 flex-1">
                   <Input
                     size="xs"

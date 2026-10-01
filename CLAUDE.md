@@ -1093,6 +1093,54 @@ the WHOLE product editor and signed every download inside a `Promise.all`, so on
 from `product-files` would have stopped the editor opening at all. A file that cannot be signed
 now comes back `url: null` and shows "File missing" on its own row.
 
+### PDF previews (2026-10-01)
+
+Every PDF in the Media Centre has a rendered **first-page preview** — the Media Centre grid,
+the file picker and the product editor's downloads all show it, through one shared
+`FilePreview` component (`components/ui/FilePreview.tsx`). Anything without a preview (Word,
+Excel, ZIP, a GLB, or a PDF that has not been rendered) gets a `FileTypeIcon` labelled with its
+format in the colours people already read files by (PDF red, Word blue, Excel green).
+
+- **Stored, not rendered on view.** A Media Centre page shows 24 files and some PDFs are 13MB,
+  so rendering live would download tens of MB per page. Previews are 480×680-max **WebP**,
+  ~26KB on average — 4–6× smaller than PNG — so a full page loads about 600KB of them.
+- `MediaAsset.thumbnailPath` → `thumbs/<assetId>.webp` in the **public** `product-media`
+  bucket. Public so the admin grid is not signing 24 URLs per page load. Acceptable while
+  downloads are ungated; note a gated file's first page would be reachable by its
+  (unguessable) thumbnail path.
+- **Two writers, one store.** `services/thumbnails.ts` `storeThumbnail()` is used by both
+  `PUT /api/media/:id/thumbnail` and the backfill, so they cannot drift on where previews live.
+  A replacement upserts, and a changed format removes the old object rather than orphaning it.
+  Deleting an asset removes its preview too.
+- **New uploads render in the BROWSER**, at upload time, in `lib/upload.ts` via
+  `lib/pdfThumbnail.ts`. ⚠️ Not on the server: rendering needs a ~30MB native canvas, and the
+  API is ONE function that also serves the whole dashboard and the public widget, so every cold
+  start would pay for it. The browser already holds the bytes. pdf.js (~1.7MB with its worker)
+  is imported **lazily**, only when a PDF is uploaded — verified absent from the main bundle.
+  ⚠️ Best effort: the file is already stored when the preview runs, so a PDF pdf.js cannot
+  parse must never turn into a failed upload; it falls back to the icon.
+- **Imported files were backfilled** by `npm run media:pdf-thumbnails --workspace=backend`
+  (dry run by default, `--confirm`, `--force` to re-render, `--only <assetId,…>`): 126/126,
+  0 failures. It reads the local archive in `migration/downloads/` when present, the bucket
+  otherwise. Run it again to cover any upload whose browser render failed.
+- ⚠️ **Raw image bytes, not JSON.** `express.json()` runs globally with its 100KB default ahead
+  of every route, so a base64 preview could be refused before reaching the handler — and base64
+  adds a third besides. The route takes `express.raw` and **sniffs the bytes**: a browser that
+  cannot encode WebP silently returns PNG from `canvas.toBlob`, so the client's type is not
+  trusted, and the server accepts WebP, PNG or JPEG by their magic numbers.
+- ⚠️ **The renderer lives in `scripts/lib/renderPdf.ts`, a module with no side effects.** It
+  first lived in the backfill script, which runs `main()` on import — importing the renderer
+  from there executed the whole script, including its `finally` that disconnects the shared
+  Prisma client. And it must never be reachable from server code: `@napi-rs/canvas` and
+  `pdfjs-dist` are backend **devDependencies**, and an esbuild bundle of `api/index.ts` was
+  checked to contain neither.
+- pdf.js v6 dropped `isEvalSupported` and moved `destroy()` onto the loading task — the v4/v5
+  examples you will find elsewhere do not compile against it.
+
+⚠️ **`GET /api/media` now signs file URLs per item** (`urlOrNull`). It signed every file inside
+a `Promise.all`, so one object missing from `product-files` would 502 the whole Media Centre
+page — the same all-or-nothing failure fixed in `/custom`. Harmless at 0 files, not at 126.
+
 ### ⚠️ Downloads are withheld from the public payload
 
 `/public/products/content` returns **`downloads: []`** (since 2026-10-01). No public widget

@@ -160,6 +160,8 @@ export interface DownloadDraft {
   sizeBytes: number;
   /** A signed preview link, or null when the file could not be signed. */
   url: string | null;
+  /** The first-page preview image, or null. Display only. */
+  thumbnailUrl: string | null;
 }
 
 /** Everything editable on the product page, in one comparable shape. */

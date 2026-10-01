@@ -142,17 +142,31 @@ export async function objectInfo(
   return { sizeBytes: info.size ?? 0, contentType: info.contentType ?? null };
 }
 
-/** Upload a buffer to the bucket for the given kind. Throws StorageError. */
+/**
+ * Upload a buffer to the bucket for the given kind. Throws StorageError.
+ *
+ * `upsert` defaults to FALSE, deliberately: an import relies on "already
+ * exists" to notice an object an earlier run left behind. Only pass it for an
+ * object that is meant to be replaced in place, like a regenerated thumbnail.
+ */
 export async function uploadObject(
   kind: BucketKind,
   path: string,
   buffer: Buffer,
   contentType: string,
+  { upsert = false }: { upsert?: boolean } = {},
 ): Promise<void> {
   const { error } = await supabase.storage
     .from(BUCKETS[kind])
-    .upload(path, buffer, { contentType, upsert: false });
+    .upload(path, buffer, { contentType, upsert });
   if (error) throw new StorageError(error.message);
+}
+
+/** Download an object's bytes from the bucket for the given kind. Throws StorageError. */
+export async function downloadObject(kind: BucketKind, path: string): Promise<Buffer> {
+  const { data, error } = await supabase.storage.from(BUCKETS[kind]).download(path);
+  if (error || !data) throw new StorageError(error?.message ?? `no object at ${path}`);
+  return Buffer.from(await data.arrayBuffer());
 }
 
 /** Remove an object from the bucket for the given kind. Throws StorageError. */

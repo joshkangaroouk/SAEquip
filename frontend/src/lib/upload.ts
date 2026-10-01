@@ -1,4 +1,5 @@
-import { apiJson } from "./api";
+import { apiFetch, apiJson } from "./api";
+import { isPdf, renderPdfThumbnail } from "./pdfThumbnail";
 import type { MediaAsset } from "./types";
 
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -112,10 +113,40 @@ export async function uploadFile(
 
   await putToSignedUrl(file, target, opts.onProgress);
 
-  return apiJson<MediaAsset>("/api/media", {
+  const asset = await apiJson<MediaAsset>("/api/media", {
     method: "POST",
     body: JSON.stringify({ path: target.path, filename: file.name, alt: opts.alt }),
   });
+
+  if (asset.kind === "file" && isPdf(file)) {
+    asset.thumbnailUrl = await attachPdfPreview(asset.id, file);
+  }
+  return asset;
+}
+
+/**
+ * Render and store a PDF's first-page preview.
+ *
+ * ⚠️ BEST EFFORT, by design. The upload has already succeeded when this runs,
+ * and a preview is a nicety: a PDF pdf.js cannot parse, or a browser without
+ * canvas support, must not turn a stored file into a failed upload. It falls
+ * back to the file-type icon, and `media:pdf-thumbnails` can render it later.
+ */
+async function attachPdfPreview(assetId: string, file: File): Promise<string | null> {
+  try {
+    const blob = await renderPdfThumbnail(file);
+    // RAW bytes with the image's own type, not JSON: the API's global JSON
+    // parser has a 100KB limit, and base64 would add a third besides.
+    const res = await apiFetch(`/api/media/${assetId}/thumbnail`, {
+      method: "PUT",
+      headers: { "Content-Type": blob.type },
+      body: blob,
+    });
+    if (!res.ok) return null;
+    return ((await res.json()) as { thumbnailUrl: string | null }).thumbnailUrl;
+  } catch {
+    return null;
+  }
 }
 
 function formatMb(bytes: number): string {

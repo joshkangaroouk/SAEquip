@@ -98,15 +98,25 @@ model HubProduct {
 
 /// An uploaded asset stored in the Supabase Storage bucket.
 model MediaAsset {
-  id          String   @id @default(cuid())
-  filename    String
-  storagePath String   @unique // path/key in the Supabase Storage bucket
-  mimeType    String
-  sizeBytes   Int
-  kind        String // "image" | "file" | "model", derived from mimeType/extension
-  alt         String?
-  uploadedBy  String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  filename      String
+  storagePath   String   @unique // path/key in the Supabase Storage bucket
+  mimeType      String
+  sizeBytes     Int
+  kind          String // "image" | "file" | "model", derived from mimeType/extension
+  alt           String?
+  /// A rendered preview of a FILE's first page, in the PUBLIC product-media
+  /// bucket under `thumbs/<id>.webp`. Null for images (they are their own
+  /// preview), models, and any file that has not been rendered yet.
+  ///
+  /// Stored rather than rendered on view: a Media Centre page shows 24 files
+  /// and some PDFs are 13MB, so rendering live would download tens of MB per
+  /// page. Public because the admin grid would otherwise sign 24 URLs per page
+  /// load — acceptable while downloads are ungated, but note that a gated
+  /// file's first page would be reachable by its (unguessable) thumbnail path.
+  thumbnailPath String?
+  uploadedBy    String?
+  createdAt     DateTime @default(now())
 
   logos     Logo[]
   downloads Download[]

@@ -1,5 +1,5 @@
 import type { Download, MediaAsset } from "@prisma/client";
-import { resolveUrl } from "./storage.js";
+import { publicImageUrl, resolveUrl } from "./storage.js";
 
 /**
  * One download as the ADMIN sees it — the shape `GET /products/:id/custom`
@@ -35,6 +35,7 @@ export async function shapeHubDownload(d: Download & { mediaAsset: MediaAsset })
       mimeType: d.mediaAsset.mimeType,
       sizeBytes: d.mediaAsset.sizeBytes,
       url,
+      thumbnailUrl: d.mediaAsset.thumbnailPath ? publicImageUrl(d.mediaAsset.thumbnailPath) : null,
     },
   };
 }
