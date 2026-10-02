@@ -7,7 +7,9 @@ import { resolveUrl } from "../services/storage.js";
 import { cartesianSize, updateOptionsPreservingVariations } from "../services/productOptions.js";
 import { prisma } from "../prisma.js";
 import { withAncestors } from "../services/categoryTree.js";
-import { stripAnchors } from "../services/descriptionHtml.js";
+// ⚠️ From anchors.ts, NEVER descriptionHtml.ts: that one imports sanitize-html,
+// which crashes the whole function at load on Vercel. See anchors.ts.
+import { stripAnchors } from "../services/anchors.js";
 import { shapeHubDownload } from "../services/downloads.js";
 import { toCsv } from "../services/csv.js";
 import { treeFrom } from "./categories.js";

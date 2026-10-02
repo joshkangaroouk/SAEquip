@@ -414,24 +414,8 @@ export function sanitiseDescription(raw: string | null | undefined): string {
   return dropEmptyParagraphs(unwrapDeadLinks(rewriteInternalLinks(listed)));
 }
 
-/**
- * Unwrap anchors, keeping their text. Needed only for Duda's API payload.
- *
- * ⚠️ A WAF in front of api.duda.co rejects any request body containing an
- * anchor WITH an href — `PATCH /ecommerce/products/{id}` returns `403` with an
- * HTML error page rather than Duda's usual JSON error. Probed against a
- * throwaway product (`scripts/_probe403.ts`): `<p>`, `<strong>`, `<ul>`,
- * `<h5>`, `<hr />`, `&amp;`, curly quotes and 2,000 characters of text all
- * pass; `<a>` with no href passes; `href` on a `<span>` passes; the literal
- * text "href=" passes. Only `<a href="…">` is blocked, absolute or relative.
- *
- * So the Hub keeps the linked HTML (the widget can render it untouched) and
- * Duda receives this link-free version. Only one product in the catalogue is
- * affected, and the import reports it.
- */
-export function stripAnchors(html: string): string {
-  return html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, (_m, text: string) => text);
-}
+/** Moved to `anchors.ts`, which imports nothing — see the warning there. */
+export { stripAnchors } from "./anchors.js";
 
 /**
  * Typographic ligatures, which arrive via PDF/InDesign copy-paste.
