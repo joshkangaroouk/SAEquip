@@ -2,7 +2,7 @@
 
 ## What this is
 
-An internal admin dashboard for SAEquip (industrial/hazardous-area equipment) that manages everything about a product that **Duda's native e-commerce store can't handle natively**: logos/certifications, technical spec tables, benefit/application lists, and gated downloadable datasheets. It also owns the **quote request** flow (a custom "add to quote" basket system, replacing native Duda checkout/pricing for these products).
+An internal admin dashboard for SAEquip (industrial/hazardous-area equipment) that manages everything about a product that **Duda's native e-commerce store can't handle natively**: logos/certifications, technical spec tables, benefit/application lists, compatible products, categories and downloadable datasheets (lead-gating is built but switched off). It also owns the **quote request** flow (a custom "add to quote" basket system, replacing native Duda checkout/pricing for these products).
 
 The dashboard talks to Duda's REST API to pull in the real product catalog (name, SKU, price, images, variations — all native fields), and lets staff fill in the extra content per product. That content is then rendered **back onto the live product page** via a small embeddable JS widget, so the public site shows a merged view: native Duda fields + Hub content, seamlessly.
 
@@ -35,28 +35,31 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 - `Logo` + `ProductLogo` — SA/Cert logos are a **global shared catalog** (`Logo`, kind `SA_LOGO`/`CERT_LOGO`), not per-product. `ProductLogo` is a join table; a row's existence = that catalog logo is *active* for that product. Adding a logo to the catalog makes it available to every product; deleting one is global (UI warns with a usage count).
 - `SpecRow` — ordered label/value technical spec rows.
 - `ProductTextItem` — ordered text items, `kind` `BENEFIT` or `APPLICATION`.
-- `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` (default) withholds the file URL until a visitor submits a lead form; `Lead` rows capture name/email/company per download.
+- `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` withholds the file URL until a visitor submits a lead form, and `Lead` rows capture name/email/company per download. ⚠️ **Gating is OFF**: the column still defaults to `true` in the schema, but every write path (the import, `POST` and the editor's `PUT`) sets `false`, and no public widget shows downloads yet — see Stage 3e.
 - `MediaAsset` — the shared "media centre" library backing `Logo`, `Download`, and a product's 3D model. `kind` is `"image" | "file" | "model"`.
 - `HubProduct.glbAssetId` — a product's **interactive 3D model** (`.glb`), one per product (not a shared catalog like Logos). See "3D Model Viewer" below.
-- `CompatibleLink` — schema exists, **no editor built**, feature parked.
+- `CompatibleLink` — product→product "Compatible Products & Accessories", ordered, keyed on Hub ids with both sides cascading. Edited in the product editor's Compatible Products section and rendered by the `compatible` carousel; 286 links imported (Stage 3d).
+- `ProductCategory` — product↔category assignment, **Hub-owned** (no FK; categories live in Duda), pushed to Duda by `duda:sync-categories`. `CategoryMirror` is the local copy of Duda's tree the public endpoints read; `CategoryOrder` is the Hub-owned drag order. See "Categories" below.
+- `HubProduct` also **mirrors** Duda's `name`, `sku`, `slug` (`seo.product_url`), `thumbnailUrl` (`images[0]`) and `status`, written by `syncHubProduct` and refreshed in bulk by `hub:sync-mirror`, so public endpoints never call Duda. Its `descriptionHtml` is NOT a mirror — it is the authored copy the Overview tab renders (see the product editor section).
 - `DudaEditorAccount` + `DudaEditorSiteAccess` + `DudaSsoAudit` — staff→Duda-account mapping, the per-site SSO allowlist, and an append-only audit of editor-access requests. See "Website Editor" below.
 - `QuoteRequest` + `QuoteRequestItem` — see Quote Requests section below.
 
 ## Product identity / widget-to-backend detection method (confirmed)
 
-The public widget (`backend/src/public-widget/widget.js`) determines which product it's rendering for like this, checked in order:
-1. A `data-slug="..."` attribute on the mount `<div>`, if present.
-2. Otherwise, parses `window.location.pathname` against `/\/product\/([^\/?#]+)/` — i.e. the Duda product page URL pattern `/product/<slug>`.
+The public widget (`backend/src/public-widget/widget.js`) determines which product it's rendering for like this, checked in order (recorded in `__saequipHub.lastInit.refFrom`):
+1. A product passed in props, or a `data-slug="..."` attribute on a legacy mount `<div>`.
+2. **Duda's page data** — `dmAPI…pageData().identifier`, which IS `HubProduct.dudaProductId` (see the Widget Builder section). This is what the live Widget Builder widgets use.
+3. Otherwise, `window.location.pathname` against `/\/product\/([^\/?#]+)/` — the Duda product page URL pattern `/product/<slug>`.
 
-That slug is sent to `GET /public/products/content?slug=...` (the endpoint also accepts `?sku=` or `?dudaId=` for flexibility, but the live widget uses slug detection). `HubProduct.slug` is backfilled automatically from the Duda product's `seo.product_url` whenever a product is opened in the admin dashboard — so it stays in sync without manual entry.
+That identity goes to `GET /public/products/content` as `?dudaId=` or `?slug=` (it also accepts `?sku=`, but SKUs are not unique — 4 are shared). `HubProduct.slug` is backfilled automatically from the Duda product's `seo.product_url` whenever a product is opened or saved in the dashboard, and in bulk by `hub:sync-mirror`.
 
 ## The embeddable widget
 
 Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) handles both:
 - **Full embed** (legacy/simple): `<div id="saequip-product-hub"></div>` — renders every section.
-- **Section-scoped embeds** (used in production, so sections can be placed independently anywhere on the Duda product template): `<div class="saequip-hub" data-section="sa-logos"></div>`, repeated per section (`sa-logos | cert-logos | specs | benefits | applications | downloads`). All mounts on a page share **one** memoized fetch per slug regardless of how many section-embeds/script copies exist. Renders inline (no iframe), so each mount auto-sizes — but note in Duda's **HTML/Embed element** you still need the **"auto height" toggle** enabled or Duda's own container clips it.
+- **Section-scoped embeds** (used in production, so sections can be placed independently anywhere on the Duda product template): `<div class="saequip-hub" data-section="sa-logos"></div>`, repeated per section (`sa-logos | cert-logos | specs | benefits | applications | downloads`, plus the newer `tabs | 3d-viewer | compatible`). ⚠️ `downloads` renders nothing today — the content endpoint returns `downloads: []` (Stage 3e). All mounts on a page share **one** memoized fetch per slug regardless of how many section-embeds/script copies exist. Renders inline (no iframe), so each mount auto-sizes — but note in Duda's **HTML/Embed element** you still need the **"auto height" toggle** enabled or Duda's own container clips it.
 - Vanilla JS, no framework, fails silently on any error (never breaks the host page).
-- **An empty section removes its own footprint.** Duda offers no way to hide an element conditionally, and hiding just the mount is not enough — Duda's HTML/Embed element is a wrapper with its own padding and min-height, so an empty widget still left a visible gap. `collapseMount()` hides the mount and then walks UP at most 4 levels, hiding each ancestor **only while that ancestor contains nothing but our mount** — so a column that also holds a heading is never touched, and the worst case is a smaller gap rather than missing page content. It fires on all four empty paths: no API/slug, an unknown `data-section`, an unknown product or failed fetch, and (the common one) a product with no content for the requested section. `data-collapse="false"` on a mount opts out. Gated downloads render an inline lead-capture form (name/email/company + honeypot) that posts to `/public/downloads/:id/lead` and returns a short-TTL signed URL on success.
+- **An empty section removes its own footprint.** Duda offers no way to hide an element conditionally, and hiding just the mount is not enough — Duda's HTML/Embed element is a wrapper with its own padding and min-height, so an empty widget still left a visible gap. `collapseMount()` hides the mount and then walks UP at most 4 levels, hiding each ancestor **only while that ancestor contains nothing but our mount** — so a column that also holds a heading is never touched, and the worst case is a smaller gap rather than missing page content. It fires on all four empty paths: no API/slug, an unknown `data-section`, an unknown product or failed fetch, and (the common one) a product with no content for the requested section. `data-collapse="false"` on a mount opts out. When gating returns, a gated download renders an inline lead-capture form (name/email/company + honeypot) that posts to `/public/downloads/:id/lead` and returns a short-TTL signed URL on success.
 
 ## Duda Widget Builder widgets (the preferred embed route)
 
@@ -76,7 +79,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 
 ### The widget shim to paste into Duda
 
-⚠️ **`api.scripts.renderExternalApp` does NOT work for this widget — the shim loads the script and calls `init` itself.** Identical for all four widgets except `section`:
+⚠️ **`api.scripts.renderExternalApp` does NOT work for this widget — the shim loads the script and calls `init` itself.** Identical for every product-page widget except `section`:
 
 ```js
 (function (el, section, inEditor) {
@@ -84,7 +87,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   el.setAttribute('data-saeh-section', section);
 
   // Diagnostic: what Duda ACTUALLY put in `data`, before this shim touches it.
-  // Keyed by section so four widgets on a page do not clobber each other.
+  // Keyed by section so several widgets on a page do not clobber each other.
   // `lastInit.propKeys` only shows what the SHIM built, which is a different
   // question and cost three round trips to tell apart once already.
   (window.__saehData || (window.__saehData = {}))[section] = data;
@@ -192,14 +195,9 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
   the key is `productCategory` now).
   `truthyProp()` and the object-shape handling in `init()` are defence against
   other representations, not descriptions of what actually arrives.
-
-  with the matching extra parameters on the function and
-  `props: { …, singlePage: singlePage, productCategory: productCategory, heading: heading }`.
-  ⚠️ Read synchronously into the IIFE's parameters like `section` is, and for the
-  same reason.
 - The `?v=` is a cache-buster; `/public/widget.js` is served with `max-age=300`. **Bump it whenever the widget changes** or Duda serves the cached copy.
-  ⚠️ **Bump it in EVERY shim, not just the one you changed.** All shims share one promise on `window.__saehLoader`, so the script is fetched once using whichever `SRC` was evaluated first — a single stale `?v=` can therefore serve the cached old copy to all five widgets on the page. Currently `?v=21`.
-- The shared promise on `window.__saehLoader` means all four widgets on a page fetch the script **once** between them.
+  ⚠️ **Bump it in EVERY shim, not just the one you changed.** All shims share one promise on `window.__saehLoader`, so the script is fetched once using whichever `SRC` was evaluated first — a single stale `?v=` can therefore serve the cached old copy to every widget on the page. The snippets here use `?v=22`, but **the live values are whatever is in each shim in Duda's Widget Builder** — measured on the live EX Heater page 2026-10-02: four shims at `?v=17` and one at `?v=232`. Harmless as it stands (the server ignores `?v`; it only splits the browser cache, so every copy is current within 5 minutes), but a bump only takes effect at once if EVERY shim gets it. Read the live values with `curl -s <product page> | grep -o 'widget\.js?v=[^"]*' | sort | uniq -c`.
+- The shared promise on `window.__saehLoader` means every widget on a page fetches the script **once** between them.
 - **No `dudaId` prop.** The widget resolves the product itself (`dudaPageProduct()` → `identifier`, falling back to the `/product/<slug>` URL), so the shim needs no product lookup and therefore no `await`.
 - `https://my.duda.co` must be in `WIDGET_ALLOWED_ORIGINS` or the editor's fetch 403s. Negligible exposure — that endpoint serves content already public on the site.
 
@@ -225,13 +223,14 @@ That pattern is a loader consuming the script's **module value** instead of `win
 |---|---|
 | `SAEquipHubWidget.version` | whether Duda is serving a cached copy — but **not** that `renderExternalApp` ran, since a legacy HTML/Embed on the page loads the same script. ⚠️ The trailing `+<hash>` is a **sha1 of the served file, stamped in by the route**, and it is the half you compare: the hand-written date is only bumped when someone remembers, and when they did not, a cached older copy reported exactly the same string as the current build — the one question the marker exists to answer, answered wrongly. A literal `%BUILD%` means the file was read from disk rather than served |
 | `__saequipHub.lastInit` | `undefined` ⇒ Duda never called `init`, so the fault is in the shim, not the widget |
-| `__saequipHub.inits` | every init on the page, in order — `lastInit` alone is overwritten by whichever of the four widgets ran last |
+| `__saequipHub.inits` | every init on the page, in order — `lastInit` alone is overwritten by whichever widget ran last |
 | `$$('[data-saeh-section]').map(e => e.getAttribute('data-saeh-section'))` | which section each widget container actually asked for, in document order. This is how you check a widget is wired to the section it's named after — `buildSection` is a plain string switch, so a widget showing another widget's content means the wrong `section` string is in that widget's JS |
 | `__saequipHub.lastInit.argKeys` | what shape Duda actually passed |
 | `__saequipHub.lastInit.refFrom` | `props` / `dmAPI` / `url` / `none` — which identity source won |
 | `__saehData[<section>]` | the RAW `data` object Duda handed the shim, before any coercion. **This is the one to read when a content-panel value does not arrive** — and remember the panel's own fields are under `.config`, not at the top level — `Object.keys(__saehData['compatible'])` shows which fields Duda actually supplies, which is a different question from what the shim passed on |
-| `__saequipHub.lastInit.propKeys` | which props the shim actually passed. **The first thing to read when a static-page (tag mode) widget renders nothing**: no `singlePage` key at all means the shim in Duda was never updated to the six-argument form, whereas the key present but `false` means the shim is current and the checkbox is simply off. The two are otherwise indistinguishable — both just fall through to product resolution, find no product, and collapse |
-| `__saequipHub.lastInit.mode` | `"tag"` when the widget took the static-page path. Absent means it did not, whatever the content panel appears to say |
+| `__saequipHub.lastInit.propKeys` | which props the shim actually passed. **The first thing to read when a static-page (category mode) widget renders nothing**: no `singlePage` key at all means the shim in Duda was never updated to the six-argument form, whereas the key present but `false` means the shim is current and the checkbox is simply off. The two are otherwise indistinguishable — both just fall through to product resolution, find no product, and collapse |
+| `__saequipHub.lastInit.mode` | `"category"` when the compatible widget took the static-page path, `"product-list"` for the listing widget. Absent means a product page, whatever the content panel appears to say |
+| `__saequipHub.lastInit.categoryFrom` | listing widget only: which source named the category — `props` / `dmAPI` / `url` / `query` / `none` |
 | `__saequipHub.pageDataTimedOut` | `true` ⇒ Duda's `pageData()` hung and the URL slug was used
 
 ### Both entry points are live at once, deliberately
@@ -303,8 +302,9 @@ category template, or the page shows two listings.
   every change — never a static total, which would promise results a click cannot deliver.
 - ⚠️ **Category resolution is by SLUG from the mirror, never derived.** Duda renders
   "Oil & Gas" as `oil---gas`, so a slugified title would miss exactly the ampersand
-  categories, silently. Sources in order: `dmAPI` page data → `/category/<slug>` URL →
-  `?category=` → the content-panel prop, recorded in `__saequipHub.lastInit.categoryFrom`.
+  categories, silently. Sources in order: the content-panel `category` prop (an explicit
+  override) → `dmAPI` page data → `/category/<slug>` URL → `?category=`, recorded in
+  `__saequipHub.lastInit.categoryFrom`.
 - ⚠️ **`product-list` is deliberately absent from `ALL_SECTIONS`** — it belongs to a category
   page and has no product, so the legacy `data-section="all"` embed must never build it.
 - Cards: white, **square 1:1 image using `object-fit:contain`** (cropping industrial kit to
@@ -453,15 +453,15 @@ The product page's main widget: Overview / Technical Specs / Key Benefits / Appl
 - Content reuses the standalone designs exactly: `specsTable()` and `itemList()` were split out of `specsSection()`/`listSection()` so the tab bodies are the same markup minus the redundant `.saeh-h` heading.
 - ⚠️ **The Overview panel is the ONLY place this widget renders HTML** rather than `textContent`, and it goes through **`safeProse()`** — an allowlist rebuild inside an inert `<template>`, never `innerHTML` (2026-10-02). The description is staff-authored and stored as written (the editor has an HTML tab), so a `<script>` typed there reaches the row intact.
   ⚠️ **This used to say `/public/products/content` sanitises it with `stripCruft`. It did not**: that was reverted in `886748c` because importing `sanitize-html` crashed the function, and the comment left behind said the *widget* escaped it — while the widget still used `innerHTML`. Each side claimed the other was the protection. It was latent only because nothing but the import's own clean output had ever been written there; making dashboard edits reach the page (see the product editor section) would have armed it. **The widget is now the boundary, so any other consumer of `descriptionHtml` must sanitise too.** `widget:test` covers script, `onerror`, inline handlers, `javascript:`/tab-obfuscated/`data:` links, iframe, svg-script and style; all 94 real descriptions render byte-identically through it.
-  ⚠️ **Never import `services/descriptionHtml.ts` from server code** — it pulls in `sanitize-html`, which makes the WHOLE function fail at load on Vercel (`FUNCTION_INVOCATION_FAILED` on every route, the widget included) while running fine under tsx. It has happened twice: the second time (2026-10-02, ~3 minutes) via `stripAnchors`, which now lives alone in the import-free `services/anchors.ts`. **Before pushing a backend change, check the bundle** — `npx esbuild api/index.ts --bundle --platform=node --format=esm --packages=external --metafile=…` and confirm `sanitize-html` is not among the externals — and **after every deploy, hit `/api/…` and `/public/widget.js`**: a 401 and a 200, never a 500.
+  ⚠️ **Never import `services/descriptionHtml.ts` from server code** — it pulls in `sanitize-html`, which makes the WHOLE function fail at load on Vercel (`FUNCTION_INVOCATION_FAILED` on every route, the widget included) while running fine under tsx. It has happened twice: the second time (2026-10-02, ~3 minutes) via `stripAnchors`, which now lives alone in the import-free `services/anchors.ts`. **This is now checked automatically** — `scripts/check-api-bundle.mjs` fails the Vercel build (and the pre-push hook) if `sanitize-html` or `descriptionHtml.ts` enters the API's import graph, and the post-deploy smoke test hits the API and the widget. See "Deploy safety checks".
 
-`npm run widget:test --workspace=backend` covers 109 checks across the widgets, including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
+`npm run widget:test --workspace=backend` covers the widgets (359 checks as of 2026-10-02), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
 
 ## 3D Model Viewer
 
 Each product may have one interactive `.glb` 3D model, uploaded per-product on the product editor (a `Model3DSection` in the unified save flow — see below), attached via `HubProduct.glbAssetId` → `MediaAsset` (kind `"model"`).
 
-- **Storage**: `product-models` bucket, PUBLIC (unlike gated downloads, a 3D model is never gated — the live widget needs to load it unauthenticated). `backend/src/routes/media.ts` classifies an upload as kind `"model"` by its **`.glb` file extension**, not mimetype — browsers report GLB inconsistently (often `application/octet-stream`), so extension is the only reliable signal. Models get a higher upload size ceiling (50MB vs. 25MB for images/files) since textured GLBs can be large — **50MB, not the 150MB previously documented**: a bucket limit cannot exceed the Supabase project's global upload ceiling, which is 50MB, so 150MB was never actually achievable (see the storage section).
+- **Storage**: `product-models` bucket, PUBLIC (unlike gated downloads, a 3D model is never gated — the live widget needs to load it unauthenticated). `backend/src/routes/media.ts` classifies an upload as kind `"model"` by its **`.glb` file extension** AND a claimed type in `ALLOWED_MODEL_MIME` (`model/gltf-binary` or `application/octet-stream` — browsers report GLB inconsistently), and the bucket's own allowlist enforces the same at upload. It used to go by extension alone with no bucket allowlist — see the storage note under "Live facts". Models get a higher upload size ceiling (50MB vs. 25MB for images/files) since textured GLBs can be large — **50MB, not the 150MB previously documented**: a bucket limit cannot exceed the Supabase project's global upload ceiling, which is 50MB, so 150MB was never actually achievable (see the storage section).
 - **Admin write path**: `PUT /api/products/:id/model3d` body `{ mediaAssetId: string | null }` — validates the asset is kind `"model"`, sets/clears `HubProduct.glbAssetId`. Null clears it. Never touches the underlying `MediaAsset` (stays in the Media Centre, same pattern as Logos/Downloads). Included in `GET /api/products/:id/custom` as `model3d: {mediaAssetId, filename, url} | null`.
 - **Media Centre delete-guard**: `media.ts`'s usage/reference checks also treat a `MediaAsset` referenced by `HubProduct.glbAssetId` as in-use (409 on delete), alongside Logo/Download.
 - **Editor integration**: `model3d` is a full section in the unified save flow (`SectionKey`, `EditorSnapshot.model3d: Model3DDraft`, `project()` in `normalize.ts`) — **not** an immediate-apply pattern. Uploading/picking a file via `MediaPicker` (extended to accept `kind="model"`) stages the id into the draft; the actual PUT only fires on Save, like every other section. `Model3DSection.tsx` renders a live `<model-viewer>` preview (`Model3DPreview.tsx`, lazy-loads the `@google/model-viewer` web component from jsDelivr) so staff can confirm the right file was uploaded before saving.
@@ -481,11 +481,11 @@ Backend side (`backend/src/routes/quotes.ts`, `backend/src/services/email.ts`): 
 
 ## Quote-request abuse surface (audited 2026-09-10)
 
-`POST /public/quotes` is one of only three unauthenticated endpoints. What holds, and what does not:
+`POST /public/quotes` is one of only two unauthenticated endpoints that WRITE (the other is the download lead form; the rest of `/public/*` is read-only). What holds, and what does not:
 
 **Holds**
 - Every string is `.max()`-bounded; `items` caps at 100. Prisma parameterises, so no SQL injection. The notification is `text:` only, so no HTML injection into the email, and `/quotes` renders as text, so no stored XSS into the dashboard.
-- Storage happens **before and independently of** email, and a send failure is caught — a broken mailer cannot lose a submission. Verified: 7 stored requests, all `emailSent: false`, none lost.
+- Storage happens **before and independently of** email, and a send failure is caught — a broken mailer cannot lose a submission. Verified at the time: 7 stored requests, all `emailSent: false`, none lost. (Those 7 were later lost in the 2026-09-29 database wipe — see "Prisma migrations" — which is a backups problem, not a mailer one.)
 - Both form-post limiters are **Postgres-backed** (see the note in `public.ts`). Measured before: 30 concurrent posts let **12** through a nominal 10/min, because more than one serverless instance served the burst. After: 9. A second **hourly** cap (30) catches the slow drip a per-minute window is blind to.
 - `options` is a bounded flat map (string keys, scalar values, ≤40 pairs). It was `z.any()` — unbounded JSON into a JSON column, ×100 items.
 - `name`/`company`/`phone` are stripped of CR/LF and control characters, so switching the mailer to SMTP cannot reintroduce header injection.
@@ -529,9 +529,9 @@ Run `npm run duda:spike-options -- --confirm` to re-derive any of this; `npm run
 - **Variations are auto-generated as the cartesian product** of the attached choices. There is no variations collection endpoint (`/variations` 400s); only `PATCH /products/{id}/variations/{vid}` for `sku`/`price_difference`/`quantity`/`status`/`images`. Regeneration is synchronous. **Variation array order is not stable — never rely on index.**
 - **Deleting an in-use option or value requires orchestration, and IS possible.** The API refuses directly (`"Can't remove choice that is connected to variations"`) but Duda's own admin UI allows it behind a warning, because it detaches from the affected products first. `backend/src/services/optionCascade.ts` does the same — and better, since it routes the detach through `updateOptionsPreservingVariations()` so SKUs on surviving combinations are kept. Routes take `?force=true` (values) / `?confirm=true` (options); without it they 409 with the affected-product count so the UI can warn. Don't conclude from the bare 400 that the operation is impossible.
 - **An option must always keep ≥1 value** — `"Option should have at least 1 choices"`. Deleting the last value means deleting the option.
-- ⚠️ **Changing a product's own attached option set DESTROYS all variation data.** Duda regenerates every variation with new ids and blanks each `sku` (to `null`) and `price_difference` (to `"0.0"`) — including for combinations that still exist. `backend/src/services/productOptions.ts` works around this by snapshotting the data and re-applying it after the change, reporting what was restored vs genuinely dropped. **Never call `duda.updateProductOptions()` directly from a route** — go through `updateOptionsPreservingVariations()`.
+- ⚠️ **Changing a product's own attached option set DESTROYS all variation data.** Duda regenerates every variation with new ids and blanks each `sku` (to `null`) and `price_difference` (to `"0.0"`) — including for combinations that still exist. `backend/src/services/productOptions.ts` works around this by snapshotting the data and re-applying it after the change, reporting what was restored vs genuinely dropped. **Never call `duda.updateProductOptions()` directly from a route** — go through `updateOptionsPreservingVariations()`. (An early probe wrongly suggested VARIATION ids were stable; it only changed the shared *catalog* while the product kept its subset, so nothing regenerated. Variation ids are NOT stable; choice ids are — see below.)
   ⚠️ **Old and new variations are matched by projecting both onto the options present BEFORE AND AFTER, by choice ID, and data moves only one-to-one** (2026-10-02). It used to compare whole combinations, so **detaching or attaching a ONE-value option lost every SKU** although `a1+b1 → a1` is unambiguous — measured on throwaways. Anything ambiguous is dropped and reported, never guessed: attaching a two-value option turns `a1` into `a1+d1` and `a1+d2` (copying would mint duplicate SKUs), and detaching one merges several variations into one. Choice ids on a variation are the catalogue's ids and survive regeneration (verified). Duda also refuses two options with the same name ("Option name should be unique per catalog").
-  ⚠️ **A restore that FAILS is now reported** — the editor used to read only `restored`/`dropped` and ignore `failed`, so a blanked SKU read as success. **The store-wide cascades** (`optionCascade.ts`) catch per product: one failure no longer throws away the report for the products already rewritten, and the catalogue entry is KEPT (502 with `catalogDeleted: false`) rather than deleted half-way. Their success toasts now say when combinations lost data — they used to report only "updated N products". **`PUT /api/options/:id` keeps the current type when none is sent**; it defaulted to TEXT, which would have turned a COLOR option into a TEXT one on rename. (An early probe wrongly suggested ids were stable; it only changed the shared *catalog* while the product kept its subset, so nothing regenerated.)
+  ⚠️ **A restore that FAILS is now reported** — the editor used to read only `restored`/`dropped` and ignore `failed`, so a blanked SKU read as success. **The store-wide cascades** (`optionCascade.ts`) catch per product: one failure no longer throws away the report for the products already rewritten, and the catalogue entry is KEPT (502 with `catalogDeleted: false`) rather than deleted half-way. Their success toasts now say when combinations lost data — they used to report only "updated N products". **`PUT /api/options/:id` keeps the current type when none is sent**; it defaulted to TEXT, which would have turned a COLOR option into a TEXT one on rename.
 - **`options` comes back as `null`, not `[]`,** for a product with none attached — brand-new products included. `normalizeProduct()` in `services/duda.ts` coerces this (and the other collections) at the boundary; without it, opening a newly-created product crashes on `product.options.length`.
 - `sku` on a freshly generated variation is `null`, not `""`.
 - **Images**: `PATCH /products/{id}` with `images` re-hosts any publicly-reachable URL onto Duda's CDN (`irp.cdn-website.com`), so `/sites/multiscreen/resources/{site}/upload` is unnecessary. Already-hosted URLs come back byte-identical across repeat PATCHes. The array is **full replacement** and `images[0]` is the thumbnail.
@@ -543,7 +543,7 @@ Run `npm run duda:spike-options -- --confirm` to re-derive any of this; `npm run
 - `GET /products?category_id=…` appears to **ignore the filter** (it returned a product whose `categories` array is empty). Don't rely on it for category membership.
 - `quantity` is **write-only** — accepted on PATCH, never returned on read.
 - **`GET /products` clamps `limit` to 200** regardless of what you ask for, so paging is required now `max_products` is 1000 (`duda.listAllProducts()`).
-- Store limits live at `GET /ecommerce/store` → currently `max_products:1000, max_variations_per_product:300, max_options:20, max_choices_per_option:50`. **`max_options:20` is per-CATALOG and did NOT rise with the plan upgrade — it's the binding constraint across ~86 products.**
+- Store limits live at `GET /ecommerce/store` → currently `max_products:1000, max_variations_per_product:300, max_options:20, max_choices_per_option:50`. **`max_options:20` is per-CATALOG and did NOT rise with the plan upgrade — it will be the binding constraint once options roll out across the catalogue** (1 of 20 used today: Hire/Purchase, on EX Heater only).
 
 ## Website Editor — Duda editor SSO (security-sensitive)
 
@@ -604,7 +604,7 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 - **Public signup is disabled**; `ALLOWED_EMAIL_DOMAINS` gates who can sign in at all (`requireAuth`).
 - ⚠️ **There is NO role model.** Every authenticated user has identical access — any signed-in user can edit any product. "Admin account" currently means nothing more than "an account". The `/users` page says so rather than implying a hierarchy that doesn't exist. Adding roles is unbuilt work.
 - ⚠️ **`auth.admin.listUsers()` does NOT return `factors`** — the key is absent from every row, not merely empty. Only `getUserById()` includes them, and the difference is silent: it reads as "nobody has MFA". It made the Users page show Two-factor **Off** for an account with a verified TOTP factor, `users:create --check` report "not enrolled", and — the dangerous one — **`users:mfa` would have told an admin there were no factors to delete, for the one person who cannot get in without that reset.** Everything that needs factors now goes through `services/supabaseUsers.ts` (`listUsersWithFactors`, `findUserWithFactors`, `hasVerifiedFactor`), which re-fetches each user. That is an N+1, accepted deliberately: the staff list is a handful of people, the calls run in parallel, and the alternative is a page that lies about a security control.
-- **`/users` is READ-ONLY** apart from triggering a reset email: `GET /api/users` (Supabase admin `listUsers`, filtered to allowed domains, joined against `DudaEditorAccount`) and `POST /api/users/password-reset`.
+- **`/users` is READ-ONLY** apart from triggering a reset email: `GET /api/users` (`listUsersWithFactors`, filtered to allowed domains, joined against `DudaEditorAccount`) and `POST /api/users/password-reset`.
 - ⚠️ **Account creation is CLI-only, deliberately** — same reasoning as `duda:editor-provision`. `requireAuth` proves only "valid token + allowed domain", and that domain list spans two companies, so an HTTP route would let any signed-in session mint itself more accounts or delete a colleague's:
 
   ```
@@ -633,7 +633,7 @@ None of the above is secure until these are set, and none of them can be done fr
    - **Site URL** must be the deployed origin (`https://sa-equip-backend.vercel.app`), not the `http://localhost:3000` default. Supabase discards a `redirectTo` it cannot use and falls back to the Site URL — observed symptom: a reset link landing on `http://localhost:3000/#access_token=…`.
    - **Redirect URLs** must include `https://sa-equip-backend.vercel.app/reset-password` (add `http://localhost:5173/reset-password` for local work). A `redirectTo` outside the allowlist is not an error; it is ignored.
 
-   Two related traps, both fixed in code but worth knowing: `POST /api/users/password-reset` used to interpolate the `Origin` header unchecked, so a request without one produced the *relative* `/reset-password` — unusable, hence the Site URL fallback; it now validates the origin and omits `redirectTo` rather than sending a malformed one. And `/reset-password` needs `onAuthStateChange` as well as `getSession()`, because the recovery token arrives in the URL **fragment** and is exchanged asynchronously — a lone `getSession()` races that and reports "link expired" on a good link.
+   Two related traps, both fixed in code but worth knowing: `POST /api/users/password-reset` used to interpolate the `Origin` header unchecked, so a request without one produced the *relative* `/reset-password` — unusable, hence the Site URL fallback. It now builds `redirectTo` only from THIS dashboard's own origin and otherwise omits it (see "Verified live" below). And `/reset-password` needs `onAuthStateChange` as well as `getSession()`, because the recovery token arrives in the URL **fragment** and is exchanged asynchronously — a lone `getSession()` races that and reports "link expired" on a good link.
 
    ⚠️ **A recovery link is effectively a one-time login**: whoever opens it holds a real session. That is why it must land on `/reset-password`, which changes the password and then signs out, rather than on the app root where the holder is simply logged in.
 
@@ -706,7 +706,7 @@ See `backend/.env.example` and `frontend/.env.example` for the full annotated li
 
   **Duda's own CSS, for the record** (measured from the live site's stylesheets, not assumed): `p.rteBlock{margin:0}` and `.dmNewParagraph[data-version] p{margin-top:0;margin-bottom:0}`. So Duda's *native* description element really does render flush — but note its **admin edit panel** shows comfortable paragraph gaps, which is authoring CSS and NOT what visitors see. Don't calibrate the Hub against that panel; it's what prompted the blank-line workaround.
 
-  Note the sanitiser (`services/descriptionHtml.ts`) converts a sentence-boundary `<br>` into a paragraph break and drops empty paragraphs — now visible on the page again, and load-bearing rather than merely cosmetic.
+  Note the IMPORT's sanitiser (`services/descriptionHtml.ts`) converts a sentence-boundary `<br>` into a paragraph break and drops empty paragraphs. ⚠️ It runs only on the WordPress import — an editor save is stored exactly as authored (tiptap's own output, or whatever was typed in the HTML tab), and the public page is protected by the widget's `safeProse()`, not by this.
 - Description is a **tiptap WYSIWYG with an HTML tab** (`DescriptionSection`). Tiptap normalises markup it parses, so `RichTextEditor` reports only genuine user edits — opening a product and changing nothing leaves the stored HTML untouched — and says so when its parse would reformat legacy markup, pointing at the HTML tab.
 - ⚠️ **The description lives in TWO places and a save writes both, differently** (fixed 2026-10-02). `HubProduct.descriptionHtml` is what the live page shows (the widget's Overview tab), and **nothing wrote it after the Stage 2 import** — so a description saved in the editor reached Duda and never the page, looking saved while staying invisible. `PATCH /api/products/:id` (and `POST` on create) now stores the authored HTML on the Hub and sends Duda `stripAnchors()` of it, because Duda's API refuses `<a href>` with an HTML 403 and the editor has a **Link** button, which would have failed the whole Details save. The editor LOADS the Hub copy (`/custom` → `descriptionHtml`, falling back to Duda's for a product the Hub never wrote), and re-baselines on the `hubDescriptionHtml` the PATCH echoes — re-baselining on Duda's link-free copy would read as an unsaved change. Measured before the fix: 95/96 identical, the 96th differing only by EX Heater's links, so no edit had been lost yet. Verified end-to-end on a throwaway product.
 - ⚠️ **The URL slug is validated on both sides** — non-blank, `^[a-z0-9-]+$`, ≤200. It is the live page URL. Repeated hyphens are allowed because Duda renders `&` as `---` and one live slug is exactly that; all 96 pass.
@@ -746,8 +746,8 @@ normally, while `DROP TABLE`, `TRUNCATE`, `CREATE TABLE`, `ALTER TABLE` and
 `DROP SCHEMA public` are all refused.
 
 ⚠️ **Vercel's `DATABASE_URL` must be updated to match**, or production still runs as the
-owner. Nothing runs migrations at deploy time (`buildCommand` is only `prisma generate`),
-so the restricted role is safe there.
+owner. Nothing runs migrations at deploy time (`buildCommand` is the API bundle check,
+`prisma generate` and the frontend build), so the restricted role is safe there.
 
 ⚠️ **A `.env` copy taken before a credential change is not matched by the `.env` gitignore
 rule.** `.env.backup*` is now ignored explicitly; one such file was a `git add -A` away
@@ -775,7 +775,7 @@ Rebuilds the `Logo` catalogue and its `MediaAsset` rows from the files in the `p
 
 `Lead` deliberately has a **nullable `downloadId` with `onDelete: SetNull`** plus `productName`/`productSku`/`downloadTitle` snapshot columns written at capture time, so deleting a product **preserves** captured leads (a null `downloadId` means "product since deleted"). Don't restore the cascade. `QuoteRequest`/`QuoteRequestItem` were never at risk — they hold denormalised snapshots with no FK to `HubProduct`.
 
-## Deployment — moving to Vercel (in progress, 2026-09-08)
+## Deployment — Vercel (live since 2026-09-08)
 
 Live on Vercel Pro since 2026-09-08 at `https://sa-equip-backend.vercel.app` (a custom domain is still to be added). Config is the single root `vercel.json`; the per-workspace `frontend/vercel.json` and `backend/vercel.json` were removed when the projects were consolidated.
 
@@ -832,15 +832,15 @@ package or file to the bundle check's denylist when one is found to break the fu
 - ⚠️ **`WIDGET_ALLOWED_ORIGINS` gates the live widget, and getting it wrong is a silent outage**: the script still loads, but its data fetch 403s and every product page renders no Hub content. It must list the Duda EDITOR origin *and* every domain the site is served on. Current value:
   `https://my.duda.co,https://saequip.multiscreensite.com,https://saequip.com,https://www.saequip.com`
   Verify after any change by sending each origin as a request header — a rename once left only `my.duda.co` in place, which took the live widget down while the dashboard looked fine.
-- **Bucket limits are no longer applied at startup.** Run `npm run storage:ensure --workspace=backend` after any deploy that changes `MAX_BYTES` or the mimetype allowlists.
+- **Bucket limits are no longer applied at startup.** Run `npm run storage:ensure --workspace=backend` after any deploy that changes `MAX_BYTES` or the mimetype allowlists; `npm run media:verify-upload --workspace=backend` checks the upload path still works.
 - ⚠️ **Every bucket has a MIME allowlist, and it is the real enforcement.** Uploads go browser → Supabase, and the content type the bucket records is whatever the browser's form part says, so the API's own classification (from the claimed type and filename) is advisory. `product-models` had **none** (2026-10-02) while being PUBLIC, and a model is recognised by its `.glb` name — so a signed-in session could have uploaded an HTML page named `x.glb` and had it served as a web page from the storage domain. It now allows `model/gltf-binary` (what browsers send — all 3 stored models) and `application/octet-stream` (what an unaware browser sends, and what browsers download rather than render). Verified on throwaway objects: `text/html` and `image/svg+xml` refused with 415, both GLB labels accepted.
-  ⚠️ **SVG stays allowed in `product-media`, knowingly.** An SVG can carry script, but it only runs when the file's URL is opened directly, on the Supabase storage origin — not the dashboard's, and Supabase auth uses bearer tokens, not cookies, so there is nothing ambient to steal. Every place the Hub shows a logo uses `<img>`, where SVG script never runs. Revisit if an SVG is ever rendered inline. `npm run media:verify-upload --workspace=backend` checks the upload path still works.
-- ⚠️ **Still outstanding on the Duda side**: the widget embeds on the product template and the three quote/basket Widget Builder widgets still point at the deleted Railway backend, so the live product pages are missing their Hub content until those URLs are repointed. Add a custom domain first, or the `.vercel.app` hostname gets baked into Duda's templates.
+  ⚠️ **SVG stays allowed in `product-media`, knowingly.** An SVG can carry script, but it only runs when the file's URL is opened directly, on the Supabase storage origin — not the dashboard's, and Supabase auth uses bearer tokens, not cookies, so there is nothing ambient to steal. Every place the Hub shows a logo uses `<img>`, where SVG script never runs. Revisit if an SVG is ever rendered inline.
+- **Duda now points at Vercel** — checked 2026-10-02: the live EX Heater page loads `sa-equip-backend.vercel.app/public/widget.js`, and a quote request arrived on 2026-10-01, so the basket widget posts here. (This line used to say they still pointed at the deleted Railway backend.) ⚠️ The `.vercel.app` hostname IS therefore baked into Duda's shims: **adding a custom domain later means editing every shim and the basket widget's `ENDPOINT`**, and the old hostname should keep working until they are.
 
 ### What the serverless model forced to change
 
 - ⚠️ **A request body cannot exceed 4.5MB on Vercel** — a platform limit, not a plan setting. That is far below the 25MB file ceiling, so **uploads no longer go through the API at all**: the browser mints a signed URL, PUTs straight to Supabase and then confirms. See the upload section in `services/storage.ts` / `lib/upload.ts`. This was the blocking issue for the whole move.
-- **`app.listen()` is skipped when `process.env.VERCEL` is set**, and `src/index.ts` exports the app; `backend/api/index.ts` re-exports it as the function handler and `vercel.json` rewrites every path to it, so Express still owns all routing. The same module runs unchanged as a normal server locally.
+- **`app.listen()` is skipped when `process.env.VERCEL` is set**, and `src/index.ts` exports the app; the repo-root `api/index.ts` re-exports it as the function handler and `vercel.json` rewrites `/api/*` and `/public/*` to it (everything else is the static dashboard), so Express owns all API routing. The same module runs unchanged as a normal server locally.
 - **`ensureBuckets()` moved out of startup** into `npm run storage:ensure`. On serverless the module is evaluated on every cold start, so leaving it there added several Supabase round trips to a user's request, forever re-doing idempotent work.
 - ⚠️ **`trust proxy` is now conditional on `process.env.VERCEL`.** It must stay OFF anywhere the app is reachable directly, because there it lets a caller spoof `X-Forwarded-For` and walk past an IP-keyed limit; on Vercel the header is set by their proxy, and *not* trusting it makes every IP-keyed limiter bucket the whole internet together.
 - ⚠️ **`binaryTargets = ["native", "rhel-openssl-3.0.x"]`** in `schema.prisma`. Functions run on AWS Lambda; without the RHEL query engine in the bundle Prisma dies at cold start with "Query engine library for current platform could not be found".
@@ -925,7 +925,7 @@ the next run would have overwritten it.)
 
 The ~96-product legacy catalogue is being moved off the WordPress/WooCommerce site in **stages**, driven by a WooCommerce CSV export rather than by hand.
 
-**Stage 1 (title + SKU + images) is the only stage built so far.** Deliberately nothing else: no descriptions, no SEO metadata, no options/variations, no Hub content. Later stages: 2) descriptions, 3) specs/benefits/applications/logos, then a Hire/Purchase option.
+**Every content stage is done** (as of 2026-10-02): 1) title + SKU + images, 2) descriptions, 3a) benefits + applications, 3b) specs, 3c) logos, 3d) compatible products, 3e) downloads — each below. **Still to do: the Hire/Purchase option**, which goes through the options code in "Verified write surface" (attaching a two-value option drops existing variation SKUs, by design — they cannot be split unambiguously).
 
 - `npm run duda:import-products --workspace=backend` — **dry run by default**: parses, reports data defects, HEAD-checks every image URL, writes nothing. `--confirm` to import, `--verify` for read-only reconciliation, `--retry-failed` to resume, `--rollback --confirm` to undo, `--batch N` (default 10), `--limit`/`--only` to scope.
 - `backend/src/services/wooImport.ts` is the **pure** parse/map half (no network, DB or fs) so later stages reuse one source of truth; `backend/src/scripts/dudaImportProducts.ts` owns all side effects.
@@ -956,13 +956,13 @@ The ~96-product legacy catalogue is being moved off the WordPress/WooCommerce si
 - ⚠️ **"Used N×" counts distinct PRODUCTS, and opens the list of them** (2026-10-02). `services/assetUsage.ts` is the one source for both the pill and its popup: `productCounts()` (one `COUNT(DISTINCT)` query over logo links, downloads and `glbAssetId`, scoped to the page's ids — 128ms for the whole 485-asset library) and `assetUsage()` / `logoProducts()` behind `GET /api/media/:id/usage` and `GET /api/logos/:id/products`. It used to count referencing ROWS, so a logo image counted its one `Logo` entry — "Made in UK" read "used 1×" while on 47 products. Once a count opens a list, the two must be the same number. `UsagePill` (`components/UsagePill.tsx`) is shared by the Media Centre and the Logos page; it fetches only when opened, and each product links to its editor.
   - ⚠️ **Product gallery images are still NOT counted, and cannot be.** A product image is uploaded only to give Duda a URL to fetch; once Duda re-hosts it the product points at `irp.cdn-website.com` and nothing links back, so an imported product photo reads **"Unused"** even while it is on a live page — Josh's chosen wording, with a tooltip saying why. Safe: deleting it cannot break a gallery, Duda holds its own copy. **Proper gallery tracking would need a join table written on save plus a backfill; not built.**
   - ⚠️ **A catalogue logo carried by no product reads "Unused" but cannot be deleted.** `Logo.mediaAssetId` has no `onDelete`, and the delete guard checks the logo entry separately from products — otherwise the bucket object would be removed first and then the row delete fail on the FK, leaving a logo pointing at nothing. The 409 carries `{count, logos}` so the message can say which. Verified on a throwaway asset + logo.
-- ⚠️ **The kind tabs were missing "3D Models".** The filter type was `"" | "image" | "file"` and the label fell through to "Files" for anything not an image, so the 3 `.glb` models had no tab and the Files tab — which matches **0** assets, the library being all images and models — looked like where everything had landed. Actual split: **341 images, 3 models, 0 files.**
+- ⚠️ **The kind tabs were missing "3D Models".** The filter type was `"" | "image" | "file"` and the label fell through to "Files" for anything not an image, so the 3 `.glb` models had no tab and the Files tab — which matches **0** assets, the library being all images and models — looked like where everything had landed. Split at the time: 341 images, 3 models, 0 files (2026-10-02: 356 images, 3 models, 126 files).
 - ⚠️ **`GET /api/media` used to run 3 count queries PER asset.** Invisible at 5 assets; the import took the library to 335 and made one page load ~1,000 queries (measured 7.1s, concurrent). Now one grouped query per page builds the usage counts (see the bullet above). Supabase is in eu-west-1, so per-query latency dominates — the same trap that once made the public content endpoint take ~5s. **Any per-row query in a list endpoint is a bug waiting for the catalogue to grow.**
 - `updateProductImages` takes an opt-in `timeoutMs` because Duda fetches images *during* the request — the importer scales it to gallery size (a 14-image product is a genuinely slow call). `services/duda.ts` has no retry/backoff of its own, so the importer adds bounded retry on 429/5xx/timeout plus inter-product and inter-batch pacing.
 
 ### Stage 2 — descriptions (done 2026-09-08)
 
-`npm run duda:import-products --workspace=backend -- --descriptions --confirm` writes a sanitised description to **both** Duda's native `description` and `HubProduct.descriptionHtml`, and `/public/products/content` now returns `descriptionHtml`. Both, because Duda's field is what the product template renders while the public endpoint is a pure Supabase read that must never call Duda — so a widget-rendered "Overview" tab needs the Hub's own copy. That leaves the connected-data and widget routes equally open.
+`npm run duda:import-products --workspace=backend -- --descriptions --confirm` writes a sanitised description to **both** Duda's native `description` and `HubProduct.descriptionHtml`, and `/public/products/content` now returns `descriptionHtml`. Both, because Duda's field is what the product template renders while the public endpoint is a pure Supabase read that must never call Duda — so a widget-rendered "Overview" tab needs the Hub's own copy. That leaves the connected-data and widget routes equally open. (Since 2026-10-02 the product editor writes both copies too — see "The product editor".)
 
 **One description field, not two.** WooCommerce has `Short description` + `Description`; Duda has one. Measured across the 96: 49 shorts are contained verbatim in the long text, 24 products have only a short, 2 have neither — so collapsing is safe for 75. But **21 shorts carry text the long one doesn't**, and `composeDescription()` sorts them: 11 are paraphrases (dropped, they'd only repeat), 1 is a call-to-action from the WP page template (dropped — "select an option below" points at controls Duda hasn't got), and **9 are prepended as the opening paragraph**. That last group matters: 5 carry sales disclaimers ("available for purchase only", "options for UK hire and sale may vary") that exist *nowhere else*, and SATL100/SG/CR5 and SEFU/RF-DU/BD2 share only 14% of their words with the long text. Collapsing naively would have silently dropped all of it.
 
@@ -1011,7 +1011,7 @@ Both blank is invalid, and **the first row can never have a blank label** (nothi
 
 ⚠️ **`specRows()` cannot use `acfRepeater()`.** That helper reads ONE field and drops blanks, which is right for the single-column benefit/application repeaters and destroys this one: here a blank title is *meaningful* and the two columns must stay index-aligned, so dropping blanks silently re-parents every continuation line to the wrong spec. Note the field names are symmetric here (`technical_specs_repeat_N_technical_specs_repeat__title|value`), unlike the asymmetric applications repeater.
 
-**The editor renders GROUPS, the API stores FLAT rows.** `SpecTableEditor` derives groups on every render via `groupSpecRows()` and rebuilds the flat list through `flattenSpecGroups()` on every edit — one source of truth, no local state to drift from the baseline after a save, and the two functions round-trip exactly (a group keeps the id of the row that carried its label). "+ Add line" adds a value line to a spec; "+ Add sub-heading" adds the blank-value kind; drag reorders whole groups, so a continuation line can never be orphaned by dragging.
+**The editor renders GROUPS, the API stores FLAT rows.** `SpecTableEditor` derives groups on every render via `groupSpecRows()` and rebuilds the flat list through `flattenSpecGroups()` on every edit — one source of truth, no local state to drift from the baseline after a save, and the two functions round-trip exactly (a group keeps the id of the row that carried its label). "+ Add line" adds a value line to a spec; there is deliberately no "+ Add sub-heading" button — removing a spec's last line makes one (see `heading` below); drag reorders whole groups, so a continuation line can never be orphaned by dragging.
 
 ⚠️ **`SpecRowDraft.cont` is a frontend-only flag and must not be inferred from an empty label.** If grouping keyed off emptiness, a user clearing a label would silently merge that whole group into the one above and their lines would jump up the page. `cont` carries the boundary explicitly, so a blank label stays an ordinary validation error. It is excluded from `project()`, so it cannot affect dirty detection, and the save maps `label: r.cont ? "" : r.label.trim()`.
 
@@ -1091,7 +1091,7 @@ Traps the scraper had to handle:
 
 **`CompatibleLink` was rebuilt on HubProduct ids.** It previously held a `relatedSku` string with no relation, no foreign key and no cascade — and SKU cannot identify a product here: 3 of the 96 have none and 4 SKUs are shared by 9. The table was empty and unused, so it was replaced outright. Both sides cascade, because a link to a deleted product is meaningless. Self-links are dropped rather than rejected (5 existed in WordPress).
 
-⚠️ **`HubProduct.thumbnailUrl` mirrors Duda's `images[0]`**, like `sku`/`name`/`slug` already do. The carousel must show a thumbnail for a product OTHER than the one on the page, and `/public/products/content` must never call Duda on the request path. Consequence: a product whose gallery changes keeps a stale thumbnail until its next sync (opening it in the dashboard, or `--sync-hub`). Refresh with `npm run duda:import-products -- --sync-hub --confirm`.
+⚠️ **`HubProduct.thumbnailUrl` mirrors Duda's `images[0]`**, like `sku`/`name`/`slug` already do. The carousel must show a thumbnail for a product OTHER than the one on the page, and `/public/products/content` must never call Duda on the request path. A gallery saved in the Hub refreshes it at once (`PUT /images` calls `syncHubProduct`); a gallery changed in Duda's own admin stays stale until the product is opened or saved in the dashboard, or `npm run hub:sync-mirror --workspace=backend -- --confirm` runs (which covers every product, unlike the import's `--sync-hub`).
 
 ⚠️ **`--sync-hub` used to short-circuit on `slug` alone**, so the moment a new mirrored column was added it reported "96 already correct" and backfilled nothing. It now checks every mirrored field. **Add any future mirrored column to that check**, or the repair pass silently repairs nothing.
 
@@ -1233,8 +1233,8 @@ format in the colours people already read files by (PDF red, Word blue, Excel gr
   first lived in the backfill script, which runs `main()` on import — importing the renderer
   from there executed the whole script, including its `finally` that disconnects the shared
   Prisma client. And it must never be reachable from server code: `@napi-rs/canvas` and
-  `pdfjs-dist` are backend **devDependencies**, and an esbuild bundle of `api/index.ts` was
-  checked to contain neither.
+  `pdfjs-dist` are backend **devDependencies** — now enforced on every build by
+  `scripts/check-api-bundle.mjs`, which denylists both.
 - pdf.js v6 dropped `isEvalSupported` and moved `destroy()` onto the loading task — the v4/v5
   examples you will find elsewhere do not compile against it.
 
@@ -1304,9 +1304,12 @@ path — signing lazily or per item, never in an all-or-nothing `Promise.all` on
 endpoint — and the old `downloads` section in `widget.js` (still in `ALL_SECTIONS`) should be
 replaced or removed rather than revived as-is.
 
-### Data waiting for later stages
+### Notes for any further import from the export
 
-Downloads are done — see Stage 3e below. **Logos are surveyed in the section below.** Read them with `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>` **plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every value doubles.
+Every content stage is imported (logos, downloads and the rest above). For anything else read
+from the CSV: use `acfRepeater()` — ACF exports each repeater row as `Meta: <name>_<n>_<field>`
+**plus** a `_`-prefixed mirror holding the internal field key, which must be ignored or every
+value doubles.
 
 Two expectation-setters: **`_wp_desired_post_slug` is empty for all 96** (Duda auto-slugs from the name instead, which has matched the WordPress slugs so far — but the public widget resolves by slug, so any redirect work needs the live sitemap while it's still up), and **Yoast SEO was barely populated** in WordPress (title on 4/96, meta description on 12/96) — so SEO titles and descriptions were authored rather than migrated. See the SEO section below.
 
@@ -1322,9 +1325,9 @@ Acronyms are **learned from the catalogue, not hard-coded**: all-caps tokens ins
 
 Verified after: 0 products still upper case, 0 name drift between Duda and `HubProduct`, 0 slug drift.
 
-## Categories and Tags (added 2026-09-11)
+## Categories (added 2026-09-11)
 
-Both are **assigned Hub-side** and both are pickers in the product editor's right-hand column.
+Product↔category assignment is **Hub-side**, edited from the product editor's right-hand column and from each category's own page.
 
 ⚠️ **Duda has no working product-side category assignment, and it fails SILENTLY.** `PATCH /products/{id}` with `categories` (or `category_ids`, in either the `["id"]` or `[{id}]` shape) returns **200 and changes nothing** — the product still reports `categories: []`. Probed on throwaways. The only path that works is `PATCH /categories/{id}` with `{products:[{id}]}` — note `[{id}]`, not `["id"]`, which 400s on shape — and that array is full-replacement.
 
@@ -1336,22 +1339,16 @@ category reports `products_count`, and the PRODUCT's own `categories` array then
 category. Verified on a throwaway category with two products, then deleted. So Duda's
 storefront and its navigation picker *can* be driven from these links — the original
 objection was only ever to doing the write on every product save, and it does not apply to
-a batch sync. Consequence to note: with no sync run, Duda currently reports **0 products in
-all 3 categories** while the Hub holds the real assignments.
+a batch sync — which is what `duda:sync-categories` does (live in Duda since 2026-09-30). Between
+runs the two can differ, which is why the dashboard shows the Hub's own counts.
 
-- `ProductCategory` stores `dudaCategoryId` with **no foreign key** — categories live in Duda, so a category deleted there leaves a row pointing at nothing.
-- `Tag` / `ProductTag` are entirely Hub-owned; Duda has no equivalent. Managed at **`/tags`** (create, rename inline, reorder, delete). Deleting a tag cascades its assignments, so the confirm names the product count.
-- Tags render publicly through the compatible widget's **tag mode** (the Industries pages) — a tag is public content, not an internal label. The line that used to say otherwise predated that.
+- `ProductCategory` stores `dudaCategoryId` with **no foreign key** — categories live in Duda, so a category deleted IN DUDA leaves a row pointing at nothing (one deleted through the Hub has its links removed — see "Deleting and moving a category").
+- The product-side `PUT /api/products/:id/categories` **rejects unknown ids** rather than dropping them, so a stale editor tab cannot quietly save fewer than it displayed, and `project()` compares the set **sorted**, so ticking A then B is not a change against a baseline that loaded B then A.
 
-### Tag groups (added 2026-09-29)
+(Tags, TagGroups and `/tags` were retired on 2026-09-29 — see "Tags — retired". Categories replaced them.)
 
-`TagGroup` buckets tags into separate vocabularies — **Industries** and **Site Problems** — because mixed together they are unusable both on `/tags` and in the editor's picker. Staff-managed, so a new grouping needs no migration. A tag belongs to at most one group; `groupId` null is "Ungrouped", which sorts last everywhere.
+### The category picker (`AssignPickList`)
 
-- ⚠️ **`Tag.groupId` is `onDelete: SetNull`, NEVER Cascade.** `ProductTag` cascades from `Tag`, so cascading here would make deleting a group silently destroy every product assignment beneath it — losing real content to fix a naming mistake. Verified on throwaway data: deleting a group leaves its tags alive, ungrouped, with their assignments intact. The delete confirm says so explicitly, because a warning implying deletion would stop someone tidying a mistyped name.
-- ⚠️ **Tag slugs stay unique GLOBALLY, not per group.** The slug is stored inside the Duda widget's saved config and resolved by `/public/products/by-tag`; per-group slugs would need a compound key in that URL and would re-configure every live page that already names a tag.
-- **`sortOrder` is per group**, allocated with `aggregate({ where: { groupId } })` exactly as `Logo.sortOrder` is per kind. `PUT /api/tags/reorder` takes `{groupId, ids}` and rejects an id set that is not exactly that group's tags — the same guard `routes/logos.ts` makes, without which a stale tab reordering one group renumbers another.
-- `PATCH /api/tags/:id` distinguishes **absent** `groupId` (leave the group alone) from explicit **null** (move to Ungrouped) with `in`. `?? null` would silently ungroup a tag on a plain rename.
-- `GET /api/tags` stays a **flat, pre-ordered array** carrying `groupId`/`groupName` — group order, then tag order, ungrouped last. Ordering is derived once server-side, the same contract `buildTree()` uses in `routes/categories.ts`, so the Tags page and the editor's picker cannot disagree.
 - ⚠️ **`AssignPickList` never reorders as you tick** (changed 2026-09-30). Selected items used to be pinned to the top, which is fine for a flat list and wrong for a tree: a ticked child jumped above its own parent, so the indentation pointed at nothing and the row you just clicked moved out from under the cursor. Position is how you find a category again.
 - **`AssignPickList` shows a thumbnail only when the caller supplies one** (`PickItem.imageUrl`).
   The categories picker has none, and a column of empty placeholders is worse than no column.
@@ -1362,11 +1359,8 @@ all 3 categories** while the Hub holds the real assignments.
   unticked: that leaves an empty list with the toggle still on, which is honest, whereas
   flipping it back would be the control changing itself under the cursor. The empty message
   distinguishes "nothing selected yet" from "nothing selected matches that search".
-- ⚠️ **A child can never be selected without its parent, in BOTH directions** — ticking one ticks its ancestors, unticking a parent unticks everything beneath it. Half the rule leaves exactly the state it exists to prevent: tick a child, untick its parent, child orphaned. Driven by `PickItem.parentId`; items without one behave as a flat list. Anything in `selected` that is not in `items` (a category deleted in Duda) is carried through untouched, since dropping it would be an edit the user never made.
-- ⚠️ **Top-level order in the dashboard is `TOP_LEVEL_ORDER` in `routes/categories.ts`** — Products, Site Challenges, Industries. Duda has no `sortOrder` on a category and its own list order is creation order (newest first), which put Products last. Unlisted parents keep Duda's order after the listed ones (the sort is stable), so renaming a parent demotes it rather than breaking the list. **Display order only** — it never touches Duda, and the megamenu's column order is still arranged in Duda's own menu editor.
-
-**Duda side**: `POST /public/tags/options` takes an optional `?group=<slug>`, so the Industries widget's dropdown lists only Industries tags. ⚠️ **Its 30s cache is a `Map` keyed by group slug.** A single cached object would serve the first group's options to every other group for 30 seconds — a wrong answer indistinguishable from a right one, in the editor, where nobody is looking for it. An unknown group returns `{options:[]}` rather than an error, so a mistyped Fetch URL shows an empty dropdown instead of breaking the content panel.
-- Both `PUT` routes **reject unknown ids** rather than dropping them, so a stale editor tab cannot quietly save fewer than it displayed. Both are compared as **sorted sets** in `project()`, so ticking A then B is not a change against a baseline that loaded B then A.
+- ⚠️ **A child can never be selected without its parent, in BOTH directions** — ticking one ticks its ancestors, unticking a parent unticks everything beneath it. Half the rule leaves exactly the state it exists to prevent: tick a child, untick its parent, child orphaned. Driven by `PickItem.parentId`; items without one behave as a flat list. Anything in `selected` that is not in `items` (a category deleted in Duda) is carried through untouched, since dropping it would be an edit the user never made. The server enforces the same rule (`withAncestors()`), so it holds for every way in.
+- ⚠️ **Top-level order is `TOP_LEVEL_ORDER` in `services/categoryTree.ts`** — Products, Site Challenges, Industries — applied through `categorySortKey()` by both the dashboard tree and the public listings. Duda has no `sortOrder` on a category and its own list order is creation order (newest first), which put Products last. Unlisted parents keep Duda's order after the listed ones, so renaming a parent demotes it rather than breaking the list. It never touches Duda: the megamenu's column order is still arranged in Duda's own menu editor.
 
 ### The category tree drives navigation (2026-09-29)
 
@@ -1380,12 +1374,13 @@ categories natively, so the client builds menus from a list instead of hand-typi
 a collection-backed page, and every listing page is a real indexable URL with SEO fields the
 Hub already edits.
 
-⚠️ **The children are derived from the Hub's tags, not hardcoded**, so the names match what
-was authored and each tag maps to its category by title when tags are retired.
+⚠️ **The children were derived from the Hub's tags, not hardcoded**, so the names matched what
+had been authored and each tag mapped to its category by title when tags were retired.
 
 ⚠️ **Category order within a parent is Duda's own list order, which is newest-first.** There
 is no `sortOrder` on a category and the API exposes no way to set one, so the megamenu's
-column order has to be arranged in Duda's menu editor, not here.
+column order has to be arranged in Duda's menu editor. The Hub's own screens and listings use
+`CategoryOrder` instead — see "Drag-reorder".
 
 ⚠️ **A category's slug CANNOT be derived from its title.** Measured across all 23: Duda
 renders `&` as **three hyphens**, so "Oil & Gas" is `oil---gas`, not `oil-and-gas`. Nine of
@@ -1404,15 +1399,17 @@ the per-category GET it already makes. Exists so `/public/catalogue` is a pure H
 building the tree on the request path would cost one Duda call per category, and the rule
 that public endpoints never call Duda on the request path is what keeps them fast.
 
-⚠️ Goes stale if a category is renamed in Duda without re-running the sync, exactly like
-`HubProduct.thumbnailUrl`. The sync is the documented way to change these.
+⚠️ Goes stale if a category is renamed or moved IN DUDA without re-running the sync, exactly
+like `HubProduct.thumbnailUrl`. Creates, renames, moves and deletes made through the Hub write
+the mirror themselves (`mirrorImage()` and the delete route).
 
 ### `GET /public/catalogue`
 
 Every product with its `categoryIds`, plus the tree — **one response, filtered client-side
 by the listing widget**. 96 products is ~25KB measured, and it buys instant filtering with
 no round trip per checkbox. The product card shape is identical to `compatible` and
-`by-tag`, so one renderer serves the carousel and the grid. Revisit only if the catalogue
+`by-category`, so one renderer serves the carousel and the grid. HIDDEN products are left out
+(`LISTABLE`) and categories come in the dashboard's order (`categorySortKey`). Revisit only if the catalogue
 reaches the thousands.
 
 ### `npm run duda:assign-product-types --workspace=backend`
@@ -1495,8 +1492,8 @@ nothing — it then navigates straight to the page.
   row — `listAllCategories()` omits the image and only the single-category GET carries it.
   Written by `duda:sync-categories` and by the dashboard's own create/update, so it is fresh
   the moment someone sets one.
-- **Clicking the title opens the edit modal** — it is what you click when you mean "open
-  this"; the ⋯ menu keeps the other actions.
+- **Clicking the title opens the category's edit page** (`/categories/:id`) — it is what you
+  click when you mean "open this"; the ⋯ menu keeps the other actions.
 
 ### Deleting and moving a category (fixed 2026-10-02)
 
@@ -1575,8 +1572,8 @@ because `PATCH /categories/{id}` takes the category's whole product list. Dry ru
 diff; `--confirm` applies.
 
 ⚠️ **One-way, Hub → Duda.** Duda's copy is overwritten wholesale each run, so an assignment
-made in Duda's own admin is lost at the next sync. The Hub's product editor is the place to
-change these.
+made in Duda's own admin is lost at the next sync. Change them in the Hub — the product
+editor's Categories panel or a category's own page.
 
 Verified end-to-end on throwaway assignments, then reverted: staging two Hub assignments and
 syncing made Duda report `products_count: 2` **and** made the product's own `categories`
@@ -1589,7 +1586,9 @@ re-syncing emptied both sides.
 
 ⚠️ **Details and Description are deliberately NOT collapsible** — they are what you came to edit, and hiding them behind a click buys the least valuable scroll at the cost of the most common task.
 
-`AccordionCard` **unmounts** its body when closed rather than hiding it: these bodies are not cheap (the compatible picker fetches the whole catalogue, the 3D section mounts a `model-viewer`), and twelve open at once is what this change exists to avoid. It also **opens itself when a section becomes dirty or errors, and only on that transition** — always-open-while-dirty could never be collapsed again, and an editor that can hide a failed section is how you lose work.
+`AccordionCard` **unmounts** its body when closed rather than hiding it: these bodies are not cheap (the compatible picker fetches the whole catalogue, the 3D section mounts a `model-viewer`), and twelve open at once is what this change exists to avoid. It also **opens itself when a section becomes dirty or errors, and only on that transition** — always-open-while-dirty could never be collapsed again. A collapsed section still shows an **Error / Unsaved badge** in its header, because an editor that can hide a failed section without trace is how you lose work.
+
+⚠️ **The section's error is printed ONCE, by the accordion.** Every section renders `SectionError`, which stays silent inside an accordion body (context, like `Card`); before that, each failing section showed the same sentence in two boxes, one above the other.
 
 ⚠️ **A section's `CardHeader` renders ONLY its actions inside an accordion.** The accordion header already carries the title, dirty badge, summary and description, so the section's own header repeated all of it — the same sentence twice, each with a bottom margin.
 
@@ -1718,11 +1717,13 @@ repeating rows has no shape to stand in for, so a skeleton there would be invent
 The container carries `aria-busy` + `aria-live` + a label; the blocks themselves are
 `aria-hidden`, so the state is announced once rather than as a dozen grey rectangles.
 
-## Known gaps / backlog (as of 2026-07-28)
+## Known gaps / backlog (reviewed 2026-10-02)
 
-- Categories have **no image editing** yet: the API exposes `image` on a category but the editor only covers title, parent, description and SEO. Product↔category assignment also isn't built — a product's `categories` array is still read-only, so nothing is actually categorised yet (every count reads 0).
 - No admin UI to view captured `Lead` rows from gated downloads yet (they're stored and now survive product deletion, just not surfaced — unlike `QuoteRequest`, which has a `/quotes` page). More valuable now that retained leads can outlive their product.
-- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done; **still to do: options**. `/products/new` remains the path for genuinely new one-off products.
+- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done; **still to do: the Hire/Purchase option** (see the options notes — attaching a two-value option drops existing variation SKUs). `/products/new` remains the path for genuinely new one-off products.
+- **Opening a product makes ~4 Duda reads** (the product, and `/custom` plus both logo lists each `ensureHubProduct`). Correct, just slower than one; worth trimming if Duda rate limits ever bite.
+- **New categories get no SEO title** — `duda:category-seo` was a one-off over the 23 that existed; set one on the category's page.
+- **The post-deploy GitHub workflow's first run is unconfirmed from here** (no `gh` CLI) — the same commands were run locally against production and passed; check the repo's Actions tab once.
 - ⚠️ **No public widget shows downloads yet** — a **Download List** widget is planned and will be specified separately. Until then `/public/products/content` returns `downloads: []`; see Stage 3e for why, and for what that widget will need to bring back.
 - **Gating is OFF** (every download `gated: false`, no toggle in the editor). The `gated` column, the lead endpoint and its Postgres limiter all remain, so turning it back on is UI work. Captured `Lead` rows have no admin page; that waits for the CRM integration, like quote requests.
 - Widget visual styling is functional but not deeply brand-tuned.
