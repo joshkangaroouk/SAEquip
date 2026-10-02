@@ -23,7 +23,26 @@ export interface CascadeReport {
   variationDataRestored: number;
   /** Combinations that ceased to exist and so lost their SKU/price. */
   variationDataDropped: number;
+  /** Restores attempted and failed — the SKU may be missing on these. */
+  variationDataFailed: number;
+  /** Products whose detach itself failed; they still use the option/value. */
+  productsFailed: { id: string; name: string; error: string }[];
+  /**
+   * False when any product failed. The catalogue entry is then KEPT: Duda
+   * refuses to delete a value still attached to variations, and deleting it
+   * anyway would be a half-finished change with nobody told which half.
+   */
+  catalogDeleted: boolean;
 }
+
+const emptyReport = (): CascadeReport => ({
+  productsUpdated: [],
+  variationDataRestored: 0,
+  variationDataDropped: 0,
+  variationDataFailed: 0,
+  productsFailed: [],
+  catalogDeleted: false,
+});
 
 /** The refs a product currently has, as the shape updateProductOptions wants. */
 function refsOf(product: Awaited<ReturnType<typeof duda.getProduct>>): DudaOptionRef[] {
@@ -37,7 +56,20 @@ async function applyRefs(
   refs: DudaOptionRef[],
   report: CascadeReport,
 ): Promise<void> {
-  const res = await updateOptionsPreservingVariations(productId, refs);
+  let res;
+  try {
+    res = await updateOptionsPreservingVariations(productId, refs);
+  } catch (err) {
+    // ⚠️ Caught per product. One failure used to throw out of the loop, losing
+    // the report for every product already rewritten — the one thing the
+    // person needs to know after a store-wide change.
+    report.productsFailed.push({
+      id: productId,
+      name: productName,
+      error: err instanceof Error ? err.message.slice(0, 200) : String(err),
+    });
+    return;
+  }
   report.productsUpdated.push({
     id: productId,
     name: productName,
@@ -46,6 +78,7 @@ async function applyRefs(
   });
   report.variationDataRestored += res.restored;
   report.variationDataDropped += res.dropped.length;
+  report.variationDataFailed += res.failed.length;
 }
 
 /**
@@ -60,11 +93,7 @@ export async function deleteChoiceCascade(
   optionId: string,
   choiceId: string,
 ): Promise<CascadeReport> {
-  const report: CascadeReport = {
-    productsUpdated: [],
-    variationDataRestored: 0,
-    variationDataDropped: 0,
-  };
+  const report = emptyReport();
 
   // Read live rather than trusting the usage cache — this drives writes.
   for (const summary of await duda.listAllProducts()) {
@@ -84,18 +113,17 @@ export async function deleteChoiceCascade(
     await applyRefs(summary.id, summary.name, before, refs, report);
   }
 
-  await duda.deleteOptionChoice(optionId, choiceId);
   invalidateOptionUsage();
+  if (report.productsFailed.length === 0) {
+    await duda.deleteOptionChoice(optionId, choiceId);
+    report.catalogDeleted = true;
+  }
   return report;
 }
 
 /** Detaches an option from every product using it, then deletes the option. */
 export async function deleteOptionCascade(optionId: string): Promise<CascadeReport> {
-  const report: CascadeReport = {
-    productsUpdated: [],
-    variationDataRestored: 0,
-    variationDataDropped: 0,
-  };
+  const report = emptyReport();
 
   for (const summary of await duda.listAllProducts()) {
     if (!summary.options.some((o) => o.id === optionId)) continue;
@@ -104,7 +132,10 @@ export async function deleteOptionCascade(optionId: string): Promise<CascadeRepo
     await applyRefs(summary.id, summary.name, before, refs, report);
   }
 
-  await duda.deleteOption(optionId);
   invalidateOptionUsage();
+  if (report.productsFailed.length === 0) {
+    await duda.deleteOption(optionId);
+    report.catalogDeleted = true;
+  }
   return report;
 }

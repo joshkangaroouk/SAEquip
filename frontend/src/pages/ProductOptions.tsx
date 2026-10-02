@@ -31,6 +31,34 @@ import type { CatalogOption, OptionCatalog } from "../components/product/product
  * Mirrors Duda's own screen: one row per option, its values, and how many
  * products include it.
  */
+/** What a store-wide delete did to the products using it. Mirrors the backend's CascadeReport. */
+interface CascadeReport {
+  productsUpdated: { name: string }[];
+  variationDataRestored: number;
+  variationDataDropped: number;
+  variationDataFailed: number;
+}
+
+/**
+ * ⚠️ A delete that rebuilt variations used to report only "updated N
+ * products", even when combinations lost their SKU and price difference in the
+ * process — a destructive outcome presented as a clean success. Said
+ * separately, and as an error, because it is data that is now gone.
+ */
+function reportLostVariationData(c?: CascadeReport) {
+  if (!c) return;
+  if (c.variationDataDropped > 0) {
+    toast.error(
+      `${c.variationDataDropped} combination(s) no longer exist, so their SKU and price difference were lost`,
+    );
+  }
+  if (c.variationDataFailed > 0) {
+    toast.error(
+      `${c.variationDataFailed} SKU/price restore(s) failed — check those products' variations`,
+    );
+  }
+}
+
 export default function ProductOptions() {
   const confirm = useConfirm();
   const [catalog, setCatalog] = useState<OptionCatalog | null>(null);
@@ -159,7 +187,7 @@ export default function ProductOptions() {
     try {
       // force=true does the detach-then-delete orchestration server-side, which
       // is how Duda's own UI manages it.
-      const res = await apiJson<{ cascade?: { productsUpdated: { name: string }[] } }>(
+      const res = await apiJson<{ cascade?: CascadeReport }>(
         `/api/options/${option.id}/choices/${choice.id}${inUse ? "?force=true" : ""}`,
         { method: "DELETE" },
       );
@@ -169,6 +197,7 @@ export default function ProductOptions() {
           ? `Deleted “${choice.value}” and updated ${touched} product${touched === 1 ? "" : "s"}`
           : `Deleted “${choice.value}”`,
       );
+      reportLostVariationData(res.cascade);
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete the value");
@@ -196,7 +225,7 @@ export default function ProductOptions() {
     });
     if (!ok) return;
     try {
-      const res = await apiJson<{ cascade?: { productsUpdated: { name: string }[] } }>(
+      const res = await apiJson<{ cascade?: CascadeReport }>(
         `/api/options/${option.id}${inUse ? "?confirm=true" : ""}`,
         { method: "DELETE" },
       );
@@ -206,6 +235,7 @@ export default function ProductOptions() {
           ? `Deleted “${option.name}” and updated ${touched} product${touched === 1 ? "" : "s"}`
           : `Deleted “${option.name}”`,
       );
+      reportLostVariationData(res.cascade);
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete the option");

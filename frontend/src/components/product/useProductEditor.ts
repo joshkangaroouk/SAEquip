@@ -340,7 +340,7 @@ export function useProductEditor(
         run: async () => {
           const res = await apiJson<{
             product: ProductDetail;
-            variationData: { restored: number; dropped: string[] };
+            variationData: { restored: number; dropped: string[]; failed?: { signature: string; error: string }[] };
           }>(`/api/products/${productId}/options`, {
             method: "PUT",
             body: JSON.stringify({
@@ -358,7 +358,15 @@ export function useProductEditor(
           }
           if (dropped.length > 0) {
             toast.error(
-              `${dropped.length} combination(s) no longer exist, so their SKU and price difference were lost`,
+              `${dropped.length} combination(s) could not be matched to a new one, so their SKU and price difference were lost: ${dropped.slice(0, 3).join("; ")}${dropped.length > 3 ? "…" : ""}`,
+            );
+          }
+          // ⚠️ Was ignored: a restore that FAILED left that SKU blank while the
+          // toast above reported only the successes.
+          const failed = res.variationData.failed ?? [];
+          if (failed.length > 0) {
+            toast.error(
+              `${failed.length} SKU/price restore(s) failed after the option change — re-enter: ${failed.map((f) => f.signature).slice(0, 3).join("; ")}`,
             );
           }
 
