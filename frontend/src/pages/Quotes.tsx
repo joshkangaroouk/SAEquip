@@ -13,7 +13,18 @@ function formatDate(iso: string): string {
   });
 }
 
-function csvEscape(value: string): string {
+/**
+ * One CSV cell.
+ *
+ * ⚠️ FORMULA INJECTION: every one of these values is typed by a member of the
+ * public on the basket form. A spreadsheet runs any cell starting with `=`, `+`,
+ * `-` or `@` (and some read a leading tab or CR the same way), so a "name" of
+ * `=HYPERLINK(…)` would execute on whoever opened the export. Prefixing a single
+ * quote makes it text — the OWASP mitigation, and the same guard the products
+ * export uses (backend services/csv.ts). This export had none.
+ */
+function csvEscape(raw: string): string {
+  const value = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
   if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
   return value;
 }
@@ -23,16 +34,28 @@ function itemsSummary(quote: QuoteRequest): string {
 }
 
 function downloadCsv(requests: QuoteRequest[]) {
-  const header = ["Name", "Email", "Company", "Phone", "Date", "Items"];
+  const header = [
+    "Name", "First name", "Last name", "Company", "Email", "Telephone", "When needed",
+    "Address", "Postcode", "Country", "Message", "Date", "Items",
+  ];
   const rows = requests.map((q) => [
     q.name,
-    q.email,
+    q.firstName ?? "",
+    q.lastName ?? "",
     q.company ?? "",
+    q.email,
     q.phone ?? "",
+    q.requiredBy ?? "",
+    q.address ?? "",
+    q.postcode ?? "",
+    q.country ?? "",
+    q.message ?? "",
     formatDate(q.createdAt),
     itemsSummary(q),
   ]);
-  const csv = [header, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
+  // The BOM makes Excel read the file as UTF-8 — names like "Curaçao" or an
+  // accented surname otherwise arrive garbled.
+  const csv = "\ufeff" + [header, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -75,6 +98,22 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
           <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Submitted</div>
           <div className="text-sm font-medium text-text">{formatDate(quote.createdAt)}</div>
         </div>
+        {/* The basket form's newer fields. Quotes from before 2026-10-02 have
+            none, so each appears only when it was given. */}
+        {quote.requiredBy && (
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-subtle">When needed</div>
+            <div className="text-sm font-medium text-text">{quote.requiredBy}</div>
+          </div>
+        )}
+        {(quote.address || quote.postcode || quote.country) && (
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Address</div>
+            <div className="whitespace-pre-line text-sm font-medium text-text">
+              {[quote.address, quote.postcode, quote.country].filter(Boolean).join("\n")}
+            </div>
+          </div>
+        )}
       </div>
 
       {quote.message && (

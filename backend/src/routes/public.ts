@@ -685,14 +685,48 @@ const headerSafe = (max: number) =>
     // eslint-disable-next-line no-control-regex
     .transform((v) => v.replace(/[\u0000-\u001f\u007f]/g, " ").trim());
 
-const quoteSchema = z.object({
-  name: headerSafe(200).pipe(z.string().min(1, "name is required")),
-  email: z.string().trim().email("a valid email is required").max(320),
-  company: headerSafe(200).optional(),
-  phone: headerSafe(50).optional(),
-  message: z.string().trim().max(5000).optional(),
-  items: z.array(quoteItemSchema).min(1, "at least one item is required").max(100, "too many items"),
-});
+/**
+ * Both basket forms are accepted, deliberately.
+ *
+ * The form before 2026-10-02 sends one `name`; the current one sends the
+ * fields the WordPress quote form collected (first/last name, company, email,
+ * telephone, when needed, address, country, postcode, message). The widget
+ * lives in Duda and is updated by hand, so the backend must accept the new
+ * shape BEFORE the widget sends it — and keep accepting the old one, or the
+ * changeover would bounce real quotes.
+ *
+ * ⚠️ The current form's required fields match WordPress's — first name, last
+ * name, company, email, telephone — and are enforced only when the split name
+ * is present, which is what identifies the current form.
+ */
+const quoteSchema = z
+  .object({
+    name: headerSafe(200).optional(),
+    firstName: headerSafe(100).optional(),
+    lastName: headerSafe(100).optional(),
+    email: z.string().trim().email("Please enter a valid email address.").max(320),
+    company: headerSafe(200).optional(),
+    phone: headerSafe(50).optional(),
+    requiredBy: headerSafe(100).optional(),
+    address: headerSafe(300).optional(),
+    country: headerSafe(100).optional(),
+    postcode: headerSafe(20).optional(),
+    message: z.string().trim().max(5000).optional(),
+    items: z.array(quoteItemSchema).min(1, "at least one item is required").max(100, "too many items"),
+  })
+  .superRefine((q, ctx) => {
+    const need = (ok: unknown, message: string) => {
+      if (!ok) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    };
+    if (q.firstName || q.lastName) {
+      need(q.firstName, "Please enter your first name.");
+      need(q.lastName, "Please enter your last name.");
+      need(q.company, "Please enter your company name.");
+      need(q.phone, "Please enter your telephone number.");
+    } else {
+      need(q.name, "Please enter your name.");
+    }
+  });
 
 /**
  * POST /public/quotes
@@ -725,14 +759,24 @@ publicRouter.post("/quotes", quoteLimiter, quoteHourlyLimiter, async (req, res) 
       res.status(400).json({ ok: false, error: message });
       return;
     }
-    const { name, email, company, phone, message, items } = parsed.data;
+    const { name, firstName, lastName, email, company, phone, requiredBy, address, country, postcode, message, items } =
+      parsed.data;
+    // `name` is still written for every request — "First Last" from the
+    // current form — so older readers of the column keep working.
+    const fullName = firstName || lastName ? `${firstName ?? ""} ${lastName ?? ""}`.trim() : (name ?? "");
 
     const created = await prisma.quoteRequest.create({
       data: {
-        name,
+        name: fullName,
+        firstName: firstName || null,
+        lastName: lastName || null,
         email,
         company: company || null,
         phone: phone || null,
+        requiredBy: requiredBy || null,
+        address: address || null,
+        country: country || null,
+        postcode: postcode || null,
         message: message || null,
         items: {
           create: items.map((item) => ({

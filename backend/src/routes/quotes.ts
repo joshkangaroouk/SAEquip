@@ -17,6 +17,12 @@ function shapeQuote(q: QuoteWithItems) {
     company: q.company,
     phone: q.phone,
     message: q.message,
+    firstName: q.firstName,
+    lastName: q.lastName,
+    requiredBy: q.requiredBy,
+    address: q.address,
+    country: q.country,
+    postcode: q.postcode,
     createdAt: q.createdAt,
     emailSent: q.emailSent,
     items: q.items.map((item) => ({

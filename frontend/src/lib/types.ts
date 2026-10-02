@@ -265,6 +265,13 @@ export interface QuoteRequest {
   company: string | null;
   phone: string | null;
   message: string | null;
+  /** The basket form's fields since 2026-10-02 — null on older quotes. */
+  firstName: string | null;
+  lastName: string | null;
+  requiredBy: string | null;
+  address: string | null;
+  country: string | null;
+  postcode: string | null;
   createdAt: string;
   emailSent: boolean;
   items: QuoteRequestItem[];

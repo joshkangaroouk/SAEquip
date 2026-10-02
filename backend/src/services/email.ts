@@ -24,6 +24,10 @@ function buildSummary(quote: QuoteRequest, items: QuoteRequestItem[]): string {
     `Email: ${quote.email}`,
     quote.company ? `Company: ${quote.company}` : null,
     quote.phone ? `Phone: ${quote.phone}` : null,
+    quote.requiredBy ? `Needed: ${quote.requiredBy}` : null,
+    quote.address ? `Address: ${quote.address}` : null,
+    quote.country ? `Country: ${quote.country}` : null,
+    quote.postcode ? `Postcode: ${quote.postcode}` : null,
   ].filter(Boolean);
 
   const itemLines = items.map((item) => {

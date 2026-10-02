@@ -308,11 +308,23 @@ model CategoryMirror {
 
 model QuoteRequest {
   id        String             @id @default(cuid())
+  /// "First Last". Still written for every request, so older quotes and
+  /// anything reading `name` keep working after the form split it in two.
   name      String
   email     String
   company   String?
   phone     String?
   message   String?
+  /// The basket form's fields since 2026-10-02 — the same set the WordPress
+  /// quote form collected. All optional: quotes from before then have none.
+  firstName  String?
+  lastName   String?
+  /// "When do you need this equipment?" Free text, not an enum, so relabelling
+  /// an option in Duda's widget can never turn a real quote into a 400.
+  requiredBy String?
+  address    String?
+  country    String?
+  postcode   String?
   createdAt DateTime           @default(now())
   emailSent Boolean            @default(false)
   items     QuoteRequestItem[]
