@@ -85,6 +85,18 @@ export interface SpecRowDraft {
    * validation error instead. Never sent to the API — see `project()`.
    */
   cont: boolean;
+  /**
+   * True when this row is a SUB-HEADING inside the table ("System Includes"):
+   * a label with deliberately no value beside it.
+   *
+   * ⚠️ The same rule as `cont`, for the same reason: never infer it from an
+   * empty value. It was inferred, and that made an empty value line vanish —
+   * "+ Add Row" produced a spec with no value box, "+ Add line" on it did
+   * nothing, and clearing a value to retype it removed the box mid-edit.
+   * Derived on load; becomes true only when the user removes a spec's last
+   * line. Never sent to the API — see `project()`.
+   */
+  heading: boolean;
 }
 
 export interface TextItemDraft {

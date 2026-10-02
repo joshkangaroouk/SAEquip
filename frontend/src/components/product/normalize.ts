@@ -80,15 +80,21 @@ export const cartesianSize = (refs: OptionRefDraft[]): number =>
   refs.length === 0 ? 0 : refs.reduce((n, r) => n * r.choiceIds.length, 1);
 
 export const specsFrom = (rows: HubSpecRow[]): SpecRowDraft[] =>
-  rows.map((r, i) => ({
-    id: r.id,
-    label: r.label,
-    value: r.value,
+  rows.map((r, i) => {
     // A blank label means "continue the row above". The first row can never
     // be one (the API rejects it), so the index guard is belt-and-braces
     // against malformed stored data rather than an expected case.
-    cont: i > 0 && r.label.trim().length === 0,
-  }));
+    const cont = i > 0 && r.label.trim().length === 0;
+    return {
+      id: r.id,
+      label: r.label,
+      value: r.value,
+      cont,
+      // A labelled row with no value is a sub-heading. Read from the STORED
+      // data only — from here on the flag, not emptiness, decides.
+      heading: !cont && r.value.trim().length === 0,
+    };
+  });
 
 // --- spec groups: the editor's view of the flat row list ---
 
@@ -97,10 +103,17 @@ export interface SpecLineDraft {
   value: string;
 }
 
-/** One labelled spec and every line beneath it. `lines: []` is a sub-heading. */
+/**
+ * One labelled spec and every line beneath it.
+ *
+ * `heading` marks a sub-heading: a label with no value of its own. Its `lines`
+ * are normally empty; any it has are continuation lines stored after it, which
+ * the importer never produced but which still round-trip.
+ */
 export interface SpecGroupDraft {
   id: string;
   label: string;
+  heading: boolean;
   lines: SpecLineDraft[];
 }
 
@@ -120,7 +133,10 @@ export const groupSpecRows = (rows: SpecRowDraft[]): SpecGroupDraft[] => {
       groups.push({
         id: r.id,
         label: r.label,
-        lines: r.value.trim() ? [{ id: r.id, value: r.value }] : [],
+        heading: r.heading,
+        // ⚠️ Keyed off the FLAG. An empty value on an ordinary spec is a line
+        // being typed, and must stay on screen.
+        lines: r.heading ? [] : [{ id: r.id, value: r.value }],
       });
     } else {
       groups[groups.length - 1].lines.push({ id: r.id, value: r.value });
@@ -131,16 +147,44 @@ export const groupSpecRows = (rows: SpecRowDraft[]): SpecGroupDraft[] => {
 
 /** The inverse: groups back to the flat rows the API stores. */
 export const flattenSpecGroups = (groups: SpecGroupDraft[]): SpecRowDraft[] =>
-  groups.flatMap((g) =>
-    g.lines.length === 0
-      ? [{ id: g.id, label: g.label, value: "", cont: false }]
+  groups.flatMap((g): SpecRowDraft[] =>
+    g.heading
+      ? [
+          { id: g.id, label: g.label, value: "", cont: false, heading: true },
+          ...g.lines.map((ln) => ({ id: ln.id, label: "", value: ln.value, cont: true, heading: false })),
+        ]
       : g.lines.map((ln, i) => ({
           id: ln.id,
           label: i === 0 ? g.label : "",
           value: ln.value,
           cont: i > 0,
+          heading: false,
         })),
   );
+
+/**
+ * The first problem with a spec table, worded so it can be found: the spec's
+ * own label, or its position when it has none. Null when the table is fine.
+ *
+ * ⚠️ An ordinary line may not be empty. Saved, it would come back as a
+ * sub-heading — a different kind of row than the one the user was looking at.
+ */
+export function specsProblem(rows: SpecRowDraft[]): string | null {
+  let label = "";
+  let n = 0;
+  for (const r of rows) {
+    if (!r.cont) {
+      n++;
+      label = r.label.trim();
+      if (!label) return `Spec ${n} needs a label.`;
+      if (label.length > 200) return `Spec ${n}'s label is over 200 characters.`;
+    }
+    const where = `“${label}”`;
+    if (!r.heading && !r.value.trim()) return `${where} has an empty line — type a value or remove it.`;
+    if (r.value.trim().length > 500) return `${where} has a line over 500 characters.`;
+  }
+  return null;
+}
 
 export const compatibleFrom = (rows: HubCompatible[]): CompatibleDraft[] =>
   rows.map((r) => ({
@@ -238,18 +282,6 @@ export function isSectionDirty(
 
 // --- validation (client mirror of the backend zod rules) ---
 
-/**
- * Mirrors the backend rule: either side may be blank, never both.
- *
- *   label + value   an ordinary spec
- *   ""    + value   another line of the spec above
- *   label + ""      a sub-heading inside the table
- */
-export const specRowValid = (r: SpecRowDraft): boolean =>
-  r.label.trim().length <= 200 &&
-  r.value.trim().length <= 500 &&
-  (r.label.trim().length > 0 || r.value.trim().length > 0);
-
 export const textItemValid = (i: TextItemDraft): boolean =>
   i.text.trim().length > 0 && i.text.trim().length <= 500;
 
@@ -311,10 +343,10 @@ export function validate(
     errors.images = "Every image needs an absolute http(s) URL that Duda can fetch.";
 
   if (draft.specs.length > 100) errors.specs = "Max 100 rows.";
-  else if (!draft.specs.every(specRowValid))
-    errors.specs = "Every row needs a label or a value (label ≤200, value ≤500 chars).";
-  else if (draft.specs.some((r) => !r.cont && !r.label.trim()))
-    errors.specs = "Every spec needs a label.";
+  else {
+    const problem = specsProblem(draft.specs);
+    if (problem) errors.specs = problem;
+  }
 
   if (draft.compatible.length > 40) errors.compatible = "Max 40 compatible products.";
 

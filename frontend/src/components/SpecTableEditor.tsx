@@ -21,11 +21,12 @@ import {
  * baseline after a save. Every edit below rebuilds the flat list through
  * `flattenSpecGroups`, which round-trips exactly.
  *
- * A group with no lines is a sub-heading inside the table ("SYSTEM INCLUDES"),
- * which the source catalogue uses on 4 rows and which is why a blank value is
- * valid. There is deliberately NO button for it — clearing a spec's last value
- * produces one (the line's remove button says so), which is enough for a shape
- * this rare, and a dedicated button read as clutter next to "+ Add Row".
+ * A sub-heading inside the table ("SYSTEM INCLUDES") is a label with no value,
+ * which the source catalogue uses on 4 rows. There is deliberately NO button
+ * for it — removing a spec's last line produces one (the line's remove button
+ * says so), which is enough for a shape this rare, and a dedicated button read
+ * as clutter next to "+ Add Row". ⚠️ Emptying a line's TEXT never does: that is
+ * a line being retyped, and it stays on screen as a validation error.
  * Removing the button did not remove the kind: the imported ones still render
  * and still round-trip through this editor.
  */
@@ -54,22 +55,30 @@ export function SpecTableEditor({
       lines: g.lines.map((ln) => (ln.id === lineId ? { ...ln, value } : ln)),
     }));
 
+  // On a sub-heading with no lines, adding one turns it back into a spec. The
+  // new line keeps the GROUP's id, so the row carrying the label keeps its key
+  // and the label input is not remounted under the cursor.
   const addLine = (id: string) =>
-    mapGroup(id, (g) => ({
-      ...g,
-      lines: [...g.lines, { id: crypto.randomUUID(), value: "" }],
-    }));
+    mapGroup(id, (g) =>
+      g.heading && g.lines.length === 0
+        ? { ...g, heading: false, lines: [{ id: g.id, value: "" }] }
+        : { ...g, lines: [...g.lines, { id: crypto.randomUUID(), value: "" }] },
+    );
 
+  // Removing a spec's ONLY line is the one thing that makes a sub-heading —
+  // what the button's title promises. Emptying a line's text never does.
   const removeLine = (id: string, lineId: string) =>
-    mapGroup(id, (g) => ({ ...g, lines: g.lines.filter((ln) => ln.id !== lineId) }));
+    mapGroup(id, (g) => {
+      const lines = g.lines.filter((ln) => ln.id !== lineId);
+      return !g.heading && lines.length === 0 ? { ...g, heading: true, lines } : { ...g, lines };
+    });
 
   const removeGroup = (id: string) => commit(groups.filter((g) => g.id !== id));
 
-  const addGroup = () =>
-    commit([
-      ...groups,
-      { id: crypto.randomUUID(), label: "", lines: [{ id: crypto.randomUUID(), value: "" }] },
-    ]);
+  const addGroup = () => {
+    const rowId = crypto.randomUUID();
+    commit([...groups, { id: rowId, label: "", heading: false, lines: [{ id: rowId, value: "" }] }]);
+  };
 
   const inputCls =
     "w-full rounded-md border bg-surface px-3 py-2 text-xs font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent";
@@ -118,7 +127,7 @@ export function SpecTableEditor({
                   onChange={(e) => setLabel(g.id, e.target.value)}
                   placeholder="e.g. PROTECTION"
                 />
-                {g.lines.length === 0 && (
+                {g.heading && (
                   <p className="mt-1 text-xs text-subtle">
                     Sub-heading — no value beside it.
                   </p>
@@ -140,7 +149,7 @@ export function SpecTableEditor({
                         remove button is how you delete the spec. */}
                     <RemoveButton
                       onClick={() => removeLine(g.id, ln.id)}
-                      title={g.lines.length === 1 ? "Remove value (leaves a sub-heading)" : "Remove line"}
+                      title={!g.heading && g.lines.length === 1 ? "Remove value (leaves a sub-heading)" : "Remove line"}
                     />
                   </div>
                 ))}
