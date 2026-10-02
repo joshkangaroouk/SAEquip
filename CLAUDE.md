@@ -811,7 +811,8 @@ whole API and the live widget down for ~3 minutes.
    only. Proven by re-introducing that exact import: the check failed with the chain
    `routes/duda.ts → services/descriptionHtml.ts → sanitize-html`.
 2. **Before every push** — `.githooks/pre-push`: the bundle check, `tsc` for both workspaces
-   (Vercel's build typechecks neither), and `widget:test`. ~12s. Enabled per clone with
+   (Vercel's build typechecks neither), `scripts/check-doc-refs.mjs` (every function this file
+   names as `name()` must still exist in the code), and `widget:test`. ~12s. Enabled per clone with
    `git config core.hooksPath .githooks`; run on demand with `npm run check`; skip once,
    deliberately, with `git push --no-verify`.
 3. **After every deploy** — `.github/workflows/post-deploy-smoke.yml` waits until
