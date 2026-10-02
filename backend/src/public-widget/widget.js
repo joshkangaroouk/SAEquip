@@ -63,7 +63,9 @@
  * URL slug.
  *
  * - Sections: sa-logos | cert-logos | tabs | 3d-viewer | specs | benefits |
- *   applications | downloads | all
+ *   applications | downloads | all — plus the page-level widgets
+ *   product-list (category pages) and resources (the Datasheets / User
+ *   Manuals / Certificates pages), which have no product.
  * - "tabs" is the tabbed accordion (Overview / Technical Specs / Key Benefits
  *   / Applications). "all" EXCLUDES it, since the accordion already contains
  *   those sections and rendering both would duplicate every one.
@@ -86,6 +88,8 @@
   var ALL_SECTIONS = ["cert-logos", "sa-logos", "3d-viewer", "tabs", "specs", "benefits", "applications", "downloads", "compatible"];
   // Not in ALL_SECTIONS: "product-list" belongs to a CATEGORY page and has no
   // product, so the legacy `data-section="all"` embed must never build it.
+  // "resources" is in neither list: it is a page-level widget reached only
+  // through init(), which branches out before any product work.
   var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "tabs": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1, "compatible": 1, "product-list": 1 };
   var MODEL_VIEWER_SRC = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js";
   /*
@@ -776,6 +780,52 @@
         ".saeh-pl-panel,.saeh-pl-panel.saeh-open{display:block;grid-template-rows:none;visibility:visible;transition:none}" +
         ".saeh-pl-clip{overflow:visible}" +
         ".saeh-pl-inner{padding:16px}" +
+      "}",
+      /* --- resources list (Datasheets / User Manuals / Certificates pages) --- */
+      /*
+       * One row per product: picture, range logo, name, View Product, then its
+       * download buttons. Mobile-first and STACKED — the buttons take a row of
+       * their own under the product, two to a line, so four certificate
+       * buttons stay finger-sized on a phone. At 721px (the accordion's own
+       * breakpoint) the buttons move to the right of the row.
+       */
+      ".saeh-rs{font-family:var(--saeh-body)}",
+      ".saeh-rs-h{font-family:var(--saeh-head);font-size:20px;font-weight:600;color:#111;margin:0 0 20px;line-height:1.25}",
+      ".saeh-rs-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}",
+      ".saeh-rs-row{display:grid;grid-template-columns:84px minmax(0,1fr);align-items:center;gap:14px 16px;margin:0;padding:14px;background:#fff;border:1px solid #e6e6e6;animation:saeh-pl-in .32s cubic-bezier(.4,0,.2,1) both}",
+      // A little more air where one SA range ends and the next begins — the
+      // list is ordered by range, and this is what makes that visible.
+      ".saeh-rs-row.saeh-rs-gstart{margin-top:14px}",
+      ".saeh-rs-shot{width:84px;height:84px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff}",
+      // `contain`, as on the product cards: cropping industrial kit to a square cuts it out of frame.
+      ".saeh-rs-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;transition:transform .45s cubic-bezier(.4,0,.2,1)}",
+      ".saeh-rs-row:hover .saeh-rs-shot img{transform:scale(1.045)}",
+      ".saeh-rs-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px}",
+      ".saeh-rs-range{display:block;height:24px;width:auto;max-width:150px;object-fit:contain}",
+      ".saeh-rs-name{font-family:var(--saeh-head);font-size:16px;font-weight:600;line-height:1.3;color:#111;margin:0;overflow-wrap:break-word}",
+      ".saeh-rs-view{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:#111;text-decoration:underline;text-decoration-color:#cfcfcf;text-underline-offset:3px;transition:text-decoration-color .15s ease}",
+      ".saeh-rs-view:hover{text-decoration-color:#111}",
+      ".saeh-rs-view svg{width:14px;height:14px;flex:0 0 auto;display:block}",
+      ".saeh-rs-dls{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}",
+      // Same yellow, type and hover as the product cards' View Product button.
+      ".saeh-rs-dl{flex:1 1 calc(50% - 4px);box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;line-height:1.25;text-align:center;text-decoration:none;transition:background .15s ease}",
+      ".saeh-rs-dl:hover{background:#f0c400}",
+      ".saeh-rs-dl svg{width:18px;height:18px;flex:0 0 auto;display:block}",
+      ".saeh-rs-dl:focus-visible,.saeh-rs-view:focus-visible{outline:2px solid #111;outline-offset:2px}",
+      ".saeh-rs-ph{border:1px dashed #cfcfcf;padding:28px 20px;text-align:center;color:#878787;font-size:15px;font-family:var(--saeh-body)}",
+      "@media(min-width:721px){" +
+        ".saeh-rs-row{grid-template-columns:96px minmax(0,1fr) auto;gap:20px;padding:16px 20px}" +
+        ".saeh-rs-shot{width:96px;height:96px}" +
+        ".saeh-rs-name{font-size:17px}" +
+        ".saeh-rs-dls{grid-column:auto;justify-content:flex-end;max-width:440px}" +
+        ".saeh-rs-dl{flex:0 0 auto;min-width:100px}" +
+      "}",
+      // Room for a full row of certificates (INMETRO, UKEX, IECEX, EX) on one
+      // line; between 721 and 1023px the name keeps the space and they wrap.
+      "@media(min-width:1024px){.saeh-rs-dls{max-width:560px}}",
+      "@media(prefers-reduced-motion:reduce){" +
+        ".saeh-rs-row{animation:none}" +
+        ".saeh-rs-shot img,.saeh-rs-dl,.saeh-rs-view{transition:none}" +
       "}",
       "@media(prefers-reduced-motion:reduce){" +
         ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img,.saeh-pl-search input{transition:none}" +
@@ -2554,6 +2604,202 @@
     });
   }
 
+  /* ------------------------------------------------------- resources -- */
+
+  /*
+   * The content panel's `resourceType` → the API's type. A static dropdown
+   * sends its value as a bare string; the plurals and labels are accepted too,
+   * so a value typed into a text field still works. Anything else is "" —
+   * unrecognised, so nothing is fetched.
+   */
+  var RESOURCE_TYPE_ALIASES = {
+    datasheet: "datasheet", datasheets: "datasheet",
+    manual: "manual", manuals: "manual", "user manual": "manual", "user manuals": "manual",
+    certificate: "certificate", certificates: "certificate",
+  };
+  function resourceTypeOf(v) {
+    if (v && typeof v === "object") v = v.value || v.id || "";
+    var t = typeof v === "string" ? v.trim().toLowerCase() : "";
+    return Object.prototype.hasOwnProperty.call(RESOURCE_TYPE_ALIASES, t) ? RESOURCE_TYPE_ALIASES[t] : "";
+  }
+
+  /** One fetch per type per page, however many copies of the widget there are. */
+  function fetchResources(type) {
+    if (!hub.resourceFetches) hub.resourceFetches = {};
+    if (!hub.resourceFetches[type]) {
+      hub.resourceFetches[type] = fetch(hub.api + "/public/resources?type=" + encodeURIComponent(type), {
+        credentials: "omit",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("resources " + r.status);
+          return r.json();
+        })
+        .catch(function () {
+          return null;
+        });
+    }
+    return hub.resourceFetches[type];
+  }
+
+  /** A site-relative path from our own API, or "#" — never a scheme. */
+  function sitePath(u) {
+    return typeof u === "string" && u.charAt(0) === "/" && u.charAt(1) !== "/" ? u : "#";
+  }
+
+  /** Arrow into a tray, drawn inline like the chevrons. */
+  function downloadIcon() {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "18");
+    svg.setAttribute("height", "18");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("aria-hidden", "true");
+    ["M12 4v11", "M7 10l5 5 5-5", "M5 20h14"].forEach(function (d) {
+      var path = document.createElementNS(ns, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("stroke", "currentColor");
+      path.setAttribute("stroke-width", "2");
+      path.setAttribute("stroke-linecap", "round");
+      path.setAttribute("stroke-linejoin", "round");
+      svg.appendChild(path);
+    });
+    return svg;
+  }
+
+  /**
+   * The rows. Built with textContent and attributes only — nothing from the
+   * payload is ever parsed as HTML.
+   *
+   * ⚠️ Each download button opens `/public/downloads/<id>/file` in a NEW TAB,
+   * which signs that one file when it is clicked. The list carries no file
+   * URLs at all, so a page of 59 products signs nothing until someone asks.
+   */
+  function resourcesSection(data, heading) {
+    var products = (data && data.products) || [];
+    var sec = el("div", "saeh-section saeh-rs");
+    var h = typeof heading === "string" ? heading.trim().slice(0, 120) : "";
+    if (h) sec.appendChild(el("h3", "saeh-rs-h", h));
+    var list = el("ul", "saeh-rs-list");
+    var prevRange = null;
+
+    products.forEach(function (p) {
+      var downloads = (p && p.downloads ? p.downloads : []).filter(function (d) {
+        return d && typeof d.id === "string" && d.id;
+      });
+      if (!downloads.length) return;
+      var url = sitePath(p.url);
+      var name = p.name || "";
+
+      var row = el("li", "saeh-rs-row");
+      var rangeKey = p.range && p.range.label ? p.range.label : "";
+      if (list.children.length && rangeKey !== prevRange) row.className += " saeh-rs-gstart";
+      prevRange = rangeKey;
+
+      // The picture repeats the View Product link, so it is hidden from
+      // assistive tech and the keyboard: one link per product, not two.
+      var shot = document.createElement("a");
+      shot.className = "saeh-rs-shot";
+      shot.href = url;
+      shot.tabIndex = -1;
+      shot.setAttribute("aria-hidden", "true");
+      if (p.imageUrl) {
+        var img = document.createElement("img");
+        img.src = p.imageUrl;
+        img.alt = "";
+        img.setAttribute("loading", "lazy");
+        shot.appendChild(img);
+      }
+      row.appendChild(shot);
+
+      var info = el("div", "saeh-rs-info");
+      if (p.range && p.range.logoUrl) {
+        var logo = document.createElement("img");
+        logo.className = "saeh-rs-range";
+        logo.src = p.range.logoUrl;
+        logo.alt = p.range.label || "";
+        logo.setAttribute("loading", "lazy");
+        info.appendChild(logo);
+      }
+      info.appendChild(el("h4", "saeh-rs-name", name));
+      var view = document.createElement("a");
+      view.className = "saeh-rs-view";
+      view.href = url;
+      view.appendChild(document.createTextNode("View Product"));
+      // Contains the visible "View Product", so speech input still matches it.
+      view.setAttribute("aria-label", "View Product – " + name);
+      view.appendChild(doubleChevron());
+      info.appendChild(view);
+      row.appendChild(info);
+
+      var dls = el("div", "saeh-rs-dls");
+      downloads.forEach(function (d) {
+        var label = d.label || d.title || "Download";
+        var a = document.createElement("a");
+        a.className = "saeh-rs-dl";
+        a.href = hub.api + "/public/downloads/" + encodeURIComponent(d.id) + "/file";
+        a.target = "_blank";
+        a.rel = "noopener";
+        // Starts with the visible label, so speech input still matches it.
+        a.setAttribute("aria-label", label + " – " + name + " (PDF, opens in a new tab)");
+        a.appendChild(downloadIcon());
+        a.appendChild(document.createTextNode(label));
+        dls.appendChild(a);
+      });
+      row.appendChild(dls);
+      list.appendChild(row);
+    });
+
+    if (!list.children.length) return null;
+    sec.appendChild(list);
+    return sec;
+  }
+
+  /**
+   * Render a resources page. Its own path: like the listing, it belongs to a
+   * page rather than a product, so there is nothing to resolve.
+   *
+   * In the editor an empty or unconfigured widget shows a placeholder saying
+   * what to do, rather than nothing — an empty box cannot be found to select.
+   * Live, it collapses like every other empty section.
+   */
+  function renderResourcesInto(container, type, heading, inEditor, onEmpty) {
+    try {
+      // ⚠️ The type goes in its OWN attribute. `data-saeh-section` is what
+      // init() reads first on a re-init, so it must stay exactly "resources".
+      container.setAttribute("data-saeh-resource-type", type || "");
+    } catch (e) {
+      /* never break the host page */
+    }
+    var show = function (node) {
+      injectStyles();
+      var root = el("div", "saeh-root saeh-wide");
+      root.appendChild(node);
+      container.innerHTML = "";
+      container.appendChild(root);
+    };
+    var placeholder = function (msg) {
+      if (!inEditor) return onEmpty();
+      show(el("div", "saeh-rs-ph", msg));
+    };
+    if (!hub.api) return onEmpty();
+    if (!type) {
+      return placeholder("Resources list — choose Datasheets, User Manuals or Certificates in this widget's content panel.");
+    }
+    return fetchResources(type).then(function (data) {
+      try {
+        var node = resourcesSection(data, heading);
+        if (!node) {
+          return placeholder(data ? "No products have a file of this type yet." : "The resources list could not be loaded.");
+        }
+        show(node);
+      } catch (e) {
+        /* never break the host page */
+      }
+    });
+  }
+
   function renderMount(mount, slug) {
     if (mount.getAttribute(RENDERED_ATTR)) return; // idempotency: skip already-processed mounts
     mount.setAttribute(RENDERED_ATTR, "1"); // claim synchronously so re-exec skips it
@@ -2744,6 +2990,21 @@
        * The listing is a CATEGORY-page widget: there is no product to resolve,
        * so it branches out before any of the product identity work below.
        */
+      /*
+       * The Datasheets / User Manuals / Certificates pages. Static pages, no
+       * product — `resourceType` from the content panel says which list.
+       */
+      if (sectionName === "resources") {
+        var resourceType = resourceTypeOf(props.resourceType);
+        hub.lastInit.mode = "resources";
+        hub.lastInit.resourceType = resourceType || null;
+        // RAW, before coercion: what Duda actually sent, for when it is not
+        // what the dropdown appears to say.
+        hub.lastInit.resourceTypeRaw = props.resourceType;
+        renderResourcesInto(container, resourceType, props.heading, inEditor, onEmpty);
+        return;
+      }
+
       if (sectionName === "product-list") {
         hub.lastInit.mode = "product-list";
         dudaPageProduct().then(function (pd) {
@@ -2826,7 +3087,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-10-02-sri+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-10-02-resources+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

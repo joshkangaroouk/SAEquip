@@ -59,14 +59,6 @@ export async function ensureHubProduct(dudaProductId: string): Promise<HubProduc
 }
 
 /**
- * Guards the `slug` unique constraint before a write that changes
- * seo.product_url. Duda may well accept a duplicate product_url, and if it
- * does, this pre-check is the only thing preventing two products the public
- * widget can't tell apart (it resolves products by slug).
- *
- * Returns the conflicting HubProduct, or null when the slug is free.
- */
-/**
  * Prisma `where` for "may appear in a public listing".
  *
  * ⚠️ Spelled as an OR with null, NOT `{ status: { not: "HIDDEN" } }`: that
@@ -75,6 +67,29 @@ export async function ensureHubProduct(dudaProductId: string): Promise<HubProduc
  */
 export const LISTABLE = { OR: [{ status: null }, { status: { not: "HIDDEN" } }] };
 
+/**
+ * Which downloads the public may open, for the resources list AND the file
+ * route — one definition, so a page can never list a file the route refuses
+ * or the route serve one no page lists.
+ *
+ * Ungated (gating is phase 2, and will sit at the file route); typed, since an
+ * untyped download is on no page; and on a product whose own page is public —
+ * a HIDDEN product's certificate must not be reachable by its download id.
+ */
+export const PUBLIC_DOWNLOAD = {
+  gated: false,
+  kind: { not: null },
+  hubProduct: { slug: { not: null }, ...LISTABLE },
+} satisfies Prisma.DownloadWhereInput;
+
+/**
+ * Guards the `slug` unique constraint before a write that changes
+ * seo.product_url. Duda may well accept a duplicate product_url, and if it
+ * does, this pre-check is the only thing preventing two products the public
+ * widget can't tell apart (it resolves products by slug).
+ *
+ * Returns the conflicting HubProduct, or null when the slug is free.
+ */
 export async function findSlugConflict(
   slug: string | null | undefined,
   forDudaProductId: string,

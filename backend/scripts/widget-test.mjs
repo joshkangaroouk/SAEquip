@@ -42,15 +42,24 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, url = undefined } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, url = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
     url: url ?? "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
   });
   const w = dom.window;
   let fetchedUrl = null;
+  w.__fetched = [];
   w.fetch = (u) => {
     fetchedUrl = String(u);
+    w.__fetched.push(fetchedUrl);
+    if (fetchedUrl.indexOf("/public/resources") !== -1) {
+      return Promise.resolve({
+        ok: resourcesPayload !== null && resourcesPayload !== undefined,
+        status: resourcesPayload ? 200 : 500,
+        json: () => Promise.resolve(resourcesPayload),
+      });
+    }
     // Tag mode hits a different endpoint, so the stub routes on the URL rather
     // than answering everything with the product payload.
     if (fetchedUrl.indexOf("/catalogue") !== -1) {
@@ -1365,6 +1374,128 @@ async function main() {
       "allowed formatting is kept");
     check(/Wrapped text survives/.test(prose.textContent) && !prose.querySelector("div,span"), "unknown wrappers are unwrapped, text kept");
     check(/js link/.test(prose.textContent) && /Handler para/.test(prose.textContent), "text of refused links/handlers is kept");
+  }
+
+  /* ------------------------------------------------------- resources -- */
+  {
+    const API = "https://sa-equip-backend.vercel.app";
+    const PAGE = "https://saequip.multiscreensite.com/datasheets";
+    const CYC = { label: "SA Cyclone", logoUrl: "https://x.supabase.co/storage/v1/object/public/product-media/cyclone.jpg" };
+    const LUM = { label: "SA Lumin", logoUrl: "https://x.supabase.co/storage/v1/object/public/product-media/lumin.jpg" };
+    const dl = (id, label) => ({ id, label, title: label, href: `/public/downloads/${id}/file` });
+    const DATASHEETS = {
+      type: "datasheet",
+      products: [
+        { name: "Air Mover", url: "/product/air-mover", imageUrl: "https://irp.cdn-website.com/a.webp", range: CYC, downloads: [dl("d1", "Download Datasheet")] },
+        { name: "Ducting", url: "/product/ducting", imageUrl: null, range: CYC, downloads: [dl("d2", "Download Datasheet")] },
+        { name: "Tower Light", url: "/product/tower-light", imageUrl: "https://irp.cdn-website.com/b.webp", range: LUM, downloads: [dl("d3", "Download Datasheet")] },
+        { name: "Dust System", url: "/product/dust-system", imageUrl: null, range: null, downloads: [dl("d4", "Download Datasheet")] },
+      ],
+    };
+    const RS = (type, extra = {}) => ({ section: "resources", resourceType: type, ...extra });
+    const rows = (d) => [...d.querySelectorAll(".saeh-rs-row")];
+    const rowNames = (d) => rows(d).map((r) => r.querySelector(".saeh-rs-name").textContent);
+
+    {
+      const { d, w } = await boot({ props: RS("datasheet"), resourcesPayload: DATASHEETS, url: PAGE });
+      check(w.__fetched.some((u) => u === `${API}/public/resources?type=datasheet`), "resources: fetches its type from the API", w.__fetched.join(" "));
+      check(rowNames(d).join(",") === "Air Mover,Ducting,Tower Light,Dust System", "one row per product, in the API's order", rowNames(d).join(","));
+      check(w.__saequipHub.lastInit.mode === "resources" && w.__saequipHub.lastInit.resourceType === "datasheet", "recorded as resources mode in lastInit");
+      check(d.getElementById("host").getAttribute("data-saeh-section") === null || d.getElementById("host").getAttribute("data-saeh-section") === "resources",
+        "data-saeh-section is never rewritten — a re-init must still find 'resources'");
+      const a = d.querySelector(".saeh-rs-dl");
+      check(a.getAttribute("href") === `${API}/public/downloads/d1/file`, "the button opens the file route on the API, built from the id", a.getAttribute("href"));
+      check(a.target === "_blank" && a.rel === "noopener", "in a new tab, with rel=noopener");
+      check(a.textContent === "Download Datasheet", "labelled with the API's label", a.textContent);
+      check(/^Download Datasheet – Air Mover/.test(a.getAttribute("aria-label")), "accessible name starts with the visible label and names the product", a.getAttribute("aria-label"));
+      const shot = rows(d)[0].querySelector(".saeh-rs-shot");
+      check(shot.getAttribute("href") === "/product/air-mover" && shot.getAttribute("aria-hidden") === "true" && shot.tabIndex === -1,
+        "the picture links to the product but is hidden from AT and the keyboard (one link per product)");
+      const view = rows(d)[0].querySelector(".saeh-rs-view");
+      check(view.getAttribute("href") === "/product/air-mover" && /^View Product/.test(view.getAttribute("aria-label")), "View Product links to the product page");
+      const logos = rows(d).map((r) => r.querySelector(".saeh-rs-range"));
+      check(logos[0].getAttribute("alt") === "SA Cyclone" && logos[2].getAttribute("alt") === "SA Lumin" && logos[3] === null,
+        "range logo with its name as alt; none for a product with no range");
+      check(!rows(d)[1].querySelector(".saeh-rs-shot img"), "no picture → no broken image");
+      const g = rows(d).map((r) => r.classList.contains("saeh-rs-gstart"));
+      check(JSON.stringify(g) === "[false,false,true,true]", "a gap marks where one range ends and the next begins", JSON.stringify(g));
+      check(!d.querySelector(".saeh-rs-h"), "no heading unless one is set");
+      check(!!d.getElementById("saeh-styles"), "styles injected");
+    }
+    {
+      const CERTS = {
+        type: "certificate",
+        products: [{ name: "EX Heater", url: "/product/ex-heater", imageUrl: null, range: null,
+          downloads: [dl("c1", "INMETRO"), dl("c2", "UKEX"), dl("c3", "IECEX"), dl("c4", "EX")] }],
+      };
+      const { d } = await boot({ props: RS("certificate", { heading: "  Certificates  " }), resourcesPayload: CERTS, url: PAGE });
+      const btns = [...d.querySelectorAll(".saeh-rs-dl")].map((b) => b.textContent);
+      check(btns.join(",") === "INMETRO,UKEX,IECEX,EX", "certificates: one button per scheme, in the API's order", btns.join(","));
+      check(d.querySelector(".saeh-rs-h") && d.querySelector(".saeh-rs-h").textContent === "Certificates", "the heading prop renders, trimmed");
+    }
+    {
+      // Payload content is text, never markup — and never a scheme in a link.
+      const EVIL = { products: [{ name: '<img src=x onerror="window.__pwned=1">', url: "javascript:window.__pwned=2", imageUrl: null, range: null,
+        downloads: [{ id: "x1", label: "<b>Go</b>" }, { label: "no id" }, null] }] };
+      const { d, w } = await boot({ props: RS("manual"), resourcesPayload: EVIL, url: PAGE });
+      await new Promise((r) => setTimeout(r, 30));
+      check(w.__pwned === undefined, "resources: nothing in the payload executes", String(w.__pwned));
+      check(!d.querySelector(".saeh-rs img:not(.saeh-rs-range)") && d.querySelector(".saeh-rs-name").textContent.indexOf("<img") === 0,
+        "a name is rendered as text");
+      check(d.querySelector(".saeh-rs-view").getAttribute("href") === "#", "a non-path product url becomes #, never javascript:");
+      check(d.querySelectorAll(".saeh-rs-dl").length === 1 && d.querySelector(".saeh-rs-dl").textContent === "<b>Go</b>",
+        "downloads without an id are skipped; labels are text");
+    }
+    {
+      const { w } = await boot({ props: RS("Certificates"), resourcesPayload: DATASHEETS, url: PAGE });
+      check(w.__fetched.some((u) => /type=certificate$/.test(u)), "a label ('Certificates') resolves to its type");
+      const o = await boot({ props: RS({ value: "manual", label: "User Manuals" }), resourcesPayload: DATASHEETS, url: PAGE });
+      check(o.w.__fetched.some((u) => /type=manual$/.test(u)), "an {value,label} option resolves too");
+      check(JSON.stringify(o.w.__saequipHub.lastInit.resourceTypeRaw) === '{"value":"manual","label":"User Manuals"}', "the RAW value is recorded for diagnosis");
+    }
+    {
+      const { d, w } = await boot({ props: RS("brochure"), resourcesPayload: DATASHEETS, url: PAGE });
+      check(!w.__fetched.some((u) => u.indexOf("/public/resources") !== -1), "an unknown type fetches nothing");
+      check(d.getElementById("host").style.display === "none", "…and collapses on the live site");
+    }
+    {
+      const { d } = await boot({ props: RS("", { inEditor: true }), resourcesPayload: DATASHEETS, url: PAGE });
+      const ph = d.querySelector(".saeh-rs-ph");
+      check(ph && /content panel/.test(ph.textContent) && d.getElementById("host").style.display !== "none",
+        "in the editor, an unconfigured widget says what to do instead of vanishing");
+    }
+    {
+      const { d } = await boot({ props: RS("manual"), resourcesPayload: { products: [] }, url: PAGE });
+      check(d.getElementById("host").style.display === "none", "no products → collapses live");
+      const e = await boot({ props: RS("manual", { inEditor: true }), resourcesPayload: { products: [] }, url: PAGE });
+      check(/No products/.test(e.d.querySelector(".saeh-rs-ph")?.textContent || ""), "…and says so in the editor");
+      const f = await boot({ props: RS("manual", { inEditor: true }), resourcesPayload: null, url: PAGE });
+      check(/could not be loaded/.test(f.d.querySelector(".saeh-rs-ph")?.textContent || ""), "a failed fetch is told apart from an empty list in the editor");
+    }
+    {
+      // Two widgets of one type share a fetch; a re-init renders again.
+      const { d, w } = await boot({ props: RS("datasheet"), resourcesPayload: DATASHEETS, url: PAGE, body: '<div id="two"></div>' });
+      w.SAEquipHubWidget.init({ container: d.getElementById("two"), props: RS("datasheet") });
+      await new Promise((r) => setTimeout(r, 40));
+      check(w.__fetched.filter((u) => u.indexOf("/public/resources") !== -1).length === 1, "two widgets of one type share ONE fetch");
+      check(d.getElementById("two").querySelectorAll(".saeh-rs-row").length === 4, "and both render");
+      d.getElementById("host").setAttribute("data-saeh-section", "resources");
+      w.SAEquipHubWidget.init({ container: d.getElementById("host"), props: RS("datasheet") });
+      await new Promise((r) => setTimeout(r, 40));
+      check(d.getElementById("host").querySelectorAll(".saeh-rs-row").length === 4, "a re-init (Duda does this on edit) renders the list again, not twice");
+    }
+    {
+      // Page-level: the legacy "all" embed must never build it.
+      const { w } = await boot({ viaInit: false, body: '<div class="saequip-hub" data-section="all" data-slug="ex-heater"></div>', resourcesPayload: DATASHEETS });
+      await new Promise((r) => setTimeout(r, 40));
+      check(!w.__fetched.some((u) => u.indexOf("/public/resources") !== -1), "data-section=\"all\" never fetches the resources list");
+    }
+    {
+      const { d } = await boot({ props: RS("datasheet"), resourcesPayload: DATASHEETS, url: PAGE });
+      const css = d.getElementById("saeh-styles").textContent;
+      check(/@media\(min-width:721px\)\{\.saeh-rs-row\{grid-template-columns:96px/.test(css), "rows go side-by-side at the 721px breakpoint");
+      check(/prefers-reduced-motion:reduce\)\{\.saeh-rs-row\{animation:none\}/.test(css), "row animation honours reduced motion");
+    }
   }
 
   console.log(`\n${fail === 0 ? "✓" : "✗"} ${pass} passed, ${fail} failed\n`);

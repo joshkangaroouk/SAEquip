@@ -13,6 +13,7 @@
  *   - the widget script missing or serving an unstamped build marker
  *   - CORS: the edge cache serving one origin's response to another
  *   - the product content / catalogue payloads the live widget renders
+ *   - the resources pages' list, and a download actually opening as a PDF
  * Read-only; needs no credentials and writes nothing.
  */
 const args = process.argv.slice(2);
@@ -101,6 +102,25 @@ await check("catalogue for the listing widget", async () => {
   const j = await r.json();
   expect(j.products?.length > 0 && j.categories?.length > 0, "empty catalogue");
   return `${j.products.length} products, ${j.categories.length} categories`;
+});
+
+await check("resources list and its file route", async () => {
+  const r = await fetch(withBust(`${BASE}/public/resources?type=datasheet`), { headers: { Origin: SITE } });
+  expect(r.status === 200, `status ${r.status}`);
+  expect(r.headers.get("access-control-allow-origin") === SITE, `CORS header ${r.headers.get("access-control-allow-origin")}`);
+  const j = await r.json();
+  const first = j.products?.[0]?.downloads?.[0];
+  expect(first?.id, "no datasheets listed");
+  // A button opens the file route in a new tab: no Origin, like a navigation.
+  const f = await fetch(`${BASE}/public/downloads/${first.id}/file`, { redirect: "manual" });
+  expect(f.status === 302, `file route answered ${f.status}`);
+  expect(f.headers.get("cache-control") === "no-store", `file route Cache-Control: ${f.headers.get("cache-control")}`);
+  const pdf = await fetch(f.headers.get("location"), { headers: { Range: "bytes=0-4" } });
+  const head = Buffer.from(await pdf.arrayBuffer()).subarray(0, 5).toString();
+  expect(head === "%PDF-", `signed URL served ${pdf.status} "${head}"`);
+  const bad = await fetch(withBust(`${BASE}/public/resources?type=brochure`));
+  expect(bad.status === 400, `unknown type answered ${bad.status}`);
+  return `${j.products.length} products with datasheets; first opens as a PDF`;
 });
 
 await check("edge cache keys on Origin (Vary)", async () => {

@@ -10,9 +10,10 @@ import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
 import { sendQuoteNotification } from "../services/email.js";
-import { LISTABLE } from "../services/hubProduct.js";
+import { LISTABLE, PUBLIC_DOWNLOAD } from "../services/hubProduct.js";
 import { categorySortKey, compareKeys } from "../services/categoryTree.js";
 import { quoteProductMatcher } from "../services/quoteProducts.js";
+import { KIND_BUTTON, RESOURCE_TYPES, SCHEME_BUTTON, SCHEME_ORDER } from "../services/downloadKinds.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -112,6 +113,19 @@ const quoteHourlyLimiter = rateLimit({
   legacyHeaders: false,
   store: new PgRateLimitStore("public-quote-hourly"),
   message: { ok: false, error: "Too many requests, please try again later." },
+});
+
+/*
+ * In memory, like the content limiter: opening a file is a GET a visitor makes
+ * by clicking, and a DB write per click is the wrong trade. Each click costs
+ * one storage signing call, so the cap is tighter than the content one.
+ */
+const fileLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "rate_limited" },
 });
 
 export const publicRouter = Router();
@@ -336,6 +350,164 @@ publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
           .filter(Boolean),
       })),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* ------------------------------------------------------------ resources -- */
+
+const isRental = (l: { label: string | null; alt: string | null; mediaAsset: { filename: string } }) =>
+  /rental/i.test(`${l.label ?? ""} ${l.alt ?? ""} ${l.mediaAsset.filename}`);
+
+/**
+ * GET /public/resources?type=datasheet|manual|certificate
+ *
+ * The Datasheets, User Manuals and Certificates pages: every public product
+ * with at least one download of that type, with its picture, SA range logo and
+ * one button per file. A pure Hub read.
+ *
+ * Grouped by SA range in the Logos page's order, A–Z within a range, products
+ * with no range last. The range is the product's first SA logo that is not
+ * Rental — Rental sits beside a range rather than being one (51 products carry
+ * both), and the old pages never showed it.
+ *
+ * ⚠️ No file URLs here. Each button points at `/public/downloads/:id/file`,
+ * which signs ONE file when it is clicked. Signing every file up front is what
+ * made the content endpoint all-or-nothing — one missing object failed the
+ * whole payload — and a page of 59 products would sign 59 URLs nobody opens.
+ */
+publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
+  const type = typeof req.query.type === "string" ? req.query.type.trim().toLowerCase() : "";
+  // Own-property check: `?type=constructor` must not find Object.prototype's.
+  const kind = Object.hasOwn(RESOURCE_TYPES, type) ? RESOURCE_TYPES[type] : undefined;
+  if (!kind) {
+    res.status(400).json({ error: "bad_request", detail: "type must be datasheet, manual or certificate" });
+    return;
+  }
+
+  try {
+    const products = await prisma.hubProduct.findMany({
+      where: { slug: { not: null }, ...LISTABLE, downloads: { some: { ...PUBLIC_DOWNLOAD, kind } } },
+      select: {
+        name: true,
+        slug: true,
+        thumbnailUrl: true,
+        downloads: {
+          where: { ...PUBLIC_DOWNLOAD, kind },
+          orderBy: { sortOrder: "asc" },
+          select: { id: true, title: true, certScheme: true },
+        },
+        logos: {
+          where: { logo: { kind: "SA_LOGO" } },
+          select: {
+            logo: {
+              select: { label: true, alt: true, sortOrder: true, mediaAsset: { select: { filename: true, storagePath: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    const shaped = products.map((p) => {
+      const range =
+        p.logos
+          .map((l) => l.logo)
+          .filter((l) => !isRental(l))
+          .sort((a, b) => a.sortOrder - b.sortOrder)[0] ?? null;
+
+      // Certificates: one button per scheme, in the page's scheme order.
+      const files =
+        kind === "CERTIFICATE"
+          ? [...p.downloads].sort(
+              (a, b) => SCHEME_ORDER.indexOf(a.certScheme!) - SCHEME_ORDER.indexOf(b.certScheme!),
+            )
+          : p.downloads;
+      const labelOf = (d: (typeof files)[number]) => (kind === "CERTIFICATE" ? SCHEME_BUTTON[d.certScheme!] : KIND_BUTTON[kind]);
+      // Two files under one label would be two identical buttons — none exist
+      // today, but if one is added the buttons fall back to the file titles.
+      const counts = new Map<string, number>();
+      for (const d of files) counts.set(labelOf(d), (counts.get(labelOf(d)) ?? 0) + 1);
+
+      return {
+        name: p.name ?? "",
+        url: `/product/${p.slug!}`,
+        imageUrl: p.thumbnailUrl ?? null,
+        range: range
+          ? { label: (range.alt || range.label || "").trim(), logoUrl: publicImageUrl(range.mediaAsset.storagePath), sortOrder: range.sortOrder }
+          : null,
+        downloads: files.map((d) => ({
+          id: d.id,
+          label: counts.get(labelOf(d))! > 1 ? d.title : labelOf(d),
+          title: d.title,
+          href: `/public/downloads/${d.id}/file`,
+        })),
+      };
+    });
+
+    shaped.sort(
+      (a, b) =>
+        (a.range?.sortOrder ?? Infinity) - (b.range?.sortOrder ?? Infinity) ||
+        a.name.localeCompare(b.name, "en", { sensitivity: "base", numeric: true }),
+    );
+
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
+    res.json({
+      type,
+      products: shaped.map(({ range, ...p }) => ({
+        ...p,
+        range: range ? { label: range.label, logoUrl: range.logoUrl } : null,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /public/downloads/:id/file — open one public download.
+ *
+ * Redirects to a fresh signed URL for the file, valid two minutes: long enough
+ * to start the download, short enough that a copied link soon stops working.
+ * Inline, so a PDF opens in the browser's viewer in the new tab.
+ *
+ * ⚠️ Refuses anything PUBLIC_DOWNLOAD does not cover with the same bare 404 —
+ * gated, untyped, on a hidden product, or no such id — so the response says
+ * nothing about which. Phase 2's gate belongs here, in front of the signing.
+ *
+ * ⚠️ `no-store`: a cached redirect would hand the next visitor an expired
+ * signature, and the edge must never hold one.
+ *
+ * A top-level navigation carries no Origin header, so publicCors lets it
+ * through; a cross-site fetch() from a disallowed origin is still refused.
+ */
+publicRouter.get("/downloads/:id/file", fileLimiter, async (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  const notFound = () => res.status(404).type("text/plain").send("This file is not available.");
+  const id = req.params.id;
+  if (!/^[a-z0-9]{10,40}$/i.test(id)) {
+    notFound();
+    return;
+  }
+  try {
+    const dl = await prisma.download.findFirst({
+      where: { id, ...PUBLIC_DOWNLOAD },
+      select: { mediaAsset: { select: { storagePath: true } } },
+    });
+    if (!dl) {
+      notFound();
+      return;
+    }
+    let url: string;
+    try {
+      url = await signedFileUrl(dl.mediaAsset.storagePath, 120);
+    } catch {
+      // The row exists but the object does not: nothing a visitor can act on.
+      console.warn(`[public] download ${id}: file could not be signed`);
+      notFound();
+      return;
+    }
+    res.redirect(302, url);
   } catch (err) {
     next(err);
   }

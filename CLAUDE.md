@@ -35,7 +35,7 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 - `Logo` + `ProductLogo` — SA/Cert logos are a **global shared catalog** (`Logo`, kind `SA_LOGO`/`CERT_LOGO`), not per-product. `ProductLogo` is a join table; a row's existence = that catalog logo is *active* for that product. Adding a logo to the catalog makes it available to every product; deleting one is global (UI warns with a usage count).
 - `SpecRow` — ordered label/value technical spec rows.
 - `ProductTextItem` — ordered text items, `kind` `BENEFIT` or `APPLICATION`.
-- `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` withholds the file URL until a visitor submits a lead form, and `Lead` rows capture name/email/company per download. ⚠️ **Gating is OFF**: the column still defaults to `true` in the schema, but every write path (the import, `POST` and the editor's `PUT`) sets `false`, and no public widget shows downloads yet — see Stage 3e.
+- `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` withholds the file URL until a visitor submits a lead form, and `Lead` rows capture name/email/company per download. ⚠️ **Gating is OFF**: the column still defaults to `true` in the schema, but every write path (the import, `POST` and the editor's `PUT`) sets `false`. Each download also has a **`kind`** (`DATASHEET`/`MANUAL`/`CERTIFICATE`) and, for a certificate only, a **`certScheme`** (`INMETRO`/`UKEX`/`IECEX`/`EX`/`COMPLIANCE`) — these decide which resources page lists it; see "The resources widget".
 - `MediaAsset` — the shared "media centre" library backing `Logo`, `Download`, and a product's 3D model. `kind` is `"image" | "file" | "model"`.
 - `HubProduct.glbAssetId` — a product's **interactive 3D model** (`.glb`), one per product (not a shared catalog like Logos). See "3D Model Viewer" below.
 - `CompatibleLink` — product→product "Compatible Products & Accessories", ordered, keyed on Hub ids with both sides cascading. Edited in the product editor's Compatible Products section and rendered by the `compatible` carousel; 286 links imported (Stage 3d).
@@ -389,6 +389,121 @@ category template, or the page shows two listings.
   zoomed up from a dot instead of sliding out from behind the label. Reveal an icon by
   clipping a wrapper, never by resizing the icon.
 
+## The resources widget (`section: "resources"`, 2026-10-02)
+
+One Duda widget for three static pages — **Datasheets**, **User Manuals** and
+**Certificates** — chosen by a content-panel dropdown. Ungated (gating is phase 2). Each row:
+picture, SA range logo, name, "View Product", and one yellow button per file; on
+Certificates, one button per scheme (INMETRO / UKEX / IECEX / EX / Compliance). Set-up steps
+and the paste-ready shim are in `duda-widgets/resources/` (`SETUP.md`, `resources.js`).
+
+### The Duda shim
+
+```js
+(function (el, section, inEditor, cfg) {
+  el.setAttribute('data-saeh-section', section);
+  (window.__saehData || (window.__saehData = {}))[section] = data;
+
+  var resourceType = cfg.resourceType, heading = cfg.heading;
+
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=23';
+  var L = window.__saehLoader || (window.__saehLoader = {});
+  if (!L.p) L.p = new Promise(function (res, rej) {
+    var s = document.createElement('script');
+    s.src = SRC; s.async = true; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  L.p.then(function () {
+    window.SAEquipHubWidget.init({
+      container: el,
+      props: { section: section, inEditor: inEditor, resourceType: resourceType, heading: heading }
+    });
+  }).catch(function () {});
+})(element, 'resources', data.inEditor, data.config || data);
+```
+
+Content panel: a **static dropdown** `resourceType` (Datasheets=`datasheet`, User
+Manuals=`manual`, Certificates=`certificate`) and an optional text `heading`. Values live on
+`data.config`, as for every other widget. `resourceTypeOf()` also accepts the labels, plurals
+and a `{value,label}` object, so a mis-set panel is not silently empty; `lastInit.resourceType`
+(coerced) and `lastInit.resourceTypeRaw` (what Duda sent) are the console reads when it is.
+
+### Which file goes on which page — set per file, never guessed
+
+`Download.kind` + `Download.certScheme`, with a database **CHECK** that a scheme exists *iff*
+the kind is `CERTIFICATE`. Set in the product editor: each row in `DownloadsSection` has a
+**Type** select and, for a certificate, a **certificate** select. Both are required to save, so
+a newly added file is on no page until someone chooses. Choosing a type fills the canonical
+title ("Datasheet", "ATEX Certificate", "Compliance Statement"…) **only while the title is
+still automatic** — empty, the filename default, or a title an earlier choice filled in
+(`retitle()` in `frontend/src/lib/downloadKinds.ts`). A typed title is never overwritten.
+
+The 176 imported downloads were typed from their titles by `npm run downloads:classify`
+(dry run by default; `--confirm`; only untyped rows unless `--force`; an unknown title is a
+hard failure before any write). Result: Datasheets 59 products, User Manuals 25, Certificates
+29 (EX 27, IECEX 24, UKEX 20, INMETRO 19, COMPLIANCE 2). ⚠️ **"ATEX Certificate" is the `EX`
+scheme** — the old site's button label — and the two generic "Certificate" files are the
+Filtration Unit compliance statements, which got their own `COMPLIANCE` scheme (Josh,
+2026-10-02).
+
+`PUT /api/products/:id/downloads` now **requires** `kind` on every item and `certScheme`
+exactly when it is a certificate, refined in zod to the same rule as the CHECK so a bad item is
+a 400 that names the field rather than a 500. The single-row `POST`/`PATCH` predate types and
+leave them alone; a row they create is on no page until typed through the PUT.
+
+### `GET /public/resources?type=datasheet|manual|certificate`
+
+A pure Hub read (`contentLimiter`, `s-maxage=60`). Every public product with ≥1 public download
+of that type, each `{name, url, imageUrl, range:{label,logoUrl}|null, downloads:[{id, label,
+title, href}]}`. Unknown type → 400 (an own-property check, so `?type=constructor` is not
+`Object.prototype`'s).
+
+- ⚠️ **`PUBLIC_DOWNLOAD` in `services/hubProduct.ts` is the ONE definition** of a public
+  download — ungated, typed, on a product that is `LISTABLE` *and* has a slug — used by both
+  this list and the file route, so a page can never list a file the route refuses or the route
+  serve one no page lists. A HIDDEN product's certificate is not reachable by its id.
+- **Ordered by SA range** (the Logos page's `sortOrder`), A–Z within a range, no-range last. The
+  range is the product's first SA logo that is **not Rental** (`/rental/i` on label, alt or
+  filename): Rental sits beside a range — 51 products carry both — and the old pages never
+  showed it.
+- ⚠️ **7 products have only the Rental logo, so they list last with no range logo**: the EX
+  Compact / EX / EX High Capacity / High Volume / Lightweight Dust Extraction Systems and the
+  EX Paint / EX Vapour Extraction Systems. Ticking a range logo on the product fixes it — a data
+  edit, not a code one.
+- Buttons are labelled server-side: "Download Datasheet" / "Download User Manual", or the
+  scheme, in `SCHEME_ORDER`. Two files under one label fall back to their titles (none today).
+- ⚠️ **No file URLs in the payload.** A list of 59 products would otherwise sign 59 URLs nobody
+  opens, and signing inside one `Promise.all` is exactly what made the content endpoint
+  all-or-nothing.
+
+### `GET /public/downloads/:id/file`
+
+302 to a fresh signed URL (2 minutes, inline, so the PDF opens in the new tab's viewer) when the
+download matches `PUBLIC_DOWNLOAD`; otherwise the **same bare 404** whatever the reason, so the
+response says nothing about which. `Cache-Control: no-store` on both — a cached redirect would
+hand the next visitor an expired signature. Its own in-memory limiter (30/min/IP). A top-level
+navigation carries no Origin, so `publicCors` passes it; a cross-site `fetch()` from a
+disallowed origin still 403s. **Phase 2's gate belongs here**, in front of the signing.
+
+### The widget
+
+- **Page-level, like `product-list`**: in neither `ALL_SECTIONS` nor `VALID`, reached only
+  through `init()`, which branches out before any product work. `data-section="all"` never
+  fetches it (tested).
+- One fetch per type per page (`hub.resourceFetches`). Rows are built with `textContent` and
+  attributes only; a product URL that is not a site path becomes `#`.
+- ⚠️ **The type goes in `data-saeh-resource-type`, never into `data-saeh-section`.** `init()`
+  reads that attribute first on a re-init, so it must stay exactly `resources`.
+- Accessibility: the picture repeats the product link, so it is `aria-hidden` and out of the
+  tab order — one link per product. Each button's accessible name starts with its visible
+  label ("EX – EX Heater (PDF, opens in a new tab)") so speech input still matches it.
+- Layout: mobile-first, buttons on their own row two to a line; at **721px** they move to the
+  right of the row; from **1024px** a full row of four certificates fits on one line.
+  A small extra gap marks where one range ends and the next begins.
+- Empty or unconfigured: collapses live; **in the editor it renders a placeholder saying what to
+  choose**, and tells a failed fetch apart from an empty list — an empty box cannot be found to
+  select.
+
 ## Category mode — the compatible carousel on static pages
 
 The Industries pages are ordinary static pages, not dynamic category pages, so there is no
@@ -455,7 +570,7 @@ The product page's main widget: Overview / Technical Specs / Key Benefits / Appl
   ⚠️ **This used to say `/public/products/content` sanitises it with `stripCruft`. It did not**: that was reverted in `886748c` because importing `sanitize-html` crashed the function, and the comment left behind said the *widget* escaped it — while the widget still used `innerHTML`. Each side claimed the other was the protection. It was latent only because nothing but the import's own clean output had ever been written there; making dashboard edits reach the page (see the product editor section) would have armed it. **The widget is now the boundary, so any other consumer of `descriptionHtml` must sanitise too.** `widget:test` covers script, `onerror`, inline handlers, `javascript:`/tab-obfuscated/`data:` links, iframe, svg-script and style; all 94 real descriptions render byte-identically through it.
   ⚠️ **Never import `services/descriptionHtml.ts` from server code** — it pulls in `sanitize-html`, which makes the WHOLE function fail at load on Vercel (`FUNCTION_INVOCATION_FAILED` on every route, the widget included) while running fine under tsx. It has happened twice: the second time (2026-10-02, ~3 minutes) via `stripAnchors`, which now lives alone in the import-free `services/anchors.ts`. **This is now checked automatically** — `scripts/check-api-bundle.mjs` fails the Vercel build (and the pre-push hook) if `sanitize-html` or `descriptionHtml.ts` enters the API's import graph, and the post-deploy smoke test hits the API and the widget. See "Deploy safety checks".
 
-`npm run widget:test --workspace=backend` covers the widgets (359 checks as of 2026-10-02), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
+`npm run widget:test --workspace=backend` covers the widgets (395 checks as of 2026-10-02, the resources list included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
 
 ## 3D Model Viewer
 
@@ -1181,11 +1296,11 @@ file and the Hub had no Download rows. It makes a re-run safe structurally, and 
 
 ### Downloads in the product editor, and the PUT behind it
 
-`DownloadsSection.tsx` — rename, drag to reorder, remove, add from the Media Centre. Joined to
+`DownloadsSection.tsx` — rename, type (and certificate scheme), drag to reorder, remove, add from the Media Centre. Joined to
 the unified save (`SectionKey "downloads"`, `downloadsFrom()`, a `project()` case, `validate()`,
 a save task). No gated toggle and no lead count while gating is off.
 
-`PUT /api/products/:id/downloads` takes `{items: [{mediaAssetId, title}]}` in display order.
+`PUT /api/products/:id/downloads` takes `{items: [{mediaAssetId, title, kind, certScheme}]}` in display order — see "The resources widget" for the type rules.
 - ⚠️ **Keyed on `mediaAssetId`, not row ids.** That is what makes it idempotent when a response
   is lost: a retry finds the rows the first attempt created by their file instead of
   re-creating them into the unique index. The unified save requires a retried save to converge.
@@ -1193,7 +1308,7 @@ a save task). No gated toggle and no lead count while gating is off.
   id, because `Lead.downloadId` is `SetNull` — recreating every row on every save would detach
   every captured lead once gating returns. Deletes run before creates, so removing and
   re-adding a file in one save cannot trip the unique index.
-- ⚠️ **`project()` compares only `{mediaAssetId, title}`.** The preview URL is re-signed on
+- ⚠️ **`project()` compares only `{mediaAssetId, title, kind, certScheme}`.** The preview URL is re-signed on
   every response; had it leaked into the comparison the section would read "Unsaved" forever
   after any save. Proven: two loads of EX Heater carry different URLs yet project identically,
   and what a save banks equals what the next load reads.
@@ -1308,10 +1423,10 @@ prevent. Harmless this time (no live widget renders downloads, and they are unga
 but the order generalises: when a data import changes what a public endpoint would serve,
 push and confirm the endpoint change first, *then* write the data.
 
-**When the Download List widget is built**, it should fetch download data through its own
-path — signing lazily or per item, never in an all-or-nothing `Promise.all` on the content
-endpoint — and the old `downloads` section in `widget.js` (still in `ALL_SECTIONS`) should be
-replaced or removed rather than revived as-is.
+**The resources widget is that separate path** (2026-10-02): `/public/resources` carries no
+file URLs and `/public/downloads/:id/file` signs one file per click — see "The resources
+widget". The content endpoint still returns `downloads: []`, and the old `downloads` section in
+`widget.js` (still in `ALL_SECTIONS`) should be removed in phase 2 rather than revived as-is.
 
 ### Notes for any further import from the export
 
@@ -1733,7 +1848,7 @@ The container carries `aria-busy` + `aria-live` + a label; the blocks themselves
 - **Opening a product makes ~4 Duda reads** (the product, and `/custom` plus both logo lists each `ensureHubProduct`). Correct, just slower than one; worth trimming if Duda rate limits ever bite.
 - **New categories get no SEO title** — `duda:category-seo` was a one-off over the 23 that existed; set one on the category's page.
 - **The post-deploy GitHub workflow's first run is unconfirmed from here** (no `gh` CLI) — the same commands were run locally against production and passed; check the repo's Actions tab once.
-- ⚠️ **No public widget shows downloads yet** — a **Download List** widget is planned and will be specified separately. Until then `/public/products/content` returns `downloads: []`; see Stage 3e for why, and for what that widget will need to bring back.
+- **Downloads are public only through the resources widget** (Datasheets / User Manuals / Certificates pages). A product page still shows none — `/public/products/content` returns `downloads: []`; see Stage 3e for why.
 - **Gating is OFF** (every download `gated: false`, no toggle in the editor). The `gated` column, the lead endpoint and its Postgres limiter all remain, so turning it back on is UI work. Captured `Lead` rows have no admin page; that waits for the CRM integration, like quote requests.
 - Widget visual styling is functional but not deeply brand-tuned.
 - ⚠️ **`/widgets` is routed but deliberately NOT in the sidebar** (2026-09-30). It documents the embed snippets and is Kangaroo's reference, not something SAEquip staff should change — reachable by URL, invisible in the menu. Same treatment as `pages/UIShowcase.tsx`, which is unrouted for the same reason.
