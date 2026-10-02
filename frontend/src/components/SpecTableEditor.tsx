@@ -1,4 +1,4 @@
-import { Badge, Button, Card, CardHeader, DragHandle, RemoveButton, SortableList } from "./ui";
+import { Badge, Button, Card, CardHeader, SectionError, DragHandle, RemoveButton, SortableList } from "./ui";
 import type { SpecRowDraft } from "./product/productEditorTypes";
 import {
   flattenSpecGroups,
@@ -93,11 +93,7 @@ export function SpecTableEditor({
         }
       />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
-          {error}
-        </div>
-      )}
+      <SectionError message={error} />
 
       {groups.length === 0 ? (
         <p className="text-small text-subtle">No specs. Add one below.</p>

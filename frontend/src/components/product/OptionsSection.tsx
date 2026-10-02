@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, Card, CardHeader, EmptyState, RemoveButton, toast, useConfirm } from "../ui";
+import { Badge, Button, Card, CardHeader, SectionError, EmptyState, RemoveButton, toast, useConfirm } from "../ui";
 import { apiJson } from "../../lib/api";
 import { cartesianSize } from "./normalize";
 import { AttachOptionModal } from "./AttachOptionModal";
@@ -133,11 +133,7 @@ export function OptionsSection({
           }
         />
 
-        {error && (
-          <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
-            {error}
-          </div>
-        )}
+        <SectionError message={error} />
 
         {dirty && (
           <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-small text-text">

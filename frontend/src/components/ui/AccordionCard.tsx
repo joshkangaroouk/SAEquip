@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Badge } from "./Badge";
-import { AccordionBodyProvider } from "./Card";
+import { AccordionBodyProvider, SectionError } from "./Card";
 
 /**
  * A Card whose body collapses.
@@ -90,11 +90,9 @@ export function AccordionCard({
 
       {open && (
         <div id={bodyId} className="border-t border-border px-5 py-4">
-          {error && (
-            <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
-              {error}
-            </div>
-          )}
+          {/* Outside the provider below, so this one renders; the copies the
+              sections carry stay silent inside it. */}
+          <SectionError message={error} />
           {/* Tells any nested Card/CardHeader to drop its own chrome. */}
           <AccordionBodyProvider>{children}</AccordionBodyProvider>
         </div>

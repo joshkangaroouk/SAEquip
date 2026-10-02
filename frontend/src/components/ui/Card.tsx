@@ -94,3 +94,23 @@ export function CardHeader({
     </div>
   );
 }
+
+/**
+ * A section's error message — the ONE error box every editor section uses.
+ *
+ * ⚠️ Renders nothing inside an accordion body, because the accordion prints the
+ * same message itself, at the top of the body. Each section used to carry its
+ * own copy of this box AND be wrapped in an accordion that carried another, so
+ * every failing section showed the sentence twice, one box above the other.
+ * The accordion keeps it rather than the section: it is the one place that
+ * exists for every section, including those that render no box of their own.
+ */
+export function SectionError({ message }: { message?: string | null }) {
+  const bare = useContext(InAccordion);
+  if (!message || bare) return null;
+  return (
+    <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+      {message}
+    </div>
+  );
+}

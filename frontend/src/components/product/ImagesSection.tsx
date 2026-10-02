@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { rectSortingStrategy } from "@dnd-kit/sortable";
-import { Badge, Button, Card, CardHeader, EmptyState, FileDropzone, SortableList, toast } from "../ui";
+import { Badge, Button, Card, CardHeader, SectionError, EmptyState, FileDropzone, SortableList, toast } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import { ImageCard } from "./ImageCard";
 import type { ImageDraft } from "./productEditorTypes";
@@ -68,11 +68,7 @@ export function ImagesSection({
           }
         />
 
-        {error && (
-          <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
-            {error}
-          </div>
-        )}
+        <SectionError message={error} />
 
         {images.length === 0 ? (
           <EmptyState

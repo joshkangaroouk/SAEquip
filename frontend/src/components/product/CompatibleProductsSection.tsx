@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../../lib/api";
-import { Badge, Button, Card, CardHeader, DragHandle, Input, SortableList } from "../ui";
+import { Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
 import type { CompatibleDraft } from "./productEditorTypes";
 import type { ProductSummary } from "../../lib/types";
 
@@ -124,11 +124,7 @@ export function CompatibleProductsSection({
         actions={dirty ? <Badge tone="accent">Unsaved</Badge> : undefined}
       />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
-          {error}
-        </div>
-      )}
+      <SectionError message={error} />
       {loadError && (
         <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
           {loadError}

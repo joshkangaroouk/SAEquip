@@ -1,4 +1,4 @@
-import { Badge, Button, Card, CardHeader, DragHandle, RemoveButton, SortableList } from "./ui";
+import { Badge, Button, Card, CardHeader, SectionError, DragHandle, RemoveButton, SortableList } from "./ui";
 import type { TextItemDraft } from "./product/productEditorTypes";
 
 /**
@@ -37,11 +37,7 @@ export function TextItemListEditor({
         actions={dirty ? <Badge tone="accent">Unsaved</Badge> : undefined}
       />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
-          {error}
-        </div>
-      )}
+      <SectionError message={error} />
 
       {items.length === 0 ? (
         <p className="text-small text-subtle">No items. Add one below.</p>

@@ -5,7 +5,7 @@ export { Textarea, type TextareaProps } from "./Textarea";
 export { Select, type SelectProps } from "./Select";
 export { Toggle, type ToggleProps } from "./Toggle";
 export { Checkbox, type CheckboxProps } from "./Checkbox";
-export { Card, CardHeader, AccordionBodyProvider } from "./Card";
+export { Card, CardHeader, AccordionBodyProvider, SectionError } from "./Card";
 export { AccordionCard } from "./AccordionCard";
 export { Table, THead, TBody, TR, TH, TD } from "./Table";
 export { Modal, ConfirmProvider, useConfirm, type ModalProps } from "./Modal";

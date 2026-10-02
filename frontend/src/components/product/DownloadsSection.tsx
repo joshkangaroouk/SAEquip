@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, DragHandle, FilePreview, Input, SortableList } from "../ui";
+import { Badge, Button, Card, CardHeader, SectionError, DragHandle, FilePreview, Input, SortableList } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import type { MediaAsset } from "../../lib/types";
 import type { DownloadDraft } from "./productEditorTypes";
@@ -89,11 +89,7 @@ export function DownloadsSection({
         }
       />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
-          {error}
-        </div>
-      )}
+      <SectionError message={error} />
       {notice && <p className="mb-3 text-small text-muted">{notice}</p>}
 
       {value.length === 0 ? (

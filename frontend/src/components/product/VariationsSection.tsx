@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, EmptyState, Input, Select, Table, TBody, TD, TH, THead, TR } from "../ui";
+import { Badge, Button, Card, CardHeader, SectionError, EmptyState, Input, Select, Table, TBody, TD, TH, THead, TR } from "../ui";
 import type { OptionRefDraft, VariationDraft } from "./productEditorTypes";
 
 /**
@@ -55,11 +55,7 @@ export function VariationsSection({
         }
       />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
-          {error}
-        </div>
-      )}
+      <SectionError message={error} />
 
       {lockedByOptions && (
         <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-small text-text">

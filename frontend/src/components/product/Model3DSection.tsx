@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, RemoveButton } from "../ui";
+import { Badge, Button, Card, CardHeader, SectionError, RemoveButton } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import { Model3DPreview } from "./Model3DPreview";
 import type { MediaAsset } from "../../lib/types";
@@ -37,7 +37,7 @@ export function Model3DSection({
         actions={dirty && <Badge tone="accent">Unsaved</Badge>}
       />
 
-      {error && <p className="mb-3 text-small text-danger">{error}</p>}
+      <SectionError message={error} />
 
       {value.mediaAssetId && value.url ? (
         <div className="space-y-3">
