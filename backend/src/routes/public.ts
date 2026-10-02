@@ -11,6 +11,7 @@ import { env } from "../env.js";
 import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
 import { sendQuoteNotification } from "../services/email.js";
 import { LISTABLE } from "../services/hubProduct.js";
+import { categorySortKey, compareKeys } from "../services/categoryTree.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -114,6 +115,23 @@ const quoteHourlyLimiter = rateLimit({
 
 export const publicRouter = Router();
 
+/**
+ * Every mirrored category in the dashboard's order — the order staff set by
+ * dragging — so the website's filter list matches the admin screen.
+ */
+async function orderedCategories() {
+  const [rows, orderRows] = await Promise.all([
+    prisma.categoryMirror.findMany(),
+    prisma.categoryOrder.findMany(),
+  ]);
+  const order = new Map(orderRows.map((o) => [o.dudaCategoryId, o.sortOrder]));
+  // The mirror's `position` is Duda's list index at the last sync.
+  const fallback = new Map(rows.map((r) => [r.dudaCategoryId, r.position]));
+  const key = (r: (typeof rows)[number]) =>
+    categorySortKey({ id: r.dudaCategoryId, title: r.title, parentId: r.parentId }, order, fallback);
+  return rows.sort((a, b) => compareKeys(key(a), key(b)));
+}
+
 /* -------------------------------------------- products by category -- */
 
 /**
@@ -204,7 +222,7 @@ publicRouter.post("/categories/options", contentLimiter, async (req, res, next) 
     // string, so caching every value would let anyone grow this Map without
     // bound, one made-up slug per request.
 
-    const all = await prisma.categoryMirror.findMany({ orderBy: { position: "asc" } });
+    const all = await orderedCategories();
     const parentRow = parent ? all.find((c) => c.slug === parent) : null;
     const rows = parent ? (parentRow ? all.filter((c) => c.parentId === parentRow.dudaCategoryId) : []) : all;
 
@@ -256,7 +274,7 @@ publicRouter.post("/categories/options", contentLimiter, async (req, res, next) 
 publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
   try {
     const [categories, products] = await Promise.all([
-      prisma.categoryMirror.findMany({ orderBy: { position: "asc" } }),
+      orderedCategories(),
       prisma.hubProduct.findMany({
         // ⚠️ HIDDEN products are left out — a product created in the Hub
         // starts hidden, and used to appear here the moment it had a slug.

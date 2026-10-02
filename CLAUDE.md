@@ -1441,14 +1441,46 @@ nothing — it then navigates straight to the page.
 - **Clicking the title opens the edit modal** — it is what you click when you mean "open
   this"; the ⋯ menu keeps the other actions.
 
+### Deleting and moving a category (fixed 2026-10-02)
+
+⚠️ **Duda does NOT delete subcategories with their parent.** Measured on throwaways: the
+direct children are **promoted to the top level** (`parent_id` → `ROOT`) and grandchildren
+stay under them. The delete confirmation used to say the subcategories were deleted, and the
+Hub's mirror kept them under a parent that no longer existed. `DELETE /categories/:id` now
+re-mirrors the promoted children as top level, clears their dragged positions (which ranked
+them among their old siblings), and removes the deleted category's own product links, which
+used to linger as "no longer in Duda". It still 409s without `?confirm=true` when there are
+children, and the warning now says where they go.
+
+⚠️ **A move (PATCH with a different `parent_id`) adds the NEW ancestors** to every product
+in the moved subtree, so "never in a child without its parent" survives it. The old ancestors
+are deliberately left — a product may sit there for its own reasons. ⚠️ **"Moved" is a
+comparison with the parent before the write, not the presence of `parent_id`**: the edit page
+sends it on every save, and treating every save as a move would wipe the category's dragged
+position each time.
+
+**Category slugs are validated** (`^[a-z0-9-]+$`, non-blank) server- and client-side. The
+public listing matches the slug lower-cased against the mirror, so an uppercase one would
+silently empty that category's page. All 23 pass.
+
+**`/categories/:id` has the unsaved-changes guard** the product editor has — it had none.
+
 ### Drag-reorder, and why the page is no longer a `<table>`
 
 ⚠️ **Duda has NO ordering field on a category, and the probe is the point** (2026-09-30):
 `position`, `order`, `sort`, `sort_order`, `index`, `rank`, `priority` and `display_order`
 are **every one silently accepted** on PATCH and every one echoes back `null`. Duda ignores
 unknown keys, so an attempt to store order there would look exactly like it had worked.
-Order therefore lives in `CategoryOrder` (Hub-owned), which is **display order only** — it
-drives the dashboard, never Duda's storefront or the megamenu.
+Order therefore lives in `CategoryOrder` (Hub-owned). It drives the dashboard **and the
+Hub's own public listings** — the catalogue widget's filter list and the dropdown in Duda's
+editor — but never Duda's storefront or the megamenu.
+
+⚠️ **One ordering rule, `categorySortKey()` in `services/categoryTree.ts`**, used by both the
+dashboard tree and `/public/catalogue` (dragged position → `TOP_LEVEL_ORDER` → Duda's list
+order). The public side used to sort by the mirror's Duda position only, so a drag changed the
+admin screen and nothing on the website — latent when fixed, since no category had been
+dragged. The refactor was checked against the old code on live data: the dashboard tree is
+identical, all 23 rows.
 
 ⚠️ **`CategoryOrder` is a separate table, not a column on `CategoryMirror`.** The mirror is a
 read-through cache refreshed wholesale by `duda:sync-categories`; an order set by hand must
@@ -1465,8 +1497,8 @@ per sortable context, and a tree needs the parent row and its children in the sa
 sequence but different contexts — which multiple tbodies cannot express.
 
 Ordering within a parent falls back, most specific first: a Hub position, then
-`TOP_LEVEL_ORDER`, then Duda's own list order. Every sort is stable, so anything with no rule
-keeps Duda's relative order.
+`TOP_LEVEL_ORDER`, then Duda's own list order — expressed as a sort key, so the order is total
+even across parents and anything with no rule keeps Duda's relative order.
 
 ### `npm run duda:category-seo --workspace=backend`
 

@@ -27,3 +27,43 @@ export function withAncestors(ids: string[], flat: DudaCategorySummary[]): strin
   }
   return [...out];
 }
+
+/**
+ * Top-level order before anyone has dragged: Products, the branch people
+ * assign from most, first. Duda has no `sortOrder` on a category and its own
+ * list order is creation order, newest first, which put Products last.
+ * Unlisted titles keep Duda's order after these, so renaming a parent demotes
+ * it rather than breaking the list.
+ */
+export const TOP_LEVEL_ORDER = ["products", "site challenges", "industries"];
+
+/**
+ * THE ordering rule for categories, shared by the dashboard's tree and every
+ * public listing — so the order staff set by dragging is the order visitors
+ * see. ⚠️ It used to live only in the dashboard: the public catalogue sorted
+ * by Duda's creation order, so dragging the Site Challenges into a new order
+ * changed the admin screen and nothing on the website.
+ *
+ * Most specific first, within one parent:
+ *   1. a Hub position someone set by dragging (CategoryOrder),
+ *   2. TOP_LEVEL_ORDER, for top-level categories nobody has dragged,
+ *   3. Duda's own list order (`fallback`).
+ * Returned as a sort KEY rather than a comparator so the order is total even
+ * across different parents — a flat list sorted by it keeps every sibling
+ * group in the right order, which `Array.sort` needs to be well defined.
+ */
+export function categorySortKey(
+  c: { id: string; title: string; parentId: string },
+  order: Map<string, number>,
+  fallback: Map<string, number>,
+): [number, number, number, number] {
+  const dragged = order.get(c.id);
+  const top = TOP_LEVEL_ORDER.indexOf(c.title.trim().toLowerCase());
+  const rank = c.parentId === CATEGORY_ROOT && top !== -1 ? top : TOP_LEVEL_ORDER.length;
+  return [dragged == null ? 1 : 0, dragged ?? 0, rank, fallback.get(c.id) ?? Number.MAX_SAFE_INTEGER];
+}
+
+export function compareKeys(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
