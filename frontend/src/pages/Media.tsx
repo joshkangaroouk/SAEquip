@@ -59,6 +59,34 @@ export default function Media() {
   const [kind, setKind] = useState<"" | MediaKind>("");
   const lib = useMediaLibrary({ kind: kind || undefined, pageSize: 24 });
 
+  /**
+   * Change page and bring the list back into view.
+   *
+   * The pager sits BELOW the grid, so clicking Next left you at the bottom of
+   * a page whose new content had started above you. This returns to the top
+   * of the list — the toolbar, so the tab and search you are in stay visible.
+   *
+   * ⚠️ Only when you have scrolled PAST the toolbar. If it is already on
+   * screen there is nothing to return to, and forcing the scroll would push
+   * the upload card out of view for no reason. The threshold is the element's
+   * own scroll-margin, so the mobile sticky header (which the margin clears)
+   * counts as "out of view" too.
+   *
+   * Scrolls on the click, not when the data lands: the current page stays
+   * mounted and dims while the next one loads, so moving now means nothing
+   * jumps again when it arrives.
+   */
+  const listTop = useRef<HTMLDivElement>(null);
+  function goToPage(page: number) {
+    lib.setPage(page);
+    const el = listTop.current;
+    if (!el) return;
+    const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    if (el.getBoundingClientRect().top >= margin) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
+
   const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -162,8 +190,8 @@ export default function Media() {
         {uploadError && <span className="text-sm text-danger">{uploadError}</span>}
       </form>
 
-      {/* Kind tabs + search + sort */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      {/* Kind tabs + search + sort. Also where paging scrolls back to — see goToPage. */}
+      <div ref={listTop} className="mt-6 flex scroll-mt-20 flex-wrap items-center gap-3 lg:scroll-mt-4">
         <div className="flex flex-wrap gap-2 text-sm">
           {KIND_TABS.map((t) => (
             <button
@@ -343,7 +371,7 @@ export default function Media() {
             page={lib.page}
             pageCount={lib.pageCount}
             total={lib.total}
-            onChange={lib.setPage}
+            onChange={goToPage}
             label="assets"
           />
         </>
