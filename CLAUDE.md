@@ -796,6 +796,35 @@ Nothing leaks today, and three things keep it that way: Vite only inlines `VITE_
 
 Related: **Preview deployments inherit the same env vars**, so anyone who can open a PR can run build scripts against production secrets. Prefer leaving `SUPABASE_SERVICE_ROLE_KEY` and `DUDA_API_PASS` unset on Preview (preview functions degrade, nothing leaks).
 
+### Deploy safety checks (added 2026-10-02)
+
+Three layers, each catching what the one before cannot. Added after a deploy that took the
+whole API and the live widget down for ~3 minutes.
+
+1. **In the Vercel build** — `scripts/check-api-bundle.mjs` runs FIRST in `buildCommand`. It
+   bundles `api/index.ts` with esbuild (packages external) and fails the build if the
+   function's import graph contains a denylisted package (`sanitize-html`, `@napi-rs/canvas`,
+   `pdfjs-dist`, `jsdom`) or file (`services/descriptionHtml.ts`, anything under `scripts/`),
+   printing the import chain that pulled it in. **A failed build leaves the previous deployment
+   live**, which is the point. A denylist rather than "load it and see" because the original
+   failure does not reproduce locally — `sanitize-html` crashes the function at load on Vercel
+   only. Proven by re-introducing that exact import: the check failed with the chain
+   `routes/duda.ts → services/descriptionHtml.ts → sanitize-html`.
+2. **Before every push** — `.githooks/pre-push`: the bundle check, `tsc` for both workspaces
+   (Vercel's build typechecks neither), and `widget:test`. ~12s. Enabled per clone with
+   `git config core.hooksPath .githooks`; run on demand with `npm run check`; skip once,
+   deliberately, with `git push --no-verify`.
+3. **After every deploy** — `.github/workflows/post-deploy-smoke.yml` waits until
+   `/api/health` reports the pushed commit (`VERCEL_GIT_COMMIT_SHA`), then runs
+   `scripts/smoke.mjs` against production: the function loads, the admin API still 401s a
+   forged token, the widget is served with a stamped marker, content and catalogue return with
+   the right CORS header, `Vary: Origin` is present, a foreign origin is refused, and the
+   dashboard loads. Read-only, no credentials. A failure — or a commit that never goes live,
+   i.e. a failed build — fails the run and GitHub emails the pusher. `npm run smoke` runs it by hand.
+
+**Add a check to `smoke.mjs` when something breaks in a way it would have caught**, and a
+package or file to the bundle check's denylist when one is found to break the function.
+
 ### Live facts
 
 - URL: `https://sa-equip-backend.vercel.app` (project name is a leftover; it serves BOTH the dashboard and the API). Custom domain not yet added.

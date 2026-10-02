@@ -10,7 +10,10 @@
   ],
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
-    "build": "npm run build -w backend && npm run build -w frontend"
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "check": "sh .githooks/pre-push",
+    "check:api": "node scripts/check-api-bundle.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

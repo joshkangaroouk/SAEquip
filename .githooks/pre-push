@@ -1,0 +1,21 @@
+#!/bin/sh
+# Runs before every `git push`. Skip once, deliberately, with: git push --no-verify
+#
+# Enabled per clone with: git config core.hooksPath .githooks
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-push ▸ API bundle check"
+node scripts/check-api-bundle.mjs
+
+echo "pre-push ▸ typecheck (backend, frontend)"
+npx tsc --noEmit -p backend
+npx tsc --noEmit -p frontend
+
+echo "pre-push ▸ widget tests"
+if ! npm run --silent widget:test --workspace=backend > /dev/null 2>&1; then
+  npm run --silent widget:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30
+  echo "✗ widget tests failed — push stopped"
+  exit 1
+fi
+echo "✓ pre-push checks passed"

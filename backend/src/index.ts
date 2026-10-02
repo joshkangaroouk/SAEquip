@@ -46,7 +46,15 @@ app.use(cors());
 
 // --- Public ---
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    // Which commit is serving. The post-deploy smoke test waits for THIS to
+    // equal the pushed commit, so it tests the new deployment rather than
+    // whatever was live before it. Set by Vercel; null locally.
+    commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+  });
 });
 
 // --- Protected (single) ---

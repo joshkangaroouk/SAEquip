@@ -3,7 +3,7 @@
   "regions": [
     "dub1"
   ],
-  "buildCommand": "npx prisma generate --schema=backend/prisma/schema.prisma && npm run build --workspace=frontend",
+  "buildCommand": "node scripts/check-api-bundle.mjs && npx prisma generate --schema=backend/prisma/schema.prisma && npm run build --workspace=frontend",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.ts": {

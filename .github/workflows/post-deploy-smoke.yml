@@ -1,0 +1,35 @@
+# After every push to main: wait until Vercel is serving THAT commit, then run
+# the read-only smoke test against the live site. A failure fails the run, and
+# GitHub emails whoever pushed.
+#
+# It also catches a deploy that never happened: if the Vercel build fails (the
+# API bundle check runs first in it), the commit never goes live and this
+# times out with a message saying so.
+name: Post-deploy smoke test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push supersedes an older one: the older commit will never be the one
+# serving, so waiting for it would only time out.
+concurrency:
+  group: post-deploy-smoke
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # No install needed: the smoke test uses only Node's built-in fetch.
+      - name: Smoke-test the live site once this commit is serving
+        run: node scripts/smoke.mjs --wait-for "${{ github.sha }}"
