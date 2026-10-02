@@ -18,13 +18,26 @@ import { sendQuoteNotification } from "../services/email.js";
  */
 export function publicCors(req: Request, res: Response, next: NextFunction) {
   const origin = req.headers.origin;
+  /*
+   * ⚠️ `Vary: Origin` on EVERY response, including ones with no Origin.
+   *
+   * These responses are cached at Vercel's edge (`s-maxage`), and the cache
+   * keys on Origin only when the response says it varies on it. It used to be
+   * set only when an Origin was present, so a request WITHOUT one — curl, a
+   * monitor, a crawler — stored a copy with no Access-Control-Allow-Origin,
+   * and the edge then served that copy as a HIT to the live site, the Duda
+   * editor and saequip.com alike. Measured on /public/catalogue: MISS with no
+   * Origin, then HIT with no CORS header for all three origins. Browsers
+   * reject that, so the listing grid and carousels failed for up to a minute
+   * at a time — whenever anything without an Origin was first to the cache.
+   */
+  res.setHeader("Vary", "Origin");
   if (origin && !env.publicAllowedOrigins.includes(origin)) {
     res.status(403).json({ error: "origin_not_allowed" });
     return;
   }
   if (origin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   }
@@ -185,6 +198,9 @@ publicRouter.post("/categories/options", contentLimiter, async (req, res, next) 
       res.json(hit.body);
       return;
     }
+    // ⚠️ Only a REAL parent (or none) is cached. `parent` comes from the query
+    // string, so caching every value would let anyone grow this Map without
+    // bound, one made-up slug per request.
 
     const all = await prisma.categoryMirror.findMany({ orderBy: { position: "asc" } });
     const parentRow = parent ? all.find((c) => c.slug === parent) : null;
@@ -208,7 +224,7 @@ publicRouter.post("/categories/options", contentLimiter, async (req, res, next) 
         label: `${c.title} (${counts.get(c.dudaCategoryId) ?? 0})`,
       })),
     };
-    categoryOptionsCache.set(parent, { at: Date.now(), body });
+    if (!parent || parentRow) categoryOptionsCache.set(parent, { at: Date.now(), body });
     res.json(body);
   } catch (err) {
     next(err);
@@ -450,7 +466,8 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
 
     // Single query: HubProduct + all nested content. Source of truth is Supabase;
     // this endpoint makes NO Duda / external API calls.
-    console.time("[public/content] db");
+    // (Timed with Date.now(), not console.time: a label is global per process,
+    // so two overlapping requests on one instance collided and warned.)
     const full = await prisma.hubProduct.findFirst({
       where,
       include: {
@@ -464,7 +481,6 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
         },
       },
     });
-    console.timeEnd("[public/content] db");
 
     if (!full) {
       res.status(404).json({ error: "not_found" });
@@ -541,7 +557,8 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
           imageUrl: c.related.thumbnailUrl ?? null,
         })),
     });
-    console.log(`[public/content] ${key}=${value} total ${Date.now() - startedAt}ms`);
+    // The value is caller-supplied, so it is length-capped before it is logged.
+    console.log(`[public/content] ${key}=${value.slice(0, 120)} total ${Date.now() - startedAt}ms`);
   } catch (err) {
     next(err);
   }

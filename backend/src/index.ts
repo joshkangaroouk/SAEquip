@@ -96,6 +96,20 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
+  // Body-parser rejections (malformed JSON, a body over the limit) are the
+  // CALLER's fault and carry their own status. They used to fall through to
+  // the 500 below, so junk from a bot read as a server fault in the logs.
+  const bodyStatus = (err as { status?: unknown; type?: unknown } | null)?.status;
+  if (
+    typeof bodyStatus === "number" &&
+    bodyStatus >= 400 &&
+    bodyStatus < 500 &&
+    typeof (err as { type?: unknown }).type === "string"
+  ) {
+    res.status(bodyStatus).json({ error: bodyStatus === 413 ? "payload_too_large" : "bad_request" });
+    return;
+  }
+
   const code = prismaErrorCode(err);
   if (code === "P2002") {
     // Unique constraint. HubProduct.slug is the realistic case, and a generic
