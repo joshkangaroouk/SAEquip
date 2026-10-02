@@ -35,7 +35,8 @@
     "downloads:import": "tsx src/scripts/importDownloads.ts",
     "media:pdf-thumbnails": "tsx src/scripts/pdfThumbnails.ts",
     "hub:sync-mirror": "tsx src/scripts/hubSyncMirror.ts",
-    "redirects:build": "tsx src/scripts/buildRedirects.ts"
+    "redirects:build": "tsx src/scripts/buildRedirects.ts",
+    "downloads:classify": "tsx src/scripts/classifyDownloads.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

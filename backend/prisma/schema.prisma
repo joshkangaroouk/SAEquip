@@ -46,6 +46,24 @@ enum LogoKind {
   CERT_LOGO
 }
 
+/// The three resources pages. See Download.kind.
+enum DownloadKind {
+  DATASHEET
+  MANUAL
+  CERTIFICATE
+}
+
+/// The certificate buttons on the Certificates page. EX is the ATEX certificate
+/// (the old site's label, kept); COMPLIANCE is the Filtration Unit compliance
+/// statement, which belongs to none of the four schemes.
+enum CertScheme {
+  INMETRO
+  UKEX
+  IECEX
+  EX
+  COMPLIANCE
+}
+
 enum TextItemKind {
   BENEFIT
   APPLICATION
@@ -180,6 +198,13 @@ model Download {
   mediaAssetId String
   title        String
   gated        Boolean    @default(true)
+  /// Which resources page lists this file — Datasheets, User Manuals or
+  /// Certificates. Explicit rather than read from the free-text `title`, so a
+  /// retitled file never silently moves page. Null = on no resources page.
+  kind         DownloadKind?
+  /// For a CERTIFICATE only: which button it is on the Certificates page. A
+  /// database CHECK enforces "set if and only if kind = CERTIFICATE".
+  certScheme   CertScheme?
   sortOrder    Int        @default(0)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
