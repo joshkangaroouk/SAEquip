@@ -14,7 +14,16 @@ type Db = Prisma.TransactionClient | typeof prisma;
  *
  * Pass `db` to enrol the sync in a surrounding transaction.
  */
-export function syncHubProduct(product: DudaProduct, db: Db = prisma): Promise<HubProduct> {
+export function syncHubProduct(
+  product: DudaProduct,
+  db: Db = prisma,
+  /**
+   * The description AS AUTHORED, when this write changed it. Duda only ever
+   * receives a link-free copy (see `stripAnchors`), so its `description`
+   * cannot be mirrored back here — the caller passes the original.
+   */
+  { descriptionHtml }: { descriptionHtml?: string } = {},
+): Promise<HubProduct> {
   const slug = product.seo?.product_url?.trim() || null;
   // images[0] is Duda's thumbnail (documented: the array is ordered and its
   // first entry is what Duda shows). Mirrored so the compatible-products
@@ -26,6 +35,8 @@ export function syncHubProduct(product: DudaProduct, db: Db = prisma): Promise<H
     name: product.name ?? null,
     slug,
     thumbnailUrl,
+    // Only when this write changed it: an unrelated rename must not touch it.
+    ...(descriptionHtml !== undefined ? { descriptionHtml } : {}),
   };
 
   return db.hubProduct.upsert({

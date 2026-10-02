@@ -7,6 +7,7 @@ import { resolveUrl } from "../services/storage.js";
 import { cartesianSize, updateOptionsPreservingVariations } from "../services/productOptions.js";
 import { prisma } from "../prisma.js";
 import { withAncestors } from "../services/categoryTree.js";
+import { stripAnchors } from "../services/descriptionHtml.js";
 import { shapeHubDownload } from "../services/downloads.js";
 import { toCsv } from "../services/csv.js";
 import { treeFrom } from "./categories.js";
@@ -46,7 +47,17 @@ const updateProductSchema = z
       .object({
         title: z.string().optional(),
         description: z.string().optional(),
-        product_url: z.string().optional(),
+        // ⚠️ The slug IS the live page URL, and the widget's fallback key for
+        // finding a product. Blank or malformed would move or break the page.
+        // Hyphens may repeat: Duda renders "&" as "---", and one live slug
+        // (dust-filter-bundle-…-filters---24-…) is exactly that. All 96 pass.
+        product_url: z
+          .string()
+          .trim()
+          .min(1, "The URL slug cannot be blank.")
+          .max(200, "The URL slug must be 200 characters or fewer.")
+          .regex(/^[a-z0-9-]+$/, "The URL slug may only contain lowercase letters, numbers and hyphens.")
+          .optional(),
       })
       .strict()
       .optional(),
@@ -526,12 +537,15 @@ dudaRouter.post("/products", async (req, res, next) => {
       return;
     }
 
-    const { price, compare_at_price, ...rest } = parsed.data;
+    const { price, compare_at_price, description, ...rest } = parsed.data;
+    // Duda gets the link-free copy and the Hub keeps the original — see the
+    // PATCH route below for why both halves matter.
     const created = await duda.createProduct({
       ...rest,
+      ...(description !== undefined ? { description: stripAnchors(description) } : {}),
       prices: [{ price, compare_at_price: compare_at_price ?? null }],
     });
-    await syncHubProduct(created);
+    await syncHubProduct(created, prisma, { descriptionHtml: description });
     res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -647,11 +661,29 @@ dudaRouter.patch("/products/:id", async (req, res, next) => {
       }
     }
 
-    const updated = await duda.updateProduct(req.params.id, parsed.data as DudaProductUpdate);
+    /*
+     * ⚠️ The description is written TWICE, differently, and both halves matter.
+     *
+     *  - The HUB copy (`HubProduct.descriptionHtml`) is what the live page
+     *    shows: the widget's Overview tab renders it. Nothing used to write it
+     *    after the import, so an edit saved here reached Duda and never the
+     *    page — it would have looked saved and stayed invisible.
+     *  - DUDA gets `stripAnchors()` of it. A WAF in front of api.duda.co
+     *    rejects any body containing `<a href>` with an HTML 403, and the
+     *    editor has a Link button, so saving a linked description would fail
+     *    the whole Details save.
+     */
+    const { description } = parsed.data;
+    const forDuda = (
+      description !== undefined ? { ...parsed.data, description: stripAnchors(description) } : parsed.data
+    ) as DudaProductUpdate;
+    const updated = await duda.updateProduct(req.params.id, forDuda);
     // Keep the hub row's name/sku/slug in step — the public widget serves those
     // from HubProduct, so skipping this leaves the live site stale after a rename.
-    await syncHubProduct(updated);
-    res.json(updated);
+    const hub = await syncHubProduct(updated, prisma, { descriptionHtml: description });
+    // The authored copy, so the editor re-baselines on what it sent rather
+    // than on Duda's link-free one (which would read as an unsaved change).
+    res.json({ ...updated, hubDescriptionHtml: hub.descriptionHtml });
   } catch (err) {
     next(err);
   }
@@ -671,6 +703,10 @@ dudaRouter.put("/products/:id/images", async (req, res, next) => {
 
   try {
     const updated = await duda.updateProductImages(req.params.id, parsed.data.images);
+    // images[0] is mirrored as HubProduct.thumbnailUrl, which the compatible
+    // carousel shows on OTHER products' pages. Without this a new primary
+    // image only reached them the next time this product was opened.
+    await syncHubProduct(updated);
     res.json(updated);
   } catch (err) {
     next(err);
@@ -866,6 +902,9 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       dudaProductId: full.dudaProductId,
       sku: full.sku,
       name: full.name,
+      // What the live Overview tab shows. The editor loads THIS rather than
+      // Duda's copy, which has its links stripped.
+      descriptionHtml: full.descriptionHtml,
       logos: {
         sa: shapedLogos.filter((l) => l.kind === LogoKind.SA_LOGO),
         cert: shapedLogos.filter((l) => l.kind === LogoKind.CERT_LOGO),

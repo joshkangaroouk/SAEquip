@@ -328,7 +328,15 @@ export function validate(
     d.quantity === "" ||
     (/^\d+$/.test(d.quantity) && parseInt(d.quantity, 10) >= 0);
 
+  // Mirrors the PATCH route. The slug is the live page URL; Duda renders "&"
+  // as "---", so repeated hyphens are real and allowed.
+  const slug = d.seo_product_url.trim();
+
   if (!d.name.trim()) errors.details = "Name is required.";
+  else if (!slug) errors.details = "The URL slug cannot be blank — it is the product page's address.";
+  else if (!/^[a-z0-9-]+$/.test(slug))
+    errors.details = "The URL slug may only contain lowercase letters, numbers and hyphens.";
+  else if (slug.length > 200) errors.details = "The URL slug must be 200 characters or fewer.";
   // Pricing/quantity are only validated while visible. A hidden field is never
   // edited, so it never becomes dirty and never gets sent — and blocking Save on
   // a field the user can't see or reach would be an unfixable dead end.
@@ -341,6 +349,8 @@ export function validate(
   if (draft.images.length > 50) errors.images = "Max 50 images.";
   else if (!draft.images.every((i) => /^https?:\/\//i.test(i.url)))
     errors.images = "Every image needs an absolute http(s) URL that Duda can fetch.";
+  else if (draft.images.some((i) => i.alt.length > 300))
+    errors.images = "Alt text must be 300 characters or fewer.";
 
   if (draft.specs.length > 100) errors.specs = "Max 100 rows.";
   else {

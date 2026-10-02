@@ -121,14 +121,17 @@ export function useProductEditor(
       ]);
 
       const snapshot: EditorSnapshot = {
-        details: nativeFromProduct(product),
+        // ⚠️ The description comes from the HUB copy, not Duda's. The Hub's is
+        // what the live page shows, and Duda's has its links stripped (its API
+        // refuses `<a href>`), so editing Duda's would silently drop them.
+        details: { ...nativeFromProduct(product), description: custom.descriptionHtml ?? product.description ?? "" },
         images: imagesFrom(product.images),
         options: optionsFrom(product.options),
         variations: variationsFrom(product.variations),
         specs: specsFrom(custom.specs),
         compatible: compatibleFrom(custom.compatible),
         categoryIds: custom.categoryIds ?? [],
-          benefits: itemsFrom(custom.benefits),
+        benefits: itemsFrom(custom.benefits),
         applications: itemsFrom(custom.applications),
         logos: { SA_LOGO: activeLogoIds(sa), CERT_LOGO: activeLogoIds(cert) },
         model3d: model3dFrom(custom.model3d),
@@ -290,12 +293,19 @@ export function useProductEditor(
         label: "details",
         run: async () => {
           const payload = buildDetailsPayload(draft.details, baseline.details);
-          const updated = await apiJson<ProductDetail>(`/api/products/${productId}`, {
-            method: "PATCH",
-            body: JSON.stringify(payload),
-          });
+          const updated = await apiJson<ProductDetail & { hubDescriptionHtml?: string | null }>(
+            `/api/products/${productId}`,
+            { method: "PATCH", body: JSON.stringify(payload) },
+          );
           setContext((c) => (c ? { ...c, product: updated } : c));
-          return { details: nativeFromProduct(updated) };
+          // Re-baseline the description on the Hub copy the server stored, not
+          // on Duda's link-free one — that would read as an unsaved change.
+          return {
+            details: {
+              ...nativeFromProduct(updated),
+              description: updated.hubDescriptionHtml ?? updated.description ?? "",
+            },
+          };
         },
       });
     }
@@ -368,12 +378,26 @@ export function useProductEditor(
             {
               method: "PUT",
               body: JSON.stringify({
-                variations: draft.variations.map((v) => ({
-                  id: v.id,
-                  sku: v.sku,
-                  price_difference: v.price_difference,
-                  status: v.status === "HIDDEN" ? "HIDDEN" : "ACTIVE",
-                })),
+                // ⚠️ Only the CHANGED rows. The route makes one Duda call per
+                // variation it is sent, and a product can have up to 300, so
+                // sending all of them on every save risked a timeout for an
+                // edit to one SKU. Untouched rows are already what Duda holds.
+                variations: draft.variations
+                  .filter((v) => {
+                    const before = baseline.variations.find((b) => b.id === v.id);
+                    return (
+                      !before ||
+                      before.sku !== v.sku ||
+                      before.price_difference !== v.price_difference ||
+                      before.status !== v.status
+                    );
+                  })
+                  .map((v) => ({
+                    id: v.id,
+                    sku: v.sku,
+                    price_difference: v.price_difference,
+                    status: v.status === "HIDDEN" ? "HIDDEN" : "ACTIVE",
+                  })),
               }),
             },
           );

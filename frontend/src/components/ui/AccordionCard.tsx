@@ -7,10 +7,10 @@ import { AccordionBodyProvider, SectionError } from "./Card";
 /**
  * A Card whose body collapses.
  *
- * ⚠️ Opens itself when the section becomes dirty or reports an error, and will
- * not let you collapse away an error. An editor that can hide an unsaved or
- * failed section is how you lose work: the save bar says something is wrong
- * and the section saying it is folded out of sight.
+ * ⚠️ Opens itself when the section becomes dirty or reports an error. It can
+ * still be collapsed afterwards, so the header carries an Error / Unsaved
+ * badge either way: an editor that can hide an unsaved or failed section with
+ * no trace is how you lose work.
  *
  * The body is UNMOUNTED when closed rather than hidden. These bodies are not
  * cheap — the compatible picker fetches the whole catalogue, the 3D section

@@ -30,7 +30,7 @@ export function Model3DSection({
   }
 
   return (
-    <Card>
+    <Card id="section-model3d">
       <CardHeader
         title="3D Model"
         description="Upload a .glb file to show an interactive 3D viewer on the product page."
