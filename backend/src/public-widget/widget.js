@@ -88,6 +88,16 @@
   // product, so the legacy `data-section="all"` embed must never build it.
   var VALID = { "sa-logos": 1, "cert-logos": 1, "3d-viewer": 1, "tabs": 1, "specs": 1, "benefits": 1, "applications": 1, "downloads": 1, "compatible": 1, "product-list": 1 };
   var MODEL_VIEWER_SRC = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js";
+  /*
+   * ⚠️ Subresource integrity for the one third-party script this widget puts
+   * on the live site. The version pin stops an UPGRADE reaching visitors; this
+   * stops a compromised CDN serving different bytes under the same URL. If the
+   * hash does not match, the browser refuses the script, onerror fires and the
+   * viewer simply does not appear — the same silent failure as a network error.
+   * ⚠️ Change the version and this hash TOGETHER:
+   *   curl -s <url> | openssl dgst -sha384 -binary | openssl base64 -A
+   */
+  var MODEL_VIEWER_SRI = "sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW";
 
   /**
    * Chevron on the 3D button, hosted in Duda's own media library.
@@ -1378,6 +1388,8 @@
       hub.mvPromise = new Promise(function (resolve) {
         var s = document.createElement("script");
         s.type = "module";
+        s.integrity = MODEL_VIEWER_SRI;
+        s.crossOrigin = "anonymous";
         s.src = MODEL_VIEWER_SRC;
         s.onload = function () {
           resolve();
@@ -2814,7 +2826,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-10-02-safe-prose+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-10-02-sri+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

@@ -1320,6 +1320,15 @@ async function main() {
     check(typeof w.SAEquipHubWidget.version === "string", "exposes a version marker", w.SAEquipHubWidget.version);
   }
 
+  console.log("\n=== The 3D viewer's third-party script is pinned and integrity-checked ===");
+  {
+    const ver = SRC.match(/model-viewer@([\d.]+)\//);
+    check(!!ver, "model-viewer is pinned to an exact version", ver && ver[1]);
+    check(/MODEL_VIEWER_SRI = "sha384-[A-Za-z0-9+/=]{64}"/.test(SRC), "an sha384 integrity hash is declared");
+    check(/s\.integrity = MODEL_VIEWER_SRI;/.test(SRC) && /s\.crossOrigin = "anonymous";/.test(SRC),
+      "the loader sets integrity + crossorigin on the script tag");
+  }
+
   console.log("\n=== Overview HTML is rebuilt from an allowlist (XSS) ===");
   {
     // The description is staff-authored and stored as written, and the public
