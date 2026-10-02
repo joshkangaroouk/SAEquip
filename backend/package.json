@@ -34,7 +34,8 @@
     "wp:scrape-downloads": "tsx src/scripts/wpScrapeDownloads.ts",
     "downloads:import": "tsx src/scripts/importDownloads.ts",
     "media:pdf-thumbnails": "tsx src/scripts/pdfThumbnails.ts",
-    "hub:sync-mirror": "tsx src/scripts/hubSyncMirror.ts"
+    "hub:sync-mirror": "tsx src/scripts/hubSyncMirror.ts",
+    "redirects:build": "tsx src/scripts/buildRedirects.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
