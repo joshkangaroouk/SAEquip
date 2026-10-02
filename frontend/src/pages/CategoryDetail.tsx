@@ -16,6 +16,8 @@ import {
   type DragHandleProps,
 } from "../components/ui";
 import { MediaPicker } from "../components/MediaPicker";
+import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
+import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 import { AssignPickList } from "../components/product/AssignPickList";
 import { apiJson } from "../lib/api";
 import type { ProductSummary } from "../lib/types";
@@ -123,6 +125,20 @@ export default function CategoryDetail() {
   const children = useMemo(() => cats.filter((c) => c.parent_id === id), [cats, id]);
   const dirty = !!draft && !!baseline && project(draft) !== project(baseline);
 
+  // ⚠️ Mirrors the server rule. The slug is the page URL AND how the public
+  // listing finds this category, so an uppercase or spaced one would break
+  // that page's product grid without any error.
+  const slug = draft?.seo_url.trim() ?? "";
+  const slugError =
+    slug && !/^[a-z0-9-]+$/.test(slug) ? "Lowercase letters, numbers and hyphens only." : undefined;
+
+  /*
+   * ⚠️ This page had no guard: tick twenty products, click a sidebar link, and
+   * the edits were gone without a word. Same guard as the product editor —
+   * in-app navigation gets the three-way modal, a tab close the browser's own.
+   */
+  const blocker = useUnsavedChangesWarning({ when: dirty && !saving });
+
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) =>
     setDraft((d) => (d ? { ...d, [k]: v } : d));
 
@@ -134,8 +150,9 @@ export default function CategoryDetail() {
    */
   const parentOptions = cats.filter((c) => c.id !== id && !isDescendant(cats, c.id, id));
 
-  async function save() {
-    if (!draft || !baseline || saving) return;
+  /** True only when everything committed — the unsaved-changes modal relies on it. */
+  async function save(): Promise<boolean> {
+    if (!draft || !baseline || saving || slugError) return false;
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
@@ -167,8 +184,10 @@ export default function CategoryDetail() {
       }
       toast.success("Category saved");
       await load();
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save the category");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -200,6 +219,7 @@ export default function CategoryDetail() {
 
   return (
     <>
+      <UnsavedChangesModal blocker={blocker} onSave={save} />
       <nav className="flex items-center gap-1.5 text-small text-muted">
         <Link to="/categories" className="hover:text-text">
           Categories
@@ -215,7 +235,7 @@ export default function CategoryDetail() {
           <Button variant="secondary" size="sm" onClick={() => navigate("/categories")} disabled={saving}>
             Cancel
           </Button>
-          <Button variant="primary" size="sm" onClick={() => void save()} disabled={!dirty || saving || !draft.title.trim()}>
+          <Button variant="primary" size="sm" onClick={() => void save()} disabled={!dirty || saving || !draft.title.trim() || !!slugError}>
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -354,6 +374,7 @@ export default function CategoryDetail() {
                 label="Page URL"
                 htmlFor="cat-seo-url"
                 hint="The live category page address. Changing it breaks existing links."
+                error={slugError}
               >
                 <Input
                   id="cat-seo-url"

@@ -2,13 +2,23 @@ import { Router } from "express";
 import { z } from "zod";
 import { CATEGORY_ROOT, duda, type DudaCategorySummary } from "../services/duda.js";
 import { prisma } from "../prisma.js";
-import { withAncestors } from "../services/categoryTree.js";
+import { categorySortKey, compareKeys, withAncestors } from "../services/categoryTree.js";
 
 export const categoriesRouter = Router();
 
 const seoSchema = z
   .object({
-    url: z.string().trim().max(200).optional(),
+    // ⚠️ The slug is the category page's URL AND how the public listing finds
+    // the category (matched lower-cased against the mirror), so an uppercase
+    // or spaced slug would silently break that page's grid. Repeated hyphens
+    // are real: Duda renders "&" as "---". All 23 current slugs pass.
+    url: z
+      .string()
+      .trim()
+      .min(1, "The URL slug cannot be blank.")
+      .max(200)
+      .regex(/^[a-z0-9-]+$/, "The URL slug may only contain lowercase letters, numbers and hyphens.")
+      .optional(),
     title: z.string().max(200).optional(),
     description: z.string().max(500).optional(),
   })
@@ -63,20 +73,6 @@ export interface CategoryNode extends DudaCategorySummary {
  * instead of being silently dropped.
  */
 /**
- * Top-level order for the DASHBOARD's tree.
- *
- * ⚠️ Duda has no `sortOrder` on a category and its own list order is creation
- * order — newest first — which puts Products, the branch people assign from
- * most, at the bottom. Listed titles come first in this order; anything
- * unlisted keeps Duda's order after them, so renaming a parent demotes it
- * rather than breaking the list.
- *
- * This is display order only. It does not touch Duda, and the megamenu's
- * column order is still arranged in Duda's own menu editor.
- */
-const TOP_LEVEL_ORDER = ["products", "site challenges", "industries"];
-
-/**
  * @param order Hub-owned position per category id. Sparse: a category nobody
  *   has dragged has no row, and keeps its fallback place.
  */
@@ -110,35 +106,14 @@ function buildTree(
     }
   };
 
-  /*
-   * Order within a parent, most specific first:
-   *   1. a Hub position someone set by dragging,
-   *   2. TOP_LEVEL_ORDER, for the three roots nobody has dragged yet,
-   *   3. Duda's own list order, which is creation order, newest first.
-   *
-   * ⚠️ Every sort is STABLE, so anything with no rule at all keeps Duda's
-   * relative order rather than being shuffled. A dragged category sorts ahead
-   * of an undragged one — there is no meaningful way to interleave the two,
-   * and the alternative is a new category silently landing mid-list.
-   */
-  const rank = (c: DudaCategorySummary) => {
-    const i = TOP_LEVEL_ORDER.indexOf(c.title.trim().toLowerCase());
-    return i === -1 ? TOP_LEVEL_ORDER.length : i;
-  };
+  // Order within each parent comes from the ONE shared rule (dragged
+  // position → TOP_LEVEL_ORDER → Duda's list order), so this tree and the
+  // public listings cannot disagree. See categorySortKey.
+  const fallback = new Map(flat.map((c, i) => [c.id, i]));
+  const key = (c: DudaCategorySummary) =>
+    categorySortKey({ id: c.id, title: c.title, parentId: c.parent_id || CATEGORY_ROOT }, order, fallback);
   for (const [parentId, bucket] of byParent) {
-    const fallback = (c: DudaCategorySummary) =>
-      parentId === CATEGORY_ROOT ? rank(c) : Number.MAX_SAFE_INTEGER;
-    byParent.set(
-      parentId,
-      [...bucket].sort((a, b) => {
-        const oa = order.get(a.id);
-        const ob = order.get(b.id);
-        if (oa != null && ob != null) return oa - ob;
-        if (oa != null) return -1;
-        if (ob != null) return 1;
-        return fallback(a) - fallback(b);
-      }),
-    );
+    byParent.set(parentId, [...bucket].sort((a, b) => compareKeys(key(a), key(b))));
   }
 
   walk(CATEGORY_ROOT, 0);
@@ -505,6 +480,13 @@ categoriesRouter.patch("/categories/:id", async (req, res, next) => {
     // PATCHing it without `url` blanks the page URL and Duda rejects with
     // "Category page url cannot be blank". Merge over the current value so a
     // caller can change just the title or description.
+    // The parent BEFORE this write. The edit page sends `parent_id` on every
+    // save, so "a move happened" must be a comparison, not its presence.
+    const previousParent =
+      nextParent !== undefined
+        ? ((await duda.listAllCategories()).find((c) => c.id === req.params.id)?.parent_id || CATEGORY_ROOT)
+        : undefined;
+
     const payload = { ...parsed.data };
     if (payload.seo) {
       const current = await duda.getCategory(req.params.id);
@@ -513,6 +495,45 @@ categoriesRouter.patch("/categories/:id", async (req, res, next) => {
 
     const updated = await duda.updateCategory(req.params.id, payload);
     await mirrorImage(req.params.id);
+
+    /*
+     * ⚠️ A MOVE breaks "never in a child without its parent" for every product
+     * in the moved subtree: they sit in the old ancestors, not the new ones.
+     * Add the new ancestors. The old ones are deliberately LEFT — a product may
+     * be in the old parent for its own reasons, and there is no telling which.
+     * Its dragged position belonged to its OLD siblings, so it is cleared and
+     * the category takes its fallback place among the new ones.
+     */
+    if (nextParent !== undefined && previousParent !== undefined && nextParent !== previousParent) {
+      const flat = await duda.listAllCategories();
+      const moved = flat.find((c) => c.id === req.params.id);
+      if (moved) {
+        const subtree = new Set<string>([req.params.id]);
+        for (let grew = true; grew; ) {
+          grew = false;
+          for (const c of flat) {
+            if (subtree.has(c.parent_id) && !subtree.has(c.id)) {
+              subtree.add(c.id);
+              grew = true;
+            }
+          }
+        }
+        const newAncestors = withAncestors([req.params.id], flat).filter((id) => id !== req.params.id);
+        const inSubtree = await prisma.productCategory.findMany({
+          where: { dudaCategoryId: { in: [...subtree] } },
+          select: { hubProductId: true },
+          distinct: ["hubProductId"],
+        });
+        if (newAncestors.length && inSubtree.length) {
+          await prisma.productCategory.createMany({
+            data: inSubtree.flatMap((p) => newAncestors.map((dudaCategoryId) => ({ hubProductId: p.hubProductId, dudaCategoryId }))),
+            skipDuplicates: true,
+          });
+        }
+      }
+      await prisma.categoryOrder.deleteMany({ where: { dudaCategoryId: req.params.id } });
+    }
+
     res.json(updated);
   } catch (err) {
     next(err);
@@ -521,7 +542,8 @@ categoriesRouter.patch("/categories/:id", async (req, res, next) => {
 
 /**
  * DELETE /api/categories/:id?confirm=true
- * Reports what else goes with it — Duda gives no warning about subcategories.
+ * 409s without `confirm` when the category has subcategories, because they do
+ * not go with it — Duda moves them to the top level (see below).
  */
 categoriesRouter.delete("/categories/:id", async (req, res, next) => {
   try {
@@ -531,7 +553,7 @@ categoriesRouter.delete("/categories/:id", async (req, res, next) => {
     if (children.length > 0 && req.query.confirm !== "true") {
       res.status(409).json({
         error: "has_subcategories",
-        detail: `This category has ${children.length} subcategor${children.length === 1 ? "y" : "ies"}.`,
+        detail: `This category has ${children.length} subcategor${children.length === 1 ? "y" : "ies"}, which Duda would move to the top level.`,
         subcategories: children.map((c) => ({ id: c.id, title: c.title })),
       });
       return;
@@ -539,17 +561,30 @@ categoriesRouter.delete("/categories/:id", async (req, res, next) => {
 
     await duda.deleteCategory(req.params.id);
     /*
-     * Both Hub-side tables are keyed on the Duda id with no foreign key —
-     * categories live in Duda — so nothing cascades. A left-behind
-     * CategoryOrder row would silently reposition whichever category Duda
-     * later hands that id to, and a stale mirror row would show a thumbnail
-     * for a category that no longer exists.
+     * Every Hub-side table is keyed on the Duda id with no foreign key —
+     * categories live in Duda — so nothing cascades, and each is cleaned here.
+     *
+     * ⚠️ Duda does NOT delete the subcategories. Measured on throwaways
+     * (2026-10-02): the direct children are PROMOTED to the top level
+     * (parent_id → ROOT) and grandchildren stay under them. So the mirror is
+     * made to say the same, or the public tree keeps them under a parent that
+     * no longer exists; and their dragged positions, which ranked them among
+     * their old siblings, are cleared so they take a fallback place at the top.
+     *
+     * The deleted category's own product links go too — they pointed at
+     * nothing, and showed in the products list as "no longer in Duda".
      */
-    await Promise.all([
-      prisma.categoryOrder.deleteMany({ where: { dudaCategoryId: req.params.id } }),
+    const childIds = children.map((c) => c.id);
+    await prisma.$transaction([
+      prisma.productCategory.deleteMany({ where: { dudaCategoryId: req.params.id } }),
+      prisma.categoryOrder.deleteMany({ where: { dudaCategoryId: { in: [req.params.id, ...childIds] } } }),
       prisma.categoryMirror.deleteMany({ where: { dudaCategoryId: req.params.id } }),
+      prisma.categoryMirror.updateMany({
+        where: { dudaCategoryId: { in: childIds } },
+        data: { parentId: CATEGORY_ROOT },
+      }),
     ]);
-    res.json({ deleted: true, subcategoriesAffected: children.length });
+    res.json({ deleted: true, subcategoriesPromoted: children.length });
   } catch (err) {
     next(err);
   }

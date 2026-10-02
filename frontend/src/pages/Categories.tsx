@@ -161,13 +161,17 @@ export default function Categories() {
     const ok = await confirm({
       title: `Delete “${node.title}”?`,
       description:
+        // ⚠️ Duda does NOT delete subcategories with their parent — measured:
+        // the direct children move to the TOP LEVEL. This used to say they
+        // were deleted, which is the opposite of what happens to the tree.
         node.subcategoryCount > 0 ? (
           <>
-            This also deletes its{" "}
+            Its{" "}
             <span className="font-semibold">
-              {node.subcategoryCount} subcategor{node.subcategoryCount === 1 ? "y" : "ies"}
-            </span>
-            . Products aren't deleted — they just stop being categorised.
+              {node.subcategoryCount} subcategor{node.subcategoryCount === 1 ? "y is" : "ies are"} not deleted
+            </span>{" "}
+            — Duda moves {node.subcategoryCount === 1 ? "it" : "them"} to the top level. Products aren't deleted
+            either; they just stop being in “{node.title}”.
           </>
         ) : (
           "Products aren't deleted — they just stop being categorised."
