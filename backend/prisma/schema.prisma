@@ -338,6 +338,12 @@ model QuoteRequestItem {
   options        Json?
   price          String?
   quantity       Int          @default(1)
+  /// The catalogue product this line was matched to when it arrived, and its
+  /// thumbnail then. A SNAPSHOT, deliberately — no foreign key — so a quote
+  /// keeps its picture and link even if the product is later renamed or
+  /// deleted. Null when no product matched (see services/quoteProducts.ts).
+  dudaProductId  String?
+  imageUrl       String?
   quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
 }
 

@@ -256,6 +256,9 @@ export interface QuoteRequestItem {
   options: Record<string, unknown> | null;
   price: string | null;
   quantity: number;
+  /** The catalogue product the line matched, and its picture — null when none did. */
+  dudaProductId: string | null;
+  imageUrl: string | null;
 }
 
 export interface QuoteRequest {

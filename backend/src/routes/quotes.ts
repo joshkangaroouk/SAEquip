@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { isEmailConfigured } from "../services/email.js";
+import { quoteProductMatcher, type MatchedProduct } from "../services/quoteProducts.js";
 
 export const quotesRouter = Router();
 
@@ -9,7 +10,19 @@ const quoteInclude = { items: true } as const;
 
 type QuoteWithItems = Prisma.QuoteRequestGetPayload<{ include: typeof quoteInclude }>;
 
-function shapeQuote(q: QuoteWithItems) {
+type Matcher = (name: string, sku: string | null) => MatchedProduct | null;
+
+/**
+ * A line's product and picture: the snapshot taken when the quote arrived, or —
+ * for quotes from before snapshots existed — a match made now.
+ */
+function lineProduct(item: QuoteWithItems["items"][number], match: Matcher) {
+  if (item.dudaProductId) return { dudaProductId: item.dudaProductId, imageUrl: item.imageUrl };
+  const m = match(item.name, item.sku);
+  return { dudaProductId: m?.dudaProductId ?? null, imageUrl: m?.imageUrl ?? null };
+}
+
+function shapeQuote(q: QuoteWithItems, match: Matcher) {
   return {
     id: q.id,
     name: q.name,
@@ -32,6 +45,7 @@ function shapeQuote(q: QuoteWithItems) {
       options: item.options,
       price: item.price,
       quantity: item.quantity,
+      ...lineProduct(item, match),
     })),
   };
 }
@@ -43,7 +57,8 @@ quotesRouter.get("/quotes", async (_req, res, next) => {
       orderBy: { createdAt: "desc" },
       include: quoteInclude,
     });
-    res.json({ emailEnabled: isEmailConfigured(), requests: requests.map(shapeQuote) });
+    const match = await quoteProductMatcher();
+    res.json({ emailEnabled: isEmailConfigured(), requests: requests.map((r) => shapeQuote(r, match)) });
   } catch (err) {
     next(err);
   }
@@ -60,7 +75,7 @@ quotesRouter.get("/quotes/:id", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    res.json(shapeQuote(quote));
+    res.json(shapeQuote(quote, await quoteProductMatcher()));
   } catch (err) {
     next(err);
   }

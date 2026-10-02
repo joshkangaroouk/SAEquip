@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { ImageOff } from "lucide-react";
 import { apiFetch } from "../lib/api";
 import { Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
@@ -74,59 +76,61 @@ function formatOptions(options: Record<string, unknown> | null): string | null {
   return entries.map(([k, v]) => `${k}: ${v}`).join(", ");
 }
 
+/** One labelled value in the detail grid. "—" when empty, so a field is never silently missing. */
+function Detail({ label, children, wide = false }: { label: string; children?: React.ReactNode; wide?: boolean }) {
+  const empty = children == null || children === "";
+  return (
+    <div className={wide ? "sm:col-span-2" : undefined}>
+      <div className="text-xs font-semibold uppercase tracking-wide text-subtle">{label}</div>
+      <div className="whitespace-pre-line text-sm font-medium text-text">{empty ? "—" : children}</div>
+    </div>
+  );
+}
+
+/** A basket line's product picture, or a neutral placeholder of the same size. */
+function ItemThumb({ url }: { url: string | null }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-white">
+      {url && !broken ? (
+        <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full object-contain" />
+      ) : (
+        <ImageOff className="h-4 w-4 text-subtle" aria-hidden="true" />
+      )}
+    </span>
+  );
+}
+
 function QuoteDetail({ quote }: { quote: QuoteRequest }) {
+  /*
+   * Every field is shown, with "—" when it was not given. They used to appear
+   * only when filled in, which made a field the form never asked for (older
+   * quotes) indistinguishable from one the page was failing to show.
+   */
+  const address = [quote.address, quote.postcode, quote.country].filter(Boolean).join("\n");
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-text">{quote.name}</h3>
-      </div>
+      <h3 className="text-sm font-semibold text-text">{quote.name}</h3>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Email</div>
-          <div className="text-sm font-medium text-text">{quote.email}</div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Company</div>
-          <div className="text-sm font-medium text-text">{quote.company || "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Phone</div>
-          <div className="text-sm font-medium text-text">{quote.phone || "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Submitted</div>
-          <div className="text-sm font-medium text-text">{formatDate(quote.createdAt)}</div>
-        </div>
-        {/* The basket form's newer fields. Quotes from before 2026-10-02 have
-            none, so each appears only when it was given. */}
-        {quote.requiredBy && (
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-subtle">When needed</div>
-            <div className="text-sm font-medium text-text">{quote.requiredBy}</div>
-          </div>
-        )}
-        {(quote.address || quote.postcode || quote.country) && (
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Address</div>
-            <div className="whitespace-pre-line text-sm font-medium text-text">
-              {[quote.address, quote.postcode, quote.country].filter(Boolean).join("\n")}
-            </div>
-          </div>
-        )}
+        <Detail label="First name">{quote.firstName}</Detail>
+        <Detail label="Last name">{quote.lastName}</Detail>
+        <Detail label="Company">{quote.company}</Detail>
+        <Detail label="Email">{quote.email}</Detail>
+        <Detail label="Telephone">{quote.phone}</Detail>
+        <Detail label="When needed">{quote.requiredBy}</Detail>
+        <Detail label="Address">{address}</Detail>
+        <Detail label="Submitted">{formatDate(quote.createdAt)}</Detail>
+        <Detail label="Message" wide>
+          {quote.message}
+        </Detail>
       </div>
-
-      {quote.message && (
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Message</div>
-          <p className="mt-1 whitespace-pre-wrap text-sm font-medium text-text">{quote.message}</p>
-        </div>
-      )}
 
       <div>
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
           Items ({quote.items.length})
         </div>
+        {/* No price column: SAEquip quotes prices, so the basket never carries one. */}
         <Table>
           <THead>
             <TR>
@@ -134,17 +138,30 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
               <TH>SKU</TH>
               <TH>Options</TH>
               <TH>Qty</TH>
-              <TH>Price</TH>
             </TR>
           </THead>
           <TBody>
             {quote.items.map((item) => (
               <TR key={item.id}>
-                <TD>{item.name}</TD>
+                <TD>
+                  <div className="flex items-center gap-3">
+                    <ItemThumb url={item.imageUrl} />
+                    {item.dudaProductId ? (
+                      <Link
+                        to={`/products/${item.dudaProductId}`}
+                        className="font-medium text-text underline-offset-2 hover:underline"
+                        title="Open this product in the editor"
+                      >
+                        {item.name}
+                      </Link>
+                    ) : (
+                      <span>{item.name}</span>
+                    )}
+                  </div>
+                </TD>
                 <TD>{item.sku || "—"}</TD>
                 <TD className="text-subtle">{formatOptions(item.options) ?? "—"}</TD>
                 <TD>{item.quantity}</TD>
-                <TD>{item.price || "—"}</TD>
               </TR>
             ))}
           </TBody>

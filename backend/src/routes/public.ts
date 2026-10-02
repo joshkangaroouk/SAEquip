@@ -12,6 +12,7 @@ import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/stora
 import { sendQuoteNotification } from "../services/email.js";
 import { LISTABLE } from "../services/hubProduct.js";
 import { categorySortKey, compareKeys } from "../services/categoryTree.js";
+import { quoteProductMatcher } from "../services/quoteProducts.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -765,6 +766,10 @@ publicRouter.post("/quotes", quoteLimiter, quoteHourlyLimiter, async (req, res) 
     // current form — so older readers of the column keep working.
     const fullName = firstName || lastName ? `${firstName ?? ""} ${lastName ?? ""}`.trim() : (name ?? "");
 
+    // Each line's product and picture, snapshotted now — see services/quoteProducts.ts.
+    // Best effort: a lookup failure must never cost the customer their quote.
+    const match = await quoteProductMatcher().catch(() => () => null);
+
     const created = await prisma.quoteRequest.create({
       data: {
         name: fullName,
@@ -779,13 +784,18 @@ publicRouter.post("/quotes", quoteLimiter, quoteHourlyLimiter, async (req, res) 
         postcode: postcode || null,
         message: message || null,
         items: {
-          create: items.map((item) => ({
-            name: item.name,
-            sku: item.sku || null,
-            options: item.options ?? undefined,
-            price: item.price || null,
-            quantity: item.quantity ?? 1,
-          })),
+          create: items.map((item) => {
+            const product = match(item.name, item.sku || null);
+            return {
+              name: item.name,
+              sku: item.sku || null,
+              options: item.options ?? undefined,
+              price: item.price || null,
+              quantity: item.quantity ?? 1,
+              dudaProductId: product?.dudaProductId ?? null,
+              imageUrl: product?.imageUrl ?? null,
+            };
+          }),
         },
       },
       include: { items: true },
