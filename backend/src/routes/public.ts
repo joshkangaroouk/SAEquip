@@ -495,25 +495,21 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       // endpoint is a pure Supabase read by design and must never call Duda,
       // so a widget-rendered "Overview" needs the Hub's own copy.
       //
-      // ⚠️ Sanitised on the way OUT, not trusted from the database. This is the
-      // only field the widget injects as HTML rather than as textContent, and
-      // the dashboard's description editor is a raw-HTML textarea whose save
-      // schema is a bare `z.string()` — so a `<script>` typed there reaches
-      // this row intact. Sanitising at the public boundary means the stored
-      // value cannot become an XSS on the live product page regardless of how
-      // it got there. `stripCruft` allows only the tag set the widget renders
-      // (p/strong/em/h4-h6/ul/ol/li/a/hr/sup/sub) and no attributes beyond
-      // href/target/rel.
-      // ⚠️ TEMPORARILY UNSANITISED — see the note above. Sanitising here pulled
-      // sanitize-html into the serverless function's import graph for the
-      // first time and the whole function began failing at module load
-      // (FUNCTION_INVOCATION_FAILED on every route, including /api/health).
-      // Reverted to restore the API; the protection is re-added by escaping in
-      // the widget until the cause is identified.
+      // ⚠️ NOT sanitised here, and that is deliberate — the widget is the
+      // boundary. This is the only field the widget renders as HTML, and it
+      // is staff-authored and stored as written (the dashboard has a raw-HTML
+      // tab), so a `<script>` typed there reaches this row intact.
       //
-      // SAFE ONLY BECAUSE the widget currently escapes this field rather than
-      // injecting it. Do NOT render this with innerHTML until sanitisation is
-      // restored here.
+      // Sanitising here was tried and is not possible as things stand:
+      // importing sanitize-html into the serverless function makes the WHOLE
+      // function fail at module load on Vercel (FUNCTION_INVOCATION_FAILED on
+      // every route, /api/health included), while running fine under tsx.
+      //
+      // So the widget's `safeProse()` rebuilds the HTML from an allowlist in an
+      // inert <template> before it touches the page — covered by widget:test's
+      // XSS block. ⚠️ ANY OTHER CONSUMER of this field must sanitise it too.
+      // (For a while each side's comment said the other was protecting it, and
+      // neither was.)
       descriptionHtml: full.descriptionHtml ?? null,
       logos: { sa, cert },
       specs: full.specRows.map((s) => ({ label: s.label, value: s.value })),

@@ -1320,6 +1320,44 @@ async function main() {
     check(typeof w.SAEquipHubWidget.version === "string", "exposes a version marker", w.SAEquipHubWidget.version);
   }
 
+  console.log("\n=== Overview HTML is rebuilt from an allowlist (XSS) ===");
+  {
+    // The description is staff-authored and stored as written, and the public
+    // endpoint cannot sanitise it (sanitize-html crashes the function on
+    // Vercel) — so the widget is the boundary. Each vector must arrive inert.
+    const EVIL =
+      '<p>Safe <strong>bold</strong> and <a href="/product/ex-heater">a link</a>.</p>' +
+      '<script>window.__pwned = "script"</script>' +
+      '<img src="x" onerror="window.__pwned = \'img\'">' +
+      '<p onclick="window.__pwned = \'click\'" style="color:red" class="x">Handler para</p>' +
+      '<a href="javascript:window.__pwned=\'js\'">js link</a>' +
+      '<a href="JaVa\tScRiPt:window.__pwned=\'tab\'">tab link</a>' +
+      '<a href="data:text/html,<script>alert(1)</script>">data link</a>' +
+      '<a href="https://example.com/x" target="_blank">external</a>' +
+      '<iframe src="https://evil.example"></iframe>' +
+      '<svg><script>window.__pwned = "svg"</script></svg>' +
+      '<div><span>Wrapped text survives</span></div>' +
+      '<style>body{display:none}</style>' +
+      '<ul><li>Item</li></ul><h3>Heading</h3><hr>';
+    const { w, d } = await boot({ payload: { ...FULL, descriptionHtml: EVIL }, props: { section: "tabs" } });
+    await new Promise((r) => setTimeout(r, 60));
+    const prose = d.querySelector(".saeh-prose");
+    check(!!prose, "Overview still renders");
+    check(w.__pwned === undefined, "no vector executed", String(w.__pwned));
+    check(!prose.querySelector("script,img,iframe,svg,style"), "script/img/iframe/svg/style are gone");
+    check(![...prose.querySelectorAll("*")].some((e) => [...e.attributes].some((a) => /^on|^style$|^class$/i.test(a.name))),
+      "no event-handler, style or class attributes survive");
+    const hrefs = [...prose.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    check(hrefs.every((h) => h === null || /^(\/|https:)/.test(h)), "only relative and https hrefs survive", JSON.stringify(hrefs));
+    check(hrefs.includes("/product/ex-heater") && hrefs.includes("https://example.com/x"), "real links are kept", JSON.stringify(hrefs));
+    const ext = [...prose.querySelectorAll("a")].find((a) => a.getAttribute("href") === "https://example.com/x");
+    check(ext && ext.getAttribute("rel") === "noopener noreferrer", "target=_blank gets rel=noopener", ext && ext.getAttribute("rel"));
+    check(!!prose.querySelector("p strong") && !!prose.querySelector("ul li") && !!prose.querySelector("h3") && !!prose.querySelector("hr"),
+      "allowed formatting is kept");
+    check(/Wrapped text survives/.test(prose.textContent) && !prose.querySelector("div,span"), "unknown wrappers are unwrapped, text kept");
+    check(/js link/.test(prose.textContent) && /Handler para/.test(prose.textContent), "text of refused links/handlers is kept");
+  }
+
   console.log(`\n${fail === 0 ? "✓" : "✗"} ${pass} passed, ${fail} failed\n`);
   if (fail) process.exit(1);
 }

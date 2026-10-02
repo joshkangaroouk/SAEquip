@@ -904,18 +904,95 @@
    * empty tab is impossible rather than merely hidden. If every panel is empty
    * this returns null and the caller collapses the mount entirely.
    */
+  /*
+   * The description's HTML, rebuilt from an allowlist — the ONLY markup this
+   * widget injects (see tabsSection).
+   *
+   * ⚠️ THIS is the security boundary, and it runs in the visitor's browser on
+   * purpose. The description is staff-authored (the dashboard has a raw-HTML
+   * tab) and stored as written, and the public endpoint cannot sanitise it:
+   * `sanitize-html` crashes the whole serverless function at load on Vercel.
+   * Each side's comment used to say the OTHER side was protecting it, so for a
+   * while nothing was. Whatever reaches this function, only the tags below
+   * survive, with no attributes except a link's href.
+   *
+   * Parsed into an inert <template>: its contents belong to a document that
+   * never renders, so `<img onerror>` does not fire and scripts do not run
+   * while we read it. Nothing from it is ever adopted directly — every
+   * surviving element is a fresh createElement, so no attribute can ride along.
+   */
+  var PROSE_TAGS = {
+    P: 1, BR: 1, STRONG: 1, B: 1, EM: 1, I: 1, U: 1, S: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1,
+    UL: 1, OL: 1, LI: 1, A: 1, HR: 1, SUP: 1, SUB: 1, BLOCKQUOTE: 1, CODE: 1, PRE: 1
+  };
+  // Dropped WITH their content: their text is code or controls, not prose.
+  var PROSE_DROP = {
+    SCRIPT: 1, STYLE: 1, IFRAME: 1, FRAME: 1, OBJECT: 1, EMBED: 1, TEMPLATE: 1, NOSCRIPT: 1,
+    SVG: 1, MATH: 1, FORM: 1, INPUT: 1, BUTTON: 1, SELECT: 1, TEXTAREA: 1, LINK: 1, META: 1,
+    BASE: 1, TITLE: 1, VIDEO: 1, AUDIO: 1, CANVAS: 1
+  };
+
+  function safeHref(href) {
+    // Browsers ignore whitespace and control characters inside a scheme, so
+    // "java\tscript:" is javascript: — strip them before deciding.
+    var h = String(href).replace(/[\u0000-\u0020\u007f-\u009f]/g, "");
+    if (/^(https?:|mailto:|tel:)/i.test(h)) return true;
+    // Any other scheme (javascript:, data:, vbscript:…) is refused.
+    if (/^[a-z][a-z0-9+.\-]*:/i.test(h)) return false;
+    return true; // relative: /product/x, #section, ?q=
+  }
+
+  function copyProse(src, dst) {
+    for (var n = src.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 3) {
+        dst.appendChild(document.createTextNode(n.nodeValue));
+        continue;
+      }
+      if (n.nodeType !== 1) continue; // comments, processing instructions
+      var tag = String(n.nodeName).toUpperCase();
+      if (PROSE_DROP[tag]) continue;
+      if (!PROSE_TAGS[tag]) {
+        copyProse(n, dst); // unknown wrapper (div, span…): keep its text
+        continue;
+      }
+      var clean = document.createElement(tag.toLowerCase());
+      if (tag === "A") {
+        var href = n.getAttribute("href");
+        if (href && safeHref(href)) clean.setAttribute("href", href);
+        if (n.getAttribute("target") === "_blank") {
+          clean.setAttribute("target", "_blank");
+          clean.setAttribute("rel", "noopener noreferrer");
+        }
+      }
+      copyProse(n, clean);
+      dst.appendChild(clean);
+    }
+  }
+
+  function safeProse(html) {
+    var out = document.createDocumentFragment();
+    var tpl = document.createElement("template");
+    if (!("content" in tpl)) {
+      // No inert parser: fall back to text. Never innerHTML a live element —
+      // even detached, an <img> there loads and fires its handlers.
+      out.appendChild(document.createTextNode(String(html).replace(/<[^>]*>/g, " ")));
+      return out;
+    }
+    tpl.innerHTML = String(html);
+    copyProse(tpl.content, out);
+    return out;
+  }
+
   function tabsSection(data) {
     var panels = [];
 
     if (data.descriptionHtml && String(data.descriptionHtml).trim()) {
       panels.push({ id: "overview", label: "Overview", build: function () {
         var body = el("div", "saeh-prose");
-        // The ONLY place this widget injects HTML rather than textContent.
-        // Safe because /public/products/content sanitises descriptionHtml on
-        // the way out through the same allowlist the widget renders, so a
-        // <script> typed into the dashboard's raw-HTML description editor
-        // cannot arrive here. Do not point this at any other field.
-        body.innerHTML = data.descriptionHtml;
+        // The ONLY place this widget renders HTML rather than textContent, and
+        // it goes through safeProse()'s allowlist — never innerHTML. Do not
+        // point this at any other field.
+        body.appendChild(safeProse(data.descriptionHtml));
         return body;
       } });
     }
@@ -2737,7 +2814,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-09-30-sidebar-1+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-10-02-safe-prose+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**
