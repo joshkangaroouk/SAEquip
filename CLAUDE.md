@@ -652,6 +652,30 @@ Four parts, and the last is the one that makes it real:
 
 **Dashboard prerequisite**: MFA/TOTP must be enabled under Authentication → Multi-Factor, or `mfa.enroll()` fails.
 
+### Verified live (2026-10-02, throwaway accounts, all deleted)
+
+- **Public signup is OFF**: `signUp` with the anon key for an allowed-domain address →
+  "Signups not allowed for this instance". If this ever changes, any outsider could
+  register `anything@saequip.com` and get full access — there is no role model behind it.
+- **2FA is enforced server-side, end to end**: an account with a verified TOTP factor gets
+  `403 mfa_required` for a fresh password-only (`aal1`) session and `200` for `aal2`, and
+  `auth.getUser(token)` — what `requireAuth` reads — DOES carry `factors` (unlike
+  `admin.listUsers()`). The test computes real TOTP codes, so re-running it is cheap.
+- **Revocation is immediate**: after a global sign-out, or deleting the user, their still-unexpired
+  access token is refused at once — `getUser` checks the session, not just the signature.
+- **Outsiders and look-alikes are refused** (`@example.com`, `@evil-saequip.com` → 403).
+- Every `/api/*` route answers 401 to a forged token; nothing admin is mounted outside the
+  authenticated router.
+
+⚠️ **The reset link's return address is built only from THIS dashboard's origin** (or localhost
+in development). `POST /api/users/password-reset` used to accept any well-formed `Origin`, so
+the only thing keeping `https://evil.example/reset-password` out of a colleague's reset email
+was Supabase's redirect allowlist — one wildcard there would hand a live recovery link to the
+owner of that page. The allowlist remains the second check. On Vercel the request host is
+read from `Host` and the proxy-set `X-Forwarded-Host`; anywhere else only `Host`. ⚠️ Not
+exercised live (it would send a real email): **confirm once that a reset sent from `/users`
+lands on `/reset-password`**, not the site root.
+
 ## Environment variables
 
 See `backend/.env.example` and `frontend/.env.example` for the full annotated list. Highlights:

@@ -95,6 +95,33 @@ const resetLimiter = rateLimit({
 const resetBody = z.object({ email: z.string().email() }).strict();
 
 /**
+ * Where the emailed reset link should land: THIS dashboard's /reset-password.
+ *
+ * ⚠️ Only an Origin naming the host this request was served on (or localhost
+ * in development) is used. It used to accept any well-formed origin, so the
+ * only thing stopping `https://evil.example/reset-password` from going into a
+ * colleague's reset email was Supabase's redirect allowlist — a dashboard
+ * setting this repo cannot see, where one wildcard would hand a live recovery
+ * link to whoever owns that page. The allowlist stays the second check.
+ */
+export function resetRedirectFor(
+  origin: string | undefined,
+  ...requestHosts: (string | undefined)[]
+): string | undefined {
+  if (!origin) return undefined;
+  let u: URL;
+  try {
+    u = new URL(origin);
+  } catch {
+    return undefined;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return undefined;
+  const sameHost = requestHosts.some((h) => !!h && u.host.toLowerCase() === h.toLowerCase());
+  const localDev = !process.env.VERCEL && (u.hostname === "localhost" || u.hostname === "127.0.0.1");
+  return sameHost || localDev ? `${u.origin}/reset-password` : undefined;
+}
+
+/**
  * POST /api/users/password-reset — asks Supabase to email a reset link.
  *
  * ⚠️ The link is NEVER returned to the caller. `generateLink` would hand back
@@ -133,10 +160,16 @@ usersRouter.post("/users/password-reset", resetLimiter, async (req, res, next) =
      * malformed value.
      */
     const origin = req.header("origin") ?? "";
-    const redirectTo = /^https?:\/\/[^/]+$/.test(origin) ? `${origin}/reset-password` : undefined;
+    // X-Forwarded-Host only on Vercel, where their proxy sets it; anywhere the
+    // app is reachable directly it is caller-controlled (see `trust proxy`).
+    const redirectTo = resetRedirectFor(
+      origin,
+      req.get("host"),
+      process.env.VERCEL ? req.get("x-forwarded-host") : undefined,
+    );
     if (!redirectTo) {
       console.warn(
-        `[users] no usable Origin header (${JSON.stringify(origin)}) — letting Supabase use the project Site URL. ` +
+        `[users] Origin ${JSON.stringify(origin.slice(0, 120))} is not this dashboard — letting Supabase use the project Site URL. ` +
           "The reset link will only land on /reset-password if the Site URL points there.",
       );
     }
