@@ -33,7 +33,8 @@
     "duda:category-seo": "tsx src/scripts/categorySeoFill.ts",
     "wp:scrape-downloads": "tsx src/scripts/wpScrapeDownloads.ts",
     "downloads:import": "tsx src/scripts/importDownloads.ts",
-    "media:pdf-thumbnails": "tsx src/scripts/pdfThumbnails.ts"
+    "media:pdf-thumbnails": "tsx src/scripts/pdfThumbnails.ts",
+    "hub:sync-mirror": "tsx src/scripts/hubSyncMirror.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

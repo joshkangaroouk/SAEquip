@@ -35,6 +35,9 @@ export function syncHubProduct(
     name: product.name ?? null,
     slug,
     thumbnailUrl,
+    // Mirrored so the public listings can leave HIDDEN products out without
+    // calling Duda — see HubProduct.status.
+    status: product.status ?? null,
     // Only when this write changed it: an unrelated rename must not touch it.
     ...(descriptionHtml !== undefined ? { descriptionHtml } : {}),
   };
@@ -63,6 +66,15 @@ export async function ensureHubProduct(dudaProductId: string): Promise<HubProduc
  *
  * Returns the conflicting HubProduct, or null when the slug is free.
  */
+/**
+ * Prisma `where` for "may appear in a public listing".
+ *
+ * ⚠️ Spelled as an OR with null, NOT `{ status: { not: "HIDDEN" } }`: that
+ * compiles to `status <> 'HIDDEN'`, which in SQL is NULL — false — for a row
+ * never synced, and would silently drop every such product from the site.
+ */
+export const LISTABLE = { OR: [{ status: null }, { status: { not: "HIDDEN" } }] };
+
 export async function findSlugConflict(
   slug: string | null | undefined,
   forDudaProductId: string,

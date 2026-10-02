@@ -1578,9 +1578,9 @@ async function syncHub(products: WooProduct[]): Promise<void> {
      */
     const existing = await prisma.hubProduct.findUnique({
       where: { dudaProductId: entry.dudaProductId },
-      select: { slug: true, thumbnailUrl: true },
+      select: { slug: true, thumbnailUrl: true, status: true },
     });
-    if (existing?.slug && existing.thumbnailUrl && !flag("force")) {
+    if (existing?.slug && existing.thumbnailUrl && existing.status && !flag("force")) {
       entry.hubSynced = true;
       skipped++;
       continue;

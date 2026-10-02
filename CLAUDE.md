@@ -789,6 +789,39 @@ Related: **Preview deployments inherit the same env vars**, so anyone who can op
 - **`regions: ["dub1"]`** (Dublin) — Supabase is `eu-west-1`. A US region reintroduces the transatlantic latency that once made the public content endpoint ~5s.
 - **`includeFiles: "backend/src/public-widget/**"`** ships the widget assets into the function bundle. `routes/public.ts` no longer trusts a single relative path: Vercel's bundler need not preserve the `src/` layout next to the compiled module, so `resolveWidgetDir()` tries several candidates and logs loudly at startup if none has `widget.js` — a missing widget is a deploy fault and shouldn't first surface as a 500 when Duda asks for the script.
 
+### ⚠️ The edge cache and CORS (fixed 2026-10-02)
+
+`/public/catalogue`, `/by-category` and `/products/content` are cached at Vercel's edge
+(`s-maxage` / `stale-while-revalidate`), and **the edge keys on Origin only when the
+response says `Vary: Origin`**. `publicCors` used to set it only when a request HAD an
+Origin, so anything without one — curl, a monitor, a crawler — stored a copy with no
+`Access-Control-Allow-Origin`, which the edge then served as a HIT to the live site, the
+Duda editor and saequip.com. Browsers reject that, so the listing grid and carousels could
+fail for up to a minute whenever a no-Origin request was first to the cache. Measured
+before the fix: MISS with no Origin, then HIT with no CORS header for all three origins.
+`Vary: Origin` is now on every public response. **Verify CORS with a cache-busting query
+string** (`?z=$RANDOM`), or the answer is whatever the edge happened to cache.
+
+### Hidden products and the status mirror (fixed 2026-10-02)
+
+`HubProduct.status` mirrors Duda's `ACTIVE`/`HIDDEN`, written by `syncHubProduct` like
+name/sku/slug/thumbnail. The public listings — the catalogue grid, the category carousels
+and each product's compatible carousel — read the Hub, never Duda, so before this a HIDDEN
+product was listed and linked like a live one. A product created in the Hub **starts
+hidden**, deliberately, and would have appeared in every category it was ticked into.
+Latent rather than live when found: all 96 were ACTIVE. `/public/products/content` still
+serves a hidden product by its own slug/id, so staff can lay out its page in Duda's editor
+before publishing.
+
+- ⚠️ **Filter with `LISTABLE` (`services/hubProduct.ts`), never `{ status: { not: "HIDDEN" } }`.**
+  That compiles to `status <> 'HIDDEN'`, which SQL evaluates as NULL — false — for a row
+  never synced, and would silently drop every such product from the site.
+- ⚠️ **Hiding or un-hiding a product IN DUDA does not reach the Hub until it syncs** —
+  opening it in the dashboard, saving it there, or `npm run hub:sync-mirror --workspace=backend -- --confirm`.
+  That script walks Duda itself (one paged list call), so unlike `--sync-hub` it covers
+  products created after the WordPress import; dry run by default, it prints each field it
+  would change and any Hub row whose Duda product is gone.
+
 ### Rate limiting is split on purpose
 
 - **The SSO limiter is Postgres-backed** (`middleware/pgRateLimitStore.ts`). `express-rate-limit`'s default store is in-process memory, which is useless on serverless: each of many short-lived instances keeps its own counter, so "10 per minute" becomes "10 per minute *per instance*" and resets on every recycle. That is unacceptable for the one route that **mints a live Duda credential**. The increment is a single atomic `INSERT … ON CONFLICT` because read-then-write loses hits under exactly the concurrency serverless makes normal (verified: 20 concurrent hits all counted).

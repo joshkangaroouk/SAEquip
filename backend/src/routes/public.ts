@@ -10,6 +10,7 @@ import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
 import { sendQuoteNotification } from "../services/email.js";
+import { LISTABLE } from "../services/hubProduct.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -143,7 +144,8 @@ publicRouter.get("/products/by-category", contentLimiter, async (req, res, next)
     }
 
     const links = await prisma.productCategory.findMany({
-      where: { dudaCategoryId: cat.dudaCategoryId },
+      // HIDDEN products are not listed: their page is not public.
+      where: { dudaCategoryId: cat.dudaCategoryId, hubProduct: LISTABLE },
       select: { hubProduct: { select: { name: true, slug: true, thumbnailUrl: true } } },
     });
 
@@ -256,7 +258,9 @@ publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
     const [categories, products] = await Promise.all([
       prisma.categoryMirror.findMany({ orderBy: { position: "asc" } }),
       prisma.hubProduct.findMany({
-        where: { slug: { not: null } },
+        // ⚠️ HIDDEN products are left out — a product created in the Hub
+        // starts hidden, and used to appear here the moment it had a slug.
+        where: { slug: { not: null }, ...LISTABLE },
         select: {
           name: true,
           slug: true,
@@ -477,6 +481,9 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
         glbAsset: true,
         compatible: {
           orderBy: { sortOrder: "asc" },
+          // A hidden product is not offered as compatible: its card would
+          // link to a page visitors cannot open.
+          where: { related: LISTABLE },
           include: { related: { select: { name: true, slug: true, thumbnailUrl: true } } },
         },
       },

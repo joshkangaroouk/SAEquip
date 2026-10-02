@@ -79,6 +79,15 @@ model HubProduct {
   /// name and sku. Refreshed by syncHubProduct() — i.e. whenever a product is
   /// opened in the dashboard, and in bulk by `--sync-hub`.
   thumbnailUrl  String?
+  /// Duda's product `status` ("ACTIVE" | "HIDDEN"), mirrored like the rest.
+  ///
+  /// The public listings — the category grid, the carousels — read the Hub,
+  /// never Duda, so without this a HIDDEN product was listed and linked like a
+  /// live one. A product created in the Hub starts HIDDEN precisely so a
+  /// half-filled one never goes live, and it would still have appeared in
+  /// every category it was ticked into. NULL means never synced, and is
+  /// treated as visible (the behaviour before this column existed).
+  status        String?
   logos         ProductLogo[]
   /// Products shown as compatible ON this product's page.
   compatible    CompatibleLink[]  @relation("CompatibleFrom")
