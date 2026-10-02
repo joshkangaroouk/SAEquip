@@ -1,9 +1,10 @@
 import { useRef, useState, type FormEvent } from "react";
-import { apiFetch } from "../lib/api";
+import { apiFetch, apiJson } from "../lib/api";
 import { uploadFile } from "../lib/upload";
 import { FilePreview, Input, Pagination, Select, Skeleton, useConfirm } from "../components/ui";
+import { UsagePill } from "../components/UsagePill";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
-import type { MediaAsset } from "../lib/types";
+import type { AssetUsage, MediaAsset } from "../lib/types";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -28,30 +29,39 @@ const KIND_TABS: { value: "" | MediaKind; label: string }[] = [
 ];
 
 /**
- * What `usage` can and cannot tell us.
+ * "Used N×" opens the list of products behind it; anything else reads
+ * "Unused".
  *
- * It counts logos, downloads and 3D-model attachments — the three places a
- * Hub URL IS the live reference. Product gallery images are NOT counted and
- * cannot be: an image is uploaded only to give Duda a URL to fetch, and once
- * Duda re-hosts it the product points at `irp.cdn-website.com` with nothing
- * linking back. So "used 0×" on a product photo was actively misleading —
- * it read as "unused" for images that are on live product pages.
+ * `usage` is distinct PRODUCTS reached through a logo, a download or a 3D
+ * model. ⚠️ Product gallery images are NOT counted and cannot be: an image is
+ * uploaded only to give Duda a URL to fetch, and once Duda re-hosts it the
+ * product points at `irp.cdn-website.com` with nothing linking back. So a
+ * product photo on a live page reads "Unused" here — the tooltip says so, and
+ * deleting one cannot break a gallery because Duda holds its own copy.
  */
 function UsageNote({ asset }: { asset: MediaAsset }) {
   if (asset.usage > 0) {
-    return <span>· used {asset.usage}×</span>;
-  }
-  if (asset.kind === "image") {
     return (
-      <span
-        className="cursor-help underline decoration-dotted"
-        title="Product galleries aren't tracked here: Duda re-hosts each image on its own CDN, so nothing links a product back to this original. Logos, downloads and 3D models ARE tracked. Deleting this cannot break a live gallery — Duda holds its own copy."
-      >
-        · no Hub links
-      </span>
+      <UsagePill
+        count={asset.usage}
+        label={`Used ${asset.usage}×`}
+        subject={asset.filename}
+        load={() => apiJson<AssetUsage>(`/api/media/${asset.id}/usage`)}
+      />
     );
   }
-  return <span>· unused</span>;
+  return (
+    <span
+      className={asset.kind === "image" ? "cursor-help" : undefined}
+      title={
+        asset.kind === "image"
+          ? "Not used by any logo. Product gallery images aren't tracked: Duda keeps its own copy of each one, so deleting this original cannot break a live gallery."
+          : undefined
+      }
+    >
+      · Unused
+    </span>
+  );
 }
 
 export default function Media() {
@@ -143,7 +153,14 @@ export default function Media() {
     }
     if (res.status === 409) {
       const j = await res.json().catch(() => ({}));
-      setDeleteErrors((m) => ({ ...m, [id]: `In use by ${j.count ?? "some"} product(s)` }));
+      const n = Number(j.count) || 0;
+      setDeleteErrors((m) => ({
+        ...m,
+        [id]:
+          n > 0
+            ? `Can't delete: used on ${n} product${n === 1 ? "" : "s"}.`
+            : "Can't delete: it's in the logo catalogue. Remove it on the Logos page first.",
+      }));
       return;
     }
     const j = await res.json().catch(() => ({}));
@@ -328,7 +345,7 @@ export default function Media() {
                       the part that tells two files apart. overflow-wrap:anywhere
                       because they have no spaces to break at. */}
                   <p className="text-sm font-semibold text-text [overflow-wrap:anywhere]">{a.filename}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted">
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                     <span>{formatBytes(a.sizeBytes)}</span>
                     <UsageNote asset={a} />
                   </div>

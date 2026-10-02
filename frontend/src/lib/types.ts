@@ -47,7 +47,35 @@ export interface MediaAsset {
   url: string | null;
   /** A file's first-page preview, or null — images are their own preview. */
   thumbnailUrl?: string | null;
+  /**
+   * Distinct PRODUCTS this asset reaches (through a logo, a download or a 3D
+   * model) — the same number the usage popup lists. Product gallery images
+   * are never counted; see backend services/assetUsage.ts.
+   */
   usage: number;
+}
+
+/** One product in a usage popup — GET /api/media/:id/usage, /api/logos/:id/products. */
+export interface UsageProduct {
+  /** Duda's id: the product editor's route. */
+  dudaProductId: string;
+  name: string | null;
+  sku: string | null;
+  thumbnailUrl: string | null;
+  /** How it uses the asset, e.g. "Download: Datasheet". Empty when there is only one way. */
+  via: string[];
+}
+
+export interface UsageLogo {
+  id: string;
+  kind: "SA_LOGO" | "CERT_LOGO";
+  label: string | null;
+}
+
+export interface AssetUsage {
+  products: UsageProduct[];
+  /** Catalogue logo entries using this image — present for the Media Centre only. */
+  logos?: UsageLogo[];
 }
 
 export interface DudaImage {

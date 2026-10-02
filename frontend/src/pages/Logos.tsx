@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { rectSortingStrategy } from "@dnd-kit/sortable";
 import { MediaPicker } from "../components/MediaPicker";
+import { UsagePill } from "../components/UsagePill";
 import {
   DragHandle,
   RemoveButton,
@@ -11,7 +12,7 @@ import {
   useConfirm,
 } from "../components/ui";
 import { apiJson } from "../lib/api";
-import type { LogoCatalogEntry, MediaAsset } from "../lib/types";
+import type { AssetUsage, LogoCatalogEntry, MediaAsset } from "../lib/types";
 
 type Kind = "SA_LOGO" | "CERT_LOGO";
 
@@ -72,7 +73,12 @@ function LogoCard({
       <div className="mt-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <DragHandle handle={handle} />
-          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">used by {entry.usage}</span>
+          <UsagePill
+            count={entry.usage}
+            label={`Used by ${entry.usage}`}
+            subject={entry.label || entry.alt || "Logo"}
+            load={() => apiJson<AssetUsage>(`/api/logos/${entry.id}/products`)}
+          />
         </div>
         <RemoveButton onClick={() => onDelete(entry)} title="Delete logo" />
       </div>

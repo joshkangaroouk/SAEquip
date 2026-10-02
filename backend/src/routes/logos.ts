@@ -4,6 +4,7 @@ import { LogoKind, type Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ensureHubProduct } from "../services/hubProduct.js";
 import { resolveUrl } from "../services/storage.js";
+import { logoProducts } from "../services/assetUsage.js";
 
 export const logosRouter = Router();
 
@@ -121,6 +122,23 @@ logosRouter.patch("/logos/:id", async (req, res, next) => {
     if ("alt" in parsed.data) data.alt = parsed.data.alt ?? null;
     const logo = await prisma.logo.update({ where: { id: req.params.id }, data, include: logoInclude });
     res.json(await shapeLogo(logo));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/logos/:id/products — the products carrying this logo, for the
+ * "Used by N" popup. Same product shape as the Media Centre's usage popup.
+ */
+logosRouter.get("/logos/:id/products", async (req, res, next) => {
+  try {
+    const products = await logoProducts(req.params.id);
+    if (!products) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ products });
   } catch (err) {
     next(err);
   }

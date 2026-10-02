@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { THUMB_EXT, THUMB_MAX_BYTES, ThumbnailError, storeThumbnail } from "../services/thumbnails.js";
+import { assetUsage, productCounts } from "../services/assetUsage.js";
 import {
   ALLOWED_FILE_MIME,
   ALLOWED_IMAGE_MIME,
@@ -72,77 +73,6 @@ const ISSUED_PATH_RE =
 
 function safeName(filename: string): string {
   return (filename || "file").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
-}
-
-// A MediaAsset is "in use" if referenced by a catalog Logo, a Download, or a
-// product's 3D model attachment.
-/**
- * Usage counts for EVERY asset, in 3 grouped queries.
- *
- * Deliberately not "3 counts per asset": the WordPress import took the library
- * from 5 assets to 335, which turned one Media Centre page load into ~1,000
- * queries. Supabase is in eu-west-1, so per-query latency is the dominant cost
- * (the same trap that once made the public content endpoint take ~5s).
- */
-/**
- * How many Hub records reference each asset: logos, downloads and 3D models.
- *
- * ⚠️ PRODUCT GALLERY IMAGES ARE NOT COUNTED, and cannot be. There is no local
- * `ProductImage` mirror by design: an image is uploaded to Supabase only to
- * give Duda a public URL to fetch, and once Duda re-hosts it on its own CDN
- * the product references `irp.cdn-website.com` and nothing links back. So an
- * imported product photo legitimately reads 0 here even though it is on a live
- * product page.
- *
- * That is safe rather than merely tolerable — deleting such an asset cannot
- * break a live gallery, precisely because Duda holds its own copy. The count
- * exists to guard the three kinds where the Hub's URL *is* the live reference,
- * and those are exactly the three counted here. The UI must not present 0 as
- * "unused" for an image, or it implies a certainty this data cannot carry.
- */
-async function usageIndex(): Promise<Map<string, number>> {
-  const [logos, downloads, models] = await Promise.all([
-    prisma.logo.groupBy({ by: ["mediaAssetId"], _count: true }),
-    prisma.download.groupBy({ by: ["mediaAssetId"], _count: true }),
-    prisma.hubProduct.groupBy({
-      by: ["glbAssetId"],
-      _count: true,
-      where: { glbAssetId: { not: null } },
-    }),
-  ]);
-
-  const index = new Map<string, number>();
-  const add = (id: string | null, n: number) => {
-    if (id) index.set(id, (index.get(id) ?? 0) + n);
-  };
-  for (const l of logos) add(l.mediaAssetId, l._count);
-  for (const d of downloads) add(d.mediaAssetId, d._count);
-  for (const m of models) add(m.glbAssetId, m._count);
-  return index;
-}
-
-async function mediaReferences(mediaAssetId: string) {
-  const [logos, downloads, models] = await Promise.all([
-    prisma.logo.findMany({ where: { mediaAssetId }, select: { id: true, kind: true, label: true } }),
-    prisma.download.findMany({ where: { mediaAssetId }, include: { hubProduct: true } }),
-    prisma.hubProduct.findMany({ where: { glbAssetId: mediaAssetId }, select: { id: true, name: true, sku: true } }),
-  ]);
-  return [
-    ...logos.map((l) => ({ type: "logo" as const, id: l.id, kind: l.kind, label: l.label })),
-    ...downloads.map((d) => ({
-      type: "download" as const,
-      id: d.id,
-      title: d.title,
-      hubProductId: d.hubProductId,
-      sku: d.hubProduct.sku,
-    })),
-    ...models.map((m) => ({
-      type: "model3d" as const,
-      hubProductId: m.id,
-      name: m.name,
-      sku: m.sku,
-    })),
-  ];
 }
 
 const uploadUrlBody = z
@@ -325,7 +255,7 @@ mediaRouter.get("/media", async (req, res, next) => {
         : {}),
     };
 
-    const [total, assets, usage] = await Promise.all([
+    const [total, assets] = await Promise.all([
       prisma.mediaAsset.count({ where }),
       prisma.mediaAsset.findMany({
         where,
@@ -333,8 +263,10 @@ mediaRouter.get("/media", async (req, res, next) => {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      usageIndex(),
     ]);
+    // `usage` = distinct PRODUCTS this asset reaches — the same number the
+    // usage popup lists. See services/assetUsage.ts.
+    const usage = await productCounts(assets.map((a) => a.id));
 
     const items = await Promise.all(
       assets.map(async (a) => ({
@@ -357,7 +289,7 @@ mediaRouter.get("/media", async (req, res, next) => {
   }
 });
 
-/** GET /api/media/:id — single asset with resolved url + referencing products. */
+/** GET /api/media/:id — single asset with resolved url + what uses it. */
 mediaRouter.get("/media/:id", async (req, res, next) => {
   try {
     const asset = await prisma.mediaAsset.findUnique({ where: { id: req.params.id } });
@@ -365,11 +297,29 @@ mediaRouter.get("/media/:id", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    const [url, references] = await Promise.all([
-      resolveUrl(asset.kind, asset.storagePath),
-      mediaReferences(asset.id),
-    ]);
-    res.json({ ...asset, url, thumbnailUrl: thumbnailUrlOf(asset), usage: references.length, references });
+    const [url, used] = await Promise.all([urlOrNull(asset.kind, asset.storagePath), assetUsage(asset.id)]);
+    res.json({ ...asset, url, thumbnailUrl: thumbnailUrlOf(asset), usage: used.products.length, ...used });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/media/:id/usage — the products an asset is used on, for the Media
+ * Centre's "Used N×" popup. Read-only, and returns nothing that is not already
+ * visible in the dashboard: no URLs, so no signing and no bucket round trip.
+ */
+mediaRouter.get("/media/:id/usage", async (req, res, next) => {
+  try {
+    const asset = await prisma.mediaAsset.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, filename: true, kind: true },
+    });
+    if (!asset) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ asset, ...(await assetUsage(asset.id)) });
   } catch (err) {
     next(err);
   }
@@ -417,8 +367,9 @@ mediaRouter.put(
 
 /**
  * DELETE /api/media/:id
- * 409 if referenced by any ProductLogo/Download (no delete); otherwise removes
- * the object from its bucket and the row, returning 204.
+ * 409 while anything references it — a product (via a logo, download or 3D
+ * model) or a catalogue logo carried by no product yet. Otherwise removes the
+ * object from its bucket and the row, returning 204.
  */
 mediaRouter.delete("/media/:id", async (req, res, next) => {
   try {
@@ -428,9 +379,13 @@ mediaRouter.delete("/media/:id", async (req, res, next) => {
       return;
     }
 
-    const references = await mediaReferences(asset.id);
-    if (references.length > 0) {
-      res.status(409).json({ error: "in_use", count: references.length, references });
+    // ⚠️ The catalogue logo counts on its own. `Logo.mediaAssetId` has no
+    // onDelete, so the row delete would fail on the FK anyway — but only
+    // after the object had already been removed from the bucket, leaving a
+    // logo pointing at nothing.
+    const { logos, products } = await assetUsage(asset.id);
+    if (logos.length > 0 || products.length > 0) {
+      res.status(409).json({ error: "in_use", count: products.length, logos: logos.length });
       return;
     }
 
