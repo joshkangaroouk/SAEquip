@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { CertScheme, DownloadKind, type Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ensureHubProduct } from "../services/hubProduct.js";
 import { shapeHubDownload } from "../services/downloads.js";
@@ -52,8 +52,18 @@ const replaceSchema = z
           .object({
             mediaAssetId: z.string().min(1),
             title: z.string().trim().min(1, "title required").max(200, "title max 200 chars"),
+            // Which resources page lists the file. Required: an untyped
+            // download is on no page, and the editor makes the choice explicit.
+            kind: z.nativeEnum(DownloadKind),
+            certScheme: z.nativeEnum(CertScheme).nullable().default(null),
           })
-          .strict(),
+          .strict()
+          // The same rule as the table's CHECK constraint, checked here so a
+          // bad item is a 400 that names the field rather than a 500.
+          .refine((i) => (i.kind === "CERTIFICATE") === (i.certScheme !== null), {
+            message: "a certificate needs a scheme, and only a certificate has one",
+            path: ["certScheme"],
+          }),
       )
       .max(50, "max 50 downloads per product"),
   })
@@ -132,6 +142,12 @@ downloadsRouter.post("/products/:id/downloads", async (req, res, next) => {
  *
  * Deletes run BEFORE creates, so removing a file and re-adding it in one save
  * cannot trip the unique index.
+ *
+ * ⚠️ Every item carries its `kind` (and a certificate its `certScheme`), and
+ * they are required: a client that omits them gets a 400, not a save that
+ * quietly leaves the type unchanged. The single-row POST/PATCH below predate
+ * types and leave them alone — a row they create is on no resources page
+ * until it is typed here.
  */
 downloadsRouter.put("/products/:id/downloads", async (req, res, next) => {
   const parsed = replaceSchema.safeParse(req.body);
@@ -177,13 +193,18 @@ downloadsRouter.put("/products/:id/downloads", async (req, res, next) => {
       for (const [i, item] of items.entries()) {
         const id = byFile.get(item.mediaAssetId);
         if (id) {
-          await tx.download.update({ where: { id }, data: { title: item.title, sortOrder: i } });
+          await tx.download.update({
+            where: { id },
+            data: { title: item.title, sortOrder: i, kind: item.kind, certScheme: item.certScheme },
+          });
         } else {
           await tx.download.create({
             data: {
               hubProductId: hub.id,
               mediaAssetId: item.mediaAssetId,
               title: item.title,
+              kind: item.kind,
+              certScheme: item.certScheme,
               sortOrder: i,
               gated: false,
             },

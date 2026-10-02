@@ -204,6 +204,8 @@ export const downloadsFrom = (items: HubDownload[]): DownloadDraft[] =>
   items.map((d) => ({
     mediaAssetId: d.mediaAssetId,
     title: d.title,
+    kind: d.kind ?? null,
+    certScheme: d.certScheme ?? null,
     filename: d.file.filename,
     sizeBytes: d.file.sizeBytes,
     url: d.file.url,
@@ -267,8 +269,14 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
     case "downloads":
       // ORDER is meaningful (it is the display order), so compared as-is.
       // filename/size/url are display only; a re-signed url after a save must
-      // never read as a change.
-      return snapshot.downloads.map(({ mediaAssetId, title }) => ({ mediaAssetId, title }));
+      // never read as a change. The type and scheme are content — they decide
+      // which public page lists the file.
+      return snapshot.downloads.map(({ mediaAssetId, title, kind, certScheme }) => ({
+        mediaAssetId,
+        title,
+        kind,
+        certScheme,
+      }));
   }
 }
 
@@ -369,6 +377,10 @@ export function validate(
     errors.downloads = "Download titles must be 200 characters or fewer.";
   else if (new Set(draft.downloads.map((d) => d.mediaAssetId)).size !== draft.downloads.length)
     errors.downloads = "The same file is listed twice.";
+  else if (draft.downloads.some((d) => !d.kind))
+    errors.downloads = "Choose a type for every download.";
+  else if (draft.downloads.some((d) => d.kind === "CERTIFICATE" && !d.certScheme))
+    errors.downloads = "Choose which certificate each certificate download is.";
 
   if (draft.benefits.length > 100) errors.benefits = "Max 100 items.";
   else if (!draft.benefits.every(textItemValid))

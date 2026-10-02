@@ -1,26 +1,22 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, FilePreview, Input, SortableList } from "../ui";
+import { Badge, Button, Card, CardHeader, SectionError, DragHandle, FilePreview, Input, Select, SortableList } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import type { MediaAsset } from "../../lib/types";
 import type { DownloadDraft } from "./productEditorTypes";
+import {
+  KIND_OPTIONS,
+  SCHEME_OPTIONS,
+  retitle,
+  titleFromFilename,
+  type CertScheme,
+  type DownloadKind,
+} from "../../lib/downloadKinds";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
-
-/**
- * A first title for a newly added file: the filename without its extension,
- * underscores spaced out. Only a starting point — the field is editable, and
- * the imported downloads carry the labels the old site showed ("Datasheet").
- */
-const titleFromFilename = (name: string) =>
-  name
-    .replace(/\.[a-z0-9]+$/i, "")
-    .replace(/[_]+/g, " ")
-    .trim()
-    .slice(0, 200);
 
 /**
  * The product's downloadable files — datasheets, manuals, certificates.
@@ -32,6 +28,11 @@ const titleFromFilename = (name: string) =>
  * 2026-10-01): every download is written `gated: false`. The column remains
  * in the database, so turning gating back on is a UI change here, not a
  * migration.
+ *
+ * Each file has a TYPE — Datasheet, User Manual or Certificate — which decides
+ * the public resources page that lists it, and a certificate has a SCHEME,
+ * which decides the button it sits under there. Both are required to save, so
+ * nothing lands on the wrong page by default.
  *
  * ⚠️ A file can be on a product only once — `@@unique([hubProductId,
  * mediaAssetId])` — so adding one that is already listed is refused here with
@@ -63,6 +64,8 @@ export function DownloadsSection({
       {
         mediaAssetId: asset.id,
         title: titleFromFilename(asset.filename),
+        kind: null,
+        certScheme: null,
         filename: asset.filename,
         sizeBytes: asset.sizeBytes,
         url: asset.url,
@@ -74,11 +77,17 @@ export function DownloadsSection({
   const update = (id: string, patch: Partial<DownloadDraft>) =>
     onChange(value.map((d) => (d.mediaAssetId === id ? { ...d, ...patch } : d)));
 
+  /** A type or scheme change, plus the matching title while the title is still automatic. */
+  function retype(d: DownloadDraft, kind: DownloadKind | null, certScheme: CertScheme | null) {
+    const scheme = kind === "CERTIFICATE" ? certScheme : null;
+    update(d.mediaAssetId, { kind, certScheme: scheme, title: retitle(d, kind, scheme) });
+  }
+
   return (
     <Card id="section-downloads">
       <CardHeader
         title="Downloads"
-        description="Datasheets, user manuals and certificates for this product. Drag to set the order."
+        description="Datasheets, user manuals and certificates for this product. The type decides which resources page lists each file. Drag to set the order."
         actions={
           <div className="flex items-center gap-2">
             {dirty && <Badge tone="accent">Unsaved</Badge>}
@@ -115,13 +124,56 @@ export function DownloadsSection({
                   iconClassName="h-9 w-7"
                 />
                 <div className="min-w-0 flex-1">
-                  <Input
-                    size="xs"
-                    value={d.title}
-                    onChange={(e) => update(d.mediaAssetId, { title: e.target.value })}
-                    aria-label={`Title for ${d.filename}`}
-                    aria-invalid={!d.title.trim() || undefined}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="min-w-[10rem] flex-1">
+                      <Input
+                        size="xs"
+                        value={d.title}
+                        onChange={(e) => update(d.mediaAssetId, { title: e.target.value })}
+                        aria-label={`Title for ${d.filename}`}
+                        aria-invalid={!d.title.trim() || undefined}
+                      />
+                    </div>
+                    {/* Widths on wrappers: Select's own w-full would win over a passed class. */}
+                    <div className="w-36">
+                      <Select
+                        size="xs"
+                        value={d.kind ?? ""}
+                        onChange={(e) => retype(d, (e.target.value || null) as DownloadKind | null, d.certScheme)}
+                        aria-label={`Type of ${d.filename}`}
+                        aria-invalid={!d.kind || undefined}
+                      >
+                        <option value="" disabled>
+                          Choose type…
+                        </option>
+                        {KIND_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    {d.kind === "CERTIFICATE" && (
+                      <div className="w-36">
+                        <Select
+                          size="xs"
+                          value={d.certScheme ?? ""}
+                          onChange={(e) => retype(d, d.kind, (e.target.value || null) as CertScheme | null)}
+                          aria-label={`Certificate scheme of ${d.filename}`}
+                          aria-invalid={!d.certScheme || undefined}
+                        >
+                          <option value="" disabled>
+                            Which certificate…
+                          </option>
+                          {SCHEME_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    )}
+                  </div>
                   <p className="mt-1 truncate text-xs text-subtle" title={d.filename}>
                     {d.filename} · {formatBytes(d.sizeBytes)}
                   </p>

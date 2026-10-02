@@ -1,4 +1,5 @@
 import type { ProductDetail, ProductLogoEntry } from "../../lib/types";
+import type { CertScheme, DownloadKind } from "../../lib/downloadKinds";
 
 /** Sections that participate in the unified dirty/save flow. */
 export type SectionKey =
@@ -168,6 +169,10 @@ export interface Model3DDraft {
 export interface DownloadDraft {
   mediaAssetId: string;
   title: string;
+  /** Which resources page lists it. Null only on a newly added file, until chosen. */
+  kind: DownloadKind | null;
+  /** Set only when `kind` is CERTIFICATE — which button it sits under. */
+  certScheme: CertScheme | null;
   filename: string;
   sizeBytes: number;
   /** A signed preview link, or null when the file could not be signed. */

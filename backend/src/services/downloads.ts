@@ -27,6 +27,8 @@ export async function shapeHubDownload(d: Download & { mediaAsset: MediaAsset })
   return {
     id: d.id,
     title: d.title,
+    kind: d.kind,
+    certScheme: d.certScheme,
     gated: d.gated,
     sortOrder: d.sortOrder,
     mediaAssetId: d.mediaAssetId,

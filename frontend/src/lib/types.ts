@@ -1,3 +1,5 @@
+import type { CertScheme, DownloadKind } from "./downloadKinds";
+
 export interface StoreInfo {
   site_name: string;
   max_products: number | null;
@@ -191,6 +193,9 @@ export interface HubTextItem {
 export interface HubDownload {
   id: string;
   title: string;
+  /** Null for a download nobody has typed yet — it is on no resources page. */
+  kind: DownloadKind | null;
+  certScheme: CertScheme | null;
   gated: boolean;
   sortOrder: number;
   mediaAssetId: string;

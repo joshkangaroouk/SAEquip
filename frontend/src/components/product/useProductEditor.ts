@@ -529,7 +529,12 @@ export function useProductEditor(
           const res = await apiJson<HubDownload[]>(`/api/products/${productId}/downloads`, {
             method: "PUT",
             body: JSON.stringify({
-              items: draft.downloads.map((d) => ({ mediaAssetId: d.mediaAssetId, title: d.title.trim() })),
+              items: draft.downloads.map((d) => ({
+                mediaAssetId: d.mediaAssetId,
+                title: d.title.trim(),
+                kind: d.kind,
+                certScheme: d.kind === "CERTIFICATE" ? d.certScheme : null,
+              })),
             }),
           });
           return { downloads: downloadsFrom(res) };

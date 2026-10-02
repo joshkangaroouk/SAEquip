@@ -24,6 +24,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           size === "md" ? "pr-9" : "pr-8",
           "shadow-xs transition-[color,box-shadow] outline-none",
           "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+          "aria-[invalid=true]:border-danger aria-[invalid=true]:ring-[3px] aria-[invalid=true]:ring-danger/20",
           "disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
