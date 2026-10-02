@@ -7,6 +7,7 @@ import { assetUsage, productCounts } from "../services/assetUsage.js";
 import {
   ALLOWED_FILE_MIME,
   ALLOWED_IMAGE_MIME,
+  ALLOWED_MODEL_MIME,
   MAX_BYTES,
   createUploadTarget,
   objectInfo,
@@ -41,6 +42,7 @@ async function urlOrNull(kind: string, storagePath: string): Promise<string | nu
 const IMAGE_MIME = new Set(ALLOWED_IMAGE_MIME);
 const FILE_MIME = new Set(ALLOWED_FILE_MIME);
 const MODEL_EXT = /\.glb$/i;
+const MODEL_MIME = new Set(ALLOWED_MODEL_MIME);
 
 /**
  * GLB files have no reliable mimetype across browsers/OSes (commonly reported
@@ -49,7 +51,9 @@ const MODEL_EXT = /\.glb$/i;
  */
 function kindForUpload(mimetype: string, filename: string): BucketKind | null {
   if (IMAGE_MIME.has(mimetype)) return "image";
-  if (MODEL_EXT.test(filename)) return "model";
+  // The name alone is not enough: a `.glb` claiming `text/html` is refused
+  // here, and the bucket's own allowlist refuses it again at upload time.
+  if (MODEL_EXT.test(filename)) return MODEL_MIME.has(mimetype) ? "model" : null;
   if (FILE_MIME.has(mimetype)) return "file";
   return null;
 }

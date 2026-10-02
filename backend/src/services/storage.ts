@@ -48,6 +48,16 @@ export const ALLOWED_FILE_MIME = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/zip",
 ];
+/**
+ * ⚠️ The model bucket had NO allowlist (null), and it is PUBLIC. A model is
+ * recognised by its `.glb` name, so any signed-in session could upload an HTML
+ * page named `x.glb` with `Content-Type: text/html` and have it served as a web
+ * page from the storage domain. Browsers label a GLB `model/gltf-binary` (all 3
+ * stored models), or `application/octet-stream` when they do not know the
+ * extension — which a browser downloads rather than renders, so it cannot host
+ * a page either. Nothing else is needed.
+ */
+export const ALLOWED_MODEL_MIME = ["model/gltf-binary", "application/octet-stream"];
 
 /**
  * Idempotently ensure the storage buckets exist WITH their size/type limits.
@@ -77,7 +87,7 @@ export async function ensureBuckets(): Promise<void> {
   const specs = [
     { id: BUCKETS.image, public: true, fileSizeLimit: MAX_BYTES.image, allowedMimeTypes: ALLOWED_IMAGE_MIME },
     { id: BUCKETS.file, public: false, fileSizeLimit: MAX_BYTES.file, allowedMimeTypes: ALLOWED_FILE_MIME },
-    { id: BUCKETS.model, public: true, fileSizeLimit: MAX_BYTES.model, allowedMimeTypes: null },
+    { id: BUCKETS.model, public: true, fileSizeLimit: MAX_BYTES.model, allowedMimeTypes: ALLOWED_MODEL_MIME },
   ];
 
   for (const spec of specs) {
