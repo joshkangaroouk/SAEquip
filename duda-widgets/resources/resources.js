@@ -7,9 +7,9 @@
   (window.__saehData || (window.__saehData = {}))[section] = data;
 
   // Read into primitives NOW, at evaluation time.
-  var resourceType = cfg.resourceType, heading = cfg.heading;
+  var resourceType = cfg.resourceType, heading = cfg.heading, subheading = cfg.subheading;
 
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=24';
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=25';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');
@@ -19,7 +19,13 @@
   L.p.then(function () {
     window.SAEquipHubWidget.init({
       container: el,
-      props: { section: section, inEditor: inEditor, resourceType: resourceType, heading: heading }
+      props: {
+        section: section,
+        inEditor: inEditor,
+        resourceType: resourceType,
+        heading: heading,
+        subheading: subheading
+      }
     });
   }).catch(function () {});
 })(element, 'resources', data.inEditor, data.config || data);

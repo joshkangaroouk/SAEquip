@@ -1418,7 +1418,8 @@ async function main() {
         "range logo with its name as alt; none for a product with no range");
       check(!rows(d)[1].querySelector(".saeh-rs-shot img"), "no picture → no broken image");
       check(rows(d).every((r) => r.className === "saeh-rs-row"), "every row carries the same class — no extra gap where a range changes");
-      check(!d.querySelector(".saeh-rs-h"), "no heading unless one is set");
+      check(!d.querySelector(".saeh-rs-h") && !d.querySelector(".saeh-rs-sub") && !d.querySelector(".saeh-rs-heads"),
+        "no heading, subheading or heading block unless one is set");
       check(!!d.getElementById("saeh-styles"), "styles injected");
     }
     {
@@ -1430,7 +1431,8 @@ async function main() {
       const { d } = await boot({ props: RS("certificate", { heading: "  Certificates  " }), resourcesPayload: CERTS, url: PAGE });
       const btns = [...d.querySelectorAll(".saeh-rs-dl")].map((b) => b.textContent);
       check(btns.join(",") === "INMETRO,UKEX,IECEX,EX", "certificates: one button per scheme, in the API's order", btns.join(","));
-      check(d.querySelector(".saeh-rs-h") && d.querySelector(".saeh-rs-h").textContent === "Certificates", "the heading prop renders, trimmed");
+      const hd = d.querySelector(".saeh-rs-h");
+      check(hd && hd.tagName === "H2" && hd.textContent === "Certificates", "the heading renders as an h2, trimmed", hd && hd.tagName);
     }
     {
       // Payload content is text, never markup — and never a scheme in a link.
@@ -1501,6 +1503,23 @@ async function main() {
       check(/@media\(min-width:721px\)\{[^}]*\}[^@]*\.saeh-rs-search\{flex:0 1 340px;margin-left:auto\}/.test(css), "from 721px the search sits top right");
     }
     {
+      const { d, w } = await boot({ props: RS("datasheet", { heading: "Datasheets", subheading: "  Resources  " }), resourcesPayload: DATASHEETS, url: PAGE });
+      const heads = d.querySelector(".saeh-rs-heads");
+      const kids = heads ? [...heads.children].map((c) => `${c.tagName}:${c.textContent}`).join(",") : "";
+      check(kids === "H6:Resources,H2:Datasheets", "the subheading is an h6 directly above the h2", kids);
+      const css = d.getElementById("saeh-styles").textContent;
+      check(/\.saeh-rs-sub\{margin:0 0 15px;/.test(css) && /\.saeh-rs-h\{margin:0;/.test(css), "15px between the h6 and the h2, no other margin");
+      check(/\.saeh-rs-h\{[^}]*line-height:1\.2/.test(css) && /\.saeh-rs-sub\{[^}]*line-height:1\.4/.test(css),
+        "both set their own line-height — the theme leaves it, and .saeh-root's 1.5 would open a tall gap");
+      const only = await boot({ props: RS("datasheet", { subheading: "Resources" }), resourcesPayload: DATASHEETS, url: PAGE });
+      const k2 = [...only.d.querySelector(".saeh-rs-heads").children].map((c) => c.tagName).join(",");
+      check(k2 === "H6", "a subheading on its own renders without an empty h2", k2);
+      const evil = await boot({ props: RS("datasheet", { subheading: "<img src=x onerror=\"window.__pwned=4\">" }), resourcesPayload: DATASHEETS, url: PAGE });
+      await new Promise((r) => setTimeout(r, 20));
+      check(evil.w.__pwned === undefined && !evil.d.querySelector(".saeh-rs-sub img"), "the subheading is text, never HTML");
+      check(w.__saequipHub.lastInit.propKeys.includes("subheading"), "subheading arrives as a prop");
+    }
+    {
       // The search: Enter to run, matching name, range and button labels.
       const CERTS = {
         type: "certificate",
@@ -1513,10 +1532,10 @@ async function main() {
       const { d, w } = await boot({ props: RS("certificate", { heading: "Certificates" }), resourcesPayload: CERTS, url: PAGE });
       const input = d.querySelector(".saeh-rs-search input");
       const label = d.querySelector(".saeh-rs-search label");
-      check(input && label && label.getAttribute("for") === input.id && label.textContent === "Search products",
-        "resources: a search box with a real visible label");
+      check(input && label && label.getAttribute("for") === input.id && label.textContent === "Search products" && label.className === "saeh-rs-sr",
+        "resources: the search keeps a real label, visually hidden — no caption above the field");
       const top = d.querySelector(".saeh-rs-top");
-      check(top && top.firstChild.className === "saeh-rs-h" && top.lastChild.className === "saeh-rs-search", "heading on the left, search on the right");
+      check(top && top.firstChild.className === "saeh-rs-heads" && top.lastChild.className === "saeh-rs-search", "headings on the left, search on the right");
       const visible = () => rows(d).filter((r) => !r.classList.contains("saeh-rs-off")).map((r) => r.querySelector(".saeh-rs-name").textContent).join(",");
       const type = (v) => { input.value = v; input.dispatchEvent(new w.Event("input")); };
       const enter = () => input.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter" }));
@@ -1527,7 +1546,7 @@ async function main() {
       check(clear.classList.contains("on"), "…but the X appears as soon as there is text");
       enter();
       check(visible() === "EX Heater", "Enter filters by name", visible());
-      check(d.querySelector(".saeh-rs-status").textContent === "1 product found", "the result is announced to screen readers");
+      check(d.querySelector(".saeh-rs-search [role=status]").textContent === "1 product found", "the result is announced to screen readers");
       type("  LUMIN "); enter();
       check(visible() === "Tower Light", "matches the range, ignoring case and spaces", visible());
       type("ukex"); enter();

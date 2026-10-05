@@ -404,9 +404,9 @@ and the paste-ready shim are in `duda-widgets/resources/` (`SETUP.md`, `resource
   el.setAttribute('data-saeh-section', section);
   (window.__saehData || (window.__saehData = {}))[section] = data;
 
-  var resourceType = cfg.resourceType, heading = cfg.heading;
+  var resourceType = cfg.resourceType, heading = cfg.heading, subheading = cfg.subheading;
 
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=24';
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=25';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');
@@ -416,14 +416,26 @@ and the paste-ready shim are in `duda-widgets/resources/` (`SETUP.md`, `resource
   L.p.then(function () {
     window.SAEquipHubWidget.init({
       container: el,
-      props: { section: section, inEditor: inEditor, resourceType: resourceType, heading: heading }
+      props: {
+        section: section,
+        inEditor: inEditor,
+        resourceType: resourceType,
+        heading: heading,
+        subheading: subheading
+      }
     });
   }).catch(function () {});
 })(element, 'resources', data.inEditor, data.config || data);
 ```
 
 Content panel: a **static dropdown** `resourceType` (Datasheets=`datasheet`, User
-Manuals=`manual`, Certificates=`certificate`) and an optional text `heading`. Values live on
+Manuals=`manual`, Certificates=`certificate`) and two optional text fields, `subheading` and
+`heading`, rendered as a real **`h6` above an `h2`**, 15px apart, on the left of the search.
+⚠️ **The site's THEME styles them, not the widget**: Duda targets every h2/h6 in the page
+content (`#dmRoot #dm div.dmContent h2`), which outranks any widget class, so they match the
+site's own headings (h2 Barlow 400 at 42/34/30px, h6 Inter 700 14px, measured 2026-10-05). The
+widget sets only their margins and line-height, which the theme leaves alone, plus a fallback
+copy of that type for anywhere the theme does not reach. Values live on
 `data.config`, as for every other widget. `resourceTypeOf()` also accepts the labels, plurals
 and a `{value,label}` object, so a mis-set panel is not silently empty; `lastInit.resourceType`
 (coerced) and `lastInit.resourceTypeRaw` (what Duda sent) are the console reads when it is.
@@ -502,8 +514,9 @@ disallowed origin still 403s. **Phase 2's gate belongs here**, in front of the s
   ⚠️ **Rows are spaced only by the list's 12px `gap`.** An extra margin once marked where one
   SA range ended and the next began, and read as inconsistent spacing (removed 2026-10-05);
   `widget:test` now asserts no row rule carries a `margin-top`.
-- **Search, top right** (stacked under the heading on a phone). Built like the listing's: a real
-  `<label for>` ("Search products"), the same field, X and **ENTER-to-search** rule, and it
+- **Search, top right** (stacked under the heading on a phone). Built like the listing's: the
+  same field, X and **ENTER-to-search** rule, with no caption above it — its `<label for>`
+  ("Search products") is visually hidden (`.saeh-rs-sr`), so the field keeps an accessible name, and it
   **shares** the listing's input CSS (`.saeh-pl-search input,.saeh-rs-search input`) rather
   than copying it. Matches the product name, the range ("cyclone") and the button labels
   ("ukex"). Rows are hidden with a class, not rebuilt — ⚠️ not the `hidden` attribute, which
@@ -579,7 +592,7 @@ The product page's main widget: Overview / Technical Specs / Key Benefits / Appl
   ⚠️ **This used to say `/public/products/content` sanitises it with `stripCruft`. It did not**: that was reverted in `886748c` because importing `sanitize-html` crashed the function, and the comment left behind said the *widget* escaped it — while the widget still used `innerHTML`. Each side claimed the other was the protection. It was latent only because nothing but the import's own clean output had ever been written there; making dashboard edits reach the page (see the product editor section) would have armed it. **The widget is now the boundary, so any other consumer of `descriptionHtml` must sanitise too.** `widget:test` covers script, `onerror`, inline handlers, `javascript:`/tab-obfuscated/`data:` links, iframe, svg-script and style; all 94 real descriptions render byte-identically through it.
   ⚠️ **Never import `services/descriptionHtml.ts` from server code** — it pulls in `sanitize-html`, which makes the WHOLE function fail at load on Vercel (`FUNCTION_INVOCATION_FAILED` on every route, the widget included) while running fine under tsx. It has happened twice: the second time (2026-10-02, ~3 minutes) via `stripAnchors`, which now lives alone in the import-free `services/anchors.ts`. **This is now checked automatically** — `scripts/check-api-bundle.mjs` fails the Vercel build (and the pre-push hook) if `sanitize-html` or `descriptionHtml.ts` enters the API's import graph, and the post-deploy smoke test hits the API and the widget. See "Deploy safety checks".
 
-`npm run widget:test --workspace=backend` covers the widgets (411 checks as of 2026-10-05, the resources list and its search included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
+`npm run widget:test --workspace=backend` covers the widgets (417 checks as of 2026-10-05, the resources list, its search and headings included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
 
 ## 3D Model Viewer
 

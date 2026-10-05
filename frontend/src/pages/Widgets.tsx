@@ -221,9 +221,15 @@ to{opacity:1;transform:none}
 }
 .saeh-rs{font-family:var(--saeh-body)}
 .saeh-rs-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:20px}
-.saeh-rs-h{font-family:var(--saeh-head);font-size:20px;font-weight:600;color:#111;margin:0;line-height:1.25}
+.saeh-rs-heads{min-width:0}
+.saeh-rs-sub{margin:0 0 15px;font-family:var(--saeh-body);font-size:14px;font-weight:700;letter-spacing:.2em;color:#2d2e32;line-height:1.4}
+.saeh-rs-h{margin:0;font-family:var(--saeh-head);font-size:30px;font-weight:400;color:#000;line-height:1.2}
+@media(min-width:768px){.saeh-rs-h{font-size:34px}
+}
+@media(min-width:1025px){.saeh-rs-h{font-size:42px}
+}
 .saeh-rs-search{flex:1 1 100%;min-width:0}
-.saeh-rs-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.saeh-rs-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .saeh-rs-row.saeh-rs-off,.saeh-rs-none.saeh-rs-off{display:none}
 .saeh-rs-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
 .saeh-rs-row{display:grid;grid-template-columns:84px minmax(0,1fr);align-items:center;gap:14px 16px;margin:0;padding:14px;background:#fff;border:1px solid #e6e6e6;animation:saeh-pl-in .32s cubic-bezier(.4,0,.2,1) both}

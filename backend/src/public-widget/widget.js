@@ -795,10 +795,25 @@
       // Heading on the left, search on the right; stacked on a phone. Bottom-
       // aligned, so the heading sits on the same line as the search field.
       ".saeh-rs-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:20px}",
-      ".saeh-rs-h{font-family:var(--saeh-head);font-size:20px;font-weight:600;color:#111;margin:0;line-height:1.25}",
+      /*
+       * ⚠️ A real h6 over a real h2, and on the live page THE SITE'S THEME
+       * styles them, not these rules: Duda's theme targets every h2/h6 in the
+       * page content (`#dmRoot #dm div.dmContent h2`), which outranks any class
+       * here. So the widget's headings match the site's own — h2 Barlow 400
+       * #000 at 42/34/30px, h6 Inter 700 14px with .2em tracking (measured
+       * 2026-10-05). The type below is only the fallback for anywhere the
+       * theme does not reach. What the theme does NOT set, and these rules
+       * therefore own: margins (the 15px between the two) and line-height,
+       * which would otherwise inherit .saeh-root's 1.5 and open a tall gap.
+       */
+      ".saeh-rs-heads{min-width:0}",
+      ".saeh-rs-sub{margin:0 0 15px;font-family:var(--saeh-body);font-size:14px;font-weight:700;letter-spacing:.2em;color:#2d2e32;line-height:1.4}",
+      ".saeh-rs-h{margin:0;font-family:var(--saeh-head);font-size:30px;font-weight:400;color:#000;line-height:1.2}",
+      "@media(min-width:768px){.saeh-rs-h{font-size:34px}}",
+      "@media(min-width:1025px){.saeh-rs-h{font-size:42px}}",
       ".saeh-rs-search{flex:1 1 100%;min-width:0}",
-      // Read by screen readers after each search; not shown.
-      ".saeh-rs-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}",
+      // For screen readers only: the search's label and its result count.
+      ".saeh-rs-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}",
       // A class, not the `hidden` attribute: `.saeh-rs-row{display:grid}` would
       // beat the browser's own [hidden] rule and the row would stay visible.
       ".saeh-rs-row.saeh-rs-off,.saeh-rs-none.saeh-rs-off{display:none}",
@@ -2686,10 +2701,14 @@
    * which signs that one file when it is clicked. The list carries no file
    * URLs at all, so a page of 59 products signs nothing until someone asks.
    */
-  function resourcesSection(data, heading) {
+  function resourcesSection(data, heading, subheading) {
     var products = (data && data.products) || [];
     var sec = el("div", "saeh-section saeh-rs");
-    var h = typeof heading === "string" ? heading.trim().slice(0, 120) : "";
+    var text = function (v) {
+      return typeof v === "string" ? v.trim().slice(0, 120) : "";
+    };
+    var h = text(heading);
+    var sub = text(subheading);
     var list = el("ul", "saeh-rs-list");
     // What each row's search matches against, by row.
     var haystacks = [];
@@ -2771,7 +2790,13 @@
     // Shown in place of the list when a search matches nothing.
     var none = el("p", "saeh-pl-empty saeh-rs-none saeh-rs-off");
     var top = el("div", "saeh-rs-top");
-    if (h) top.appendChild(el("h3", "saeh-rs-h", h));
+    // The subheading (h6) sits above the heading (h2), the pair on the left.
+    if (h || sub) {
+      var heads = el("div", "saeh-rs-heads");
+      if (sub) heads.appendChild(el("h6", "saeh-rs-sub", sub));
+      if (h) heads.appendChild(el("h2", "saeh-rs-h", h));
+      top.appendChild(heads);
+    }
     top.appendChild(resourcesSearch(list, haystacks, none));
     sec.appendChild(top);
     sec.appendChild(list);
@@ -2780,8 +2805,8 @@
   }
 
   /**
-   * The search box above the list, built like the listing widget's: a real
-   * <label for>, the same field and X, and the same ENTER-to-search rule —
+   * The search box above the list, built like the listing widget's: the same
+   * field and X, and the same ENTER-to-search rule —
    * filtering on every keystroke makes the list jump under your thumb on a
    * phone while the keyboard is open.
    *
@@ -2791,7 +2816,9 @@
     var rows = list.children;
     var wrap = el("div", "saeh-rs-search");
     var sid = "saeh-rq" + Math.random().toString(36).slice(2, 9);
-    var label = el("label", "saeh-pl-slabel", "Search products");
+    // Not shown, but still a real <label for>: the field keeps an accessible
+    // name without a visible caption above it.
+    var label = el("label", "saeh-rs-sr", "Search products");
     label.setAttribute("for", sid);
     var sbox = el("div", "saeh-pl-sbox");
     var input = document.createElement("input");
@@ -2803,7 +2830,7 @@
     clearQ.className = "saeh-pl-clearq";
     clearQ.setAttribute("aria-label", "Clear search");
     clearQ.appendChild(closeIcon());
-    var status = el("div", "saeh-rs-status");
+    var status = el("div", "saeh-rs-sr");
     status.setAttribute("role", "status");
 
     function run() {
@@ -2851,7 +2878,7 @@
    * what to do, rather than nothing — an empty box cannot be found to select.
    * Live, it collapses like every other empty section.
    */
-  function renderResourcesInto(container, type, heading, inEditor, onEmpty) {
+  function renderResourcesInto(container, type, heading, subheading, inEditor, onEmpty) {
     try {
       // ⚠️ The type goes in its OWN attribute. `data-saeh-section` is what
       // init() reads first on a re-init, so it must stay exactly "resources".
@@ -2876,7 +2903,7 @@
     }
     return fetchResources(type).then(function (data) {
       try {
-        var node = resourcesSection(data, heading);
+        var node = resourcesSection(data, heading, subheading);
         if (!node) {
           return placeholder(data ? "No products have a file of this type yet." : "The resources list could not be loaded.");
         }
@@ -3088,7 +3115,7 @@
         // RAW, before coercion: what Duda actually sent, for when it is not
         // what the dropdown appears to say.
         hub.lastInit.resourceTypeRaw = props.resourceType;
-        renderResourcesInto(container, resourceType, props.heading, inEditor, onEmpty);
+        renderResourcesInto(container, resourceType, props.heading, props.subheading, inEditor, onEmpty);
         return;
       }
 

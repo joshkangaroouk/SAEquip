@@ -13,12 +13,15 @@ Duda → Widget Builder → New widget, named **SAEquip - Resources**.
 
 ## 2. Content panel
 
-Add two inputs. The **variable names must be exactly these**: the script reads them by name.
+Add three inputs. The **variable names must be exactly these**: the script reads them by name.
 
 | Input | Variable name | Settings |
 |---|---|---|
 | Dropdown | `resourceType` | Static options — label **Datasheets** / value `datasheet`, label **User Manuals** / value `manual`, label **Certificates** / value `certificate`. |
-| Text | `heading` | Optional. Shown above the list (e.g. "Certificates"). Leave blank if the page already has its own title. |
+| Text | `subheading` | Optional. A small H6 line above the heading (e.g. "Resources"). |
+| Text | `heading` | Optional. The H2 above the list (e.g. "Certificates"). Leave both blank if the page already has its own title. |
+
+Both headings take the site's own H6 / H2 styling from the theme, 15px apart.
 
 ## 3. Place it
 
