@@ -1416,7 +1416,7 @@ async function main() {
       check(a.getAttribute("href") === `${API}/public/downloads/d1/file`, "the button opens the file route on the API, built from the id", a.getAttribute("href"));
       check(a.target === "_blank" && a.rel === "noopener", "in a new tab, with rel=noopener");
       check(a.textContent === "Download Datasheet", "labelled with the API's label", a.textContent);
-      check(/^Download Datasheet – Air Mover/.test(a.getAttribute("aria-label")), "accessible name starts with the visible label and names the product", a.getAttribute("aria-label"));
+      check(/^Download Datasheet - Air Mover/.test(a.getAttribute("aria-label")), "accessible name starts with the visible label and names the product", a.getAttribute("aria-label"));
       const shot = rows(d)[0].querySelector(".saeh-rs-shot");
       check(shot.getAttribute("href") === "/product/air-mover" && shot.getAttribute("aria-hidden") === "true" && shot.tabIndex === -1,
         "the picture links to the product but is hidden from AT and the keyboard (one link per product)");
@@ -1577,7 +1577,7 @@ async function main() {
         const [gatedBtn, openLink] = [...d.querySelectorAll(".saeh-rs-dl")];
         check(gatedBtn.tagName === "BUTTON" && !gatedBtn.hasAttribute("href") && gatedBtn.getAttribute("aria-haspopup") === "dialog",
           "gate: a gated download is a button that opens a dialog, with no file link", gatedBtn.outerHTML.slice(0, 90));
-        check(/^UKEX – EX Heater \(opens a request form\)$/.test(gatedBtn.getAttribute("aria-label")), "…named for what it does", gatedBtn.getAttribute("aria-label"));
+        check(/^UKEX - EX Heater \(opens a request form\)$/.test(gatedBtn.getAttribute("aria-label")), "…named for what it does", gatedBtn.getAttribute("aria-label"));
         check(openLink.tagName === "A" && /\/public\/downloads\/u1\/file$/.test(openLink.href), "an ungated one still links straight to the file");
 
         gatedBtn.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
@@ -1585,8 +1585,8 @@ async function main() {
         const dlg = ov && ov.querySelector("[role=dialog]");
         check(!!dlg && dlg.getAttribute("aria-modal") === "true", "clicking opens a modal dialog, appended to <body>");
         const h = dlg.querySelector("h2");
-        check(h && h.textContent === "FILE REQUEST" && dlg.getAttribute("aria-labelledby") === h.id, "headed by an h2 'FILE REQUEST' that names the dialog");
-        check(dlg.querySelector(".saeh-rq-file").textContent === "EX Heater – UKEX", "it says which file is being requested");
+        check(h && h.textContent === "File Requests" && dlg.getAttribute("aria-labelledby") === h.id, "headed by an h2 'File Requests' that names the dialog");
+        check(dlg.querySelector(".saeh-rq-file").textContent === "EX Heater - UKEX", "it says which file is being requested");
         check(dlg.querySelector(".saeh-rq-p").textContent ===
           "Due to increasing amounts of spam requests, we ask that you enter your details below to download your requested file. We will not share your information with third parties for marketing purposes, nor do we ever pass on or sell your details to a third party.",
           "the paragraph is word for word");

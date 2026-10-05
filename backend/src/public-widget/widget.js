@@ -2814,7 +2814,7 @@
       view.href = url;
       view.appendChild(document.createTextNode("View Product"));
       // Contains the visible "View Product", so speech input still matches it.
-      view.setAttribute("aria-label", "View Product – " + name);
+      view.setAttribute("aria-label", "View Product - " + name);
       view.appendChild(doubleChevron());
       info.appendChild(view);
       row.appendChild(info);
@@ -2831,7 +2831,7 @@
           a.className = "saeh-rs-dl";
           a.setAttribute("aria-haspopup", "dialog");
           // Starts with the visible label, so speech input still matches it.
-          a.setAttribute("aria-label", label + " – " + name + " (opens a request form)");
+          a.setAttribute("aria-label", label + " - " + name + " (opens a request form)");
           (function (btn, id) {
             btn.addEventListener("click", function () {
               openRequestForm({ id: id, product: name, label: label, opener: btn });
@@ -2843,7 +2843,7 @@
           a.href = hub.api + "/public/downloads/" + encodeURIComponent(d.id) + "/file";
           a.target = "_blank";
           a.rel = "noopener";
-          a.setAttribute("aria-label", label + " – " + name + " (PDF, opens in a new tab)");
+          a.setAttribute("aria-label", label + " - " + name + " (PDF, opens in a new tab)");
         }
         a.appendChild(downloadIcon());
         a.appendChild(document.createTextNode(label));
@@ -2968,7 +2968,7 @@
   }
 
   /**
-   * The FILE REQUEST form for one gated download, as a modal.
+   * The "File Requests" form for one gated download, as a modal.
    *
    * Asked for EVERY download (decided 2026-10-05) — nothing is remembered
    * between requests, and every field starts empty.
@@ -3002,10 +3002,10 @@
     closeBtn.appendChild(closeIcon20());
     sheet.appendChild(closeBtn);
 
-    var h = el("h2", "saeh-rq-h", "FILE REQUEST");
+    var h = el("h2", "saeh-rq-h", "File Requests");
     h.id = uid + "-h";
     sheet.appendChild(h);
-    sheet.appendChild(el("p", "saeh-rq-file", opts.product + (opts.label ? " – " + opts.label : "")));
+    sheet.appendChild(el("p", "saeh-rq-file", opts.product + (opts.label ? " - " + opts.label : "")));
     var body = el("div", "saeh-rq-body");
     sheet.appendChild(body);
 
@@ -3143,8 +3143,8 @@
     function showDone(fileUrl, opened) {
       body.innerHTML = "";
       body.appendChild(el("p", "saeh-rq-done", opened
-        ? "Thank you — your file is opening in a new tab."
-        : "Thank you — your file is ready."));
+        ? "Thank you - your file is opening in a new tab."
+        : "Thank you - your file is ready."));
       var link = document.createElement("a");
       link.className = "saeh-rs-dl saeh-rq-link";
       link.href = fileUrl;
@@ -3331,7 +3331,7 @@
     };
     if (!hub.api) return onEmpty();
     if (!type) {
-      return placeholder("Resources list — choose Datasheets, User Manuals or Certificates in this widget's content panel.");
+      return placeholder("Resources list - choose Datasheets, User Manuals or Certificates in this widget's content panel.");
     }
     return fetchResources(type).then(function (data) {
       try {

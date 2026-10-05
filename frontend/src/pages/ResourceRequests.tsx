@@ -16,9 +16,9 @@ function formatDate(iso: string): string {
   });
 }
 
-/** "EX Heater – UKEX Certificate", or whichever half is known. */
+/** "EX Heater - UKEX Certificate", or whichever half is known. */
 function fileLabel(r: ResourceRequest): string {
-  return [r.file.productName, r.file.title].filter(Boolean).join(" – ") || "—";
+  return [r.file.productName, r.file.title].filter(Boolean).join(" - ") || "—";
 }
 
 function exportRequests(requests: ResourceRequest[]) {
@@ -67,7 +67,7 @@ function RequestDetail({ request: r }: { request: ResourceRequest }) {
         <Detail label="Email">{r.email}</Detail>
         <Detail label="Telephone">{r.phone}</Detail>
         <Detail label="Mobile">{r.mobile}</Detail>
-        <Detail label="Marketing emails">{r.marketingConsent ? "Yes — opted in" : "No"}</Detail>
+        <Detail label="Marketing emails">{r.marketingConsent ? "Yes - opted in" : "No"}</Detail>
         <Detail label="Submitted">{formatDate(r.createdAt)}</Detail>
         {/* What they agreed to, as the server recorded it at the time. */}
         <Detail label="Consent given" wide>
@@ -111,7 +111,7 @@ function RequestDetail({ request: r }: { request: ResourceRequest }) {
 }
 
 /**
- * Resource Requests — every FILE REQUEST form submitted on the Datasheets,
+ * Resource Requests — every "File Requests" form submitted on the Datasheets,
  * User Manuals and Certificates pages. Read-only, like Quote Requests.
  */
 export default function ResourceRequests() {

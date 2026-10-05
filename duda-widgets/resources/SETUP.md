@@ -50,7 +50,7 @@ Which page a file appears on is set **per file in the product editor's Downloads
 section** (Type, and for a certificate, which certificate). Hidden products never
 appear.
 
-**Every download asks for the visitor's details first** — a FILE REQUEST form (name,
+**Every download asks for the visitor's details first** — a "File Requests" form (name,
 company, email, telephone, optional mobile, a required privacy box and an optional
 marketing box). Each submission is listed in the Hub under **Resource Requests**.
 ⚠️ The privacy box links to **`/privacy-policy`** — create that page in Duda before launch.

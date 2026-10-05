@@ -290,7 +290,7 @@ export interface QuotesResponse {
   requests: QuoteRequest[];
 }
 
-/** One resource request — the FILE REQUEST form on a gated download. */
+/** One resource request — the "File Requests" form on a gated download. */
 export interface ResourceRequest {
   id: string;
   name: string;
