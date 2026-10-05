@@ -2648,6 +2648,13 @@
     return Object.prototype.hasOwnProperty.call(RESOURCE_TYPE_ALIASES, t) ? RESOURCE_TYPE_ALIASES[t] : "";
   }
 
+  /** What the search box says on each page — the placeholder and its hidden label. */
+  var RESOURCE_SEARCH_LABEL = {
+    datasheet: "Search Datasheets",
+    manual: "Search User Manuals",
+    certificate: "Search Certificates",
+  };
+
   /** One fetch per type per page, however many copies of the widget there are. */
   function fetchResources(type) {
     if (!hub.resourceFetches) hub.resourceFetches = {};
@@ -2701,7 +2708,7 @@
    * which signs that one file when it is clicked. The list carries no file
    * URLs at all, so a page of 59 products signs nothing until someone asks.
    */
-  function resourcesSection(data, heading, subheading) {
+  function resourcesSection(data, heading, subheading, type) {
     var products = (data && data.products) || [];
     var sec = el("div", "saeh-section saeh-rs");
     var text = function (v) {
@@ -2797,7 +2804,7 @@
       if (h) heads.appendChild(el("h2", "saeh-rs-h", h));
       top.appendChild(heads);
     }
-    top.appendChild(resourcesSearch(list, haystacks, none));
+    top.appendChild(resourcesSearch(list, haystacks, none, type));
     sec.appendChild(top);
     sec.appendChild(list);
     sec.appendChild(none);
@@ -2812,19 +2819,20 @@
    *
    * Rows are hidden, not rebuilt, so their images are not fetched again.
    */
-  function resourcesSearch(list, haystacks, none) {
+  function resourcesSearch(list, haystacks, none, type) {
+    var says = Object.prototype.hasOwnProperty.call(RESOURCE_SEARCH_LABEL, type) ? RESOURCE_SEARCH_LABEL[type] : "Search products";
     var rows = list.children;
     var wrap = el("div", "saeh-rs-search");
     var sid = "saeh-rq" + Math.random().toString(36).slice(2, 9);
     // Not shown, but still a real <label for>: the field keeps an accessible
     // name without a visible caption above it.
-    var label = el("label", "saeh-rs-sr", "Search products");
+    var label = el("label", "saeh-rs-sr", says);
     label.setAttribute("for", sid);
     var sbox = el("div", "saeh-pl-sbox");
     var input = document.createElement("input");
     input.id = sid;
     input.type = "search";
-    input.placeholder = "Product name, range or certificate...";
+    input.placeholder = says + "...";
     var clearQ = document.createElement("button");
     clearQ.type = "button";
     clearQ.className = "saeh-pl-clearq";
@@ -2903,7 +2911,7 @@
     }
     return fetchResources(type).then(function (data) {
       try {
-        var node = resourcesSection(data, heading, subheading);
+        var node = resourcesSection(data, heading, subheading, type);
         if (!node) {
           return placeholder(data ? "No products have a file of this type yet." : "The resources list could not be loaded.");
         }

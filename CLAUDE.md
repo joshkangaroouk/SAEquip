@@ -515,8 +515,10 @@ disallowed origin still 403s. **Phase 2's gate belongs here**, in front of the s
   SA range ended and the next began, and read as inconsistent spacing (removed 2026-10-05);
   `widget:test` now asserts no row rule carries a `margin-top`.
 - **Search, top right** (stacked under the heading on a phone). Built like the listing's: the
-  same field, X and **ENTER-to-search** rule, with no caption above it — its `<label for>`
-  ("Search products") is visually hidden (`.saeh-rs-sr`), so the field keeps an accessible name, and it
+  same field, X and **ENTER-to-search** rule, with no caption above it — its `<label for>` is visually
+  hidden (`.saeh-rs-sr`), so the field keeps an accessible name. Placeholder and label name the
+  page's own list — "Search Datasheets…", "Search User Manuals…", "Search Certificates…"
+  (`RESOURCE_SEARCH_LABEL`) — and it
   **shares** the listing's input CSS (`.saeh-pl-search input,.saeh-rs-search input`) rather
   than copying it. Matches the product name, the range ("cyclone") and the button labels
   ("ukex"). Rows are hidden with a class, not rebuilt — ⚠️ not the `hidden` attribute, which
@@ -592,7 +594,7 @@ The product page's main widget: Overview / Technical Specs / Key Benefits / Appl
   ⚠️ **This used to say `/public/products/content` sanitises it with `stripCruft`. It did not**: that was reverted in `886748c` because importing `sanitize-html` crashed the function, and the comment left behind said the *widget* escaped it — while the widget still used `innerHTML`. Each side claimed the other was the protection. It was latent only because nothing but the import's own clean output had ever been written there; making dashboard edits reach the page (see the product editor section) would have armed it. **The widget is now the boundary, so any other consumer of `descriptionHtml` must sanitise too.** `widget:test` covers script, `onerror`, inline handlers, `javascript:`/tab-obfuscated/`data:` links, iframe, svg-script and style; all 94 real descriptions render byte-identically through it.
   ⚠️ **Never import `services/descriptionHtml.ts` from server code** — it pulls in `sanitize-html`, which makes the WHOLE function fail at load on Vercel (`FUNCTION_INVOCATION_FAILED` on every route, the widget included) while running fine under tsx. It has happened twice: the second time (2026-10-02, ~3 minutes) via `stripAnchors`, which now lives alone in the import-free `services/anchors.ts`. **This is now checked automatically** — `scripts/check-api-bundle.mjs` fails the Vercel build (and the pre-push hook) if `sanitize-html` or `descriptionHtml.ts` enters the API's import graph, and the post-deploy smoke test hits the API and the widget. See "Deploy safety checks".
 
-`npm run widget:test --workspace=backend` covers the widgets (417 checks as of 2026-10-05, the resources list, its search and headings included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
+`npm run widget:test --workspace=backend` covers the widgets (418 checks as of 2026-10-05, the resources list, its search and headings included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
 
 ## 3D Model Viewer
 

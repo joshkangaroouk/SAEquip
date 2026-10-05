@@ -1520,6 +1520,19 @@ async function main() {
       check(w.__saequipHub.lastInit.propKeys.includes("subheading"), "subheading arrives as a prop");
     }
     {
+      // The placeholder (and its hidden label) names the page being searched.
+      const says = {};
+      for (const t of ["datasheet", "manual", "certificate"]) {
+        const { d } = await boot({ props: RS(t), resourcesPayload: DATASHEETS, url: PAGE });
+        const i = d.querySelector(".saeh-rs-search input");
+        says[t] = `${i.placeholder} | ${d.querySelector(".saeh-rs-search label").textContent}`;
+      }
+      check(says.datasheet === "Search Datasheets... | Search Datasheets" &&
+        says.manual === "Search User Manuals... | Search User Manuals" &&
+        says.certificate === "Search Certificates... | Search Certificates",
+        "the search says which list it searches", JSON.stringify(says));
+    }
+    {
       // The search: Enter to run, matching name, range and button labels.
       const CERTS = {
         type: "certificate",
@@ -1532,7 +1545,7 @@ async function main() {
       const { d, w } = await boot({ props: RS("certificate", { heading: "Certificates" }), resourcesPayload: CERTS, url: PAGE });
       const input = d.querySelector(".saeh-rs-search input");
       const label = d.querySelector(".saeh-rs-search label");
-      check(input && label && label.getAttribute("for") === input.id && label.textContent === "Search products" && label.className === "saeh-rs-sr",
+      check(input && label && label.getAttribute("for") === input.id && label.textContent === "Search Certificates" && label.className === "saeh-rs-sr",
         "resources: the search keeps a real label, visually hidden — no caption above the field");
       const top = d.querySelector(".saeh-rs-top");
       check(top && top.firstChild.className === "saeh-rs-heads" && top.lastChild.className === "saeh-rs-search", "headings on the left, search on the right");
