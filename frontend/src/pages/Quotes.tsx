@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ImageOff } from "lucide-react";
 import { apiFetch } from "../lib/api";
 import { Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
+import { downloadCsv } from "../lib/csv";
+import { ProductThumb } from "../components/ProductThumb";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -15,27 +16,11 @@ function formatDate(iso: string): string {
   });
 }
 
-/**
- * One CSV cell.
- *
- * ⚠️ FORMULA INJECTION: every one of these values is typed by a member of the
- * public on the basket form. A spreadsheet runs any cell starting with `=`, `+`,
- * `-` or `@` (and some read a leading tab or CR the same way), so a "name" of
- * `=HYPERLINK(…)` would execute on whoever opened the export. Prefixing a single
- * quote makes it text — the OWASP mitigation, and the same guard the products
- * export uses (backend services/csv.ts). This export had none.
- */
-function csvEscape(raw: string): string {
-  const value = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
-  if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-  return value;
-}
-
 function itemsSummary(quote: QuoteRequest): string {
   return quote.items.map((item) => `${item.name} x${item.quantity}`).join("; ");
 }
 
-function downloadCsv(requests: QuoteRequest[]) {
+function exportQuotes(requests: QuoteRequest[]) {
   const header = [
     "Name", "First name", "Last name", "Company", "Email", "Telephone", "When needed",
     "Address", "Postcode", "Country", "Message", "Date", "Items",
@@ -55,18 +40,7 @@ function downloadCsv(requests: QuoteRequest[]) {
     formatDate(q.createdAt),
     itemsSummary(q),
   ]);
-  // The BOM makes Excel read the file as UTF-8 — names like "Curaçao" or an
-  // accented surname otherwise arrive garbled.
-  const csv = "\ufeff" + [header, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `quote-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadCsv(`quote-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
 }
 
 function formatOptions(options: Record<string, unknown> | null): string | null {
@@ -84,20 +58,6 @@ function Detail({ label, children, wide = false }: { label: string; children?: R
       <div className="text-xs font-semibold uppercase tracking-wide text-subtle">{label}</div>
       <div className="whitespace-pre-line text-sm font-medium text-text">{empty ? "—" : children}</div>
     </div>
-  );
-}
-
-/** A basket line's product picture, or a neutral placeholder of the same size. */
-function ItemThumb({ url }: { url: string | null }) {
-  const [broken, setBroken] = useState(false);
-  return (
-    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-white">
-      {url && !broken ? (
-        <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full object-contain" />
-      ) : (
-        <ImageOff className="h-4 w-4 text-subtle" aria-hidden="true" />
-      )}
-    </span>
   );
 }
 
@@ -145,7 +105,7 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
               <TR key={item.id}>
                 <TD>
                   <div className="flex items-center gap-3">
-                    <ItemThumb url={item.imageUrl} />
+                    <ProductThumb url={item.imageUrl} />
                     {item.dudaProductId ? (
                       <Link
                         to={`/products/${item.dudaProductId}`}
@@ -207,7 +167,7 @@ export default function Quotes() {
           variant="secondary"
           size="sm"
           disabled={requests.length === 0}
-          onClick={() => downloadCsv(requests)}
+          onClick={() => exportQuotes(requests)}
         >
           Export CSV
         </Button>

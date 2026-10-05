@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   ChevronDown,
+  FileDown,
   FolderTree,
   Globe,
   Images,
@@ -67,6 +68,7 @@ const NAV: NavItem[] = [
    * treatment as pages/UIShowcase.tsx, which is unrouted for the same reason.
    */
   { to: "/quotes", label: "Quote Requests", icon: BarChart3 },
+  { to: "/resource-requests", label: "Resource Requests", icon: FileDown },
   { to: "/users", label: "Users", icon: Users },
   { to: "/security", label: "Security", icon: KeyRound },
   { to: "/status", label: "Status", icon: Sparkles },

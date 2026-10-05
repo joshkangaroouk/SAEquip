@@ -289,3 +289,35 @@ export interface QuotesResponse {
   emailEnabled: boolean;
   requests: QuoteRequest[];
 }
+
+/** One resource request — the FILE REQUEST form on a gated download. */
+export interface ResourceRequest {
+  id: string;
+  name: string;
+  /** Null only on rows from before the current form, which have none. */
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  company: string | null;
+  phone: string | null;
+  mobile: string | null;
+  privacyConsent: boolean;
+  marketingConsent: boolean;
+  /** The consent wording agreed to, one sentence per line. */
+  consentText: string | null;
+  createdAt: string;
+  file: {
+    title: string | null;
+    fileName: string | null;
+    /** False once the download was removed from its product (the snapshot remains). */
+    stillListed: boolean;
+    productName: string | null;
+    productSku: string | null;
+    dudaProductId: string | null;
+    imageUrl: string | null;
+  };
+}
+
+export interface ResourceRequestsResponse {
+  requests: ResourceRequest[];
+}

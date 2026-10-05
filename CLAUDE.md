@@ -35,7 +35,7 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 - `Logo` + `ProductLogo` — SA/Cert logos are a **global shared catalog** (`Logo`, kind `SA_LOGO`/`CERT_LOGO`), not per-product. `ProductLogo` is a join table; a row's existence = that catalog logo is *active* for that product. Adding a logo to the catalog makes it available to every product; deleting one is global (UI warns with a usage count).
 - `SpecRow` — ordered label/value technical spec rows.
 - `ProductTextItem` — ordered text items, `kind` `BENEFIT` or `APPLICATION`.
-- `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` withholds the file URL until a visitor submits a lead form, and `Lead` rows capture name/email/company per download. ⚠️ **Gating is OFF**: the column still defaults to `true` in the schema, but every write path (the import, `POST` and the editor's `PUT`) sets `false`. Each download also has a **`kind`** (`DATASHEET`/`MANUAL`/`CERTIFICATE`) and, for a certificate only, a **`certScheme`** (`INMETRO`/`UKEX`/`IECEX`/`EX`/`COMPLIANCE`) — these decide which resources page lists it; see "The resources widget".
+- `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` withholds the file until a visitor submits the FILE REQUEST form, and each submission is a `Lead` row — listed on the dashboard's **Resource Requests** page. ⚠️ **Every file is gated** (2026-10-05); new ones are written gated — see "Gating" under the resources widget. Each download also has a **`kind`** (`DATASHEET`/`MANUAL`/`CERTIFICATE`) and, for a certificate only, a **`certScheme`** (`INMETRO`/`UKEX`/`IECEX`/`EX`/`COMPLIANCE`) — these decide which resources page lists it; see "The resources widget".
 - `MediaAsset` — the shared "media centre" library backing `Logo`, `Download`, and a product's 3D model. `kind` is `"image" | "file" | "model"`.
 - `HubProduct.glbAssetId` — a product's **interactive 3D model** (`.glb`), one per product (not a shared catalog like Logos). See "3D Model Viewer" below.
 - `CompatibleLink` — product→product "Compatible Products & Accessories", ordered, keyed on Hub ids with both sides cascading. Edited in the product editor's Compatible Products section and rendered by the `compatible` carousel; 286 links imported (Stage 3d).
@@ -59,7 +59,7 @@ Single script (`GET /public/widget.js`, served by the backend, cached ~5 min) ha
 - **Full embed** (legacy/simple): `<div id="saequip-product-hub"></div>` — renders every section.
 - **Section-scoped embeds** (used in production, so sections can be placed independently anywhere on the Duda product template): `<div class="saequip-hub" data-section="sa-logos"></div>`, repeated per section (`sa-logos | cert-logos | specs | benefits | applications | downloads`, plus the newer `tabs | 3d-viewer | compatible`). ⚠️ `downloads` renders nothing today — the content endpoint returns `downloads: []` (Stage 3e). All mounts on a page share **one** memoized fetch per slug regardless of how many section-embeds/script copies exist. Renders inline (no iframe), so each mount auto-sizes — but note in Duda's **HTML/Embed element** you still need the **"auto height" toggle** enabled or Duda's own container clips it.
 - Vanilla JS, no framework, fails silently on any error (never breaks the host page).
-- **An empty section removes its own footprint.** Duda offers no way to hide an element conditionally, and hiding just the mount is not enough — Duda's HTML/Embed element is a wrapper with its own padding and min-height, so an empty widget still left a visible gap. `collapseMount()` hides the mount and then walks UP at most 4 levels, hiding each ancestor **only while that ancestor contains nothing but our mount** — so a column that also holds a heading is never touched, and the worst case is a smaller gap rather than missing page content. It fires on all four empty paths: no API/slug, an unknown `data-section`, an unknown product or failed fetch, and (the common one) a product with no content for the requested section. `data-collapse="false"` on a mount opts out. When gating returns, a gated download renders an inline lead-capture form (name/email/company + honeypot) that posts to `/public/downloads/:id/lead` and returns a short-TTL signed URL on success.
+- **An empty section removes its own footprint.** Duda offers no way to hide an element conditionally, and hiding just the mount is not enough — Duda's HTML/Embed element is a wrapper with its own padding and min-height, so an empty widget still left a visible gap. `collapseMount()` hides the mount and then walks UP at most 4 levels, hiding each ancestor **only while that ancestor contains nothing but our mount** — so a column that also holds a heading is never touched, and the worst case is a smaller gap rather than missing page content. It fires on all four empty paths: no API/slug, an unknown `data-section`, an unknown product or failed fetch, and (the common one) a product with no content for the requested section. `data-collapse="false"` on a mount opts out. ⚠️ The legacy `downloads` section's inline lead form (name/email/company) predates the FILE REQUEST form and posts the OLD fields, which `/public/downloads/:id/lead` now refuses. It never renders (the content endpoint sends `downloads: []`); retire it rather than revive it — the resources widget is where downloads live.
 
 ## Duda Widget Builder widgets (the preferred embed route)
 
@@ -392,7 +392,7 @@ category template, or the page shows two listings.
 ## The resources widget (`section: "resources"`, 2026-10-02)
 
 One Duda widget for three static pages — **Datasheets**, **User Manuals** and
-**Certificates** — chosen by a content-panel dropdown. Ungated (gating is phase 2). Each row:
+**Certificates** — chosen by a content-panel dropdown. Every file is gated behind a request form (see "Gating" below). Each row:
 picture, SA range logo, name, "View Product", and one yellow button per file; on
 Certificates, one button per scheme (INMETRO / UKEX / IECEX / EX / Compliance). Set-up steps
 and the paste-ready shim are in `duda-widgets/resources/` (`SETUP.md`, `resources.js`).
@@ -470,10 +470,12 @@ of that type, each `{name, url, imageUrl, range:{label,logoUrl}|null, downloads:
 title, href}]}`. Unknown type → 400 (an own-property check, so `?type=constructor` is not
 `Object.prototype`'s).
 
-- ⚠️ **`PUBLIC_DOWNLOAD` in `services/hubProduct.ts` is the ONE definition** of a public
-  download — ungated, typed, on a product that is `LISTABLE` *and* has a slug — used by both
-  this list and the file route, so a page can never list a file the route refuses or the route
-  serve one no page lists. A HIDDEN product's certificate is not reachable by its id.
+- ⚠️ **`LISTED_DOWNLOAD` in `services/hubProduct.ts` is the ONE definition** of a listed
+  download — typed, on a product that is `LISTABLE` *and* has a slug — used by this list and
+  the request form; `PUBLIC_DOWNLOAD` is that plus `gated: false`, and only the direct file
+  route uses it. So a page cannot offer a file the routes refuse, a HIDDEN product's
+  certificate is reachable by no route, and a gated file is reachable only through the form.
+  Each download in the payload carries `gated`, and a gated one has `href: null`.
 - **Ordered by SA range** (the Logos page's `sortOrder`), A–Z within a range, no-range last. The
   range is the product's first SA logo that is **not Rental** (`/rental/i` on label, alt or
   filename): Rental sits beside a range — 51 products carry both — and the old pages never
@@ -495,7 +497,8 @@ download matches `PUBLIC_DOWNLOAD`; otherwise the **same bare 404** whatever the
 response says nothing about which. `Cache-Control: no-store` on both — a cached redirect would
 hand the next visitor an expired signature. Its own in-memory limiter (30/min/IP). A top-level
 navigation carries no Origin, so `publicCors` passes it; a cross-site `fetch()` from a
-disallowed origin still 403s. **Phase 2's gate belongs here**, in front of the signing.
+disallowed origin still 403s. ⚠️ It serves UNGATED files only — a gated one gets the same 404,
+so the gate holds even for someone who copies a download id.
 
 ### The widget
 
@@ -527,6 +530,48 @@ disallowed origin still 403s. **Phase 2's gate belongs here**, in front of the s
 - Empty or unconfigured: collapses live; **in the editor it renders a placeholder saying what to
   choose**, and tells a failed fetch apart from an empty list — an empty box cannot be found to
   select.
+
+### Gating — the FILE REQUEST form (2026-10-05)
+
+Every file on the three pages asks for the visitor's details first, **on every download**
+(Josh's choice — nothing is remembered, every request starts blank). A gated download is a
+`<button>` that opens a modal: an `h2` "FILE REQUEST", the file being requested, the spam
+paragraph, First / Last / Company / Email / Tel (all required — the quote form's set) and
+Mobile (optional), a required privacy checkbox linking `/privacy-policy`, an optional
+marketing checkbox, and "Submit & Download".
+
+- ⚠️ **`/privacy-policy` does not exist on the Duda site yet** — create it before launch, or
+  the consent link 404s.
+- **`POST /public/downloads/:id/lead`** stores a `Lead`, THEN signs a 5-minute URL. Accepts a
+  `LISTED_DOWNLOAD` only (it used to sign any id at all). `.strict()` zod; control characters
+  stripped (`headerSafe`); phone fields must look like phone numbers (the widget checks the
+  same rule first). **`elapsedMs` is REQUIRED** — unlike the basket, the widget sending it is
+  ours — and a filled honeypot or an under-1.5s fill gets `{ok:true}` with no file and nothing
+  stored. Postgres-backed limits: 10/minute and 30/hour per IP.
+- ⚠️ **The consent wording is stored as the SERVER holds it** (`CONSENT_TEXT` in
+  `services/downloadKinds.ts`), so a request records what was actually agreed to. The widget's
+  copy must match word for word — `widget:test` reads both and fails on drift.
+- ⚠️ **The new tab is opened INSIDE the click**, then pointed at the file when the server
+  answers: a `window.open` after the request returns is outside a user gesture and every popup
+  blocker stops it. A blocked tab falls back to an "Open your file" link, which is a real click.
+  Any failure closes the blank tab and keeps the form.
+- The modal is appended to `<body>` (like the 3D viewer), so the theme's `div.dmContent`
+  heading rules do NOT reach it — its `h2` restates the theme's look itself. Focus is held
+  inside, Escape/X close, focus returns to the button; a backdrop click deliberately does not
+  close it. Fields, button and checkbox share the existing search/download/filter rules.
+- **Resource Requests** (`/resource-requests`, sidebar after Quote Requests) lists every
+  request newest first — `GET /api/resource-requests`, behind `requireAuth` — with a detail
+  view (every field, the consent wording, the file with its product picture and editor link)
+  and a CSV export. Both CSV exports share `lib/csv.ts`, which holds the formula-injection
+  guard. Each row carries snapshots of the file and product, so it stays complete after the
+  download is removed ("Since removed").
+- ⚠️ **Order of rollout: deploy, THEN gate the data.** `npm run downloads:gate --workspace=backend`
+  (dry run; `--confirm`; `--ungate --confirm` to undo) flips the existing files. The code before
+  this listed ungated files only, so gating first would have emptied all three pages until the
+  deploy landed — the same lesson as "deploy the guard BEFORE running the import".
+- No email goes anywhere (Resend is not set up; these feed the CRM later, like quotes), and
+  there is no role model: any signed-in user can read every request. Requests are personal
+  data — deletion on request is a database job until a delete button is built.
 
 ## Category mode — the compatible carousel on static pages
 
@@ -594,7 +639,7 @@ The product page's main widget: Overview / Technical Specs / Key Benefits / Appl
   ⚠️ **This used to say `/public/products/content` sanitises it with `stripCruft`. It did not**: that was reverted in `886748c` because importing `sanitize-html` crashed the function, and the comment left behind said the *widget* escaped it — while the widget still used `innerHTML`. Each side claimed the other was the protection. It was latent only because nothing but the import's own clean output had ever been written there; making dashboard edits reach the page (see the product editor section) would have armed it. **The widget is now the boundary, so any other consumer of `descriptionHtml` must sanitise too.** `widget:test` covers script, `onerror`, inline handlers, `javascript:`/tab-obfuscated/`data:` links, iframe, svg-script and style; all 94 real descriptions render byte-identically through it.
   ⚠️ **Never import `services/descriptionHtml.ts` from server code** — it pulls in `sanitize-html`, which makes the WHOLE function fail at load on Vercel (`FUNCTION_INVOCATION_FAILED` on every route, the widget included) while running fine under tsx. It has happened twice: the second time (2026-10-02, ~3 minutes) via `stripAnchors`, which now lives alone in the import-free `services/anchors.ts`. **This is now checked automatically** — `scripts/check-api-bundle.mjs` fails the Vercel build (and the pre-push hook) if `sanitize-html` or `descriptionHtml.ts` enters the API's import graph, and the post-deploy smoke test hits the API and the widget. See "Deploy safety checks".
 
-`npm run widget:test --workspace=backend` covers the widgets (418 checks as of 2026-10-05, the resources list, its search and headings included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
+`npm run widget:test --workspace=backend` covers the widgets (463 checks as of 2026-10-05, the resources list, its search, headings and the request form included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
 
 ## 3D Model Viewer
 
@@ -1322,7 +1367,7 @@ file and the Hub had no Download rows. It makes a re-run safe structurally, and 
 
 `DownloadsSection.tsx` — rename, type (and certificate scheme), drag to reorder, remove, add from the Media Centre. Joined to
 the unified save (`SectionKey "downloads"`, `downloadsFrom()`, a `project()` case, `validate()`,
-a save task). No gated toggle and no lead count while gating is off.
+a save task). No gated toggle: every file is gated, and a new one is written `gated: true`.
 
 `PUT /api/products/:id/downloads` takes `{items: [{mediaAssetId, title, kind, certScheme}]}` in display order — see "The resources widget" for the type rules.
 - ⚠️ **Keyed on `mediaAssetId`, not row ids.** That is what makes it idempotent when a response
@@ -1409,10 +1454,10 @@ Code review across the whole run (scrape → import → PUT → editor → previ
 | The export ran two count queries in a second round trip | real | one wave |
 
 **Accepted, not fixed:** the editor's PUT removes a download without the `has_leads` 409 that
-`DELETE /downloads/:id` still enforces. With gating off there are 0 leads and none can be
-captured, and `Lead.downloadId` is `SetNull` so a lead would survive with its snapshot — only
-its link is lost. ⚠️ **Revisit when gating returns**: the editor should warn before removing a
-download that has leads, or the PUT should report `detachedLeads`.
+`DELETE /downloads/:id` still enforces. Revisited when gating returned (2026-10-05) and left:
+`Lead.downloadId` is `SetNull`, and each request now snapshots the file name, title, product
+and product id, so a request outlives its download with nothing lost but the link — Resource
+Requests marks it "Since removed".
 
 **Data, reconciled independently** of the import script: 176/176 rows match the old pages by
 title, file and order, all ungated; 126/126 files present at the right size and
@@ -1867,13 +1912,13 @@ The container carries `aria-busy` + `aria-live` + a label; the blocks themselves
 
 ## Known gaps / backlog (reviewed 2026-10-02)
 
-- No admin UI to view captured `Lead` rows from gated downloads yet (they're stored and now survive product deletion, just not surfaced — unlike `QuoteRequest`, which has a `/quotes` page). More valuable now that retained leads can outlive their product.
+- Resource Requests has **no delete** — a visitor asking for their data to be removed is a database job for now.
 - The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done; **still to do: the Hire/Purchase option** (see the options notes — attaching a two-value option drops existing variation SKUs). `/products/new` remains the path for genuinely new one-off products.
 - **Opening a product makes ~4 Duda reads** (the product, and `/custom` plus both logo lists each `ensureHubProduct`). Correct, just slower than one; worth trimming if Duda rate limits ever bite.
 - **New categories get no SEO title** — `duda:category-seo` was a one-off over the 23 that existed; set one on the category's page.
 - **The post-deploy GitHub workflow's first run is unconfirmed from here** (no `gh` CLI) — the same commands were run locally against production and passed; check the repo's Actions tab once.
 - **Downloads are public only through the resources widget** (Datasheets / User Manuals / Certificates pages). A product page still shows none — `/public/products/content` returns `downloads: []`; see Stage 3e for why.
-- **Gating is OFF** (every download `gated: false`, no toggle in the editor). The `gated` column, the lead endpoint and its Postgres limiter all remain, so turning it back on is UI work. Captured `Lead` rows have no admin page; that waits for the CRM integration, like quote requests.
+- **Every download is gated** (2026-10-05) — no per-file toggle. The `gated` column stays per file, so one could be added to the editor.
 - Widget visual styling is functional but not deeply brand-tuned.
 - ⚠️ **`/widgets` is routed but deliberately NOT in the sidebar** (2026-09-30). It documents the embed snippets and is Kangaroo's reference, not something SAEquip staff should change — reachable by URL, invisible in the menu. Same treatment as `pages/UIShowcase.tsx`, which is unrouted for the same reason.
 - No optimistic-concurrency check: because array writes are full replacement, a stale dashboard tab can overwrite edits made in Duda. Mitigated only by the "loaded HH:MM / refresh" control in the product header.
