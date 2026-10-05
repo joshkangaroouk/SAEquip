@@ -647,15 +647,17 @@
       ".saeh-pl-search{padding:14px 16px;border-bottom:1px solid #ececec}",
       ".saeh-pl-slabel{display:block;margin-bottom:8px;font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111}",
       ".saeh-pl-sbox{position:relative}",
-      ".saeh-pl-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px;transition:border-color .15s cubic-bezier(.4,0,.2,1),box-shadow .15s cubic-bezier(.4,0,.2,1)}",
+      // ⚠️ Shared with the resources list's search (.saeh-rs-search) — one
+      // treatment for the site's two search boxes, so they cannot drift.
+      ".saeh-pl-search input,.saeh-rs-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px;transition:border-color .15s cubic-bezier(.4,0,.2,1),box-shadow .15s cubic-bezier(.4,0,.2,1)}",
       // The native search X cannot be styled to match the site, so it is
       // suppressed and replaced with an inline SVG that inherits currentColor.
-      ".saeh-pl-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}",
+      ".saeh-pl-search input::-webkit-search-cancel-button,.saeh-rs-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}",
       ".saeh-pl-clearq{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:none;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}",
       ".saeh-pl-clearq.on{display:flex}",
       ".saeh-pl-clearq:hover{color:#666}",
       ".saeh-pl-clearq svg{display:block}",
-      ".saeh-pl-search input::placeholder{color:#9a9a9a}",
+      ".saeh-pl-search input::placeholder,.saeh-rs-search input::placeholder{color:#9a9a9a}",
       /*
        * Matches the dashboard's field treatment (see `fieldBase` in
        * components/ui/Input.tsx): the border takes the ring colour and a 3px
@@ -663,7 +665,7 @@
        * than a thicker border because box-shadow takes no layout space, so the
        * field cannot shift by a pixel as it gains focus.
        */
-      ".saeh-pl-search input:focus{outline:none;border-color:var(--color_7,#fed217);box-shadow:0 0 0 3px rgba(254,210,23,.5)}",
+      ".saeh-pl-search input:focus,.saeh-rs-search input:focus{outline:none;border-color:var(--color_7,#fed217);box-shadow:0 0 0 3px rgba(254,210,23,.5)}",
       /*
        * ⚠️ Second rule, not a merged one. `color-mix` is what applies the half
        * opacity to the THEME colour rather than to a hardcoded yellow, but a
@@ -671,7 +673,7 @@
        * literal rgba above has to stand alone as the fallback, and this
        * overrides it where supported.
        */
-      ".saeh-pl-search input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--color_7,#fed217) 50%,transparent)}",
+      ".saeh-pl-search input:focus,.saeh-rs-search input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--color_7,#fed217) 50%,transparent)}",
       ".saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}",
       ".saeh-pl-more:hover{background:#111;color:#fff}",
       ".saeh-pl-more span{color:#9a9a9a;font-weight:600}",
@@ -790,12 +792,18 @@
        * breakpoint) the buttons move to the right of the row.
        */
       ".saeh-rs{font-family:var(--saeh-body)}",
-      ".saeh-rs-h{font-family:var(--saeh-head);font-size:20px;font-weight:600;color:#111;margin:0 0 20px;line-height:1.25}",
+      // Heading on the left, search on the right; stacked on a phone. Bottom-
+      // aligned, so the heading sits on the same line as the search field.
+      ".saeh-rs-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:20px}",
+      ".saeh-rs-h{font-family:var(--saeh-head);font-size:20px;font-weight:600;color:#111;margin:0;line-height:1.25}",
+      ".saeh-rs-search{flex:1 1 100%;min-width:0}",
+      // Read by screen readers after each search; not shown.
+      ".saeh-rs-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}",
+      // A class, not the `hidden` attribute: `.saeh-rs-row{display:grid}` would
+      // beat the browser's own [hidden] rule and the row would stay visible.
+      ".saeh-rs-row.saeh-rs-off,.saeh-rs-none.saeh-rs-off{display:none}",
       ".saeh-rs-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}",
       ".saeh-rs-row{display:grid;grid-template-columns:84px minmax(0,1fr);align-items:center;gap:14px 16px;margin:0;padding:14px;background:#fff;border:1px solid #e6e6e6;animation:saeh-pl-in .32s cubic-bezier(.4,0,.2,1) both}",
-      // A little more air where one SA range ends and the next begins — the
-      // list is ordered by range, and this is what makes that visible.
-      ".saeh-rs-row.saeh-rs-gstart{margin-top:14px}",
       ".saeh-rs-shot{width:84px;height:84px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff}",
       // `contain`, as on the product cards: cropping industrial kit to a square cuts it out of frame.
       ".saeh-rs-shot img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;transition:transform .45s cubic-bezier(.4,0,.2,1)}",
@@ -815,6 +823,8 @@
       ".saeh-rs-ph{border:1px dashed #cfcfcf;padding:28px 20px;text-align:center;color:#878787;font-size:15px;font-family:var(--saeh-body)}",
       "@media(min-width:721px){" +
         ".saeh-rs-row{grid-template-columns:96px minmax(0,1fr) auto;gap:20px;padding:16px 20px}" +
+        // Top right; margin-left:auto keeps it there when there is no heading.
+        ".saeh-rs-search{flex:0 1 340px;margin-left:auto}" +
         ".saeh-rs-shot{width:96px;height:96px}" +
         ".saeh-rs-name{font-size:17px}" +
         ".saeh-rs-dls{grid-column:auto;justify-content:flex-end;max-width:440px}" +
@@ -828,7 +838,7 @@
         ".saeh-rs-shot img,.saeh-rs-dl,.saeh-rs-view{transition:none}" +
       "}",
       "@media(prefers-reduced-motion:reduce){" +
-        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img,.saeh-pl-search input{transition:none}" +
+        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img,.saeh-pl-search input,.saeh-rs-search input{transition:none}" +
         ".saeh-pl-card{animation:none}" +
       "}",
       /*
@@ -2680,9 +2690,9 @@
     var products = (data && data.products) || [];
     var sec = el("div", "saeh-section saeh-rs");
     var h = typeof heading === "string" ? heading.trim().slice(0, 120) : "";
-    if (h) sec.appendChild(el("h3", "saeh-rs-h", h));
     var list = el("ul", "saeh-rs-list");
-    var prevRange = null;
+    // What each row's search matches against, by row.
+    var haystacks = [];
 
     products.forEach(function (p) {
       var downloads = (p && p.downloads ? p.downloads : []).filter(function (d) {
@@ -2693,9 +2703,14 @@
       var name = p.name || "";
 
       var row = el("li", "saeh-rs-row");
-      var rangeKey = p.range && p.range.label ? p.range.label : "";
-      if (list.children.length && rangeKey !== prevRange) row.className += " saeh-rs-gstart";
-      prevRange = rangeKey;
+      // The name, the range ("cyclone") and the buttons ("ukex"), so a
+      // visitor can find a product by any of the words on its row.
+      haystacks.push(
+        [name, p.range && p.range.label ? p.range.label : ""]
+          .concat(downloads.map(function (d) { return d.label || d.title || ""; }))
+          .join(" ")
+          .toLowerCase()
+      );
 
       // The picture repeats the View Product link, so it is hidden from
       // assistive tech and the keyboard: one link per product, not two.
@@ -2752,8 +2767,80 @@
     });
 
     if (!list.children.length) return null;
+
+    // Shown in place of the list when a search matches nothing.
+    var none = el("p", "saeh-pl-empty saeh-rs-none saeh-rs-off");
+    var top = el("div", "saeh-rs-top");
+    if (h) top.appendChild(el("h3", "saeh-rs-h", h));
+    top.appendChild(resourcesSearch(list, haystacks, none));
+    sec.appendChild(top);
     sec.appendChild(list);
+    sec.appendChild(none);
     return sec;
+  }
+
+  /**
+   * The search box above the list, built like the listing widget's: a real
+   * <label for>, the same field and X, and the same ENTER-to-search rule —
+   * filtering on every keystroke makes the list jump under your thumb on a
+   * phone while the keyboard is open.
+   *
+   * Rows are hidden, not rebuilt, so their images are not fetched again.
+   */
+  function resourcesSearch(list, haystacks, none) {
+    var rows = list.children;
+    var wrap = el("div", "saeh-rs-search");
+    var sid = "saeh-rq" + Math.random().toString(36).slice(2, 9);
+    var label = el("label", "saeh-pl-slabel", "Search products");
+    label.setAttribute("for", sid);
+    var sbox = el("div", "saeh-pl-sbox");
+    var input = document.createElement("input");
+    input.id = sid;
+    input.type = "search";
+    input.placeholder = "Product name, range or certificate...";
+    var clearQ = document.createElement("button");
+    clearQ.type = "button";
+    clearQ.className = "saeh-pl-clearq";
+    clearQ.setAttribute("aria-label", "Clear search");
+    clearQ.appendChild(closeIcon());
+    var status = el("div", "saeh-rs-status");
+    status.setAttribute("role", "status");
+
+    function run() {
+      var q = input.value.trim().toLowerCase().replace(/\s+/g, " ");
+      var shown = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var hit = !q || haystacks[i].indexOf(q) !== -1;
+        rows[i].className = "saeh-rs-row" + (hit ? "" : " saeh-rs-off");
+        if (hit) shown++;
+      }
+      clearQ.className = "saeh-pl-clearq" + (input.value ? " on" : "");
+      none.textContent = shown ? "" : "No products match “" + input.value.trim() + "”.";
+      none.className = "saeh-pl-empty saeh-rs-none" + (shown ? " saeh-rs-off" : "");
+      status.textContent = !q ? "" : shown ? shown + (shown === 1 ? " product" : " products") + " found" : "No products found";
+    }
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        run();
+      }
+    });
+    // Only the X tracks typing; the search itself waits for Enter.
+    input.addEventListener("input", function () {
+      clearQ.className = "saeh-pl-clearq" + (input.value ? " on" : "");
+    });
+    clearQ.addEventListener("click", function () {
+      input.value = "";
+      run();
+      input.focus();
+    });
+
+    sbox.appendChild(input);
+    sbox.appendChild(clearQ);
+    wrap.appendChild(label);
+    wrap.appendChild(sbox);
+    wrap.appendChild(status);
+    return wrap;
   }
 
   /**

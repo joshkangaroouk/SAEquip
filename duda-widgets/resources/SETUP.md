@@ -37,7 +37,9 @@ grey placeholder saying what to choose.
 ## What it shows
 
 Every public product with a file of that type, grouped by SA range (in the Logos
-page's order), A–Z within a range. Each row shows the picture, range logo, name, a
+page's order), A–Z within a range, with a search box top right. The search runs when
+the visitor presses Enter and matches the product name, the range and the certificate
+names. Each row shows the picture, range logo, name, a
 View Product link and one yellow button per file. On Certificates there is one button
 per scheme: INMETRO, UKEX, IECEX, EX, Compliance. Buttons open the PDF in a new tab.
 

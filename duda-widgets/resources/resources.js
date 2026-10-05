@@ -9,7 +9,7 @@
   // Read into primitives NOW, at evaluation time.
   var resourceType = cfg.resourceType, heading = cfg.heading;
 
-  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=23';
+  var SRC = 'https://sa-equip-backend.vercel.app/public/widget.js?v=24';
   var L = window.__saehLoader || (window.__saehLoader = {});
   if (!L.p) L.p = new Promise(function (res, rej) {
     var s = document.createElement('script');

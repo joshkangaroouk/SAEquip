@@ -779,13 +779,13 @@ async function main() {
      * the alpha to the THEME colour, but a browser that does not know it drops
      * the whole declaration — so the fallback cannot be merged into that rule.
      */
-    check(/\.saeh-pl-search input:focus\{[^}]*box-shadow:0 0 0 3px rgba\(254,210,23,\.5\)\}/.test(css),
+    check(/\.saeh-pl-search input:focus(,\.saeh-rs-search input:focus)?\{[^}]*box-shadow:0 0 0 3px rgba\(254,210,23,\.5\)\}/.test(css),
       "a half-opacity ring on focus, with a literal fallback that stands alone");
-    check(/\.saeh-pl-search input:focus\{box-shadow:0 0 0 3px color-mix\(in srgb,var\(--color_7,#fed217\) 50%,transparent\)\}/.test(css),
+    check(/\.saeh-pl-search input:focus(,\.saeh-rs-search input:focus)?\{box-shadow:0 0 0 3px color-mix\(in srgb,var\(--color_7,#fed217\) 50%,transparent\)\}/.test(css),
       "…overridden by the theme colour where color-mix is supported");
-    check(/\.saeh-pl-search input\{[^}]*transition:border-color \.15s/.test(css),
+    check(/\.saeh-pl-search input(,\.saeh-rs-search input)?\{[^}]*transition:border-color \.15s/.test(css),
       "…and eased, like the dashboard's fields");
-    check(/@media\(prefers-reduced-motion:reduce\)\{[^@]*\.saeh-pl-search input\{transition:none\}/.test(css),
+    check(/@media\(prefers-reduced-motion:reduce\)\{[^@]*\.saeh-pl-search input(,\.saeh-rs-search input)?\{transition:none\}/.test(css),
       "…but not for anyone who asked for less motion");
   }
 
@@ -1417,8 +1417,7 @@ async function main() {
       check(logos[0].getAttribute("alt") === "SA Cyclone" && logos[2].getAttribute("alt") === "SA Lumin" && logos[3] === null,
         "range logo with its name as alt; none for a product with no range");
       check(!rows(d)[1].querySelector(".saeh-rs-shot img"), "no picture → no broken image");
-      const g = rows(d).map((r) => r.classList.contains("saeh-rs-gstart"));
-      check(JSON.stringify(g) === "[false,false,true,true]", "a gap marks where one range ends and the next begins", JSON.stringify(g));
+      check(rows(d).every((r) => r.className === "saeh-rs-row"), "every row carries the same class — no extra gap where a range changes");
       check(!d.querySelector(".saeh-rs-h"), "no heading unless one is set");
       check(!!d.getElementById("saeh-styles"), "styles injected");
     }
@@ -1495,6 +1494,55 @@ async function main() {
       const css = d.getElementById("saeh-styles").textContent;
       check(/@media\(min-width:721px\)\{\.saeh-rs-row\{grid-template-columns:96px/.test(css), "rows go side-by-side at the 721px breakpoint");
       check(/prefers-reduced-motion:reduce\)\{\.saeh-rs-row\{animation:none\}/.test(css), "row animation honours reduced motion");
+      check(!/saeh-rs-row[^{]*\{[^}]*margin-top/.test(css) && /\.saeh-rs-list\{[^}]*gap:12px/.test(css),
+        "rows are spaced only by the list's gap, so every gap is the same");
+      check(/\.saeh-pl-search input,\.saeh-rs-search input\{/.test(css) && /\.saeh-pl-search input:focus,\.saeh-rs-search input:focus\{/.test(css),
+        "the search field SHARES the listing's rules rather than copying them");
+      check(/@media\(min-width:721px\)\{[^}]*\}[^@]*\.saeh-rs-search\{flex:0 1 340px;margin-left:auto\}/.test(css), "from 721px the search sits top right");
+    }
+    {
+      // The search: Enter to run, matching name, range and button labels.
+      const CERTS = {
+        type: "certificate",
+        products: [
+          { name: "EX Air Mover", url: "/product/a", imageUrl: null, range: CYC, downloads: [dl("c1", "INMETRO"), dl("c2", "UKEX")] },
+          { name: "EX Heater", url: "/product/h", imageUrl: null, range: { label: "SA Flexiheat", logoUrl: "https://x/f.jpg" }, downloads: [dl("c3", "UKEX")] },
+          { name: "Tower Light", url: "/product/t", imageUrl: null, range: LUM, downloads: [dl("c4", "IECEX")] },
+        ],
+      };
+      const { d, w } = await boot({ props: RS("certificate", { heading: "Certificates" }), resourcesPayload: CERTS, url: PAGE });
+      const input = d.querySelector(".saeh-rs-search input");
+      const label = d.querySelector(".saeh-rs-search label");
+      check(input && label && label.getAttribute("for") === input.id && label.textContent === "Search products",
+        "resources: a search box with a real visible label");
+      const top = d.querySelector(".saeh-rs-top");
+      check(top && top.firstChild.className === "saeh-rs-h" && top.lastChild.className === "saeh-rs-search", "heading on the left, search on the right");
+      const visible = () => rows(d).filter((r) => !r.classList.contains("saeh-rs-off")).map((r) => r.querySelector(".saeh-rs-name").textContent).join(",");
+      const type = (v) => { input.value = v; input.dispatchEvent(new w.Event("input")); };
+      const enter = () => input.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter" }));
+      const clear = d.querySelector(".saeh-rs-search .saeh-pl-clearq");
+
+      type("heater");
+      check(visible() === "EX Air Mover,EX Heater,Tower Light", "typing alone does not filter — it waits for Enter", visible());
+      check(clear.classList.contains("on"), "…but the X appears as soon as there is text");
+      enter();
+      check(visible() === "EX Heater", "Enter filters by name", visible());
+      check(d.querySelector(".saeh-rs-status").textContent === "1 product found", "the result is announced to screen readers");
+      type("  LUMIN "); enter();
+      check(visible() === "Tower Light", "matches the range, ignoring case and spaces", visible());
+      type("ukex"); enter();
+      check(visible() === "EX Air Mover,EX Heater", "matches a certificate button", visible());
+      type('<img src=x onerror="window.__pwned=3">'); enter();
+      await new Promise((r) => setTimeout(r, 20));
+      const none = d.querySelector(".saeh-rs-none");
+      check(visible() === "" && !none.classList.contains("saeh-rs-off") && /^No products match “<img/.test(none.textContent),
+        "no match shows a message, with the query as text");
+      check(w.__pwned === undefined && !none.querySelector("img"), "the query is never parsed as HTML");
+      clear.dispatchEvent(new w.MouseEvent("click"));
+      check(visible() === "EX Air Mover,EX Heater,Tower Light" && none.classList.contains("saeh-rs-off") && input.value === "",
+        "the X clears the search and brings every row back");
+      check(!clear.classList.contains("on"), "…and hides itself");
+      check(d.querySelectorAll(".saeh-rs-row").length === 3, "rows are hidden, never rebuilt");
     }
   }
 
