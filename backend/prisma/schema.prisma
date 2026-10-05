@@ -240,7 +240,26 @@ model Lead {
   productName   String?
   productSku    String?
   downloadTitle String?
+  /// The file and the product it came from, for the Resource Requests page —
+  /// snapshots, like the three above, so the row outlives both.
+  fileName      String?
+  dudaProductId String?
+  // The resource request form (2026-10-05). `name` is still written
+  // ("First Last") so anything reading it keeps working.
+  firstName     String?
+  lastName      String?
+  phone         String?
+  mobile        String?
+  /// Required to submit, so true on every request the form sends.
+  privacyConsent   Boolean @default(false)
+  /// The optional "news and promotions" box.
+  marketingConsent Boolean @default(false)
+  /// The consent wording as the SERVER held it when the visitor agreed — what
+  /// they actually consented to, should the wording change later.
+  consentText   String?
   download      Download? @relation(fields: [downloadId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
 }
 
 // Parked for a later step; no editor yet.

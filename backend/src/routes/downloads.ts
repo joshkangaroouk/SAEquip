@@ -111,9 +111,9 @@ downloadsRouter.post("/products/:id/downloads", async (req, res, next) => {
         hubProductId: hub.id,
         mediaAssetId: asset.id,
         title: parsed.data.title,
-        // ⚠️ Gating is OFF (decided 2026-10-01): the default is open, and the
-        // column stays so turning gating back on needs no schema change.
-        gated: parsed.data.gated ?? false,
+        // Gated by default (2026-10-05): every file on the resources pages
+        // asks for the visitor's details first.
+        gated: parsed.data.gated ?? true,
         sortOrder: (max._max.sortOrder ?? -1) + 1,
       },
       include: downloadInclude,
@@ -206,7 +206,9 @@ downloadsRouter.put("/products/:id/downloads", async (req, res, next) => {
               kind: item.kind,
               certScheme: item.certScheme,
               sortOrder: i,
-              gated: false,
+              // Every file is gated (2026-10-05). An existing row keeps its
+              // own flag — the update above never touches it.
+              gated: true,
             },
           });
         }

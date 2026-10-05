@@ -10,10 +10,10 @@ import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
 import { sendQuoteNotification } from "../services/email.js";
-import { LISTABLE, PUBLIC_DOWNLOAD } from "../services/hubProduct.js";
+import { LISTABLE, LISTED_DOWNLOAD, PUBLIC_DOWNLOAD } from "../services/hubProduct.js";
 import { categorySortKey, compareKeys } from "../services/categoryTree.js";
 import { quoteProductMatcher } from "../services/quoteProducts.js";
-import { KIND_BUTTON, RESOURCE_TYPES, SCHEME_BUTTON, SCHEME_ORDER } from "../services/downloadKinds.js";
+import { CONSENT_TEXT, KIND_BUTTON, RESOURCE_TYPES, SCHEME_BUTTON, SCHEME_ORDER } from "../services/downloadKinds.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -372,8 +372,9 @@ const isRental = (l: { label: string | null; alt: string | null; mediaAsset: { f
  * Rental — Rental sits beside a range rather than being one (51 products carry
  * both), and the old pages never showed it.
  *
- * ⚠️ No file URLs here. Each button points at `/public/downloads/:id/file`,
- * which signs ONE file when it is clicked. Signing every file up front is what
+ * ⚠️ No file URLs here. A button opens `/public/downloads/:id/file` (ungated)
+ * or the request form, whose POST stores the visitor's details and then signs
+ * ONE file. Signing every file up front is what
  * made the content endpoint all-or-nothing — one missing object failed the
  * whole payload — and a page of 59 products would sign 59 URLs nobody opens.
  */
@@ -388,15 +389,15 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
 
   try {
     const products = await prisma.hubProduct.findMany({
-      where: { slug: { not: null }, ...LISTABLE, downloads: { some: { ...PUBLIC_DOWNLOAD, kind } } },
+      where: { slug: { not: null }, ...LISTABLE, downloads: { some: { ...LISTED_DOWNLOAD, kind } } },
       select: {
         name: true,
         slug: true,
         thumbnailUrl: true,
         downloads: {
-          where: { ...PUBLIC_DOWNLOAD, kind },
+          where: { ...LISTED_DOWNLOAD, kind },
           orderBy: { sortOrder: "asc" },
-          select: { id: true, title: true, certScheme: true },
+          select: { id: true, title: true, certScheme: true, gated: true },
         },
         logos: {
           where: { logo: { kind: "SA_LOGO" } },
@@ -440,7 +441,10 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
           id: d.id,
           label: counts.get(labelOf(d))! > 1 ? d.title : labelOf(d),
           title: d.title,
-          href: `/public/downloads/${d.id}/file`,
+          // A gated file opens only through the request form, so it gets no
+          // direct link — the file route would refuse it anyway.
+          gated: d.gated,
+          href: d.gated ? null : `/public/downloads/${d.id}/file`,
         })),
       };
     });
@@ -473,7 +477,8 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
  *
  * ⚠️ Refuses anything PUBLIC_DOWNLOAD does not cover with the same bare 404 —
  * gated, untyped, on a hidden product, or no such id — so the response says
- * nothing about which. Phase 2's gate belongs here, in front of the signing.
+ * nothing about which. A gated file is only ever signed by the request form
+ * (`POST /downloads/:id/lead`), after the visitor's details are stored.
  *
  * ⚠️ `no-store`: a cached redirect would hand the next visitor an expired
  * signature, and the edge must never hold one.
@@ -762,58 +767,154 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
   }
 });
 
+/**
+ * Trim, then strip CR/LF and other control characters.
+ *
+ * ⚠️ `name` is interpolated into the notification's Subject line. Resend's
+ * JSON API is immune to header injection, but the moment this is switched to
+ * SMTP a newline in a header value is the classic way to inject extra headers
+ * (a Bcc, say). Stripping at the boundary means that switch cannot reintroduce
+ * the hole, and it keeps the stored data clean either way.
+ */
+const headerSafe = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    // eslint-disable-next-line no-control-regex
+    .transform((v) => v.replace(/[\u0000-\u001f\u007f]/g, " ").trim());
+
+/**
+ * The resource request form (gating, 2026-10-05).
+ *
+ * Required fields match the quote form's — first name, last name, company,
+ * email, telephone — and mobile is optional. Every free-text value is
+ * stripped of control characters like the quote fields (`headerSafe`), so a
+ * future email or CRM hand-off cannot be given an injected header.
+ */
+const nonBlank = (v: string) => v.length > 0;
+const phoneField = (label: string) =>
+  headerSafe(50).refine(
+    (v) => /^[0-9+()\-.\s]+$/.test(v) && (v.match(/[0-9]/g)?.length ?? 0) >= 6,
+    `${label} must be a phone number`,
+  );
 const leadSchema = z
   .object({
-    name: z.string().trim().min(1, "name required").max(200),
-    email: z.string().trim().email("invalid email").max(320),
-    company: z.string().trim().max(200).optional(),
-    website: z.string().optional(), // honeypot — must be empty
+    firstName: headerSafe(100).refine(nonBlank, "first name required"),
+    lastName: headerSafe(100).refine(nonBlank, "last name required"),
+    company: headerSafe(200).refine(nonBlank, "company required"),
+    email: z.string().trim().max(254).email("invalid email"),
+    phone: phoneField("telephone"),
+    mobile: z.union([z.literal(""), phoneField("mobile")]).optional(),
+    // Must be ticked: the form cannot be sent without agreeing to storage.
+    privacyConsent: z.literal(true, { errorMap: () => ({ message: "privacy consent required" }) }),
+    marketingConsent: z.boolean().optional(),
+    website: z.string().max(200).optional(), // honeypot — must be empty
+    elapsedMs: z.number().finite().nonnegative(),
   })
   .strict();
 
+/** A second, hourly cap on top of the per-minute one — the quote form's pair. */
+const leadHourlyLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  standardHeaders: false,
+  legacyHeaders: false,
+  store: new PgRateLimitStore("public-lead-hourly"),
+  message: { ok: false, error: "Too many requests, please try again later." },
+});
+
 /**
- * POST /public/downloads/:downloadId/lead
- * Captures a lead and returns a short-lived signed URL to the file.
- * Honeypot: if `website` is filled, silently succeed without creating a lead.
+ * POST /public/downloads/:downloadId/lead — the resource request form.
+ *
+ * Stores the visitor's details, then returns a signed URL for the one file
+ * they asked for (5 minutes, so the "open your file" fallback still works if
+ * the browser blocked the new tab). Listed on the Resource Requests page.
+ *
+ * ⚠️ Accepts only a LISTED download — typed, on a public product. It used to
+ * accept any download id at all and sign it, which on a hidden product's
+ * certificate would have been a way round the product being hidden.
+ *
+ * Anti-spam, both before validation so a bot learns nothing from the answer:
+ * the `website` honeypot, and `elapsedMs` (time since the form opened), which
+ * is REQUIRED here because the widget that sends it is ours. Either one
+ * tripped gets `{ok:true}` with no file and nothing stored.
+ *
+ * The details are stored BEFORE the file is signed, so a storage hiccup
+ * cannot lose a request that was made.
  */
-publicRouter.post("/downloads/:downloadId/lead", leadLimiter, async (req, res, next) => {
-  const parsed = leadSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+publicRouter.post("/downloads/:downloadId/lead", leadLimiter, leadHourlyLimiter, async (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  if (typeof body.website === "string" && body.website.trim()) {
+    res.status(200).json({ ok: true }); // bot — nothing stored, no file
     return;
   }
-  const { name, email, company, website } = parsed.data;
+  if (typeof body.elapsedMs === "number" && Number.isFinite(body.elapsedMs) && body.elapsedMs < 1500) {
+    res.status(200).json({ ok: true }); // filled in faster than a person can
+    return;
+  }
 
-  if (website && website.trim().length > 0) {
-    res.status(200).json({ ok: true }); // bot — no lead created
+  const parsed = leadSchema.safeParse(body);
+  if (!parsed.success) {
+    res.status(400).json({
+      ok: false,
+      error: "Please check the highlighted fields.",
+      fields: parsed.error.flatten().fieldErrors,
+    });
+    return;
+  }
+  const d = parsed.data;
+  const id = req.params.downloadId;
+  if (!/^[a-z0-9]{10,40}$/i.test(id)) {
+    res.status(404).json({ ok: false, error: "This file is not available." });
     return;
   }
 
   try {
-    const dl = await prisma.download.findUnique({
-      where: { id: req.params.downloadId },
-      include: { mediaAsset: true, hubProduct: true },
+    const dl = await prisma.download.findFirst({
+      where: { id, ...LISTED_DOWNLOAD },
+      include: {
+        mediaAsset: { select: { storagePath: true, filename: true } },
+        hubProduct: { select: { name: true, sku: true, dudaProductId: true } },
+      },
     });
     if (!dl) {
-      res.status(404).json({ error: "download_not_found" });
+      res.status(404).json({ ok: false, error: "This file is not available." });
       return;
     }
-    // Snapshot where the lead came from. The FK is SetNull, so if the product
-    // is later deleted the lead survives — but only stays meaningful because
-    // these denormalised fields were written here, at capture time.
+    const marketing = d.marketingConsent === true;
     await prisma.lead.create({
       data: {
         downloadId: dl.id,
-        name,
-        email,
-        company: company ?? null,
+        name: `${d.firstName} ${d.lastName}`,
+        firstName: d.firstName,
+        lastName: d.lastName,
+        email: d.email,
+        company: d.company,
+        phone: d.phone,
+        mobile: d.mobile || null,
+        privacyConsent: true,
+        marketingConsent: marketing,
+        // What they agreed to, worded as this server held it.
+        consentText: [CONSENT_TEXT.privacy, marketing ? CONSENT_TEXT.marketing : null].filter(Boolean).join("\n"),
+        // Snapshots, so the request outlives the download and the product.
         downloadTitle: dl.title,
+        fileName: dl.mediaAsset.filename,
         productName: dl.hubProduct.name,
         productSku: dl.hubProduct.sku,
+        dudaProductId: dl.hubProduct.dudaProductId,
       },
     });
-    const fileUrl = await signedFileUrl(dl.mediaAsset.storagePath, 300); // 5-min TTL
-    res.status(201).json({ fileUrl });
+    let fileUrl: string;
+    try {
+      fileUrl = await signedFileUrl(dl.mediaAsset.storagePath, 300);
+    } catch {
+      console.warn(`[public] lead for download ${dl.id}: stored, but the file could not be signed`);
+      res.status(502).json({ ok: false, error: "Your details were received, but the file could not be opened. Please try again." });
+      return;
+    }
+    res.status(201).json({ ok: true, fileUrl });
   } catch (err) {
     next(err);
   }
@@ -841,22 +942,7 @@ const quoteItemSchema = z.object({
   quantity: z.coerce.number().int().positive().max(100_000).optional(),
 });
 
-/**
- * Trim, then strip CR/LF and other control characters.
- *
- * ⚠️ `name` is interpolated into the notification's Subject line. Resend's
- * JSON API is immune to header injection, but the moment this is switched to
- * SMTP a newline in a header value is the classic way to inject extra headers
- * (a Bcc, say). Stripping at the boundary means that switch cannot reintroduce
- * the hole, and it keeps the stored data clean either way.
- */
-const headerSafe = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max)
-    // eslint-disable-next-line no-control-regex
-    .transform((v) => v.replace(/[\u0000-\u001f\u007f]/g, " ").trim());
+
 
 /**
  * Both basket forms are accepted, deliberately.

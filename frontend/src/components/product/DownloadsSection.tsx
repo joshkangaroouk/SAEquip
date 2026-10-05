@@ -24,10 +24,11 @@ function formatBytes(n: number): string {
  * Staged in the unified draft like every other section: nothing is written
  * until Save, which sends the whole list through `PUT /products/:id/downloads`.
  *
- * ⚠️ No gated toggle and no lead count. Gating is OFF for this run (decided
- * 2026-10-01): every download is written `gated: false`. The column remains
- * in the database, so turning gating back on is a UI change here, not a
- * migration.
+ * ⚠️ No gated toggle: EVERY file is gated (decided 2026-10-05), so a visitor
+ * fills in the resource request form before it opens, and a newly added file
+ * is written `gated: true` by the server. Requests are listed on the Resource
+ * Requests page. Removing a file here keeps its requests — each one carries a
+ * snapshot of the file and product it was for.
  *
  * Each file has a TYPE — Datasheet, User Manual or Certificate — which decides
  * the public resources page that lists it, and a certificate has a SCHEME,

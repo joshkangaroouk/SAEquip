@@ -49,3 +49,15 @@ export const TITLE_CLASSIFICATION: Record<string, { kind: DownloadKind; certSche
      products), which is none of the four schemes. */
   Certificate: { kind: "CERTIFICATE", certScheme: "COMPLIANCE" },
 };
+
+/**
+ * The resource request form's two checkboxes, word for word.
+ *
+ * ⚠️ The SERVER's copy is what a request records as consented to, so it must
+ * match what the widget shows. `widget:test` reads both and fails if they
+ * differ — change the wording in widget.js and here together.
+ */
+export const CONSENT_TEXT = {
+  privacy: "I agree to my data being stored in line with our Privacy Policy",
+  marketing: "I'm happy to receive the latest news and promotions by email.",
+} as const;

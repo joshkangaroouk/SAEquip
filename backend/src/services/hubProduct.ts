@@ -68,18 +68,27 @@ export async function ensureHubProduct(dudaProductId: string): Promise<HubProduc
 export const LISTABLE = { OR: [{ status: null }, { status: { not: "HIDDEN" } }] };
 
 /**
- * Which downloads the public may open, for the resources list AND the file
- * route — one definition, so a page can never list a file the route refuses
- * or the route serve one no page lists.
+ * Which downloads appear on the public resources pages: typed (an untyped
+ * download is on no page) and on a product whose own page is public — a HIDDEN
+ * product's certificate must not be listed or requestable by its id.
  *
- * Ungated (gating is phase 2, and will sit at the file route); typed, since an
- * untyped download is on no page; and on a product whose own page is public —
- * a HIDDEN product's certificate must not be reachable by its download id.
+ * Gated or not. A gated one is listed with its form; an ungated one links
+ * straight to the file. One definition for the list, the file route and the
+ * request form, so none of them can offer what another refuses.
  */
-export const PUBLIC_DOWNLOAD = {
-  gated: false,
+export const LISTED_DOWNLOAD = {
   kind: { not: null },
   hubProduct: { slug: { not: null }, ...LISTABLE },
+} satisfies Prisma.DownloadWhereInput;
+
+/**
+ * A listed download that opens WITHOUT the form — what the direct file route
+ * serves. A gated file is only ever reached through the request form, which
+ * stores the visitor's details before signing it.
+ */
+export const PUBLIC_DOWNLOAD = {
+  ...LISTED_DOWNLOAD,
+  gated: false,
 } satisfies Prisma.DownloadWhereInput;
 
 /**
