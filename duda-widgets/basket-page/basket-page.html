@@ -1,0 +1,113 @@
+<div class="qp-wrapper">
+
+  <!-- ── Cart list ──────────────────────────────────────────────────────── -->
+  <section class="qp-cart" id="qp-cart" aria-label="Your quote basket">
+    <h2 class="qp-title">Your Quote Basket</h2>
+
+    <div class="qp-empty" id="qp-empty">
+      <div class="qp-empty-text">No products added yet.</div>
+      {{#custom_link continueBrowsingLink}}<span class="qp-continue">Continue browsing</span>{{/custom_link}}
+    </div>
+
+    <div class="qp-items" id="qp-items"></div>
+  </section>
+
+  <!-- ── Quote request form ─────────────────────────────────────────────── -->
+  <section class="qp-form-section" id="qp-form-section">
+    <div class="qp-form-box">
+      <h3 class="qp-form-title">Request your quote</h3>
+
+      <form class="qp-form" id="qp-form" novalidate>
+      <!-- honeypot: hidden from people, bots tend to fill it -->
+      <div class="qp-hp" aria-hidden="true">
+        <label>Leave this field empty
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="qp-row">
+        <div class="qp-field">
+          <label for="qp-first">First Name <span class="qp-req">*</span></label>
+          <input type="text" id="qp-first" name="firstName" required maxlength="100" autocomplete="given-name">
+        </div>
+        <div class="qp-field">
+          <label for="qp-last">Last Name <span class="qp-req">*</span></label>
+          <input type="text" id="qp-last" name="lastName" required maxlength="100" autocomplete="family-name">
+        </div>
+      </div>
+
+      <div class="qp-field">
+        <label for="qp-company">Company Name <span class="qp-req">*</span></label>
+        <input type="text" id="qp-company" name="company" required maxlength="200" autocomplete="organization">
+      </div>
+
+      <div class="qp-row">
+        <div class="qp-field">
+          <label for="qp-email">Email <span class="qp-req">*</span></label>
+          <input type="email" id="qp-email" name="email" required maxlength="160" autocomplete="email">
+        </div>
+        <div class="qp-field">
+          <label for="qp-phone">Telephone <span class="qp-req">*</span></label>
+          <input type="tel" id="qp-phone" name="phone" required maxlength="40" autocomplete="tel">
+        </div>
+      </div>
+
+      <div class="qp-field">
+        <label for="qp-when">When do you need this equipment?</label>
+        <select id="qp-when" name="requiredBy">
+          <option value="">Please select…</option>
+          <option>Urgently</option>
+          <option>Within the next week</option>
+          <option>Within the next month</option>
+          <option>Within the next quarter</option>
+          <option>More than 3 months</option>
+          <option>Pricing exercise only</option>
+          <option>Unsure</option>
+        </select>
+      </div>
+
+      <div class="qp-field">
+        <label for="qp-address">Address</label>
+        <input type="text" id="qp-address" name="address" maxlength="300" autocomplete="street-address">
+      </div>
+
+      <div class="qp-row">
+        <div class="qp-field">
+          <label for="qp-country">Country</label>
+          <!-- options are filled in by the JS (WordPress's full country list) -->
+          <select id="qp-country" name="country" autocomplete="country-name">
+            <option value="">Select a country / region…</option>
+          </select>
+        </div>
+        <div class="qp-field">
+          <label for="qp-postcode">Postcode</label>
+          <input type="text" id="qp-postcode" name="postcode" maxlength="20" autocomplete="postal-code">
+        </div>
+      </div>
+
+      <div class="qp-field">
+        <label for="qp-message">Message</label>
+        <textarea id="qp-message" name="message" rows="4" maxlength="2000"></textarea>
+      </div>
+
+      <!-- Cloudflare Turnstile / reCAPTCHA goes here when you add it:
+           <div class="cf-turnstile" data-sitekey="YOUR_SITE_KEY"></div> -->
+
+      <div class="qp-status" id="qp-status" role="alert" aria-live="polite"></div>
+
+      <button type="submit" class="qp-submit" id="qp-submit">Submit Quote Request</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ── Thank-you panel (shown after a successful submit) ───────────────── -->
+  <section class="qp-thanks" id="qp-thanks" role="status" aria-live="polite" style="display:none;">
+    <h2 class="qp-thanks-title">Thank you - Quote request has been sent</h2>
+    <p class="qp-thanks-text">Our team will review it and be in touch shortly.</p>
+    <div class="qp-thanks-actions">
+      <button type="button" class="qp-btn-secondary" id="qp-retrieve">Retrieve Basket</button>
+      <a class="qp-btn-primary" id="qp-home" href="/">Back to Home</a>
+    </div>
+  </section>
+
+</div>
