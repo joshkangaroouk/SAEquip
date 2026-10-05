@@ -42,7 +42,7 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, url = undefined } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, leadResponse = undefined, url = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
     url: url ?? "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
@@ -50,9 +50,16 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
   const w = dom.window;
   let fetchedUrl = null;
   w.__fetched = [];
-  w.fetch = (u) => {
+  w.__leadBodies = [];
+  w.fetch = (u, init) => {
     fetchedUrl = String(u);
     w.__fetched.push(fetchedUrl);
+    if (fetchedUrl.indexOf("/lead") !== -1) {
+      w.__leadBodies.push(JSON.parse(init.body));
+      const lr = typeof leadResponse === "function" ? leadResponse() : leadResponse;
+      if (lr === "network") return Promise.reject(new Error("offline"));
+      return Promise.resolve({ ok: lr.status < 300, status: lr.status, json: () => Promise.resolve(lr.body) });
+    }
     if (fetchedUrl.indexOf("/public/resources") !== -1) {
       return Promise.resolve({
         ok: resourcesPayload !== null && resourcesPayload !== undefined,
@@ -779,13 +786,13 @@ async function main() {
      * the alpha to the THEME colour, but a browser that does not know it drops
      * the whole declaration — so the fallback cannot be merged into that rule.
      */
-    check(/\.saeh-pl-search input:focus(,\.saeh-rs-search input:focus)?\{[^}]*box-shadow:0 0 0 3px rgba\(254,210,23,\.5\)\}/.test(css),
+    check(/\.saeh-pl-search input:focus(,[^{,]+)*\{[^}]*box-shadow:0 0 0 3px rgba\(254,210,23,\.5\)\}/.test(css),
       "a half-opacity ring on focus, with a literal fallback that stands alone");
-    check(/\.saeh-pl-search input:focus(,\.saeh-rs-search input:focus)?\{box-shadow:0 0 0 3px color-mix\(in srgb,var\(--color_7,#fed217\) 50%,transparent\)\}/.test(css),
+    check(/\.saeh-pl-search input:focus(,[^{,]+)*\{box-shadow:0 0 0 3px color-mix\(in srgb,var\(--color_7,#fed217\) 50%,transparent\)\}/.test(css),
       "…overridden by the theme colour where color-mix is supported");
-    check(/\.saeh-pl-search input(,\.saeh-rs-search input)?\{[^}]*transition:border-color \.15s/.test(css),
+    check(/\.saeh-pl-search input(,[^{,]+)*\{[^}]*transition:border-color \.15s/.test(css),
       "…and eased, like the dashboard's fields");
-    check(/@media\(prefers-reduced-motion:reduce\)\{[^@]*\.saeh-pl-search input(,\.saeh-rs-search input)?\{transition:none\}/.test(css),
+    check(/@media\(prefers-reduced-motion:reduce\)\{[^@]*\.saeh-pl-search input(,[^{,]+)*\{transition:none\}/.test(css),
       "…but not for anyone who asked for less motion");
   }
 
@@ -1214,8 +1221,10 @@ async function main() {
     }
     // The modal is appended to <body>, outside .saeh-root, so it inherits none
     // of the custom properties unless they are declared on it directly.
-    check(/\.saeh-root,\.saeh-3d-overlay\{--saeh-head/.test(css),
+    check(/\.saeh-root,\.saeh-3d-overlay(,[^{,]+)*\{--saeh-head/.test(css),
       "the 3D modal declares the families too (it lives outside .saeh-root)");
+    check(/\.saeh-root,[^{]*\.saeh-rq-overlay[^{]*\{--saeh-head/.test(css),
+      "…and so does the resource request form, for the same reason");
   }
 
   console.log("\n=== switching tabs ===");
@@ -1498,8 +1507,10 @@ async function main() {
       check(/prefers-reduced-motion:reduce\)\{\.saeh-rs-row\{animation:none\}/.test(css), "row animation honours reduced motion");
       check(!/saeh-rs-row[^{]*\{[^}]*margin-top/.test(css) && /\.saeh-rs-list\{[^}]*gap:12px/.test(css),
         "rows are spaced only by the list's gap, so every gap is the same");
-      check(/\.saeh-pl-search input,\.saeh-rs-search input\{/.test(css) && /\.saeh-pl-search input:focus,\.saeh-rs-search input:focus\{/.test(css),
+      check(/\.saeh-pl-search input,\.saeh-rs-search input(,[^{,]+)*\{/.test(css) && /\.saeh-pl-search input:focus,\.saeh-rs-search input:focus(,[^{,]+)*\{/.test(css),
         "the search field SHARES the listing's rules rather than copying them");
+      check(/\.saeh-pl-search input,\.saeh-rs-search input,\.saeh-rq-in\{/.test(css) && /,\.saeh-rq-in:focus\{outline:none;/.test(css) &&
+        /\.saeh-rs-dl,\.saeh-rq-submit\{/.test(css), "the request form's fields and button share those rules too");
       check(/@media\(min-width:721px\)\{[^}]*\}[^@]*\.saeh-rs-search\{flex:0 1 340px;margin-left:auto\}/.test(css), "from 721px the search sits top right");
     }
     {
@@ -1531,6 +1542,159 @@ async function main() {
         says.manual === "Search User Manuals... | Search User Manuals" &&
         says.certificate === "Search Certificates... | Search Certificates",
         "the search says which list it searches", JSON.stringify(says));
+    }
+    {
+      /* ------------------------------------------------ the request form -- */
+      const SRV = readFileSync(path.join(HERE, "../src/services/downloadKinds.ts"), "utf8");
+      const serverPrivacy = SRV.match(/privacy:\s*"([^"]+)"/)[1];
+      const serverMarketing = SRV.match(/marketing:\s*"([^"]+)"/)[1];
+      const FILE_URL = "https://x.supabase.co/storage/v1/object/sign/product-files/a.pdf?token=t";
+      const GATED = { type: "certificate", products: [
+        { name: "EX Heater", url: "/product/ex-heater", imageUrl: null, range: null,
+          downloads: [{ id: "g1", label: "UKEX", title: "UKEX Certificate", gated: true, href: null }, dl("u1", "EX")] },
+      ] };
+      const setup = async (leadResponse = { status: 201, body: { ok: true, fileUrl: FILE_URL } }) => {
+        const b = await boot({ props: RS("certificate"), resourcesPayload: GATED, url: PAGE, leadResponse });
+        const tab = { closed: false, replaced: null, opener: "x", document: { title: "", body: { textContent: "" } },
+          location: { replace(u) { tab.replaced = u; } }, close() { tab.closed = true; } };
+        // One object, read by the stub AND set by the test (`ctx.blocked`).
+        const ctx = { ...b, opened: [], tab, blocked: false };
+        b.w.open = (u, t) => { ctx.opened.push([u, t]); return ctx.blocked ? null : tab; };
+        return ctx;
+      };
+      const fill = (d, over = {}) => {
+        const v = { firstName: "Ada", lastName: "Lovelace", company: "Engines Ltd", email: "ada@example.com", phone: "01234 567890", mobile: "", ...over };
+        for (const [k, val] of Object.entries(v)) d.querySelector(`.saeh-rq-in[name=${k}]`).value = val;
+        d.querySelector("input[name=privacyConsent]").checked = over.privacy !== false;
+      };
+      const submitForm = async (d, w) => {
+        d.querySelector(".saeh-rq-overlay form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+        await new Promise((r) => setTimeout(r, 30));
+      };
+
+      {
+        const { d, w } = await setup();
+        const [gatedBtn, openLink] = [...d.querySelectorAll(".saeh-rs-dl")];
+        check(gatedBtn.tagName === "BUTTON" && !gatedBtn.hasAttribute("href") && gatedBtn.getAttribute("aria-haspopup") === "dialog",
+          "gate: a gated download is a button that opens a dialog, with no file link", gatedBtn.outerHTML.slice(0, 90));
+        check(/^UKEX – EX Heater \(opens a request form\)$/.test(gatedBtn.getAttribute("aria-label")), "…named for what it does", gatedBtn.getAttribute("aria-label"));
+        check(openLink.tagName === "A" && /\/public\/downloads\/u1\/file$/.test(openLink.href), "an ungated one still links straight to the file");
+
+        gatedBtn.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        const ov = d.querySelector("body > .saeh-rq-overlay");
+        const dlg = ov && ov.querySelector("[role=dialog]");
+        check(!!dlg && dlg.getAttribute("aria-modal") === "true", "clicking opens a modal dialog, appended to <body>");
+        const h = dlg.querySelector("h2");
+        check(h && h.textContent === "FILE REQUEST" && dlg.getAttribute("aria-labelledby") === h.id, "headed by an h2 'FILE REQUEST' that names the dialog");
+        check(dlg.querySelector(".saeh-rq-file").textContent === "EX Heater – UKEX", "it says which file is being requested");
+        check(dlg.querySelector(".saeh-rq-p").textContent ===
+          "Due to increasing amounts of spam requests, we ask that you enter your details below to download your requested file. We will not share your information with third parties for marketing purposes, nor do we ever pass on or sell your details to a third party.",
+          "the paragraph is word for word");
+        const ins = [...dlg.querySelectorAll(".saeh-rq-in")];
+        const shape = ins.map((i) => `${i.name}:${i.type}:${i.required ? "req" : "opt"}:${d.querySelector(`label[for="${i.id}"]`)?.firstChild.textContent}`).join(",");
+        check(shape === "firstName:text:req:First Name,lastName:text:req:Last Name,company:text:req:Company Name,email:email:req:Email,phone:tel:req:Tel Number,mobile:tel:opt:Mobile Number",
+          "six labelled fields; the quote form's five are required, mobile optional", shape);
+        check(ins.map((i) => i.getAttribute("autocomplete")).join(",") === "given-name,family-name,organization,email,tel,mobile tel", "with autocomplete hints");
+        const [pBox, mBox] = [...dlg.querySelectorAll("input[type=checkbox]")];
+        const pText = pBox.closest("label").textContent, mText = mBox.closest("label").textContent;
+        check(pText === serverPrivacy && mText === serverMarketing, "the checkbox wording matches what the server records as consented to", `${pText} | ${mText}`);
+        const pp = pBox.closest("label").querySelector("a");
+        check(pp && pp.getAttribute("href") === "/privacy-policy" && pp.target === "_blank" && pp.rel === "noopener", "'Privacy Policy' links to /privacy-policy in a new tab");
+        check(pBox.required && !mBox.required && !pBox.checked && !mBox.checked, "privacy is required, marketing optional, neither pre-ticked");
+        const hp = dlg.querySelector("input[name=website]");
+        check(hp && hp.tabIndex === -1 && hp.closest("[aria-hidden=true]"), "a honeypot, out of the tab order and hidden from AT");
+        check(dlg.querySelector("button[type=submit]").textContent === "Submit & Download", "the button reads 'Submit & Download'");
+        check(d.activeElement === ins[0], "focus starts on First Name");
+        check(d.documentElement.style.overflow === "hidden", "the page behind cannot scroll");
+
+        // Nothing filled in.
+        await submitForm(d, w);
+        const errs = ins.map((i) => i.getAttribute("aria-invalid") === "true");
+        check(JSON.stringify(errs) === "[true,true,true,true,true,false]", "an empty submit marks the five required fields", JSON.stringify(errs));
+        check(d.getElementById(ins[0].id + "-err").textContent === "Please enter your first name." && ins[0].getAttribute("aria-describedby") === ins[0].id + "-err",
+          "each with its own message, tied to the field");
+        check(/agree to the Privacy Policy/.test(dlg.querySelector(`[id$="-privacy-err"]`).textContent), "…and asks for the privacy consent");
+        check(w.__leadBodies.length === 0, "nothing is sent while the form is invalid");
+        check(d.activeElement === ins[0], "focus goes to the first problem");
+
+        fill(d, { email: "ada@", phone: "call me" });
+        await submitForm(d, w);
+        check(/valid email/.test(d.getElementById(ins[3].id + "-err").textContent) && /valid phone/.test(d.getElementById(ins[4].id + "-err").textContent),
+          "a bad email or phone is caught before sending");
+        check(w.__leadBodies.length === 0, "…still nothing sent");
+
+        // Escape closes and hands focus back.
+        d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        check(!d.querySelector(".saeh-rq-overlay") && d.activeElement === gatedBtn && d.documentElement.style.overflow === "",
+          "Escape closes it, focus returns to the button, the page scrolls again");
+        gatedBtn.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        check([...d.querySelectorAll(".saeh-rq-in")].every((i) => i.value === "") && !d.querySelector("input[name=privacyConsent]").checked,
+          "every request starts blank — nothing is remembered");
+        d.querySelector(".saeh-rq-overlay").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        check(!!d.querySelector(".saeh-rq-overlay"), "a click on the backdrop does NOT close it (a stray click must not lose the form)");
+        d.querySelector(".saeh-rq-close").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        check(!d.querySelector(".saeh-rq-overlay"), "the X closes it");
+      }
+      {
+        // A good submission.
+        const { d, w, opened, tab } = await setup();
+        d.querySelector(".saeh-rs-dl").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        fill(d, { mobile: "07700 900123" });
+        d.querySelector("input[name=marketingConsent]").checked = true;
+        d.querySelector(".saeh-rq-overlay form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+        check(opened.length === 1, "the new tab is opened INSIDE the click, before the server answers (popup blockers)");
+        check(tab.opener === null, "…with no opener");
+        await new Promise((r) => setTimeout(r, 30));
+        const body = w.__leadBodies[0];
+        check(w.__fetched.some((u) => u === "https://sa-equip-backend.vercel.app/public/downloads/g1/lead"), "posts to that download's lead route");
+        check(body && body.firstName === "Ada" && body.lastName === "Lovelace" && body.company === "Engines Ltd" && body.email === "ada@example.com" &&
+          body.phone === "01234 567890" && body.mobile === "07700 900123" && body.privacyConsent === true && body.marketingConsent === true &&
+          body.website === "" && typeof body.elapsedMs === "number" && body.elapsedMs >= 0, "sends every field, both consents, the honeypot and the timing", JSON.stringify(body));
+        check(tab.replaced === FILE_URL, "the tab is sent to the file");
+        const done = d.querySelector(".saeh-rq-done");
+        const link = d.querySelector(".saeh-rq-link");
+        check(done && /opening in a new tab/.test(done.textContent) && link && link.href === FILE_URL && link.target === "_blank", "a thank-you, with a link in case it did not open");
+        check(!d.querySelector(".saeh-rq-overlay form"), "the form is gone once sent");
+      }
+      {
+        // The browser blocks the tab.
+        const b = await setup();
+        b.blocked = true;
+        b.d.querySelector(".saeh-rs-dl").dispatchEvent(new b.w.MouseEvent("click", { bubbles: true }));
+        fill(b.d);
+        await submitForm(b.d, b.w);
+        check(/your file is ready/.test(b.d.querySelector(".saeh-rq-done").textContent) && b.d.querySelector(".saeh-rq-link").textContent === "Open your file",
+          "a blocked tab falls back to an 'Open your file' link");
+      }
+      for (const [label, resp, expect] of [
+        ["the server rejects a field", { status: 400, body: { ok: false, error: "Please check the highlighted fields.", fields: { phone: ["x"] } } }, /highlighted fields/],
+        ["the file has gone", { status: 404, body: { ok: false, error: "This file is not available." } }, /no longer available/],
+        ["rate limited", { status: 429, body: { ok: false, error: "Too many requests, please try again later." } }, /Too many requests/],
+        ["a bot answer (ok, no file)", { status: 200, body: { ok: true } }, /something went wrong/],
+        ["offline", "network", /couldn't reach the server/],
+      ]) {
+        const { d, w, tab } = await setup(resp);
+        d.querySelector(".saeh-rs-dl").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        fill(d);
+        await submitForm(d, w);
+        const m = d.querySelector(".saeh-rq-msg");
+        const btn = d.querySelector("button[type=submit]");
+        check(m && expect.test(m.textContent) && m.getAttribute("role") === "alert" && tab.closed && !btn.disabled && btn.textContent === "Submit & Download",
+          `when ${label}: a message, the blank tab closed, the form kept`, m && m.textContent);
+        if (label === "the server rejects a field") check(d.querySelector(".saeh-rq-in[name=phone]").getAttribute("aria-invalid") === "true", "…and that field is marked");
+      }
+      {
+        // Focus stays inside.
+        const { d, w } = await setup();
+        d.querySelector(".saeh-rs-dl").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        const all = [...d.querySelectorAll(".saeh-rq-sheet a[href], .saeh-rq-sheet button:not([disabled]), .saeh-rq-sheet input:not([tabindex='-1'])")];
+        all[all.length - 1].focus();
+        d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+        check(d.activeElement === all[0], "Tab from the last control wraps to the first");
+        all[0].focus();
+        d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true }));
+        check(d.activeElement === all[all.length - 1], "Shift+Tab from the first wraps to the last");
+      }
     }
     {
       // The search: Enter to run, matching name, range and button labels.

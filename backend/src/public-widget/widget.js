@@ -193,7 +193,7 @@
        * Declared on .saeh-3d-overlay too, because that modal is appended to
        * <body> outside .saeh-root and so inherits nothing from it.
        */
-      ".saeh-root,.saeh-3d-overlay{--saeh-head:'Barlow','Barlow Fallback',system-ui,sans-serif;--saeh-body:'Inter','Inter Fallback',system-ui,sans-serif}",
+      ".saeh-root,.saeh-3d-overlay,.saeh-rq-overlay{--saeh-head:'Barlow','Barlow Fallback',system-ui,sans-serif;--saeh-body:'Inter','Inter Fallback',system-ui,sans-serif}",
       /*
        * Accordion CONTENT is 15px #878787 — prose, spec values and list items.
        * The spec table's LEFT column stays near-black (#111) so the label
@@ -649,7 +649,7 @@
       ".saeh-pl-sbox{position:relative}",
       // ⚠️ Shared with the resources list's search (.saeh-rs-search) — one
       // treatment for the site's two search boxes, so they cannot drift.
-      ".saeh-pl-search input,.saeh-rs-search input{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px;transition:border-color .15s cubic-bezier(.4,0,.2,1),box-shadow .15s cubic-bezier(.4,0,.2,1)}",
+      ".saeh-pl-search input,.saeh-rs-search input,.saeh-rq-in{width:100%;box-sizing:border-box;font-family:var(--saeh-body);font-size:15px;color:#111;background:#fff;border:1px solid #d8d8d8;padding:10px 38px 10px 12px;transition:border-color .15s cubic-bezier(.4,0,.2,1),box-shadow .15s cubic-bezier(.4,0,.2,1)}",
       // The native search X cannot be styled to match the site, so it is
       // suppressed and replaced with an inline SVG that inherits currentColor.
       ".saeh-pl-search input::-webkit-search-cancel-button,.saeh-rs-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}",
@@ -657,7 +657,7 @@
       ".saeh-pl-clearq.on{display:flex}",
       ".saeh-pl-clearq:hover{color:#666}",
       ".saeh-pl-clearq svg{display:block}",
-      ".saeh-pl-search input::placeholder,.saeh-rs-search input::placeholder{color:#9a9a9a}",
+      ".saeh-pl-search input::placeholder,.saeh-rs-search input::placeholder,.saeh-rq-in::placeholder{color:#9a9a9a}",
       /*
        * Matches the dashboard's field treatment (see `fieldBase` in
        * components/ui/Input.tsx): the border takes the ring colour and a 3px
@@ -665,7 +665,7 @@
        * than a thicker border because box-shadow takes no layout space, so the
        * field cannot shift by a pixel as it gains focus.
        */
-      ".saeh-pl-search input:focus,.saeh-rs-search input:focus{outline:none;border-color:var(--color_7,#fed217);box-shadow:0 0 0 3px rgba(254,210,23,.5)}",
+      ".saeh-pl-search input:focus,.saeh-rs-search input:focus,.saeh-rq-in:focus{outline:none;border-color:var(--color_7,#fed217);box-shadow:0 0 0 3px rgba(254,210,23,.5)}",
       /*
        * ⚠️ Second rule, not a merged one. `color-mix` is what applies the half
        * opacity to the THEME colour rather than to a hardcoded yellow, but a
@@ -673,7 +673,7 @@
        * literal rgba above has to stand alone as the fallback, and this
        * overrides it where supported.
        */
-      ".saeh-pl-search input:focus,.saeh-rs-search input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--color_7,#fed217) 50%,transparent)}",
+      ".saeh-pl-search input:focus,.saeh-rs-search input:focus,.saeh-rq-in:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--color_7,#fed217) 50%,transparent)}",
       ".saeh-pl-more{margin-top:24px;width:100%;font-family:var(--saeh-head);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;color:#111;border:1px solid #111;padding:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}",
       ".saeh-pl-more:hover{background:#111;color:#fff}",
       ".saeh-pl-more span{color:#9a9a9a;font-weight:600}",
@@ -831,10 +831,13 @@
       ".saeh-rs-view svg{width:14px;height:14px;flex:0 0 auto;display:block}",
       ".saeh-rs-dls{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}",
       // Same yellow, type and hover as the product cards' View Product button.
-      ".saeh-rs-dl{flex:1 1 calc(50% - 4px);box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;line-height:1.25;text-align:center;text-decoration:none;transition:background .15s ease}",
-      ".saeh-rs-dl:hover{background:#f0c400}",
+      ".saeh-rs-dl,.saeh-rq-submit{flex:1 1 calc(50% - 4px);box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;line-height:1.25;text-align:center;text-decoration:none;transition:background .15s ease}",
+      ".saeh-rs-dl:hover,.saeh-rq-submit:hover{background:#f0c400}",
       ".saeh-rs-dl svg{width:18px;height:18px;flex:0 0 auto;display:block}",
-      ".saeh-rs-dl:focus-visible,.saeh-rs-view:focus-visible{outline:2px solid #111;outline-offset:2px}",
+      ".saeh-rs-dl:focus-visible,.saeh-rs-view:focus-visible,.saeh-rq-submit:focus-visible,.saeh-rq-close:focus-visible,.saeh-rq-link:focus-visible{outline:2px solid #111;outline-offset:2px}",
+      // A gated download is a <button> (it opens the form), so it needs the
+      // button resets an <a> never did.
+      "button.saeh-rs-dl{border:0;cursor:pointer;margin:0}",
       ".saeh-rs-ph{border:1px dashed #cfcfcf;padding:28px 20px;text-align:center;color:#878787;font-size:15px;font-family:var(--saeh-body)}",
       "@media(min-width:721px){" +
         ".saeh-rs-row{grid-template-columns:96px minmax(0,1fr) auto;gap:20px;padding:16px 20px}" +
@@ -848,12 +851,54 @@
       // Room for a full row of certificates (INMETRO, UKEX, IECEX, EX) on one
       // line; between 721 and 1023px the name keeps the space and they wrap.
       "@media(min-width:1024px){.saeh-rs-dls{max-width:560px}}",
+      /* --- resource request form (gated downloads) --- */
+      /*
+       * Appended to <body>, like the 3D viewer, so it sits above everything
+       * whatever the Duda layout. ⚠️ That puts it OUTSIDE the theme's
+       * `div.dmContent`, so the site's heading rules do not reach its h2 —
+       * which is why the heading below restates the theme's h2 (Barlow 400,
+       * black) rather than relying on it, as the in-page widgets do.
+       */
+      ".saeh-rq-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px;box-sizing:border-box;font-family:var(--saeh-body)}",
+      ".saeh-rq-sheet{position:relative;width:100%;max-width:640px;margin:auto;background:#fff;color:#1a1a1a;padding:32px 20px 28px;box-sizing:border-box;font-size:16px;line-height:1.5;animation:saeh-pl-in .25s cubic-bezier(.4,0,.2,1) both}",
+      ".saeh-rq-close{position:absolute;top:10px;right:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}",
+      ".saeh-rq-close:hover{color:#666}",
+      ".saeh-rq-h{margin:0 40px 6px 0;font-family:var(--saeh-head);font-size:30px;font-weight:400;line-height:1.2;color:#000}",
+      ".saeh-rq-file{margin:0 0 14px;font-size:14px;font-weight:600;color:#111}",
+      ".saeh-rq-p{margin:0 0 22px;font-size:15px;line-height:1.55;color:#555}",
+      ".saeh-rq-grid{display:grid;grid-template-columns:1fr;gap:14px 16px}",
+      ".saeh-rq-field{min-width:0}",
+      ".saeh-rq-label{display:block;margin-bottom:6px;font-size:14px;font-weight:600;color:#111}",
+      ".saeh-rq-label .saeh-rq-opt{font-weight:400;color:#878787}",
+      // Shares the search field's look (see the shared rule); only the
+      // padding differs, as there is no X to make room for.
+      ".saeh-rq-in{padding:10px 12px;border-radius:0}",
+      ".saeh-rq-in[aria-invalid='true']{border-color:#c62828}",
+      ".saeh-rq-err{margin:6px 0 0;font-size:13px;color:#c62828}",
+      ".saeh-rq-checks{margin:20px 0 4px}",
+      ".saeh-rq-checks .saeh-pl-opt{color:#333;font-size:14px}",
+      ".saeh-rq-checks a{color:inherit;text-decoration:underline;text-underline-offset:2px}",
+      ".saeh-rq-submit{width:100%;margin-top:18px;border:0;cursor:pointer;font-weight:600}",
+      ".saeh-rq-submit:disabled{opacity:.6;cursor:default}",
+      ".saeh-rq-msg{margin:14px 0 0;font-size:14px;color:#c62828}",
+      ".saeh-rq-msg:empty{display:none}",
+      ".saeh-rq-done{font-size:16px;color:#111;margin:4px 0 18px}",
+      ".saeh-rq-link{display:inline-flex}",
+      ".saeh-rq-again{margin:16px 0 0;font-size:14px;color:#555}",
+      ".saeh-rq-again button{padding:0;background:none;border:0;font:inherit;color:#111;text-decoration:underline;cursor:pointer}",
+      "@media(min-width:561px){" +
+        ".saeh-rq-sheet{padding:40px 40px 36px}" +
+        ".saeh-rq-h{font-size:34px}" +
+        ".saeh-rq-grid{grid-template-columns:1fr 1fr}" +
+        ".saeh-rq-submit{width:auto;min-width:220px}" +
+      "}",
+      "@media(prefers-reduced-motion:reduce){.saeh-rq-sheet{animation:none}}",
       "@media(prefers-reduced-motion:reduce){" +
         ".saeh-rs-row{animation:none}" +
         ".saeh-rs-shot img,.saeh-rs-dl,.saeh-rs-view{transition:none}" +
       "}",
       "@media(prefers-reduced-motion:reduce){" +
-        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img,.saeh-pl-search input,.saeh-rs-search input{transition:none}" +
+        ".saeh-pl-panel,.saeh-pl-panel.saeh-open,.saeh-pl-chev,.saeh-pl-card,.saeh-pl-chevwrap,.saeh-pl-shot img,.saeh-pl-search input,.saeh-rs-search input,.saeh-rq-in{transition:none}" +
         ".saeh-pl-card{animation:none}" +
       "}",
       /*
@@ -2777,13 +2822,29 @@
       var dls = el("div", "saeh-rs-dls");
       downloads.forEach(function (d) {
         var label = d.label || d.title || "Download";
-        var a = document.createElement("a");
-        a.className = "saeh-rs-dl";
-        a.href = hub.api + "/public/downloads/" + encodeURIComponent(d.id) + "/file";
-        a.target = "_blank";
-        a.rel = "noopener";
-        // Starts with the visible label, so speech input still matches it.
-        a.setAttribute("aria-label", label + " – " + name + " (PDF, opens in a new tab)");
+        var a;
+        if (d.gated) {
+          // Gated: a button that opens the request form. The file is only
+          // ever signed after the visitor's details are stored.
+          a = document.createElement("button");
+          a.type = "button";
+          a.className = "saeh-rs-dl";
+          a.setAttribute("aria-haspopup", "dialog");
+          // Starts with the visible label, so speech input still matches it.
+          a.setAttribute("aria-label", label + " – " + name + " (opens a request form)");
+          (function (btn, id) {
+            btn.addEventListener("click", function () {
+              openRequestForm({ id: id, product: name, label: label, opener: btn });
+            });
+          })(a, d.id);
+        } else {
+          a = document.createElement("a");
+          a.className = "saeh-rs-dl";
+          a.href = hub.api + "/public/downloads/" + encodeURIComponent(d.id) + "/file";
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.setAttribute("aria-label", label + " – " + name + " (PDF, opens in a new tab)");
+        }
         a.appendChild(downloadIcon());
         a.appendChild(document.createTextNode(label));
         dls.appendChild(a);
@@ -2876,6 +2937,369 @@
     wrap.appendChild(sbox);
     wrap.appendChild(status);
     return wrap;
+  }
+
+  /* ------------------------------------------- resource request form -- */
+
+  /*
+   * ⚠️ The two checkbox sentences must match CONSENT_TEXT in the backend's
+   * services/downloadKinds.ts WORD FOR WORD — the server records its own copy
+   * as what the visitor agreed to. `widget:test` compares the two.
+   */
+  var RQ_PRIVACY_BEFORE = "I agree to my data being stored in line with our ";
+  var RQ_PRIVACY_LINK = "Privacy Policy";
+  var RQ_PRIVACY_URL = "/privacy-policy";
+  var RQ_MARKETING = "I'm happy to receive the latest news and promotions by email.";
+  var RQ_INTRO =
+    "Due to increasing amounts of spam requests, we ask that you enter your details below to download your " +
+    "requested file. We will not share your information with third parties for marketing purposes, nor do we " +
+    "ever pass on or sell your details to a third party.";
+  // The server's own rule, so a number it would refuse is caught here first.
+  var RQ_PHONE = /^[0-9+()\-.\s]+$/;
+  function phoneOk(v) {
+    return RQ_PHONE.test(v) && (v.match(/[0-9]/g) || []).length >= 6;
+  }
+
+  function closeIcon20() {
+    var svg = closeIcon();
+    svg.setAttribute("width", "20");
+    svg.setAttribute("height", "20");
+    return svg;
+  }
+
+  /**
+   * The FILE REQUEST form for one gated download, as a modal.
+   *
+   * Asked for EVERY download (decided 2026-10-05) — nothing is remembered
+   * between requests, and every field starts empty.
+   *
+   * ⚠️ "Submit & Download" opens the new tab SYNCHRONOUSLY, inside the click,
+   * and points it at the file once the server answers. Opening it after the
+   * request returns would be a window.open outside a user gesture, which
+   * every popup blocker stops. If the browser blocks it anyway, the success
+   * message carries an "open your file" link, which is a real click.
+   *
+   * No close on a backdrop click, deliberately: a stray click must not throw
+   * away six typed fields. Escape and the X close it; focus is held inside
+   * while open and handed back to the button afterwards.
+   */
+  function openRequestForm(opts) {
+    injectStyles();
+    var openedAt = Date.now();
+    var uid = "saeh-rq" + Math.random().toString(36).slice(2, 9);
+
+    var overlay = el("div", "saeh-rq-overlay");
+    var sheet = el("div", "saeh-rq-sheet");
+    sheet.setAttribute("role", "dialog");
+    sheet.setAttribute("aria-modal", "true");
+    sheet.setAttribute("aria-labelledby", uid + "-h");
+    overlay.appendChild(sheet);
+
+    var closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "saeh-rq-close";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.appendChild(closeIcon20());
+    sheet.appendChild(closeBtn);
+
+    var h = el("h2", "saeh-rq-h", "FILE REQUEST");
+    h.id = uid + "-h";
+    sheet.appendChild(h);
+    sheet.appendChild(el("p", "saeh-rq-file", opts.product + (opts.label ? " – " + opts.label : "")));
+    var body = el("div", "saeh-rq-body");
+    sheet.appendChild(body);
+
+    var form = document.createElement("form");
+    form.noValidate = true; // our own messages, on the field they belong to
+    form.appendChild(el("p", "saeh-rq-p", RQ_INTRO));
+
+    var grid = el("div", "saeh-rq-grid");
+    var fields = {};
+    // name, label, type, autocomplete, required, what the "missing" message calls it
+    [
+      ["firstName", "First Name", "text", "given-name", true, "first name"],
+      ["lastName", "Last Name", "text", "family-name", true, "last name"],
+      ["company", "Company Name", "text", "organization", true, "company name"],
+      ["email", "Email", "email", "email", true, "email address"],
+      ["phone", "Tel Number", "tel", "tel", true, "telephone number"],
+      ["mobile", "Mobile Number", "tel", "mobile tel", false, "mobile number"],
+    ].forEach(function (f) {
+      var wrap = el("div", "saeh-rq-field");
+      var id = uid + "-" + f[0];
+      var lab = el("label", "saeh-rq-label", f[1]);
+      lab.setAttribute("for", id);
+      if (!f[4]) lab.appendChild(el("span", "saeh-rq-opt", " (optional)"));
+      var inp = document.createElement("input");
+      inp.className = "saeh-rq-in";
+      inp.id = id;
+      inp.name = f[0];
+      inp.type = f[2];
+      inp.setAttribute("autocomplete", f[3]);
+      inp.maxLength = f[0] === "email" ? 254 : f[0] === "company" ? 200 : f[2] === "tel" ? 50 : 100;
+      if (f[4]) inp.required = true;
+      var err = el("p", "saeh-rq-err");
+      err.id = id + "-err";
+      err.hidden = true;
+      wrap.appendChild(lab);
+      wrap.appendChild(inp);
+      wrap.appendChild(err);
+      grid.appendChild(wrap);
+      fields[f[0]] = { input: inp, err: err, noun: f[5] };
+    });
+    form.appendChild(grid);
+
+    // Honeypot: off-screen, out of the tab order, ignored by assistive tech.
+    var hp = el("div", "saeh-hp");
+    hp.setAttribute("aria-hidden", "true");
+    var hpIn = document.createElement("input");
+    hpIn.type = "text";
+    hpIn.name = "website";
+    hpIn.tabIndex = -1;
+    hpIn.setAttribute("autocomplete", "off");
+    hp.appendChild(hpIn);
+    form.appendChild(hp);
+
+    // The checkboxes reuse the listing's filter checkbox, so the site has one.
+    function checkbox(name, build) {
+      var lab = el("label", "saeh-pl-opt");
+      var inp = document.createElement("input");
+      inp.type = "checkbox";
+      inp.name = name;
+      lab.appendChild(inp);
+      lab.appendChild(el("span", "saeh-pl-box"));
+      var t = el("span", "saeh-pl-t");
+      build(t);
+      lab.appendChild(t);
+      return { label: lab, input: inp };
+    }
+    var checks = el("div", "saeh-rq-checks");
+    var privacy = checkbox("privacyConsent", function (t) {
+      t.appendChild(document.createTextNode(RQ_PRIVACY_BEFORE));
+      var a = document.createElement("a");
+      a.href = RQ_PRIVACY_URL;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = RQ_PRIVACY_LINK;
+      t.appendChild(a);
+    });
+    privacy.input.required = true;
+    var privacyErr = el("p", "saeh-rq-err");
+    privacyErr.id = uid + "-privacy-err";
+    privacyErr.hidden = true;
+    var marketing = checkbox("marketingConsent", function (t) {
+      t.appendChild(document.createTextNode(RQ_MARKETING));
+    });
+    checks.appendChild(privacy.label);
+    checks.appendChild(privacyErr);
+    checks.appendChild(marketing.label);
+    form.appendChild(checks);
+
+    var submit = el("button", "saeh-rq-submit", "Submit & Download");
+    submit.type = "submit";
+    form.appendChild(submit);
+    var msg = el("p", "saeh-rq-msg");
+    msg.setAttribute("role", "alert");
+    form.appendChild(msg);
+    body.appendChild(form);
+
+    function setErr(f, text) {
+      f.err.textContent = text || "";
+      f.err.hidden = !text;
+      if (text) {
+        f.input.setAttribute("aria-invalid", "true");
+        f.input.setAttribute("aria-describedby", f.err.id);
+      } else {
+        f.input.removeAttribute("aria-invalid");
+        f.input.removeAttribute("aria-describedby");
+      }
+    }
+    function setPrivacyErr(text) {
+      privacyErr.textContent = text || "";
+      privacyErr.hidden = !text;
+      if (text) privacy.input.setAttribute("aria-describedby", privacyErr.id);
+      else privacy.input.removeAttribute("aria-describedby");
+    }
+
+    /** Returns the first field in error, or null. */
+    function validate() {
+      var first = null;
+      Object.keys(fields).forEach(function (k) {
+        var f = fields[k];
+        var v = f.input.value.trim();
+        var text = "";
+        if (f.input.required && !v) text = "Please enter your " + f.noun + ".";
+        else if (v && k === "email" && !f.input.checkValidity()) text = "Please enter a valid email address.";
+        else if (v && (k === "phone" || k === "mobile") && !phoneOk(v)) text = "Please enter a valid phone number.";
+        setErr(f, text);
+        if (text && !first) first = f.input;
+      });
+      if (!privacy.input.checked) {
+        setPrivacyErr("Please agree to the Privacy Policy to download the file.");
+        if (!first) first = privacy.input;
+      } else setPrivacyErr("");
+      return first;
+    }
+
+    function showDone(fileUrl, opened) {
+      body.innerHTML = "";
+      body.appendChild(el("p", "saeh-rq-done", opened
+        ? "Thank you — your file is opening in a new tab."
+        : "Thank you — your file is ready."));
+      var link = document.createElement("a");
+      link.className = "saeh-rs-dl saeh-rq-link";
+      link.href = fileUrl;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.appendChild(downloadIcon());
+      link.appendChild(document.createTextNode(opened ? "Open it again" : "Open your file"));
+      body.appendChild(link);
+      var again = el("p", "saeh-rq-again");
+      again.appendChild(document.createTextNode("The link works for five minutes. "));
+      var done = document.createElement("button");
+      done.type = "button";
+      done.textContent = "Close";
+      done.addEventListener("click", close);
+      again.appendChild(done);
+      body.appendChild(again);
+      link.focus();
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      msg.textContent = "";
+      var bad = validate();
+      if (bad) {
+        bad.focus();
+        return;
+      }
+      // Inside the click: see the note above about popup blockers.
+      var tab = null;
+      try {
+        tab = window.open("", "_blank");
+        if (tab) {
+          tab.opener = null;
+          try {
+            tab.document.title = "Preparing your file…";
+            tab.document.body.textContent = "Preparing your file…";
+          } catch (err) {
+            /* a cross-origin blank tab is fine — it is only a placeholder */
+          }
+        }
+      } catch (err) {
+        tab = null;
+      }
+      var closeTab = function () {
+        try {
+          if (tab) tab.close();
+        } catch (err) {
+          /* already gone */
+        }
+      };
+
+      submit.disabled = true;
+      submit.textContent = "Sending…";
+      var payload = {
+        firstName: fields.firstName.input.value.trim(),
+        lastName: fields.lastName.input.value.trim(),
+        company: fields.company.input.value.trim(),
+        email: fields.email.input.value.trim(),
+        phone: fields.phone.input.value.trim(),
+        mobile: fields.mobile.input.value.trim(),
+        privacyConsent: privacy.input.checked,
+        marketingConsent: marketing.input.checked,
+        website: hpIn.value,
+        elapsedMs: Date.now() - openedAt,
+      };
+      fetch(hub.api + "/public/downloads/" + encodeURIComponent(opts.id) + "/lead", {
+        method: "POST",
+        credentials: "omit",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          hub.lastRequestStatus = r.status; // console diagnostics; no personal data
+          return r.json().then(
+            function (j) { return { status: r.status, body: j || {} }; },
+            function () { return { status: r.status, body: {} }; }
+          );
+        })
+        .then(function (res) {
+          var b = res.body;
+          if (res.status === 201 && b.ok && typeof b.fileUrl === "string" && /^https:\/\//.test(b.fileUrl)) {
+            var opened = false;
+            if (tab) {
+              try {
+                tab.location.replace(b.fileUrl);
+                opened = true;
+              } catch (err) {
+                closeTab();
+              }
+            }
+            showDone(b.fileUrl, opened);
+            return;
+          }
+          closeTab();
+          if (res.status === 400 && b.fields) {
+            Object.keys(b.fields).forEach(function (k) {
+              if (fields[k]) setErr(fields[k], "Please check this field.");
+              if (k === "privacyConsent") setPrivacyErr("Please agree to the Privacy Policy to download the file.");
+            });
+          }
+          msg.textContent =
+            res.status === 404 ? "Sorry, this file is no longer available."
+            : typeof b.error === "string" && res.status !== 201 && res.status !== 200 ? b.error
+            : "Sorry, something went wrong. Please try again.";
+        })
+        .catch(function () {
+          closeTab();
+          msg.textContent = "Sorry, we couldn't reach the server. Please check your connection and try again.";
+        })
+        .then(function () {
+          submit.disabled = false;
+          submit.textContent = "Submit & Download";
+        });
+    });
+
+    // ---- open / close, focus, scroll lock
+    var prevOverflow = document.documentElement.style.overflow;
+    function focusables() {
+      return [].slice.call(sheet.querySelectorAll("a[href],button:not([disabled]),input:not([tabindex='-1'])"));
+    }
+    function onKey(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      var f = focusables();
+      if (!f.length) return;
+      var first = f[0];
+      var last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    function close() {
+      document.removeEventListener("keydown", onKey, true);
+      document.documentElement.style.overflow = prevOverflow;
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      try {
+        if (opts.opener && opts.opener.focus) opts.opener.focus();
+      } catch (e) {
+        /* the button may have been re-rendered away */
+      }
+    }
+    closeBtn.addEventListener("click", close);
+    document.addEventListener("keydown", onKey, true);
+    document.documentElement.style.overflow = "hidden";
+    document.body.appendChild(overlay);
+    fields.firstName.input.focus();
+    return overlay;
   }
 
   /**
