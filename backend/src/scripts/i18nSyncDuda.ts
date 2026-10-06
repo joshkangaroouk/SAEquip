@@ -33,8 +33,8 @@ async function main() {
   for (const lang of langs) {
     console.log(`\n${lang.locale} (Duda code "${lang.code}", pages under /${lang.code}/) …`);
     const r = await harvestDuda(lang, { confirm, only: arg("--only") });
-    console.log(`  products:   ${r.products.found}/${r.products.total} names found`);
-    if (!arg("--only")) console.log(`  categories: ${r.categories.found}/${r.categories.total} titles found`);
+    console.log(`  products:   ${r.products.found}/${r.products.total} names found, ${r.products.translated} translated in Duda (the rest are still English there)`);
+    if (!arg("--only")) console.log(`  categories: ${r.categories.found}/${r.categories.total} titles found, ${r.categories.translated} translated in Duda`);
     for (const s of r.samples) console.log(`    e.g. ${s}`);
     for (const f of [...r.products.failed, ...r.categories.failed].slice(0, 10)) console.log(`  ✗ ${f}`);
     console.log(confirm ? `  wrote ${r.written} translation(s)` : "  dry run — re-run with --confirm to write");

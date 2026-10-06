@@ -213,7 +213,7 @@ interface DudaName {
 function DudaNames({ locale }: { locale: TargetLocale }) {
   const [items, setItems] = useState<DudaName[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
   const rtl = isRtl(locale);
 
   const load = useCallback(() => {
@@ -225,21 +225,43 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
   }, [locale]);
   useEffect(load, [load]);
 
-  async function refresh() {
-    setRefreshing(true);
+  /**
+   * Re-copy EVERY language on the Duda site, one request each (a language
+   * takes ~15s, inside the function's time limit; all of them would not be).
+   * ⚠️ All of them, not just the tab on screen: it refreshed only the selected
+   * language, and the first live use refreshed Chinese while expecting French.
+   */
+  async function refreshAll() {
+    type Report = { locale: string; products: { total: number; translated: number }; categories: { total: number; translated: number } };
+    const done: Report[] = [];
     try {
-      const r = await apiJson<{ report: { written: number; products: { found: number; total: number }; categories: { found: number; total: number } } }>(
-        "/api/translations/duda/refresh",
-        { method: "POST", body: JSON.stringify({ locale }) },
-      );
-      toast.success(
-        `Copied from Duda: ${r.report.products.found} of ${r.report.products.total} product names, ${r.report.categories.found} of ${r.report.categories.total} category titles`,
-      );
-      load();
+      setRefreshing("…");
+      let next: string[] | null = null;
+      let first = true;
+      while (first || (next && next.length)) {
+        const target: string | undefined = first ? undefined : next!.shift();
+        if (target) setRefreshing(targetLabel(target));
+        const r: { report: Report; remaining: string[] } = await apiJson("/api/translations/duda/refresh", {
+          method: "POST",
+          body: JSON.stringify(target ? { locale: target } : {}),
+        });
+        done.push(r.report);
+        if (first) next = r.remaining;
+        first = false;
+      }
+      toast.success(`Copied names from Duda for ${done.length} ${done.length === 1 ? "language" : "languages"}`, {
+        description: done
+          .map((r) => `${targetLabel(r.locale)}: ${r.products.translated}/${r.products.total} products, ${r.categories.translated}/${r.categories.total} categories`)
+          .join(" · "),
+        duration: 12_000,
+      });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Refresh failed");
+      toast.error(e instanceof Error ? e.message : "Refresh failed", {
+        description: done.length ? `Finished before it stopped: ${done.map((r) => targetLabel(r.locale)).join(", ")}.` : undefined,
+      });
     } finally {
-      setRefreshing(false);
+      setRefreshing(null);
+      load();
     }
   }
 
@@ -249,12 +271,12 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-small text-muted">
           Product names and category titles are translated in Duda (the site's language settings), and copied here so the
-          widgets' cards and lists say exactly what Duda's own pages say. After changing one in Duda, republish the site
-          and press Refresh.
+          widgets' cards and lists say exactly what Duda's own pages say. After adding a language or changing a name in
+          Duda, republish the site and press Refresh.
         </p>
-        <Button variant="secondary" size="sm" onClick={() => void refresh()} loading={refreshing}>
+        <Button variant="secondary" size="sm" onClick={() => void refreshAll()} loading={refreshing !== null}>
           <RefreshCw size={16} aria-hidden="true" />
-          Refresh from Duda
+          {refreshing && refreshing !== "…" ? `Copying ${refreshing}…` : "Refresh all languages from Duda"}
         </Button>
       </div>
       {error && <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>}
@@ -267,8 +289,9 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
         <>
           {missing > 0 && (
             <p className="mt-4 text-small text-muted">
-              {missing} not copied yet - those show in English. A language must be added to the Duda site before its names
-              can be copied.
+              {missing === items.length
+                ? `Nothing copied for ${targetLabel(locale)} yet. Add the language to the Duda site, wait for Duda to translate it, then press Refresh.`
+                : `${missing} still in English in Duda, so they show in English here too. Translate them in Duda, republish, then press Refresh.`}
             </p>
           )}
           <div className="mt-4">

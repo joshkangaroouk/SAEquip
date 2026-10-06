@@ -23,6 +23,9 @@ import { normaliseLocale, type Locale } from "./locales.js";
 
 const MAX_LEN = 300;
 
+/** Case and spacing do not make a translation. */
+const sameText = (s: string) => s.normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase();
+
 /** Every JSON-LD object on a page, @graph flattened; unparsable blocks skipped. */
 export function parseJsonLd(html: string): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = [];
@@ -79,6 +82,25 @@ export function categoriesFromHtml(html: string): Map<string, string> {
 }
 
 /** A category page's <title>, without any " | Site" suffix. */
+/**
+ * A category page's OWN name: the last entry of its breadcrumbs, which is the
+ * page itself. ⚠️ Preferred over the breadcrumbs on PRODUCT pages: measured on
+ * the French site (2026-10-06), a product page's breadcrumbs still said
+ * "Products" and "Climate Control and Heating" in English while the category
+ * pages themselves said "Produits".
+ */
+export function categoryNameFromHtml(html: string): string | null {
+  for (const o of parseJsonLd(html)) {
+    if (o["@type"] !== "BreadcrumbList" || !Array.isArray(o.itemListElement)) continue;
+    const items = [...(o.itemListElement as Array<{ position?: number; item?: { name?: unknown } }>)].sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0),
+    );
+    const name = cleanText(items[items.length - 1]?.item?.name);
+    if (name && items.length > 1) return name;
+  }
+  return titleFromHtml(html);
+}
+
 export function titleFromHtml(html: string): string | null {
   const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
   return m ? cleanText(m[1].split("|")[0]) : null;
@@ -121,8 +143,9 @@ export async function siteLanguages(): Promise<{ locale: Locale; code: string }[
 export interface HarvestReport {
   locale: Locale;
   code: string;
-  products: { total: number; found: number; failed: string[] };
-  categories: { total: number; found: number; failed: string[] };
+  /** found: a name was read; translated: it differs from the English. */
+  products: { total: number; found: number; translated: number; failed: string[] };
+  categories: { total: number; found: number; translated: number; failed: string[] };
   samples: string[];
   written: number;
 }
@@ -146,13 +169,26 @@ export async function harvestDuda(
   const report: HarvestReport = {
     locale: lang.locale,
     code: lang.code,
-    products: { total: products.length, found: 0, failed: [] },
-    categories: { total: opts.only ? 0 : cats.length, found: 0, failed: [] },
+    products: { total: products.length, found: 0, translated: 0, failed: [] },
+    categories: { total: opts.only ? 0 : cats.length, found: 0, translated: 0, failed: [] },
     samples: [],
     written: 0,
   };
   const productNames = new Map<string, { text: string; en: string }>();
   const catNames = new Map<string, { text: string; en: string }>();
+
+  // Category pages first: a category's own page is the authority for its
+  // name (see categoryNameFromHtml). Product breadcrumbs only fill a gap.
+  if (!opts.only) {
+    await pool(cats.filter((c) => c.slug), opts.concurrency ?? 6, async (c) => {
+      try {
+        const name = categoryNameFromHtml(await fetchPage(`${origin}/${lang.code}/category/${encodeURIComponent(c.slug!)}`));
+        if (name) catNames.set(c.dudaCategoryId, { text: name, en: c.title });
+      } catch {
+        /* a product page's breadcrumbs may still supply it, below */
+      }
+    });
+  }
 
   await pool(products, opts.concurrency ?? 6, async (p) => {
     try {
@@ -168,24 +204,22 @@ export async function harvestDuda(
       report.products.failed.push(`${p.slug}: ${e instanceof Error ? e.message : e}`);
     }
   });
-
   if (!opts.only) {
-    const missing = cats.filter((c) => c.slug && !catNames.has(c.dudaCategoryId));
-    await pool(missing, opts.concurrency ?? 6, async (c) => {
-      try {
-        const title = titleFromHtml(await fetchPage(`${origin}/${lang.code}/category/${encodeURIComponent(c.slug!)}`));
-        if (title) catNames.set(c.dudaCategoryId, { text: title, en: c.title });
-        else report.categories.failed.push(`${c.slug}: no <title>`);
-      } catch (e) {
-        report.categories.failed.push(`${c.slug}: ${e instanceof Error ? e.message : e}`);
-      }
-    });
+    for (const c of cats) if (c.slug && !catNames.has(c.dudaCategoryId)) report.categories.failed.push(`${c.slug}: no name on its page or in any breadcrumb`);
   }
 
+  // ⚠️ A name Duda has not translated comes back as the ENGLISH (measured: a
+  // freshly added Chinese site published all 96 names and 23 titles in
+  // English). Storing that as a "translation" made the Names tab report a
+  // language as done when nothing had been translated, so it is not stored —
+  // and a row stored earlier is removed. The page shows the English either way.
+  const differs = (v: { text: string; en: string }) => sameText(v.text) !== sameText(v.en);
   report.products.found = productNames.size;
   report.categories.found = catNames.size;
-  for (const [, v] of [...productNames].slice(0, 3)) report.samples.push(`${v.en} → ${v.text}`);
-  for (const [, v] of [...catNames].slice(0, 2)) report.samples.push(`${v.en} → ${v.text}`);
+  report.products.translated = [...productNames.values()].filter(differs).length;
+  report.categories.translated = [...catNames.values()].filter(differs).length;
+  for (const [, v] of [...productNames].filter(([, v]) => differs(v)).slice(0, 3)) report.samples.push(`${v.en} → ${v.text}`);
+  for (const [, v] of [...catNames].filter(([, v]) => differs(v)).slice(0, 2)) report.samples.push(`${v.en} → ${v.text}`);
 
   if (opts.confirm) {
     const rows = [
@@ -193,8 +227,13 @@ export async function harvestDuda(
       ...[...catNames].map(([dudaId, v]) => ({ entity: "CATEGORY", dudaId, ...v })),
     ];
     for (const r of rows) {
+      const where = { locale_entity_dudaId: { locale: lang.locale, entity: r.entity, dudaId: r.dudaId } };
+      if (!differs(r)) {
+        await prisma.dudaTranslation.deleteMany({ where: where.locale_entity_dudaId });
+        continue;
+      }
       await prisma.dudaTranslation.upsert({
-        where: { locale_entity_dudaId: { locale: lang.locale, entity: r.entity, dudaId: r.dudaId } },
+        where,
         create: { locale: lang.locale, entity: r.entity, dudaId: r.dudaId, text: r.text, sourceText: r.en },
         update: { text: r.text, sourceText: r.en },
       });

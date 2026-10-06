@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { isPassThrough, normaliseSource, sourceHash } from "../src/services/i18n/normalise.js";
 import { validateTranslation } from "../src/services/i18n/validate.js";
 import { normaliseLocale } from "../src/services/i18n/locales.js";
-import { categoriesFromHtml, cleanText, parseJsonLd, productNameFromHtml, titleFromHtml } from "../src/services/i18n/dudaHarvest.js";
+import { categoriesFromHtml, categoryNameFromHtml, cleanText, parseJsonLd, productNameFromHtml, titleFromHtml } from "../src/services/i18n/dudaHarvest.js";
 import { parseLang, productName, tr, categoryTitle, type Tables } from "../src/services/i18n/overlay.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -62,6 +62,12 @@ check(productNameFromHtml(prod) === "سخان EX", "the product's Arabic name is
 const crumbs = categoriesFromHtml(prod);
 check(crumbs.get("climate-control-and-heating") === "التحكم بالمناخ والتدفئة", "category titles are read from the breadcrumbs", JSON.stringify([...crumbs]));
 check(titleFromHtml(cat) === "الإضاءة والطاقة", "a category page's <title> is read", String(titleFromHtml(cat)));
+check(categoryNameFromHtml(cat) === "الإضاءة والطاقة", "a category page's own name is the last entry of its breadcrumbs", String(categoryNameFromHtml(cat)));
+// Shape measured on the French site: the category page is translated while a
+// product page's breadcrumbs still carry the English.
+const frCat = '<title>SEO title</title><script type="application/ld+json">{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":2,"item":{"name":"Produits"}},{"@type":"ListItem","position":1,"item":{"name":"Accueil","id":"/fr"}}]}</script>';
+check(categoryNameFromHtml(frCat) === "Produits", "…taken by position, not array order", String(categoryNameFromHtml(frCat)));
+check(categoryNameFromHtml("<title>Produits | SAEquip</title>") === "Produits", "…and falls back to the <title> without breadcrumbs");
 check(parseJsonLd('<script type="application/ld+json">{broken</script><script type="application/ld+json">{"@type":"Product","name":"X"}</script>').length === 1,
   "a broken JSON-LD block does not hide the next one");
 check(cleanText("<b>x</b>") === "x" && cleanText("a".repeat(301)) === null && cleanText("") === null && cleanText(3) === null, "harvested text is plain, short and non-empty");

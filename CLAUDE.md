@@ -653,8 +653,30 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
   - It reads the site's languages from Duda (`getSiteLanguages()`), so the URL prefix is Duda's
     own code, never assumed.
   - A failed fetch or parse writes nothing.
-  - **Arabic: 96/96 names and 23/23 titles copied (2026-10-06).** Re-run after the client edits
-    Store Languages and republishes, or use `POST /api/translations/duda/refresh`.
+  - ⚠️ **A category's title comes from its OWN page** (`categoryNameFromHtml()`: the last
+    breadcrumb, then `<title>`). Product-page breadcrumbs only fill a gap. Measured on French: a
+    product page's breadcrumbs still said "Products" in English while the category page said
+    "Produits".
+  - ⚠️ **A name identical to the English is NOT stored, and an earlier such row is deleted.**
+    Duda publishes the English until it has translated a name. The first live refresh of
+    Chinese, run just after the client added it, stored 96 English names as "translations",
+    and the Names tab then reported the language as done.
+  - **Copied 2026-10-06** (products / categories actually translated in Duda):
+    - Arabic: 95/96, 23/23
+    - French: 96/96, 23/23
+    - Spanish: 95/96, 22/23
+    - Portuguese: 94/96, 22/23
+    - Chinese: 92/96, 23/23
+    - German is not on the site yet.
+  - **Re-run** after the client adds a language or edits names in Duda and republishes:
+    `npm run i18n:sync-duda -- --confirm`, or **"Refresh all languages from Duda"** on the
+    Translations page.
+    - That button refreshes EVERY site language, one request each, because one language takes
+      ~15s and all of them would exceed the function's 60s limit.
+    - It used to refresh only the language on screen, and the first live use refreshed Chinese
+      while French was expected.
+    - ⚠️ The edge caches listings for about a minute, so a page viewed mid-refresh can show half
+      the old names for that long.
 - ⚠️ **`saveTranslations()` (`services/i18n/store.ts`) is the ONE writer**, so the rules
   cannot drift:
   - Every translation is checked by `validateTranslation()`. Every number (Arabic-Indic
