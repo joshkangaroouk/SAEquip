@@ -136,6 +136,719 @@
   var hub = window.__saequipHub || (window.__saequipHub = { api: "", fetches: {} });
   if (!hub.api) hub.api = findApiBase();
 
+  // ---------------------------------------------------------------------------
+  // Languages (multi-language Duda sites, 2026-10-06)
+  // ---------------------------------------------------------------------------
+  /*
+   * Duda serves each extra language under its own path (`/ar/…`) and says
+   * which language a page is in on the page itself. Measured on the live
+   * Arabic site: `<html lang="ar">`, `window.Parameters.currentLocale === "ar"`.
+   * Every widget on a page shares that one language.
+   *
+   * ⚠️ LOCALES and normaliseLocale() mirror backend/src/services/i18n/locales.ts
+   * — this file cannot import it, so widget:test compares the two.
+   */
+  var LOCALES = ["en", "ar", "zh", "fr", "de", "pt-br", "es"];
+  // The lang attribute each one is announced with.
+  var LANG_TAG = { en: "en", ar: "ar", zh: "zh-Hans", fr: "fr", de: "de", "pt-br": "pt-BR", es: "es" };
+
+  function normaliseLocale(raw) {
+    if (typeof raw !== "string") return null;
+    var t = raw.trim().toLowerCase().replace(/_/g, "-");
+    if (!t) return null;
+    // Traditional Chinese is NOT folded into Simplified.
+    if (t === "zh-tw" || t === "zh-hk" || t === "zh-mo" || t.indexOf("zh-hant") === 0) return null;
+    var base = t.split("-")[0];
+    if (base === "en") return "en";
+    if (base === "zh") return "zh";
+    if (base === "pt") return "pt-br";
+    return LOCALES.indexOf(base) !== -1 ? base : null;
+  }
+
+  /** What the page says its language is, and where that came from. */
+  function pageLanguage() {
+    try {
+      var h = document.documentElement.getAttribute("lang");
+      if (h) return { raw: h, from: "html" };
+    } catch (e) {
+      /* fall through */
+    }
+    try {
+      if (window.Parameters && window.Parameters.currentLocale) {
+        return { raw: String(window.Parameters.currentLocale), from: "Parameters" };
+      }
+    } catch (e) {
+      /* fall through */
+    }
+    try {
+      var d = window.__saehData || {};
+      for (var k in d) {
+        if (d[k] && d[k].locale) return { raw: String(d[k].locale), from: "data.locale" };
+      }
+    } catch (e) {
+      /* fall through */
+    }
+    return { raw: "", from: "none" };
+  }
+
+  /*
+   * The page's language, decided once. An unsupported language (a site that
+   * adds Japanese before we have a table for it) renders English and says so
+   * with lang="en", but its links still keep the page's own prefix.
+   */
+  var LANG = null;
+  function currentLocale() {
+    if (!LANG) {
+      var p = pageLanguage();
+      var loc = normaliseLocale(p.raw);
+      LANG = { locale: loc && I18N[loc] ? loc : "en", raw: p.raw, from: p.from };
+    }
+    return LANG.locale;
+  }
+  /** The lang attribute for text in the current language. */
+  function langTag() {
+    return LANG_TAG[currentLocale()] || "en";
+  }
+  /** `&lang=xx` for a data request — nothing at all for English. */
+  function langParam() {
+    var l = currentLocale();
+    return l === "en" ? "" : "&lang=" + encodeURIComponent(l);
+  }
+
+  /*
+   * The page's language prefix ("/ar"), copied from the URL as it is — never
+   * built — so whatever segment Duda uses is the one we keep. ⚠️ Only a FIRST
+   * segment shaped like a language tag AND matching the page's language
+   * counts, or a page such as /aviation would be taken for a prefix.
+   */
+  function sitePrefix() {
+    var raw = (pageLanguage().raw || "").toLowerCase().split(/[-_]/)[0];
+    if (!raw) return "";
+    var m = /^\/([a-z]{2,3}(?:-[a-z0-9]{2,8})?)(?=\/|$)/i.exec(window.location.pathname || "");
+    if (!m) return "";
+    return m[1].toLowerCase().split("-")[0] === raw ? "/" + m[1] : "";
+  }
+  /**
+   * A link on the SITE, kept in the page's language: "/product/x" → "/ar/product/x".
+   * Absolute URLs, "#" and anything already prefixed pass through untouched.
+   * Never use it for API or file URLs — those live on hub.api.
+   */
+  function localHref(u) {
+    if (typeof u !== "string" || u.charAt(0) !== "/" || u.charAt(1) === "/") return u;
+    var p = sitePrefix();
+    if (!p || u === p || u.indexOf(p + "/") === 0) return u;
+    return p + u;
+  }
+
+  /** A string in the page's language, English when that language lacks it. */
+  function T(key, vars) {
+    var d = I18N[currentLocale()] || I18N.en;
+    var s = typeof d[key] === "string" ? d[key] : I18N.en[key];
+    if (typeof s !== "string") return key;
+    return vars ? fillText(s, vars) : s;
+  }
+  function fillText(s, vars) {
+    return s.replace(/\{(\w+)\}/g, function (m, k) {
+      return vars[k] != null ? String(vars[k]) : m;
+    });
+  }
+  /**
+   * A count, with the language's own plural rules. Arabic has six forms
+   * (zero, one, two, few, many, other), which `n === 1 ? "" : "s"` cannot say.
+   * Numbers are written with Latin digits, matching the spec values.
+   */
+  function TP(key, n, vars) {
+    var all = { n: String(n) };
+    for (var k in vars || {}) all[k] = vars[k];
+    return fillText(pluralForm(key, n), all);
+  }
+  /** The plural form for `n`, placeholders left in — for TP() and fillNodes(). */
+  function pluralForm(key, n) {
+    var loc = currentLocale();
+    var forms = (I18N[loc] && I18N[loc][key]) || I18N.en[key];
+    if (!forms || typeof forms !== "object") return key;
+    var cat = "other";
+    try {
+      cat = new Intl.PluralRules(LANG_TAG[loc] || "en").select(n);
+    } catch (e) {
+      /* very old browser: "other" */
+    }
+    return forms[cat] || forms.other;
+  }
+  /**
+   * A template with ELEMENTS in it — "… {link}" — as DOM, so word order can
+   * differ by language without splitting a sentence around the element.
+   */
+  function fillNodes(s, nodes) {
+    var frag = document.createDocumentFragment();
+    s.split(/(\{\w+\})/).forEach(function (part) {
+      var m = /^\{(\w+)\}$/.exec(part);
+      if (m && nodes[m[1]]) frag.appendChild(nodes[m[1]]);
+      else if (part) frag.appendChild(document.createTextNode(part));
+    });
+    return frag;
+  }
+  /** Give a root element its language, so screen readers use the right voice. */
+  function stampLang(node) {
+    try {
+      node.setAttribute("lang", langTag());
+    } catch (e) {
+      /* never break the host page */
+    }
+    return node;
+  }
+
+  /*
+   * ⚠️ The visible text, per language. Non-English is machine-drafted
+   * (2026-10-06) and needs a native-speaker review. Certification marks
+   * (INMETRO, UKEX, IECEX, EX) are names, not words, and stay as they are.
+   *
+   * ⚠️ rq.privacy + rq.privacyLink, and rq.marketing, must equal CONSENT_TEXT
+   * in backend/src/services/downloadKinds.ts for EVERY language: the server
+   * records its own copy as what the visitor agreed to. widget:test checks.
+   */
+  var I18N = {
+    en: {
+      "tab.overview": "Overview",
+      "tab.specs": "Technical Specs",
+      "tab.benefits": "Key Benefits",
+      "tab.applications": "Applications",
+      "specs.heading": "Technical Specifications",
+      "3d.close": "Close 3D viewer",
+      "3d.pause": "Pause spin",
+      "3d.resume": "Resume spin",
+      "3d.reset": "Reset view",
+      "3d.cta": "View the product in 3D Mode!",
+      "3d.button": "View 3D Mode",
+      "cp.heading": "Compatible Products & Accessories",
+      "cp.prev": "Previous products",
+      "cp.next": "Next products",
+      "card.view": "View Product",
+      "card.viewAria": "View Product - {name}",
+      "pl.loadMore": "Load more products",
+      "pl.count": { one: "{n} product of {total}", other: "{n} products of {total}" },
+      "pl.empty": "No products match those filters. Try removing one.",
+      "pl.filter": "Filter Products",
+      "pl.searchLabel": "Search within category",
+      "pl.searchPh": "Search products...",
+      "pl.clear": "Clear filters",
+      "common.clearSearch": "Clear search",
+      "rs.search.datasheet": "Search Datasheets",
+      "rs.search.manual": "Search User Manuals",
+      "rs.search.certificate": "Search Certificates",
+      "rs.search.default": "Search products",
+      "rs.ariaGated": "{label} - {name} (opens a request form)",
+      "rs.ariaFile": "{label} - {name} (PDF, opens in a new tab)",
+      "rs.noMatch": "No products match “{q}”.",
+      "rs.found": { one: "{n} product found", other: "{n} products found" },
+      "rs.notFound": "No products found",
+      "dl.DATASHEET": "Download Datasheet",
+      "dl.MANUAL": "Download User Manual",
+      "dl.COMPLIANCE": "Compliance",
+      "dl.fallback": "Download",
+      "rq.heading": "File Requests",
+      "rq.intro":
+        "Due to increasing amounts of spam requests, we ask that you enter your details below to download your requested file. We will not share your information with third parties for marketing purposes, nor do we ever pass on or sell your details to a third party.",
+      "rq.privacy": "I agree to my data being stored in line with our {link}",
+      "rq.privacyLink": "Privacy Policy",
+      "rq.marketing": "I'm happy to receive the latest news and promotions by email.",
+      "rq.close": "Close",
+      "rq.f.firstName": "First Name",
+      "rq.f.lastName": "Last Name",
+      "rq.f.company": "Company Name",
+      "rq.f.email": "Email",
+      "rq.f.phone": "Tel Number",
+      "rq.f.mobile": "Mobile Number",
+      "rq.optional": "(optional)",
+      "rq.req.firstName": "Please enter your first name.",
+      "rq.req.lastName": "Please enter your last name.",
+      "rq.req.company": "Please enter your company name.",
+      "rq.req.email": "Please enter your email address.",
+      "rq.req.phone": "Please enter your telephone number.",
+      "rq.badEmail": "Please enter a valid email address.",
+      "rq.badPhone": "Please enter a valid phone number.",
+      "rq.needPrivacy": "Please agree to the Privacy Policy to download the file.",
+      "rq.submit": "Submit & Download",
+      "rq.sending": "Sending…",
+      "rq.doneOpening": "Thank you - your file is opening in a new tab.",
+      "rq.doneReady": "Thank you - your file is ready.",
+      "rq.openAgain": "Open it again",
+      "rq.openFile": "Open your file",
+      "rq.linkValid": "The link works for five minutes.",
+      "rq.preparing": "Preparing your file…",
+      "rq.checkField": "Please check this field.",
+      "rq.err.400": "Please check the highlighted fields.",
+      "rq.err.404": "Sorry, this file is no longer available.",
+      "rq.err.429": "Too many requests. Please try again in a few minutes.",
+      "rq.err.502": "Your details were received, but the file could not be opened. Please try again.",
+      "rq.err.generic": "Sorry, something went wrong. Please try again.",
+      "rq.err.network": "Sorry, we couldn't reach the server. Please check your connection and try again.",
+    },
+    ar: {
+      "tab.overview": "نظرة عامة",
+      "tab.specs": "المواصفات الفنية",
+      "tab.benefits": "المزايا الرئيسية",
+      "tab.applications": "التطبيقات",
+      "specs.heading": "المواصفات الفنية",
+      "3d.close": "إغلاق العارض ثلاثي الأبعاد",
+      "3d.pause": "إيقاف الدوران",
+      "3d.resume": "استئناف الدوران",
+      "3d.reset": "إعادة ضبط العرض",
+      "3d.cta": "اعرض المنتج بوضع ثلاثي الأبعاد!",
+      "3d.button": "عرض بوضع ثلاثي الأبعاد",
+      "cp.heading": "منتجات وملحقات متوافقة",
+      "cp.prev": "المنتجات السابقة",
+      "cp.next": "المنتجات التالية",
+      "card.view": "عرض المنتج",
+      "card.viewAria": "عرض المنتج - {name}",
+      "pl.loadMore": "عرض المزيد من المنتجات",
+      "pl.count": { other: "المنتجات: {n} من أصل {total}" },
+      "pl.empty": "لا توجد منتجات تطابق عوامل التصفية هذه. جرّب إزالة أحدها.",
+      "pl.filter": "تصفية المنتجات",
+      "pl.searchLabel": "البحث ضمن الفئة",
+      "pl.searchPh": "ابحث عن المنتجات...",
+      "pl.clear": "مسح عوامل التصفية",
+      "common.clearSearch": "مسح البحث",
+      "rs.search.datasheet": "ابحث في نشرات البيانات",
+      "rs.search.manual": "ابحث في أدلة المستخدم",
+      "rs.search.certificate": "ابحث في الشهادات",
+      "rs.search.default": "ابحث عن المنتجات",
+      "rs.ariaGated": "{label} - {name} (يفتح نموذج طلب)",
+      "rs.ariaFile": "{label} - {name} (ملف PDF، يفتح في علامة تبويب جديدة)",
+      "rs.noMatch": "لا توجد منتجات تطابق “{q}”.",
+      "rs.found": {
+        zero: "لم يتم العثور على أي منتج",
+        one: "تم العثور على منتج واحد",
+        two: "تم العثور على منتجين",
+        few: "تم العثور على {n} منتجات",
+        many: "تم العثور على {n} منتجًا",
+        other: "تم العثور على {n} منتج",
+      },
+      "rs.notFound": "لم يتم العثور على أي منتجات",
+      "dl.DATASHEET": "تنزيل نشرة البيانات",
+      "dl.MANUAL": "تنزيل دليل المستخدم",
+      "dl.COMPLIANCE": "الامتثال",
+      "dl.fallback": "تنزيل",
+      "rq.heading": "طلبات الملفات",
+      "rq.intro":
+        "نظرًا لتزايد طلبات البريد العشوائي، نطلب منك إدخال بياناتك أدناه لتنزيل الملف المطلوب. لن نشارك معلوماتك مع أطراف ثالثة لأغراض تسويقية، ولا نقوم أبدًا بنقل بياناتك أو بيعها لأي طرف ثالث.",
+      "rq.privacy": "أوافق على تخزين بياناتي بما يتوافق مع {link}",
+      "rq.privacyLink": "سياسة الخصوصية",
+      "rq.marketing": "يسعدني تلقي آخر الأخبار والعروض الترويجية عبر البريد الإلكتروني.",
+      "rq.close": "إغلاق",
+      "rq.f.firstName": "الاسم الأول",
+      "rq.f.lastName": "اسم العائلة",
+      "rq.f.company": "اسم الشركة",
+      "rq.f.email": "البريد الإلكتروني",
+      "rq.f.phone": "رقم الهاتف",
+      "rq.f.mobile": "رقم الجوال",
+      "rq.optional": "(اختياري)",
+      "rq.req.firstName": "يرجى إدخال اسمك الأول.",
+      "rq.req.lastName": "يرجى إدخال اسم العائلة.",
+      "rq.req.company": "يرجى إدخال اسم الشركة.",
+      "rq.req.email": "يرجى إدخال بريدك الإلكتروني.",
+      "rq.req.phone": "يرجى إدخال رقم هاتفك.",
+      "rq.badEmail": "يرجى إدخال بريد إلكتروني صالح.",
+      "rq.badPhone": "يرجى إدخال رقم هاتف صالح.",
+      "rq.needPrivacy": "يرجى الموافقة على سياسة الخصوصية لتنزيل الملف.",
+      "rq.submit": "إرسال وتنزيل",
+      "rq.sending": "جارٍ الإرسال…",
+      "rq.doneOpening": "شكرًا لك - يتم فتح ملفك في علامة تبويب جديدة.",
+      "rq.doneReady": "شكرًا لك - ملفك جاهز.",
+      "rq.openAgain": "افتحه مرة أخرى",
+      "rq.openFile": "افتح ملفك",
+      "rq.linkValid": "يعمل الرابط لمدة خمس دقائق.",
+      "rq.preparing": "جارٍ تجهيز ملفك…",
+      "rq.checkField": "يرجى التحقق من هذا الحقل.",
+      "rq.err.400": "يرجى التحقق من الحقول المميزة.",
+      "rq.err.404": "عذرًا، هذا الملف لم يعد متاحًا.",
+      "rq.err.429": "طلبات كثيرة جدًا. يرجى المحاولة مرة أخرى بعد بضع دقائق.",
+      "rq.err.502": "تم استلام بياناتك، لكن تعذّر فتح الملف. يرجى المحاولة مرة أخرى.",
+      "rq.err.generic": "عذرًا، حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+      "rq.err.network": "عذرًا، تعذّر الوصول إلى الخادم. يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
+    },
+    zh: {
+      "tab.overview": "概述",
+      "tab.specs": "技术规格",
+      "tab.benefits": "主要优势",
+      "tab.applications": "应用领域",
+      "specs.heading": "技术规格",
+      "3d.close": "关闭 3D 查看器",
+      "3d.pause": "暂停旋转",
+      "3d.resume": "继续旋转",
+      "3d.reset": "重置视图",
+      "3d.cta": "以 3D 模式查看产品！",
+      "3d.button": "查看 3D 模式",
+      "cp.heading": "兼容产品及配件",
+      "cp.prev": "上一组产品",
+      "cp.next": "下一组产品",
+      "card.view": "查看产品",
+      "card.viewAria": "查看产品 - {name}",
+      "pl.loadMore": "加载更多产品",
+      "pl.count": { other: "{n} / {total} 个产品" },
+      "pl.empty": "没有符合这些筛选条件的产品。请尝试移除一个筛选条件。",
+      "pl.filter": "筛选产品",
+      "pl.searchLabel": "在此类别中搜索",
+      "pl.searchPh": "搜索产品...",
+      "pl.clear": "清除筛选",
+      "common.clearSearch": "清除搜索",
+      "rs.search.datasheet": "搜索数据表",
+      "rs.search.manual": "搜索用户手册",
+      "rs.search.certificate": "搜索证书",
+      "rs.search.default": "搜索产品",
+      "rs.ariaGated": "{label} - {name}（打开申请表）",
+      "rs.ariaFile": "{label} - {name}（PDF，在新标签页中打开）",
+      "rs.noMatch": "没有与“{q}”匹配的产品。",
+      "rs.found": { other: "找到 {n} 个产品" },
+      "rs.notFound": "未找到产品",
+      "dl.DATASHEET": "下载数据表",
+      "dl.MANUAL": "下载用户手册",
+      "dl.COMPLIANCE": "合规声明",
+      "dl.fallback": "下载",
+      "rq.heading": "文件申请",
+      "rq.intro":
+        "由于垃圾请求日益增多，请在下方填写您的信息以下载所需文件。我们不会出于营销目的与第三方共享您的信息，也绝不会将您的信息转交或出售给任何第三方。",
+      "rq.privacy": "我同意按照我们的{link}存储我的数据",
+      "rq.privacyLink": "隐私政策",
+      "rq.marketing": "我愿意通过电子邮件接收最新消息和促销信息。",
+      "rq.close": "关闭",
+      "rq.f.firstName": "名字",
+      "rq.f.lastName": "姓氏",
+      "rq.f.company": "公司名称",
+      "rq.f.email": "电子邮箱",
+      "rq.f.phone": "电话号码",
+      "rq.f.mobile": "手机号码",
+      "rq.optional": "（选填）",
+      "rq.req.firstName": "请输入您的名字。",
+      "rq.req.lastName": "请输入您的姓氏。",
+      "rq.req.company": "请输入您的公司名称。",
+      "rq.req.email": "请输入您的电子邮箱地址。",
+      "rq.req.phone": "请输入您的电话号码。",
+      "rq.badEmail": "请输入有效的电子邮箱地址。",
+      "rq.badPhone": "请输入有效的电话号码。",
+      "rq.needPrivacy": "请同意隐私政策以下载文件。",
+      "rq.submit": "提交并下载",
+      "rq.sending": "正在发送…",
+      "rq.doneOpening": "谢谢 - 您的文件正在新标签页中打开。",
+      "rq.doneReady": "谢谢 - 您的文件已准备就绪。",
+      "rq.openAgain": "再次打开",
+      "rq.openFile": "打开您的文件",
+      "rq.linkValid": "该链接在五分钟内有效。",
+      "rq.preparing": "正在准备您的文件…",
+      "rq.checkField": "请检查此字段。",
+      "rq.err.400": "请检查突出显示的字段。",
+      "rq.err.404": "抱歉，此文件已不再提供。",
+      "rq.err.429": "请求过多，请几分钟后再试。",
+      "rq.err.502": "已收到您的信息，但无法打开文件。请重试。",
+      "rq.err.generic": "抱歉，出现了问题。请重试。",
+      "rq.err.network": "抱歉，无法连接服务器。请检查网络连接后重试。",
+    },
+    fr: {
+      "tab.overview": "Présentation",
+      "tab.specs": "Caractéristiques techniques",
+      "tab.benefits": "Principaux avantages",
+      "tab.applications": "Applications",
+      "specs.heading": "Caractéristiques techniques",
+      "3d.close": "Fermer la visionneuse 3D",
+      "3d.pause": "Arrêter la rotation",
+      "3d.resume": "Reprendre la rotation",
+      "3d.reset": "Réinitialiser la vue",
+      "3d.cta": "Découvrez le produit en mode 3D !",
+      "3d.button": "Voir en 3D",
+      "cp.heading": "Produits et accessoires compatibles",
+      "cp.prev": "Produits précédents",
+      "cp.next": "Produits suivants",
+      "card.view": "Voir le produit",
+      "card.viewAria": "Voir le produit - {name}",
+      "pl.loadMore": "Afficher plus de produits",
+      "pl.count": { one: "{n} produit sur {total}", other: "{n} produits sur {total}" },
+      "pl.empty": "Aucun produit ne correspond à ces filtres. Essayez d'en retirer un.",
+      "pl.filter": "Filtrer les produits",
+      "pl.searchLabel": "Rechercher dans la catégorie",
+      "pl.searchPh": "Rechercher des produits...",
+      "pl.clear": "Effacer les filtres",
+      "common.clearSearch": "Effacer la recherche",
+      "rs.search.datasheet": "Rechercher des fiches techniques",
+      "rs.search.manual": "Rechercher des manuels d'utilisation",
+      "rs.search.certificate": "Rechercher des certificats",
+      "rs.search.default": "Rechercher des produits",
+      "rs.ariaGated": "{label} - {name} (ouvre un formulaire de demande)",
+      "rs.ariaFile": "{label} - {name} (PDF, s'ouvre dans un nouvel onglet)",
+      "rs.noMatch": "Aucun produit ne correspond à « {q} ».",
+      "rs.found": { one: "{n} produit trouvé", other: "{n} produits trouvés" },
+      "rs.notFound": "Aucun produit trouvé",
+      "dl.DATASHEET": "Télécharger la fiche technique",
+      "dl.MANUAL": "Télécharger le manuel d'utilisation",
+      "dl.COMPLIANCE": "Conformité",
+      "dl.fallback": "Télécharger",
+      "rq.heading": "Demandes de fichiers",
+      "rq.intro":
+        "En raison du nombre croissant de demandes indésirables, nous vous demandons de saisir vos coordonnées ci-dessous pour télécharger le fichier demandé. Nous ne partageons pas vos informations avec des tiers à des fins marketing et nous ne transmettons ni ne vendons jamais vos données à des tiers.",
+      "rq.privacy": "J'accepte que mes données soient conservées conformément à notre {link}",
+      "rq.privacyLink": "Politique de confidentialité",
+      "rq.marketing": "J'accepte de recevoir les dernières actualités et promotions par e-mail.",
+      "rq.close": "Fermer",
+      "rq.f.firstName": "Prénom",
+      "rq.f.lastName": "Nom",
+      "rq.f.company": "Nom de l'entreprise",
+      "rq.f.email": "E-mail",
+      "rq.f.phone": "Téléphone",
+      "rq.f.mobile": "Mobile",
+      "rq.optional": "(facultatif)",
+      "rq.req.firstName": "Veuillez saisir votre prénom.",
+      "rq.req.lastName": "Veuillez saisir votre nom.",
+      "rq.req.company": "Veuillez saisir le nom de votre entreprise.",
+      "rq.req.email": "Veuillez saisir votre adresse e-mail.",
+      "rq.req.phone": "Veuillez saisir votre numéro de téléphone.",
+      "rq.badEmail": "Veuillez saisir une adresse e-mail valide.",
+      "rq.badPhone": "Veuillez saisir un numéro de téléphone valide.",
+      "rq.needPrivacy": "Veuillez accepter la Politique de confidentialité pour télécharger le fichier.",
+      "rq.submit": "Envoyer et télécharger",
+      "rq.sending": "Envoi…",
+      "rq.doneOpening": "Merci - votre fichier s'ouvre dans un nouvel onglet.",
+      "rq.doneReady": "Merci - votre fichier est prêt.",
+      "rq.openAgain": "L'ouvrir à nouveau",
+      "rq.openFile": "Ouvrir votre fichier",
+      "rq.linkValid": "Le lien est valable cinq minutes.",
+      "rq.preparing": "Préparation de votre fichier…",
+      "rq.checkField": "Veuillez vérifier ce champ.",
+      "rq.err.400": "Veuillez vérifier les champs signalés.",
+      "rq.err.404": "Désolé, ce fichier n'est plus disponible.",
+      "rq.err.429": "Trop de demandes. Veuillez réessayer dans quelques minutes.",
+      "rq.err.502": "Vos informations ont bien été reçues, mais le fichier n'a pas pu être ouvert. Veuillez réessayer.",
+      "rq.err.generic": "Désolé, une erreur s'est produite. Veuillez réessayer.",
+      "rq.err.network": "Désolé, impossible de joindre le serveur. Vérifiez votre connexion et réessayez.",
+    },
+    de: {
+      "tab.overview": "Übersicht",
+      "tab.specs": "Technische Daten",
+      "tab.benefits": "Hauptvorteile",
+      "tab.applications": "Anwendungen",
+      "specs.heading": "Technische Daten",
+      "3d.close": "3D-Ansicht schließen",
+      "3d.pause": "Drehung anhalten",
+      "3d.resume": "Drehung fortsetzen",
+      "3d.reset": "Ansicht zurücksetzen",
+      "3d.cta": "Produkt im 3D-Modus ansehen!",
+      "3d.button": "3D-Modus ansehen",
+      "cp.heading": "Kompatible Produkte & Zubehör",
+      "cp.prev": "Vorherige Produkte",
+      "cp.next": "Nächste Produkte",
+      "card.view": "Produkt ansehen",
+      "card.viewAria": "Produkt ansehen - {name}",
+      "pl.loadMore": "Weitere Produkte laden",
+      "pl.count": { one: "{n} Produkt von {total}", other: "{n} Produkte von {total}" },
+      "pl.empty": "Keine Produkte entsprechen diesen Filtern. Entfernen Sie einen Filter.",
+      "pl.filter": "Produkte filtern",
+      "pl.searchLabel": "In dieser Kategorie suchen",
+      "pl.searchPh": "Produkte suchen...",
+      "pl.clear": "Filter zurücksetzen",
+      "common.clearSearch": "Suche löschen",
+      "rs.search.datasheet": "Datenblätter durchsuchen",
+      "rs.search.manual": "Bedienungsanleitungen durchsuchen",
+      "rs.search.certificate": "Zertifikate durchsuchen",
+      "rs.search.default": "Produkte suchen",
+      "rs.ariaGated": "{label} - {name} (öffnet ein Anfrageformular)",
+      "rs.ariaFile": "{label} - {name} (PDF, öffnet in einem neuen Tab)",
+      "rs.noMatch": "Keine Produkte passen zu „{q}“.",
+      "rs.found": { one: "{n} Produkt gefunden", other: "{n} Produkte gefunden" },
+      "rs.notFound": "Keine Produkte gefunden",
+      "dl.DATASHEET": "Datenblatt herunterladen",
+      "dl.MANUAL": "Bedienungsanleitung herunterladen",
+      "dl.COMPLIANCE": "Konformität",
+      "dl.fallback": "Herunterladen",
+      "rq.heading": "Dateianfragen",
+      "rq.intro":
+        "Aufgrund zunehmender Spam-Anfragen bitten wir Sie, unten Ihre Daten einzugeben, um die angeforderte Datei herunterzuladen. Wir geben Ihre Informationen nicht zu Marketingzwecken an Dritte weiter und geben Ihre Daten niemals an Dritte weiter oder verkaufen sie.",
+      "rq.privacy": "Ich bin mit der Speicherung meiner Daten gemäß unserer {link} einverstanden",
+      "rq.privacyLink": "Datenschutzerklärung",
+      "rq.marketing": "Ich möchte die neuesten Nachrichten und Angebote per E-Mail erhalten.",
+      "rq.close": "Schließen",
+      "rq.f.firstName": "Vorname",
+      "rq.f.lastName": "Nachname",
+      "rq.f.company": "Firmenname",
+      "rq.f.email": "E-Mail",
+      "rq.f.phone": "Telefonnummer",
+      "rq.f.mobile": "Mobilnummer",
+      "rq.optional": "(optional)",
+      "rq.req.firstName": "Bitte geben Sie Ihren Vornamen ein.",
+      "rq.req.lastName": "Bitte geben Sie Ihren Nachnamen ein.",
+      "rq.req.company": "Bitte geben Sie Ihren Firmennamen ein.",
+      "rq.req.email": "Bitte geben Sie Ihre E-Mail-Adresse ein.",
+      "rq.req.phone": "Bitte geben Sie Ihre Telefonnummer ein.",
+      "rq.badEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+      "rq.badPhone": "Bitte geben Sie eine gültige Telefonnummer ein.",
+      "rq.needPrivacy": "Bitte stimmen Sie der Datenschutzerklärung zu, um die Datei herunterzuladen.",
+      "rq.submit": "Absenden & herunterladen",
+      "rq.sending": "Wird gesendet…",
+      "rq.doneOpening": "Vielen Dank - Ihre Datei wird in einem neuen Tab geöffnet.",
+      "rq.doneReady": "Vielen Dank - Ihre Datei ist bereit.",
+      "rq.openAgain": "Erneut öffnen",
+      "rq.openFile": "Datei öffnen",
+      "rq.linkValid": "Der Link ist fünf Minuten lang gültig.",
+      "rq.preparing": "Ihre Datei wird vorbereitet…",
+      "rq.checkField": "Bitte überprüfen Sie dieses Feld.",
+      "rq.err.400": "Bitte überprüfen Sie die markierten Felder.",
+      "rq.err.404": "Diese Datei ist leider nicht mehr verfügbar.",
+      "rq.err.429": "Zu viele Anfragen. Bitte versuchen Sie es in ein paar Minuten erneut.",
+      "rq.err.502": "Ihre Daten wurden empfangen, aber die Datei konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.",
+      "rq.err.generic": "Leider ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+      "rq.err.network": "Der Server ist leider nicht erreichbar. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    },
+    "pt-br": {
+      "tab.overview": "Visão geral",
+      "tab.specs": "Especificações técnicas",
+      "tab.benefits": "Principais benefícios",
+      "tab.applications": "Aplicações",
+      "specs.heading": "Especificações técnicas",
+      "3d.close": "Fechar visualizador 3D",
+      "3d.pause": "Pausar rotação",
+      "3d.resume": "Retomar rotação",
+      "3d.reset": "Redefinir visualização",
+      "3d.cta": "Veja o produto no modo 3D!",
+      "3d.button": "Ver em 3D",
+      "cp.heading": "Produtos e acessórios compatíveis",
+      "cp.prev": "Produtos anteriores",
+      "cp.next": "Próximos produtos",
+      "card.view": "Ver produto",
+      "card.viewAria": "Ver produto - {name}",
+      "pl.loadMore": "Carregar mais produtos",
+      "pl.count": { one: "{n} produto de {total}", other: "{n} produtos de {total}" },
+      "pl.empty": "Nenhum produto corresponde a esses filtros. Tente remover um.",
+      "pl.filter": "Filtrar produtos",
+      "pl.searchLabel": "Pesquisar na categoria",
+      "pl.searchPh": "Pesquisar produtos...",
+      "pl.clear": "Limpar filtros",
+      "common.clearSearch": "Limpar pesquisa",
+      "rs.search.datasheet": "Pesquisar fichas técnicas",
+      "rs.search.manual": "Pesquisar manuais do usuário",
+      "rs.search.certificate": "Pesquisar certificados",
+      "rs.search.default": "Pesquisar produtos",
+      "rs.ariaGated": "{label} - {name} (abre um formulário de solicitação)",
+      "rs.ariaFile": "{label} - {name} (PDF, abre em uma nova aba)",
+      "rs.noMatch": "Nenhum produto corresponde a “{q}”.",
+      "rs.found": { one: "{n} produto encontrado", other: "{n} produtos encontrados" },
+      "rs.notFound": "Nenhum produto encontrado",
+      "dl.DATASHEET": "Baixar ficha técnica",
+      "dl.MANUAL": "Baixar manual do usuário",
+      "dl.COMPLIANCE": "Conformidade",
+      "dl.fallback": "Baixar",
+      "rq.heading": "Solicitações de arquivos",
+      "rq.intro":
+        "Devido ao número crescente de solicitações de spam, pedimos que você informe seus dados abaixo para baixar o arquivo solicitado. Não compartilhamos suas informações com terceiros para fins de marketing, nem repassamos ou vendemos seus dados a terceiros.",
+      "rq.privacy": "Concordo que meus dados sejam armazenados de acordo com nossa {link}",
+      "rq.privacyLink": "Política de Privacidade",
+      "rq.marketing": "Aceito receber as últimas novidades e promoções por e-mail.",
+      "rq.close": "Fechar",
+      "rq.f.firstName": "Nome",
+      "rq.f.lastName": "Sobrenome",
+      "rq.f.company": "Nome da empresa",
+      "rq.f.email": "E-mail",
+      "rq.f.phone": "Telefone",
+      "rq.f.mobile": "Celular",
+      "rq.optional": "(opcional)",
+      "rq.req.firstName": "Informe seu nome.",
+      "rq.req.lastName": "Informe seu sobrenome.",
+      "rq.req.company": "Informe o nome da sua empresa.",
+      "rq.req.email": "Informe seu endereço de e-mail.",
+      "rq.req.phone": "Informe seu número de telefone.",
+      "rq.badEmail": "Informe um endereço de e-mail válido.",
+      "rq.badPhone": "Informe um número de telefone válido.",
+      "rq.needPrivacy": "Aceite a Política de Privacidade para baixar o arquivo.",
+      "rq.submit": "Enviar e baixar",
+      "rq.sending": "Enviando…",
+      "rq.doneOpening": "Obrigado - seu arquivo está sendo aberto em uma nova aba.",
+      "rq.doneReady": "Obrigado - seu arquivo está pronto.",
+      "rq.openAgain": "Abrir novamente",
+      "rq.openFile": "Abrir seu arquivo",
+      "rq.linkValid": "O link funciona por cinco minutos.",
+      "rq.preparing": "Preparando seu arquivo…",
+      "rq.checkField": "Verifique este campo.",
+      "rq.err.400": "Verifique os campos destacados.",
+      "rq.err.404": "Desculpe, este arquivo não está mais disponível.",
+      "rq.err.429": "Muitas solicitações. Tente novamente em alguns minutos.",
+      "rq.err.502": "Seus dados foram recebidos, mas não foi possível abrir o arquivo. Tente novamente.",
+      "rq.err.generic": "Desculpe, algo deu errado. Tente novamente.",
+      "rq.err.network": "Desculpe, não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.",
+    },
+    es: {
+      "tab.overview": "Descripción general",
+      "tab.specs": "Especificaciones técnicas",
+      "tab.benefits": "Ventajas principales",
+      "tab.applications": "Aplicaciones",
+      "specs.heading": "Especificaciones técnicas",
+      "3d.close": "Cerrar visor 3D",
+      "3d.pause": "Pausar giro",
+      "3d.resume": "Reanudar giro",
+      "3d.reset": "Restablecer vista",
+      "3d.cta": "¡Vea el producto en modo 3D!",
+      "3d.button": "Ver en 3D",
+      "cp.heading": "Productos y accesorios compatibles",
+      "cp.prev": "Productos anteriores",
+      "cp.next": "Productos siguientes",
+      "card.view": "Ver producto",
+      "card.viewAria": "Ver producto - {name}",
+      "pl.loadMore": "Cargar más productos",
+      "pl.count": { one: "{n} producto de {total}", other: "{n} productos de {total}" },
+      "pl.empty": "Ningún producto coincide con esos filtros. Pruebe a quitar uno.",
+      "pl.filter": "Filtrar productos",
+      "pl.searchLabel": "Buscar en la categoría",
+      "pl.searchPh": "Buscar productos...",
+      "pl.clear": "Borrar filtros",
+      "common.clearSearch": "Borrar búsqueda",
+      "rs.search.datasheet": "Buscar fichas técnicas",
+      "rs.search.manual": "Buscar manuales de usuario",
+      "rs.search.certificate": "Buscar certificados",
+      "rs.search.default": "Buscar productos",
+      "rs.ariaGated": "{label} - {name} (abre un formulario de solicitud)",
+      "rs.ariaFile": "{label} - {name} (PDF, se abre en una pestaña nueva)",
+      "rs.noMatch": "Ningún producto coincide con «{q}».",
+      "rs.found": { one: "{n} producto encontrado", other: "{n} productos encontrados" },
+      "rs.notFound": "No se encontraron productos",
+      "dl.DATASHEET": "Descargar ficha técnica",
+      "dl.MANUAL": "Descargar manual de usuario",
+      "dl.COMPLIANCE": "Conformidad",
+      "dl.fallback": "Descargar",
+      "rq.heading": "Solicitudes de archivos",
+      "rq.intro":
+        "Debido al creciente número de solicitudes de spam, le pedimos que introduzca sus datos a continuación para descargar el archivo solicitado. No compartimos su información con terceros con fines de marketing, ni cedemos ni vendemos nunca sus datos a terceros.",
+      "rq.privacy": "Acepto que mis datos se almacenen de acuerdo con nuestra {link}",
+      "rq.privacyLink": "Política de privacidad",
+      "rq.marketing": "Acepto recibir las últimas noticias y promociones por correo electrónico.",
+      "rq.close": "Cerrar",
+      "rq.f.firstName": "Nombre",
+      "rq.f.lastName": "Apellidos",
+      "rq.f.company": "Nombre de la empresa",
+      "rq.f.email": "Correo electrónico",
+      "rq.f.phone": "Teléfono",
+      "rq.f.mobile": "Móvil",
+      "rq.optional": "(opcional)",
+      "rq.req.firstName": "Introduzca su nombre.",
+      "rq.req.lastName": "Introduzca sus apellidos.",
+      "rq.req.company": "Introduzca el nombre de su empresa.",
+      "rq.req.email": "Introduzca su dirección de correo electrónico.",
+      "rq.req.phone": "Introduzca su número de teléfono.",
+      "rq.badEmail": "Introduzca una dirección de correo electrónico válida.",
+      "rq.badPhone": "Introduzca un número de teléfono válido.",
+      "rq.needPrivacy": "Acepte la Política de privacidad para descargar el archivo.",
+      "rq.submit": "Enviar y descargar",
+      "rq.sending": "Enviando…",
+      "rq.doneOpening": "Gracias - su archivo se está abriendo en una pestaña nueva.",
+      "rq.doneReady": "Gracias - su archivo está listo.",
+      "rq.openAgain": "Abrirlo de nuevo",
+      "rq.openFile": "Abrir su archivo",
+      "rq.linkValid": "El enlace funciona durante cinco minutos.",
+      "rq.preparing": "Preparando su archivo…",
+      "rq.checkField": "Revise este campo.",
+      "rq.err.400": "Revise los campos resaltados.",
+      "rq.err.404": "Lo sentimos, este archivo ya no está disponible.",
+      "rq.err.429": "Demasiadas solicitudes. Vuelva a intentarlo en unos minutos.",
+      "rq.err.502": "Hemos recibido sus datos, pero no se pudo abrir el archivo. Vuelva a intentarlo.",
+      "rq.err.generic": "Lo sentimos, algo ha fallado. Vuelva a intentarlo.",
+      "rq.err.network": "Lo sentimos, no hemos podido conectar con el servidor. Compruebe su conexión y vuelva a intentarlo.",
+    },
+  };
+
   // ---- tiny DOM helpers (textContent only — never inject HTML) ----
   /**
    * Coerce a content-panel value to a boolean.
@@ -193,6 +906,11 @@
        * Declared on .saeh-3d-overlay too, because that modal is appended to
        * <body> outside .saeh-root and so inherits nothing from it.
        */
+      /*
+       * ⚠️ Letter-spacing pulls Arabic letters apart and breaks their joining,
+       * so every tracked heading/label is reset on an Arabic page.
+       */
+      ".saeh-root:lang(ar),.saeh-root:lang(ar) *,.saeh-3d-overlay:lang(ar) *,.saeh-rq-overlay:lang(ar) *{letter-spacing:normal}",
       ".saeh-root,.saeh-3d-overlay,.saeh-rq-overlay{--saeh-head:'Barlow','Barlow Fallback',system-ui,sans-serif;--saeh-body:'Inter','Inter Fallback',system-ui,sans-serif}",
       /*
        * Accordion CONTENT is 15px #878787 — prose, spec values and list items.
@@ -861,9 +1579,9 @@
        */
       ".saeh-rq-overlay{position:fixed;inset:0;z-index:999999;background:rgba(17,17,17,.72);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px;box-sizing:border-box;font-family:var(--saeh-body)}",
       ".saeh-rq-sheet{position:relative;width:100%;max-width:640px;margin:auto;background:#fff;color:#1a1a1a;padding:32px 20px 28px;box-sizing:border-box;font-size:16px;line-height:1.5;animation:saeh-pl-in .25s cubic-bezier(.4,0,.2,1) both}",
-      ".saeh-rq-close{position:absolute;top:10px;right:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}",
+      ".saeh-rq-close{position:absolute;top:10px;inset-inline-end:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;padding:0;background:none;border:0;cursor:pointer;color:#111}",
       ".saeh-rq-close:hover{color:#666}",
-      ".saeh-rq-h{margin:0 40px 6px 0;font-family:var(--saeh-head);font-size:30px;font-weight:400;line-height:1.2;color:#000}",
+      ".saeh-rq-h{margin:0;margin-block-end:6px;margin-inline-end:40px;font-family:var(--saeh-head);font-size:30px;font-weight:400;line-height:1.2;color:#000}",
       ".saeh-rq-file{margin:0 0 14px;font-size:14px;font-weight:600;color:#111}",
       ".saeh-rq-p{margin:0 0 22px;font-size:15px;line-height:1.55;color:#555}",
       ".saeh-rq-grid{display:grid;grid-template-columns:1fr;gap:14px 16px}",
@@ -893,6 +1611,14 @@
         ".saeh-rq-submit{width:auto;min-width:220px}" +
       "}",
       "@media(prefers-reduced-motion:reduce){.saeh-rq-sheet{animation:none}}",
+      /*
+       * ⚠️ The request form reads right-to-left in Arabic, whatever the page
+       * does. It is our own overlay, not part of the Duda layout, and in a
+       * left-to-right box Arabic sentences put their full stop beside the
+       * first word. The close button and heading use logical properties, so
+       * they mirror; email and phone fields are set dir="ltr" in the markup.
+       */
+      ".saeh-rq-overlay:lang(ar){direction:rtl}",
       "@media(prefers-reduced-motion:reduce){" +
         ".saeh-rs-row{animation:none}" +
         ".saeh-rs-shot img,.saeh-rs-dl,.saeh-rs-view{transition:none}" +
@@ -1088,7 +1814,7 @@
       var clean = document.createElement(tag.toLowerCase());
       if (tag === "A") {
         var href = n.getAttribute("href");
-        if (href && safeHref(href)) clean.setAttribute("href", href);
+        if (href && safeHref(href)) clean.setAttribute("href", localHref(href));
         if (n.getAttribute("target") === "_blank") {
           clean.setAttribute("target", "_blank");
           clean.setAttribute("rel", "noopener noreferrer");
@@ -1117,7 +1843,7 @@
     var panels = [];
 
     if (data.descriptionHtml && String(data.descriptionHtml).trim()) {
-      panels.push({ id: "overview", label: "Overview", build: function () {
+      panels.push({ id: "overview", label: T("tab.overview"), build: function () {
         var body = el("div", "saeh-prose");
         // The ONLY place this widget renders HTML rather than textContent, and
         // it goes through safeProse()'s allowlist — never innerHTML. Do not
@@ -1127,13 +1853,13 @@
       } });
     }
     if (data.specs && data.specs.length) {
-      panels.push({ id: "specs", label: "Technical Specs", build: function () { return specsTable(data.specs); } });
+      panels.push({ id: "specs", label: T("tab.specs"), build: function () { return specsTable(data.specs); } });
     }
     if (data.benefits && data.benefits.length) {
-      panels.push({ id: "benefits", label: "Key Benefits", build: function () { return itemList(data.benefits); } });
+      panels.push({ id: "benefits", label: T("tab.benefits"), build: function () { return itemList(data.benefits); } });
     }
     if (data.applications && data.applications.length) {
-      panels.push({ id: "applications", label: "Applications", build: function () { return itemList(data.applications); } });
+      panels.push({ id: "applications", label: T("tab.applications"), build: function () { return itemList(data.applications); } });
     }
 
     if (!panels.length) return null;
@@ -1362,7 +2088,7 @@
 
   function specsSection(specs) {
     var sec = el("div", "saeh-section");
-    sec.appendChild(el("div", "saeh-h", "Technical Specifications"));
+    sec.appendChild(el("div", "saeh-h", T("specs.heading")));
     sec.appendChild(specsTable(specs));
     return sec;
   }
@@ -1572,7 +2298,7 @@
   // Builds and opens the full-screen 3D viewer modal. Torn down completely on
   // close (not just hidden) so a re-open always starts clean.
   function openModel3dModal(url) {
-    var overlay = el("div", "saeh-3d-overlay");
+    var overlay = stampLang(el("div", "saeh-3d-overlay"));
     var sheet = el("div", "saeh-3d-sheet");
     overlay.appendChild(sheet);
 
@@ -1584,7 +2310,7 @@
 
     var closeBtn = el("button", "saeh-3d-close", "✕");
     closeBtn.type = "button";
-    closeBtn.setAttribute("aria-label", "Close 3D viewer");
+    closeBtn.setAttribute("aria-label", T("3d.close"));
     closeBtn.addEventListener("click", function () {
       closeModel3dModal(overlay);
     });
@@ -1619,18 +2345,18 @@
         mv.className = "saeh-3d-mv";
         stage.appendChild(mv);
 
-        var spin = el("button", "saeh-btn", "Pause spin");
+        var spin = el("button", "saeh-btn", T("3d.pause"));
         spin.type = "button";
         spin.addEventListener("click", function () {
           if (mv.hasAttribute("auto-rotate")) {
             mv.removeAttribute("auto-rotate");
-            spin.textContent = "Resume spin";
+            spin.textContent = T("3d.resume");
           } else {
             mv.setAttribute("auto-rotate", "");
-            spin.textContent = "Pause spin";
+            spin.textContent = T("3d.pause");
           }
         });
-        var reset = el("button", "saeh-btn", "Reset view");
+        var reset = el("button", "saeh-btn", T("3d.reset"));
         reset.type = "button";
         reset.addEventListener("click", function () {
           mv.cameraOrbit = "0deg 75deg auto";
@@ -1662,12 +2388,12 @@
 
     var main = el("div", "saeh-3d-cta-main");
     main.appendChild(cubeIcon());
-    main.appendChild(el("div", "saeh-3d-cta-title", "View the product in 3D Mode!"));
+    main.appendChild(el("div", "saeh-3d-cta-title", T("3d.cta")));
     sec.appendChild(main);
 
     var btn = el("button", "saeh-3d-btn");
     btn.type = "button";
-    btn.appendChild(el("span", null, "View 3D Mode"));
+    btn.appendChild(el("span", null, T("3d.button")));
 
     // Decorative: alt="" plus aria-hidden keeps it out of the accessible name,
     // which the label alone should carry. The width/height ATTRIBUTES (not
@@ -1720,7 +2446,6 @@
    * asked for (3 items: no arrows on desktop, arrows on mobile) without
    * hard-coding a single breakpoint assumption.
    */
-  var COMPATIBLE_HEADING = "Compatible Products & Accessories";
 
   /**
    * The product carousel, used by BOTH sources: a product's own compatible
@@ -1734,7 +2459,7 @@
    */
   function compatibleSection(items, heading) {
     var sec = el("div", "saeh-section saeh-cp-sec");
-    sec.appendChild(el("h3", "saeh-cp-h", heading || COMPATIBLE_HEADING));
+    sec.appendChild(el("h3", "saeh-cp-h", heading || T("cp.heading")));
 
     var wrap = el("div", "saeh-cp");
     // Drives the arrow-visibility rules above. Capped at 5 because every rule
@@ -1763,13 +2488,13 @@
     var prev = document.createElement("button");
     prev.type = "button";
     prev.className = "saeh-cp-nav saeh-cp-prev";
-    prev.setAttribute("aria-label", "Previous products");
+    prev.setAttribute("aria-label", T("cp.prev"));
     prev.appendChild(chevron("prev"));
 
     var next = document.createElement("button");
     next.type = "button";
     next.className = "saeh-cp-nav saeh-cp-next";
-    next.setAttribute("aria-label", "Next products");
+    next.setAttribute("aria-label", T("cp.next"));
     next.appendChild(chevron("next"));
 
     wrap.appendChild(prev);
@@ -1830,8 +2555,8 @@
     if (name === "3d-viewer") return data.model3dUrl ? model3dSection(data.model3dUrl) : null;
     if (name === "tabs") return tabsSection(data);
     if (name === "specs") return data.specs && data.specs.length ? specsSection(data.specs) : null;
-    if (name === "benefits") return data.benefits && data.benefits.length ? listSection("Key Benefits", data.benefits) : null;
-    if (name === "applications") return data.applications && data.applications.length ? listSection("Applications", data.applications) : null;
+    if (name === "benefits") return data.benefits && data.benefits.length ? listSection(T("tab.benefits"), data.benefits) : null;
+    if (name === "applications") return data.applications && data.applications.length ? listSection(T("tab.applications"), data.applications) : null;
     if (name === "downloads") return data.downloads && data.downloads.length ? downloadsSection(data.downloads) : null;
     if (name === "compatible") return data.compatible && data.compatible.length ? compatibleSection(data.compatible) : null;
     return null;
@@ -1847,10 +2572,10 @@
    * collide, and it lets the endpoint's three lookup modes all be used.
    */
   function fetchContent(ref) {
-    var cacheKey = ref.key + ":" + ref.value;
+    var cacheKey = ref.key + ":" + ref.value + ":" + currentLocale();
     if (!hub.fetches[cacheKey]) {
       hub.fetches[cacheKey] = fetch(
-        hub.api + "/public/products/content?" + ref.key + "=" + encodeURIComponent(ref.value),
+        hub.api + "/public/products/content?" + ref.key + "=" + encodeURIComponent(ref.value) + langParam(),
         { credentials: "omit" },
       )
         .then(function (res) {
@@ -2045,7 +2770,7 @@
       .then(function (data) {
         try {
           if (!data) return onEmpty(); // unknown product / fetch error
-          var root = el("div", "saeh-root");
+          var root = stampLang(el("div", "saeh-root"));
           for (var i = 0; i < sections.length; i++) {
             var node = buildSection(sections[i], data);
             if (!node) continue;
@@ -2075,10 +2800,11 @@
    */
   function fetchByCategory(category) {
     if (!hub.categoryFetches) hub.categoryFetches = {};
-    var key = String(category).toLowerCase();
+    var cat = String(category).toLowerCase();
+    var key = cat + ":" + currentLocale();
     if (!hub.categoryFetches[key]) {
       hub.categoryFetches[key] = fetch(
-        hub.api + "/public/products/by-category?category=" + encodeURIComponent(key),
+        hub.api + "/public/products/by-category?category=" + encodeURIComponent(cat) + langParam(),
         { credentials: "omit", headers: { Accept: "application/json" } },
       )
         .then(function (r) {
@@ -2117,7 +2843,7 @@
         var node = compatibleSection(items, heading);
         if (!node) return onEmpty();
         injectStyles();
-        var root = el("div", "saeh-root saeh-wide");
+        var root = stampLang(el("div", "saeh-root saeh-wide"));
         root.appendChild(node);
         container.innerHTML = "";
         container.appendChild(root);
@@ -2135,8 +2861,12 @@
    * ~29KB, so a round trip per checkbox would be slower than the work it saves.
    */
   function fetchCatalogue() {
-    if (!hub.cataloguePromise) {
-      hub.cataloguePromise = fetch(hub.api + "/public/catalogue", {
+    // Keyed by language, like the other fetches. The query string starts
+    // with "?" here — English sends no parameter at all.
+    if (!hub.cataloguePromises) hub.cataloguePromises = {};
+    var lk = currentLocale();
+    if (!hub.cataloguePromises[lk]) {
+      hub.cataloguePromises[lk] = fetch(hub.api + "/public/catalogue" + langParam().replace(/^&/, "?"), {
         credentials: "omit",
         headers: { Accept: "application/json" },
       })
@@ -2148,7 +2878,7 @@
           return null;
         });
     }
-    return hub.cataloguePromise;
+    return hub.cataloguePromises[lk];
   }
 
   /**
@@ -2206,7 +2936,7 @@
   function productCard(p, chipTitles) {
     var a = document.createElement("a");
     a.className = "saeh-pl-card";
-    a.href = p.url || "#";
+    a.href = localHref(p.url || "#");
 
     var shot = el("div", "saeh-pl-shot");
     if (p.imageUrl) {
@@ -2249,7 +2979,7 @@
     }
     a.appendChild(body);
     var cta = el("span", "saeh-pl-btn");
-    cta.appendChild(document.createTextNode("View Product"));
+    cta.appendChild(document.createTextNode(T("card.view")));
     var chev = el("span", "saeh-pl-chevwrap");
     chev.appendChild(doubleChevron());
     cta.appendChild(chev);
@@ -2345,11 +3075,19 @@
 
     // Which branch supplies the filter options. Configurable, because the tree
     // is expected to be reworked and a rename should not need a code change.
+    // ⚠️ Matched on the SLUG first, then the ENGLISH title: on a translated
+    // page `title` is in that language and would never equal "Site Challenges".
     var filterTitle = (props.filterGroup || "Site Challenges").toLowerCase();
     var filterParent = null;
     cats.forEach(function (c) {
-      if (c.parentId === "ROOT" && String(c.title).toLowerCase() === filterTitle) filterParent = c;
+      if (c.parentId !== "ROOT" || filterParent) return;
+      if (String(c.slug || "").toLowerCase() === filterTitle) filterParent = c;
     });
+    if (!filterParent) {
+      cats.forEach(function (c) {
+        if (c.parentId === "ROOT" && !filterParent && String(c.titleEn || c.title).toLowerCase() === filterTitle) filterParent = c;
+      });
+    }
 
     // Only options that actually appear in the base set — an option that could
     // only ever return nothing is noise, and a count of 0 invites a dead click.
@@ -2395,7 +3133,7 @@
     moreBtn.className = "saeh-pl-more";
     // The label is a TEXT NODE and only the count a span, because
     // `.saeh-pl-more span` is what greys the count.
-    moreBtn.appendChild(document.createTextNode("Load more products"));
+    moreBtn.appendChild(document.createTextNode(T("pl.loadMore")));
     var moreN = el("span", null, "");
     moreBtn.appendChild(moreN);
     moreBtn.addEventListener("click", function () {
@@ -2424,7 +3162,14 @@
             return byId[id] ? byId[id].title : "";
           })
           .join(" ");
-        p.__hay = ((p.name || "") + " " + titles).toLowerCase();
+        // English too (`nameEn`/`titleEn`, once translated names arrive), so a
+        // visitor on an Arabic page who types "heater" still finds it.
+        var titlesEn = (p.categoryIds || [])
+          .map(function (id) {
+            return byId[id] && byId[id].titleEn ? byId[id].titleEn : "";
+          })
+          .join(" ");
+        p.__hay = ((p.name || "") + " " + (p.nameEn || "") + " " + titles + " " + titlesEn).toLowerCase();
       }
       return p.__hay;
     }
@@ -2458,9 +3203,11 @@
     function paint(append) {
       var shown = base.filter(matches);
       count.innerHTML = "";
-      count.appendChild(el("b", null, String(shown.length)));
+      // The number stays bold wherever the language puts it.
       count.appendChild(
-        document.createTextNode(" product" + (shown.length === 1 ? "" : "s") + " of " + base.length),
+        fillNodes(fillText(pluralForm("pl.count", shown.length), { total: base.length }), {
+          n: el("b", null, String(shown.length)),
+        }),
       );
 
       if (!append) {
@@ -2470,7 +3217,7 @@
 
       if (!shown.length) {
         showMore(0);
-        grid.appendChild(el("p", "saeh-pl-empty", "No products match those filters. Try removing one."));
+        grid.appendChild(el("p", "saeh-pl-empty", T("pl.empty")));
         return;
       }
 
@@ -2502,14 +3249,14 @@
      * same label — exactly one of the two is visible at any width, so the
      * label is never announced twice.
      */
-    filter.appendChild(el("h6", "saeh-pl-title", "Filter Products"));
+    filter.appendChild(el("h6", "saeh-pl-title", T("pl.filter")));
     filter.appendChild(el("div", "saeh-pl-rule"));
 
     var search = el("div", "saeh-pl-search");
     var sid = "saeh-q" + Math.random().toString(36).slice(2, 9);
     // A real <label for>, so the accessible name is the visible one rather
     // than an aria-label nobody can see.
-    var slabel = el("label", "saeh-pl-slabel", "Search within category");
+    var slabel = el("label", "saeh-pl-slabel", T("pl.searchLabel"));
     slabel.setAttribute("for", sid);
     // ⚠️ The input and its X get their OWN relative box. Positioning the X
     // against `.saeh-pl-search` would centre it on the label + input together,
@@ -2518,11 +3265,11 @@
     var input = document.createElement("input");
     input.id = sid;
     input.type = "search";
-    input.placeholder = "Search products...";
+    input.placeholder = T("pl.searchPh");
     var clearQ = document.createElement("button");
     clearQ.type = "button";
     clearQ.className = "saeh-pl-clearq";
-    clearQ.setAttribute("aria-label", "Clear search");
+    clearQ.setAttribute("aria-label", T("common.clearSearch"));
     clearQ.appendChild(closeIcon());
 
     /*
@@ -2561,7 +3308,7 @@
     btn.type = "button";
     btn.className = "saeh-pl-toggle";
     btn.setAttribute("aria-expanded", "false");
-    btn.appendChild(el("span", null, "Filter Products"));
+    btn.appendChild(el("span", null, T("pl.filter")));
     btn.appendChild(el("span", "saeh-pl-chev"));
 
     var panel = el("div", "saeh-pl-panel");
@@ -2617,7 +3364,7 @@
       var clear = document.createElement("button");
       clear.type = "button";
       clear.className = "saeh-pl-clear";
-      clear.textContent = "Clear filters";
+      clear.textContent = T("pl.clear");
       clear.addEventListener("click", function () {
         chosen = {};
         var boxes = inner.querySelectorAll("input[type=checkbox]");
@@ -2664,7 +3411,7 @@
         var node = productListSection(data, props);
         if (!node) return onEmpty();
         injectStyles();
-        var root = el("div", "saeh-root saeh-wide");
+        var root = stampLang(el("div", "saeh-root saeh-wide"));
         root.appendChild(node);
         container.innerHTML = "";
         container.appendChild(root);
@@ -2693,18 +3440,33 @@
     return Object.prototype.hasOwnProperty.call(RESOURCE_TYPE_ALIASES, t) ? RESOURCE_TYPE_ALIASES[t] : "";
   }
 
+  /**
+   * A download button's label in the page's language. The server sends
+   * `labelKey` (DATASHEET, MANUAL or the certificate scheme); certification
+   * marks are names and stay as they are. A title fallback (two files sharing
+   * a label) and a payload from before labelKey are shown as sent.
+   */
+  function resourceLabel(d) {
+    if (d.labelKey && !d.labelFromTitle) {
+      var k = "dl." + d.labelKey;
+      if (I18N.en[k]) return T(k);
+    }
+    return d.label || d.title || T("dl.fallback");
+  }
+
   /** What the search box says on each page — the placeholder and its hidden label. */
-  var RESOURCE_SEARCH_LABEL = {
-    datasheet: "Search Datasheets",
-    manual: "Search User Manuals",
-    certificate: "Search Certificates",
+  var RESOURCE_SEARCH_KEY = {
+    datasheet: "rs.search.datasheet",
+    manual: "rs.search.manual",
+    certificate: "rs.search.certificate",
   };
 
   /** One fetch per type per page, however many copies of the widget there are. */
   function fetchResources(type) {
     if (!hub.resourceFetches) hub.resourceFetches = {};
-    if (!hub.resourceFetches[type]) {
-      hub.resourceFetches[type] = fetch(hub.api + "/public/resources?type=" + encodeURIComponent(type), {
+    var rk = type + ":" + currentLocale();
+    if (!hub.resourceFetches[rk]) {
+      hub.resourceFetches[rk] = fetch(hub.api + "/public/resources?type=" + encodeURIComponent(type) + langParam(), {
         credentials: "omit",
         headers: { Accept: "application/json" },
       })
@@ -2716,7 +3478,7 @@
           return null;
         });
     }
-    return hub.resourceFetches[type];
+    return hub.resourceFetches[rk];
   }
 
   /** A site-relative path from our own API, or "#" — never a scheme. */
@@ -2770,7 +3532,7 @@
         return d && typeof d.id === "string" && d.id;
       });
       if (!downloads.length) return;
-      var url = sitePath(p.url);
+      var url = localHref(sitePath(p.url));
       var name = p.name || "";
 
       var row = el("li", "saeh-rs-row");
@@ -2778,7 +3540,9 @@
       // visitor can find a product by any of the words on its row.
       haystacks.push(
         [name, p.range && p.range.label ? p.range.label : ""]
-          .concat(downloads.map(function (d) { return d.label || d.title || ""; }))
+          // Both the shown label and the English one, so "datasheet" or "ukex"
+          // finds a row on any language's page.
+          .concat(downloads.map(function (d) { return resourceLabel(d) + " " + (d.label || d.title || ""); }))
           .join(" ")
           .toLowerCase()
       );
@@ -2812,16 +3576,16 @@
       var view = document.createElement("a");
       view.className = "saeh-rs-view";
       view.href = url;
-      view.appendChild(document.createTextNode("View Product"));
-      // Contains the visible "View Product", so speech input still matches it.
-      view.setAttribute("aria-label", "View Product - " + name);
+      view.appendChild(document.createTextNode(T("card.view")));
+      // Contains the visible label, so speech input still matches it.
+      view.setAttribute("aria-label", T("card.viewAria", { name: name }));
       view.appendChild(doubleChevron());
       info.appendChild(view);
       row.appendChild(info);
 
       var dls = el("div", "saeh-rs-dls");
       downloads.forEach(function (d) {
-        var label = d.label || d.title || "Download";
+        var label = resourceLabel(d);
         var a;
         if (d.gated) {
           // Gated: a button that opens the request form. The file is only
@@ -2831,7 +3595,7 @@
           a.className = "saeh-rs-dl";
           a.setAttribute("aria-haspopup", "dialog");
           // Starts with the visible label, so speech input still matches it.
-          a.setAttribute("aria-label", label + " - " + name + " (opens a request form)");
+          a.setAttribute("aria-label", T("rs.ariaGated", { label: label, name: name }));
           (function (btn, id) {
             btn.addEventListener("click", function () {
               openRequestForm({ id: id, product: name, label: label, opener: btn });
@@ -2843,7 +3607,7 @@
           a.href = hub.api + "/public/downloads/" + encodeURIComponent(d.id) + "/file";
           a.target = "_blank";
           a.rel = "noopener";
-          a.setAttribute("aria-label", label + " - " + name + " (PDF, opens in a new tab)");
+          a.setAttribute("aria-label", T("rs.ariaFile", { label: label, name: name }));
         }
         a.appendChild(downloadIcon());
         a.appendChild(document.createTextNode(label));
@@ -2881,7 +3645,7 @@
    * Rows are hidden, not rebuilt, so their images are not fetched again.
    */
   function resourcesSearch(list, haystacks, none, type) {
-    var says = Object.prototype.hasOwnProperty.call(RESOURCE_SEARCH_LABEL, type) ? RESOURCE_SEARCH_LABEL[type] : "Search products";
+    var says = T(Object.prototype.hasOwnProperty.call(RESOURCE_SEARCH_KEY, type) ? RESOURCE_SEARCH_KEY[type] : "rs.search.default");
     var rows = list.children;
     var wrap = el("div", "saeh-rs-search");
     var sid = "saeh-rq" + Math.random().toString(36).slice(2, 9);
@@ -2897,7 +3661,7 @@
     var clearQ = document.createElement("button");
     clearQ.type = "button";
     clearQ.className = "saeh-pl-clearq";
-    clearQ.setAttribute("aria-label", "Clear search");
+    clearQ.setAttribute("aria-label", T("common.clearSearch"));
     clearQ.appendChild(closeIcon());
     var status = el("div", "saeh-rs-sr");
     status.setAttribute("role", "status");
@@ -2911,9 +3675,9 @@
         if (hit) shown++;
       }
       clearQ.className = "saeh-pl-clearq" + (input.value ? " on" : "");
-      none.textContent = shown ? "" : "No products match “" + input.value.trim() + "”.";
+      none.textContent = shown ? "" : T("rs.noMatch", { q: input.value.trim() });
       none.className = "saeh-pl-empty saeh-rs-none" + (shown ? " saeh-rs-off" : "");
-      status.textContent = !q ? "" : shown ? shown + (shown === 1 ? " product" : " products") + " found" : "No products found";
+      status.textContent = !q ? "" : shown ? TP("rs.found", shown) : T("rs.notFound");
     }
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
@@ -2946,16 +3710,29 @@
    * services/downloadKinds.ts WORD FOR WORD — the server records its own copy
    * as what the visitor agreed to. `widget:test` compares the two.
    */
-  var RQ_PRIVACY_BEFORE = "I agree to my data being stored in line with our ";
-  var RQ_PRIVACY_LINK = "Privacy Policy";
+  // The wording itself lives in I18N (rq.*), per language.
   var RQ_PRIVACY_URL = "/privacy-policy";
-  var RQ_MARKETING = "I'm happy to receive the latest news and promotions by email.";
-  var RQ_INTRO =
-    "Due to increasing amounts of spam requests, we ask that you enter your details below to download your " +
-    "requested file. We will not share your information with third parties for marketing purposes, nor do we " +
-    "ever pass on or sell your details to a third party.";
   // The server's own rule, so a number it would refuse is caught here first.
   var RQ_PHONE = /^[0-9+()\-.\s]+$/;
+  // A plain shape check on the FOLDED value (see asciiForm); the server's own
+  // validator has the final say.
+  var EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  /**
+   * Arabic and Chinese keyboards type Arabic-Indic (٠-٩, ۰-۹) and full-width
+   * (０-９, ＋, ＠) characters. Folded to ASCII here exactly as the server folds
+   * them, so what is checked is what is sent.
+   */
+  function asciiForm(v) {
+    var s = String(v || "");
+    try {
+      s = s.normalize("NFKC");
+    } catch (e) {
+      /* very old browser */
+    }
+    return s
+      .replace(/[\u0660-\u0669]/g, function (c) { return String(c.charCodeAt(0) - 0x0660); })
+      .replace(/[\u06f0-\u06f9]/g, function (c) { return String(c.charCodeAt(0) - 0x06f0); });
+  }
   function phoneOk(v) {
     return RQ_PHONE.test(v) && (v.match(/[0-9]/g) || []).length >= 6;
   }
@@ -2988,7 +3765,7 @@
     var openedAt = Date.now();
     var uid = "saeh-rq" + Math.random().toString(36).slice(2, 9);
 
-    var overlay = el("div", "saeh-rq-overlay");
+    var overlay = stampLang(el("div", "saeh-rq-overlay"));
     var sheet = el("div", "saeh-rq-sheet");
     sheet.setAttribute("role", "dialog");
     sheet.setAttribute("aria-modal", "true");
@@ -2998,37 +3775,42 @@
     var closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "saeh-rq-close";
-    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.setAttribute("aria-label", T("rq.close"));
     closeBtn.appendChild(closeIcon20());
     sheet.appendChild(closeBtn);
 
-    var h = el("h2", "saeh-rq-h", "File Requests");
+    var h = el("h2", "saeh-rq-h", T("rq.heading"));
     h.id = uid + "-h";
     sheet.appendChild(h);
-    sheet.appendChild(el("p", "saeh-rq-file", opts.product + (opts.label ? " - " + opts.label : "")));
+    // The product name is isolated (<bdi>), so an English name inside Arabic
+    // text keeps its own order.
+    var fileLine = el("p", "saeh-rq-file");
+    fileLine.appendChild(el("bdi", null, opts.product));
+    if (opts.label) fileLine.appendChild(document.createTextNode(" - " + opts.label));
+    sheet.appendChild(fileLine);
     var body = el("div", "saeh-rq-body");
     sheet.appendChild(body);
 
     var form = document.createElement("form");
     form.noValidate = true; // our own messages, on the field they belong to
-    form.appendChild(el("p", "saeh-rq-p", RQ_INTRO));
+    form.appendChild(el("p", "saeh-rq-p", T("rq.intro")));
 
     var grid = el("div", "saeh-rq-grid");
     var fields = {};
-    // name, label, type, autocomplete, required, what the "missing" message calls it
+    // name, label, type, autocomplete, required, the "missing" message
     [
-      ["firstName", "First Name", "text", "given-name", true, "first name"],
-      ["lastName", "Last Name", "text", "family-name", true, "last name"],
-      ["company", "Company Name", "text", "organization", true, "company name"],
-      ["email", "Email", "email", "email", true, "email address"],
-      ["phone", "Tel Number", "tel", "tel", true, "telephone number"],
-      ["mobile", "Mobile Number", "tel", "mobile tel", false, "mobile number"],
+      ["firstName", T("rq.f.firstName"), "text", "given-name", true, T("rq.req.firstName")],
+      ["lastName", T("rq.f.lastName"), "text", "family-name", true, T("rq.req.lastName")],
+      ["company", T("rq.f.company"), "text", "organization", true, T("rq.req.company")],
+      ["email", T("rq.f.email"), "email", "email", true, T("rq.req.email")],
+      ["phone", T("rq.f.phone"), "tel", "tel", true, T("rq.req.phone")],
+      ["mobile", T("rq.f.mobile"), "tel", "mobile tel", false, ""],
     ].forEach(function (f) {
       var wrap = el("div", "saeh-rq-field");
       var id = uid + "-" + f[0];
       var lab = el("label", "saeh-rq-label", f[1]);
       lab.setAttribute("for", id);
-      if (!f[4]) lab.appendChild(el("span", "saeh-rq-opt", " (optional)"));
+      if (!f[4]) lab.appendChild(el("span", "saeh-rq-opt", " " + T("rq.optional")));
       var inp = document.createElement("input");
       inp.className = "saeh-rq-in";
       inp.id = id;
@@ -3037,6 +3819,8 @@
       inp.setAttribute("autocomplete", f[3]);
       inp.maxLength = f[0] === "email" ? 254 : f[0] === "company" ? 200 : f[2] === "tel" ? 50 : 100;
       if (f[4]) inp.required = true;
+      // Addresses and numbers read left-to-right in every language.
+      if (f[2] === "email" || f[2] === "tel") inp.setAttribute("dir", "ltr");
       var err = el("p", "saeh-rq-err");
       err.id = id + "-err";
       err.hidden = true;
@@ -3044,7 +3828,7 @@
       wrap.appendChild(inp);
       wrap.appendChild(err);
       grid.appendChild(wrap);
-      fields[f[0]] = { input: inp, err: err, noun: f[5] };
+      fields[f[0]] = { input: inp, err: err, missing: f[5] };
     });
     form.appendChild(grid);
 
@@ -3074,27 +3858,27 @@
     }
     var checks = el("div", "saeh-rq-checks");
     var privacy = checkbox("privacyConsent", function (t) {
-      t.appendChild(document.createTextNode(RQ_PRIVACY_BEFORE));
+      // A template, so the link can sit wherever the language puts it.
       var a = document.createElement("a");
-      a.href = RQ_PRIVACY_URL;
+      a.href = localHref(RQ_PRIVACY_URL);
       a.target = "_blank";
       a.rel = "noopener";
-      a.textContent = RQ_PRIVACY_LINK;
-      t.appendChild(a);
+      a.textContent = T("rq.privacyLink");
+      t.appendChild(fillNodes(T("rq.privacy"), { link: a }));
     });
     privacy.input.required = true;
     var privacyErr = el("p", "saeh-rq-err");
     privacyErr.id = uid + "-privacy-err";
     privacyErr.hidden = true;
     var marketing = checkbox("marketingConsent", function (t) {
-      t.appendChild(document.createTextNode(RQ_MARKETING));
+      t.appendChild(document.createTextNode(T("rq.marketing")));
     });
     checks.appendChild(privacy.label);
     checks.appendChild(privacyErr);
     checks.appendChild(marketing.label);
     form.appendChild(checks);
 
-    var submit = el("button", "saeh-rq-submit", "Submit & Download");
+    var submit = el("button", "saeh-rq-submit", T("rq.submit"));
     submit.type = "submit";
     form.appendChild(submit);
     var msg = el("p", "saeh-rq-msg");
@@ -3126,15 +3910,16 @@
       Object.keys(fields).forEach(function (k) {
         var f = fields[k];
         var v = f.input.value.trim();
+        if (k === "email" || k === "phone" || k === "mobile") v = asciiForm(v);
         var text = "";
-        if (f.input.required && !v) text = "Please enter your " + f.noun + ".";
-        else if (v && k === "email" && !f.input.checkValidity()) text = "Please enter a valid email address.";
-        else if (v && (k === "phone" || k === "mobile") && !phoneOk(v)) text = "Please enter a valid phone number.";
+        if (f.input.required && !v) text = f.missing;
+        else if (v && k === "email" && !EMAIL_OK.test(v)) text = T("rq.badEmail");
+        else if (v && (k === "phone" || k === "mobile") && !phoneOk(v)) text = T("rq.badPhone");
         setErr(f, text);
         if (text && !first) first = f.input;
       });
       if (!privacy.input.checked) {
-        setPrivacyErr("Please agree to the Privacy Policy to download the file.");
+        setPrivacyErr(T("rq.needPrivacy"));
         if (!first) first = privacy.input;
       } else setPrivacyErr("");
       return first;
@@ -3142,22 +3927,20 @@
 
     function showDone(fileUrl, opened) {
       body.innerHTML = "";
-      body.appendChild(el("p", "saeh-rq-done", opened
-        ? "Thank you - your file is opening in a new tab."
-        : "Thank you - your file is ready."));
+      body.appendChild(el("p", "saeh-rq-done", opened ? T("rq.doneOpening") : T("rq.doneReady")));
       var link = document.createElement("a");
       link.className = "saeh-rs-dl saeh-rq-link";
       link.href = fileUrl;
       link.target = "_blank";
       link.rel = "noopener";
       link.appendChild(downloadIcon());
-      link.appendChild(document.createTextNode(opened ? "Open it again" : "Open your file"));
+      link.appendChild(document.createTextNode(opened ? T("rq.openAgain") : T("rq.openFile")));
       body.appendChild(link);
       var again = el("p", "saeh-rq-again");
-      again.appendChild(document.createTextNode("The link works for five minutes. "));
+      again.appendChild(document.createTextNode(T("rq.linkValid") + " "));
       var done = document.createElement("button");
       done.type = "button";
-      done.textContent = "Close";
+      done.textContent = T("rq.close");
       done.addEventListener("click", close);
       again.appendChild(done);
       body.appendChild(again);
@@ -3179,8 +3962,8 @@
         if (tab) {
           tab.opener = null;
           try {
-            tab.document.title = "Preparing your file…";
-            tab.document.body.textContent = "Preparing your file…";
+            tab.document.title = T("rq.preparing");
+            tab.document.body.textContent = T("rq.preparing");
           } catch (err) {
             /* a cross-origin blank tab is fine — it is only a placeholder */
           }
@@ -3197,18 +3980,21 @@
       };
 
       submit.disabled = true;
-      submit.textContent = "Sending…";
+      submit.textContent = T("rq.sending");
       var payload = {
         firstName: fields.firstName.input.value.trim(),
         lastName: fields.lastName.input.value.trim(),
         company: fields.company.input.value.trim(),
-        email: fields.email.input.value.trim(),
-        phone: fields.phone.input.value.trim(),
-        mobile: fields.mobile.input.value.trim(),
+        email: asciiForm(fields.email.input.value.trim()),
+        phone: asciiForm(fields.phone.input.value.trim()),
+        mobile: asciiForm(fields.mobile.input.value.trim()),
         privacyConsent: privacy.input.checked,
         marketingConsent: marketing.input.checked,
         website: hpIn.value,
         elapsedMs: Date.now() - openedAt,
+        // The language the form was shown in: the server records the consent
+        // wording in this language, as what the visitor agreed to.
+        locale: currentLocale(),
       };
       fetch(hub.api + "/public/downloads/" + encodeURIComponent(opts.id) + "/lead", {
         method: "POST",
@@ -3241,22 +4027,26 @@
           closeTab();
           if (res.status === 400 && b.fields) {
             Object.keys(b.fields).forEach(function (k) {
-              if (fields[k]) setErr(fields[k], "Please check this field.");
-              if (k === "privacyConsent") setPrivacyErr("Please agree to the Privacy Policy to download the file.");
+              if (fields[k]) setErr(fields[k], T("rq.checkField"));
+              if (k === "privacyConsent") setPrivacyErr(T("rq.needPrivacy"));
             });
           }
+          // ⚠️ By STATUS, never the server's own text: that is English, and a
+          // limiter answers with a code ("rate_limited") no visitor should see.
           msg.textContent =
-            res.status === 404 ? "Sorry, this file is no longer available."
-            : typeof b.error === "string" && res.status !== 201 && res.status !== 200 ? b.error
-            : "Sorry, something went wrong. Please try again.";
+            res.status === 400 ? T("rq.err.400")
+            : res.status === 404 ? T("rq.err.404")
+            : res.status === 429 ? T("rq.err.429")
+            : res.status === 502 ? T("rq.err.502")
+            : T("rq.err.generic");
         })
         .catch(function () {
           closeTab();
-          msg.textContent = "Sorry, we couldn't reach the server. Please check your connection and try again.";
+          msg.textContent = T("rq.err.network");
         })
         .then(function () {
           submit.disabled = false;
-          submit.textContent = "Submit & Download";
+          submit.textContent = T("rq.submit");
         });
     });
 
@@ -3320,7 +4110,7 @@
     }
     var show = function (node) {
       injectStyles();
-      var root = el("div", "saeh-root saeh-wide");
+      var root = stampLang(el("div", "saeh-root saeh-wide"));
       root.appendChild(node);
       container.innerHTML = "";
       container.appendChild(root);
@@ -3492,6 +4282,27 @@
       singlePage: props.singlePage,
       productCategory: props.productCategory,
     };
+    /*
+     * The page's language. `props.locale` is an override for tests and odd
+     * embeds; a valid one wins. Recorded with every signal the page gave, so
+     * "why is this widget in English?" is one console read:
+     * __saequipHub.lastInit.localeFrom / .localeSignals.
+     */
+    try {
+      var forced = normaliseLocale(props.locale);
+      if (forced && I18N[forced]) LANG = { locale: forced, raw: String(props.locale), from: "props" };
+      currentLocale();
+      record.locale = LANG.locale;
+      record.localeFrom = LANG.from;
+      record.localeSignals = {
+        html: document.documentElement.getAttribute("lang"),
+        parameters: window.Parameters ? window.Parameters.currentLocale : undefined,
+        prop: props.locale,
+        prefix: sitePrefix(),
+      };
+    } catch (e) {
+      /* never break the host page */
+    }
     hub.lastInit = record;
     if (!hub.inits) hub.inits = [];
     hub.inits.push(record);

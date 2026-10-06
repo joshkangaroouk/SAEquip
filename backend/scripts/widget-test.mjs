@@ -42,8 +42,8 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, leadResponse = undefined, url = undefined } = {}) {
-  const dom = new JSDOM(`<!doctype html><html><body>${body}<div id="host"></div></body></html>`, {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, leadResponse = undefined, url = undefined, htmlLang = undefined, parameters = undefined } = {}) {
+  const dom = new JSDOM(`<!doctype html><html${htmlLang ? ` lang="${htmlLang}"` : ""}><body>${body}<div id="host"></div></body></html>`, {
     url: url ?? "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
   });
@@ -85,6 +85,8 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
     }
     return Promise.resolve({ ok: payload !== null, status: payload ? 200 : 404, json: () => Promise.resolve(payload) });
   };
+  // Duda's own page settings object, as the live pages carry it.
+  if (parameters) w.Parameters = parameters;
   if (dmPageData !== undefined || dmHangs) {
     w.dmAPI = {
       dynamicPageApi: () => ({
@@ -1739,6 +1741,149 @@ async function main() {
         "the X clears the search and brings every row back");
       check(!clear.classList.contains("on"), "…and hides itself");
       check(d.querySelectorAll(".saeh-rs-row").length === 3, "rows are hidden, never rebuilt");
+    }
+  }
+
+  /* --------------------------------------------------------- languages -- */
+  {
+    const AR = "https://saequip.multiscreensite.com/ar";
+    const LOC_SRC = readFileSync(path.join(HERE, "../src/services/i18n/locales.ts"), "utf8");
+    const serverLocales = JSON.parse(LOC_SRC.match(/LOCALES = (\[[^\]]+\]) as const/)[1]);
+    const widgetLocales = JSON.parse(SRC.match(/var LOCALES = (\[[^\]]+\]);/)[1]);
+    check(JSON.stringify(serverLocales) === JSON.stringify(widgetLocales), "i18n: the widget and the server support the same languages", JSON.stringify(widgetLocales));
+
+    {
+      const { d, w } = await boot({ props: { section: "tabs" }, htmlLang: "ar", url: `${AR}/product/ex-heater` });
+      const li = w.__saequipHub.lastInit;
+      check(li.locale === "ar" && li.localeFrom === "html", "an Arabic page is detected from <html lang>", `${li.locale} via ${li.localeFrom}`);
+      check(labels(d).join(",") === "نظرة عامة,المواصفات الفنية,المزايا الرئيسية,التطبيقات", "the tabs speak Arabic", labels(d).join(","));
+      check(d.querySelector(".saeh-root").getAttribute("lang") === "ar", "the widget root says lang=ar");
+      check(w.__fetched.some((u) => /\/public\/products\/content\?dudaId=|slug=/.test(u) && /&lang=ar$/.test(u)), "the content request asks for Arabic", w.__fetched.join(" "));
+    }
+    {
+      const { w } = await boot({ props: { section: "tabs" } });
+      check(w.__saequipHub.lastInit.locale === "en" && !w.__fetched.some((u) => /lang=/.test(u)), "an English page sends no lang at all (cache keys unchanged)");
+    }
+    {
+      const { w } = await boot({ props: { section: "tabs" }, parameters: { currentLocale: "fr" }, url: "https://saequip.multiscreensite.com/fr/product/ex-heater" });
+      check(w.__saequipHub.lastInit.locale === "fr" && w.__saequipHub.lastInit.localeFrom === "Parameters", "with no <html lang>, Duda's Parameters.currentLocale is used");
+    }
+    {
+      const { w } = await boot({ props: { section: "tabs", locale: "de" }, htmlLang: "ar" });
+      check(w.__saequipHub.lastInit.locale === "de" && w.__saequipHub.lastInit.localeFrom === "props", "a locale prop overrides the page (tests, odd embeds)");
+    }
+    for (const [tag, want] of [["en-GB", "en"], ["pt", "pt-br"], ["pt-BR", "pt-br"], ["zh-Hans", "zh"], ["zh-TW", "en"], ["ja", "en"], ["ES", "es"]]) {
+      const { w } = await boot({ props: { section: "tabs" }, htmlLang: tag });
+      check(w.__saequipHub.lastInit.locale === want, `"${tag}" → ${want}`, w.__saequipHub.lastInit.locale);
+    }
+
+    // Links keep the page's language.
+    {
+      const { d } = await boot({ props: { section: "product-list" }, cataloguePayload: CATALOGUE, htmlLang: "ar", url: `${AR}/category/lighting-and-power` });
+      const hrefs = [...d.querySelectorAll(".saeh-pl-card")].map((a) => a.getAttribute("href"));
+      check(hrefs.length > 0 && hrefs.every((h) => h.startsWith("/ar/product/")), "on /ar/ the cards link to /ar/product/…", hrefs.join(" "));
+      check(d.querySelector(".saeh-pl-card .saeh-pl-btn").textContent === "عرض المنتج", "and say View Product in Arabic");
+    }
+    {
+      const { d } = await boot({ props: { section: "product-list" }, cataloguePayload: CATALOGUE, htmlLang: "en-GB", url: "https://saequip.multiscreensite.com/aviation" });
+      check([...d.querySelectorAll(".saeh-pl-card")].every((a) => a.getAttribute("href").startsWith("/product/")), "/aviation is NOT taken for a language prefix");
+    }
+    {
+      const { d } = await boot({ props: { section: "product-list" }, cataloguePayload: CATALOGUE, htmlLang: "ja", url: "https://saequip.multiscreensite.com/ja/category/x" });
+      const a = d.querySelector(".saeh-pl-card");
+      check(a.getAttribute("href").startsWith("/ja/product/") && d.querySelector(".saeh-root").getAttribute("lang") === "en" && a.querySelector(".saeh-pl-btn").textContent === "View Product",
+        "an unsupported language renders English (lang=en) but keeps its /ja links", a.getAttribute("href"));
+    }
+    {
+      // Translated titles must not lose the filter group (matched on slug / English title).
+      const cats = CATALOGUE.categories.map((c) => ({ ...c, titleEn: c.title, title: "AR " + c.title }));
+      const { d } = await boot({ props: { section: "product-list" }, cataloguePayload: { ...CATALOGUE, categories: cats }, htmlLang: "ar", url: `${AR}/some-page` });
+      check(d.querySelectorAll(".saeh-pl-opt").length > 0, "the Site Challenges filter survives translated category titles");
+    }
+
+    // Counts use the language's own plural rules (Arabic has six forms).
+    const many = (n) => ({ type: "datasheet", products: Array.from({ length: n }, (_, i) => ({
+      name: `P${i}`, url: `/product/p${i}`, imageUrl: null, range: null,
+      downloads: [{ id: `d${i}`, label: "Download Datasheet", labelKey: "DATASHEET", labelFromTitle: false, title: "Datasheet", gated: false, href: `/public/downloads/d${i}/file` }] })) });
+    const arFound = {};
+    for (const n of [1, 2, 3, 11, 100]) {
+      const { d, w } = await boot({ props: { section: "resources", resourceType: "datasheet" }, resourcesPayload: many(n), htmlLang: "ar", url: `${AR}/datasheets` });
+      const input = d.querySelector(".saeh-rs-search input");
+      input.value = "p";
+      input.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter" }));
+      arFound[n] = d.querySelector(".saeh-rs-search [role=status]").textContent;
+    }
+    check(arFound[1] === "تم العثور على منتج واحد" && arFound[2] === "تم العثور على منتجين" && arFound[3] === "تم العثور على 3 منتجات" &&
+      arFound[11] === "تم العثور على 11 منتجًا" && arFound[100] === "تم العثور على 100 منتج", "Arabic counts pick one/two/few/many/other", JSON.stringify(arFound));
+
+    // Resource buttons and links.
+    {
+      const P = { type: "certificate", products: [{ name: "EX Heater", url: "/product/ex-heater", imageUrl: null, range: null, downloads: [
+        { id: "a", label: "UKEX", labelKey: "UKEX", labelFromTitle: false, title: "UKEX Certificate", gated: false, href: "/public/downloads/a/file" },
+        { id: "b", label: "Compliance", labelKey: "COMPLIANCE", labelFromTitle: false, title: "Certificate", gated: false, href: "/public/downloads/b/file" },
+        { id: "c", label: "My Own Title", labelKey: "DATASHEET", labelFromTitle: true, title: "My Own Title", gated: false, href: "/public/downloads/c/file" }] }] };
+      const { d } = await boot({ props: { section: "resources", resourceType: "certificate" }, resourcesPayload: P, htmlLang: "ar", url: `${AR}/certificates` });
+      const btns = [...d.querySelectorAll(".saeh-rs-dl")].map((b) => b.textContent);
+      check(btns.join("|") === "UKEX|الامتثال|My Own Title", "certification marks stay, Compliance is translated, a title fallback is shown as sent", btns.join("|"));
+      check(d.querySelector(".saeh-rs-view").getAttribute("href") === "/ar/product/ex-heater", "View Product keeps /ar");
+      check(d.querySelector(".saeh-rs-search input").placeholder === "ابحث في الشهادات...", "the search speaks Arabic");
+    }
+
+    // The request form: every language's consent must equal the server's record.
+    const KINDS = readFileSync(path.join(HERE, "../src/services/downloadKinds.ts"), "utf8");
+    const serverConsent = {};
+    for (const m of KINDS.matchAll(/\n {2}"?([\w-]+)"?: \{\s*privacy: "([^"]+)",\s*marketing: "([^"]+)",?\s*\}/g)) serverConsent[m[1]] = { privacy: m[2], marketing: m[3] };
+    check(JSON.stringify(Object.keys(serverConsent).sort()) === JSON.stringify([...widgetLocales].sort()),
+      "the server has consent wording for exactly the widget's languages", Object.keys(serverConsent).join(","));
+    const GATED = { type: "datasheet", products: [{ name: "EX Heater", url: "/product/ex-heater", imageUrl: null, range: null,
+      downloads: [{ id: "g1", label: "Download Datasheet", labelKey: "DATASHEET", labelFromTitle: false, title: "Datasheet", gated: true, href: null }] }] };
+    for (const loc of widgetLocales) {
+      const tag = loc === "pt-br" ? "pt-BR" : loc;
+      const prefix = loc === "en" ? "" : `/${loc}`;
+      const { d, w } = await boot({ props: { section: "resources", resourceType: "datasheet" }, resourcesPayload: GATED, htmlLang: tag,
+        url: `https://saequip.multiscreensite.com${prefix}/datasheets`,
+        leadResponse: { status: 201, body: { ok: true, fileUrl: "https://x.supabase.co/a.pdf" } } });
+      w.open = () => null;
+      d.querySelector(".saeh-rs-dl").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      const [pBox, mBox] = [...d.querySelectorAll(".saeh-rq-overlay input[type=checkbox]")];
+      const pText = pBox.closest("label").textContent, mText = mBox.closest("label").textContent;
+      const sc = serverConsent[loc] || {};
+      check(pText === sc.privacy && mText === sc.marketing, `consent wording matches the server's record (${loc})`, `${pText} | ${mText}`);
+      check(pBox.closest("label").querySelector("a").getAttribute("href") === `${prefix}/privacy-policy`, `the privacy link stays in the language (${loc})`);
+      check(d.querySelector(".saeh-rq-overlay").getAttribute("lang") === (loc === "en" ? "en" : tag === "zh" ? "zh-Hans" : tag), `the form says its language (${loc})`);
+      if (loc === "ar") {
+        check(["email", "phone", "mobile"].every((k) => d.querySelector(`.saeh-rq-in[name=${k}]`).getAttribute("dir") === "ltr"),
+          "email and phone fields stay left-to-right");
+        const set = (k, v) => (d.querySelector(`.saeh-rq-in[name=${k}]`).value = v);
+        set("firstName", "Ada"); set("lastName", "L"); set("company", "C"); set("email", "ada＠example.com"); set("phone", "٠١٢٣٤ ٥٦٧٨٩٠");
+        pBox.checked = true;
+        d.querySelector(".saeh-rq-overlay form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+        await new Promise((r) => setTimeout(r, 30));
+        const body = w.__leadBodies[0];
+        check(body && body.locale === "ar" && body.phone === "01234 567890" && body.email === "ada@example.com",
+          "an Arabic request sends locale=ar, and Arabic-Indic digits / a full-width @ as ASCII", JSON.stringify(body && { l: body.locale, p: body.phone, e: body.email }));
+        check(d.querySelector(".saeh-rq-overlay h2").textContent === "طلبات الملفات", "the form heading is Arabic");
+        check(/\.saeh-rq-overlay:lang\(ar\)\{direction:rtl\}/.test(d.getElementById("saeh-styles").textContent), "the Arabic form reads right-to-left");
+      }
+    }
+    {
+      // A limiter answers "rate_limited" — a visitor must never see that.
+      const { d, w } = await boot({ props: { section: "resources", resourceType: "datasheet" }, resourcesPayload: GATED, htmlLang: "ar", url: `${AR}/datasheets`,
+        leadResponse: { status: 429, body: { error: "rate_limited" } } });
+      w.open = () => null;
+      d.querySelector(".saeh-rs-dl").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      const set = (k, v) => (d.querySelector(`.saeh-rq-in[name=${k}]`).value = v);
+      set("firstName", "Ada"); set("lastName", "L"); set("company", "C"); set("email", "a@b.co"); set("phone", "01234 567890");
+      d.querySelector(".saeh-rq-overlay input[name=privacyConsent]").checked = true;
+      d.querySelector(".saeh-rq-overlay form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+      await new Promise((r) => setTimeout(r, 30));
+      const m = d.querySelector(".saeh-rq-msg").textContent;
+      check(!/rate_limited/.test(m) && /طلبات كثيرة جدًا/.test(m), "a 429 shows a translated message, never the raw code", m);
+    }
+    {
+      const { d } = await boot({ props: { section: "tabs" }, htmlLang: "ar" });
+      check(/\.saeh-root:lang\(ar\),\.saeh-root:lang\(ar\) \*[^{]*\{letter-spacing:normal\}/.test(d.getElementById("saeh-styles").textContent),
+        "letter-spacing is reset on Arabic pages (it breaks letter joining)");
     }
   }
 

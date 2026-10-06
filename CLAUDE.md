@@ -573,6 +573,72 @@ marketing checkbox, and "Submit & Download".
   there is no role model: any signed-in user can read every request. Requests are personal
   data — deletion on request is a database job until a delete button is built.
 
+## Languages — multi-language Duda sites (phase 1 built 2026-10-06)
+
+The client added Arabic to the live site and wants Chinese (Simplified), French, German,
+Portuguese (Brazil) and Spanish. The full plan, measurements included, is
+`~/.claude/plans/splendid-gliding-dolphin.md`. **Phase 1 (the widgets speak the page's
+language) is built; the Hub content overlay, the mass translation and translate-on-save are
+not yet.**
+
+**Measured on the live site** (Arabic added by the client, 2026-10-06):
+- The default language is unprefixed; `/ar/…` for Arabic. **Slugs are NOT translated**
+  (`/ar/product/ex-heater`).
+- The page says its language with `<html lang="ar">` and `window.Parameters.currentLocale`.
+- ⚠️ **Duda does NOT make Arabic right-to-left**: the computed direction is `ltr`.
+- Duda's REST API is English-only. Language parameters are ignored and there is no
+  translations endpoint. The published page's JSON-LD and `pageData()` carry Duda's translated
+  product name and description.
+- `GET /sites/multiscreen/{site}` → `lang: "en-gb"`, `additionalLanguages: ["ar"]`.
+
+**The widget** (`widget.js`):
+- `currentLocale()` reads `<html lang>`, then `Parameters.currentLocale`, then
+  `__saehData[*].locale`; a `props.locale` overrides. Recorded in
+  `__saequipHub.lastInit.locale` / `localeFrom` / `localeSignals`.
+- An unsupported language renders English and says `lang="en"`.
+- `LOCALES` and `normaliseLocale()` mirror `backend/src/services/i18n/locales.ts`; `widget:test`
+  compares the lists. ⚠️ Traditional Chinese (`zh-TW`/`zh-Hant`) is deliberately NOT folded
+  into Simplified.
+- **Text:**
+  - `T(key, vars)` / `TP(key, n)` / `fillNodes()` over the `I18N` table: ~75 keys × 7
+    languages, machine-drafted and awaiting native review.
+  - Plurals use `Intl.PluralRules`; Arabic's six forms are tested.
+  - Templates, not concatenation, so word order can change, e.g. `"… {link}"`.
+  - Certification marks (INMETRO, UKEX, IECEX, EX) are names and are not translated.
+- **Links keep the language:** `localHref()` prefixes the page's own segment. That covers card
+  links, resources links, `/privacy-policy` and relative links in descriptions.
+  - ⚠️ `sitePrefix()` takes the first path segment only when it is shaped like a language tag
+    AND matches the page's language, so `/aviation` is never a prefix.
+  - Never applied to API or file URLs.
+- Every data request sends `&lang=xx`, and English sends none, so English cache keys are
+  unchanged. Every memo key includes the language.
+- `stampLang()` sets `lang` on every root and overlay.
+- **Arabic layout:**
+  - Letter-spacing is reset on Arabic pages, because it breaks letter joining.
+  - ⚠️ **The request form reads right-to-left in Arabic** (`.saeh-rq-overlay:lang(ar)`). It is
+    our own overlay, and in a left-to-right box Arabic sentences put the full stop beside the
+    first word.
+  - Email and phone fields stay `dir="ltr"`.
+- The form shows a translated message per HTTP status, never the server's own text, which
+  showed "rate_limited" raw.
+- `filterGroup` matches the category slug, then the English title (`titleEn`).
+
+**The server:**
+- ⚠️ **`CONSENT_TEXT` is per language** (`services/downloadKinds.ts`).
+  - A request stores `Lead.consentText` in the visitor's language, `consentTextEn` and `locale`.
+  - `widget:test` builds every language's consent from the widget's table and requires the same
+    language set on both sides.
+  - The non-English consent is machine-drafted legal text and **needs native review**.
+- The lead route folds Arabic-Indic and full-width digits (and a full-width @) to ASCII
+  before validating, and the widget does the same.
+- `/public/resources` sends `labelKey`/`labelFromTitle`, so buttons are labelled in the page's
+  language.
+
+**What a translated page shows today:**
+- Interface text: in the page's language.
+- Hub content (descriptions, specs, benefits, applications, product names): still English. The
+  server ignores `?lang=` until phase 2.
+
 ## Category mode — the compatible carousel on static pages
 
 The Industries pages are ordinary static pages, not dynamic category pages, so there is no
@@ -639,7 +705,7 @@ The product page's main widget: Overview / Technical Specs / Key Benefits / Appl
   ⚠️ **This used to say `/public/products/content` sanitises it with `stripCruft`. It did not**: that was reverted in `886748c` because importing `sanitize-html` crashed the function, and the comment left behind said the *widget* escaped it — while the widget still used `innerHTML`. Each side claimed the other was the protection. It was latent only because nothing but the import's own clean output had ever been written there; making dashboard edits reach the page (see the product editor section) would have armed it. **The widget is now the boundary, so any other consumer of `descriptionHtml` must sanitise too.** `widget:test` covers script, `onerror`, inline handlers, `javascript:`/tab-obfuscated/`data:` links, iframe, svg-script and style; all 94 real descriptions render byte-identically through it.
   ⚠️ **Never import `services/descriptionHtml.ts` from server code** — it pulls in `sanitize-html`, which makes the WHOLE function fail at load on Vercel (`FUNCTION_INVOCATION_FAILED` on every route, the widget included) while running fine under tsx. It has happened twice: the second time (2026-10-02, ~3 minutes) via `stripAnchors`, which now lives alone in the import-free `services/anchors.ts`. **This is now checked automatically** — `scripts/check-api-bundle.mjs` fails the Vercel build (and the pre-push hook) if `sanitize-html` or `descriptionHtml.ts` enters the API's import graph, and the post-deploy smoke test hits the API and the widget. See "Deploy safety checks".
 
-`npm run widget:test --workspace=backend` covers the widgets (463 checks as of 2026-10-05, the resources list, its search, headings and the request form included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
+`npm run widget:test --workspace=backend` covers the widgets (515 checks as of 2026-10-06 — the resources list, its search, headings, the request form and the languages included), including the spec table's three row kinds and per-group striping, plus 32 behaviours of the accordion (tab set, empty-tab omission, switching, ARIA wiring, identity resolution order, editor placeholder, `clean()`, and that the legacy mounts and `"all"` still behave). `npm run widget:sync-css --workspace=backend` regenerates the dashboard's copy of the widget CSS — run it after ANY change to `injectStyles()`, because that copy has silently drifted twice.
 
 ## 3D Model Viewer
 
