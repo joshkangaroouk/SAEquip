@@ -577,9 +577,10 @@ marketing checkbox, and "Submit & Download".
 
 The client added Arabic to the live site and wants Chinese (Simplified), French, German,
 Portuguese (Brazil) and Spanish. The full plan, measurements included, is
-`~/.claude/plans/splendid-gliding-dolphin.md`. **Phase 1 (the widgets speak the page's
-language) is built; the Hub content overlay, the mass translation and translate-on-save are
-not yet.**
+`~/.claude/plans/splendid-gliding-dolphin.md`. **Built: phase 1 (the widgets speak the
+page's language) and phase 2 (translation storage, the public overlay, Duda's translated names).
+Not yet: phase 3 (the mass translation) and phase 4 (translate-on-save in the dashboard and the
+Translations page).**
 
 **Measured on the live site** (Arabic added by the client, 2026-10-06):
 - The default language is unprefixed; `/ar/…` for Arabic. **Slugs are NOT translated**
@@ -634,10 +635,58 @@ not yet.**
 - `/public/resources` sends `labelKey`/`labelFromTitle`, so buttons are labelled in the page's
   language.
 
+**Phase 2 — storage and the public overlay:**
+- **`Translation`** holds Hub-only text: descriptions, spec labels and values, list items
+  and logo text.
+  - ⚠️ It is keyed by `(locale, kind, sha256 of the normalised ENGLISH)`, not by row id. Spec
+    and list rows are recreated on every save, so row ids would orphan their translations.
+  - Identical text is translated once, for every product that uses it.
+  - Each row records `origin` MT or STAFF, its `engine`, and `text` (null means rejected,
+    with `lastError` saying why).
+- **`DudaTranslation`** holds Duda's own translated product names and category titles,
+  copied from the PUBLISHED pages by `npm run i18n:sync-duda` (dry run by default).
+  - The source is the pages' JSON-LD and breadcrumbs, with category `<title>`s as a fallback,
+    because Duda's API is English-only.
+  - It reads the site's languages from Duda (`getSiteLanguages()`), so the URL prefix is Duda's
+    own code, never assumed.
+  - A failed fetch or parse writes nothing.
+  - **Arabic: 96/96 names and 23/23 titles copied (2026-10-06).** Re-run after the client edits
+    Store Languages and republishes, or use `POST /api/translations/duda/refresh`.
+- ⚠️ **`saveTranslations()` (`services/i18n/store.ts`) is the ONE writer**, so the rules
+  cannot drift:
+  - Every translation is checked by `validateTranslation()`. Every number (Arabic-Indic
+    digits count), certification mark, brand and acronym must survive, and a description must
+    keep identical tags and links.
+  - ⚠️ A machine translation NEVER replaces a STAFF one.
+  - An unsafe machine result is stored as rejected, and the English is shown.
+  - An unsafe staff edit is refused.
+  - Pass-through text (`isPassThrough()`: codes, measurements, ALL-CAPS marks) is never stored
+    and always shows as it is.
+- **The overlay** (`services/i18n/overlay.ts`) runs on `?lang=` for `/products/content`,
+  `/catalogue`, `/products/by-category` and `/resources`.
+  - Payloads gain `lang`, `nameEn` and `titleEn` (the widget searches English too), and sort
+    with `Intl.Collator(lang)`.
+  - Translation happens LAST, so the Rental check and the filter-group match run on English.
+  - ⚠️ **It fails open:** a missing string, an unknown language or a failed table load gives
+    English, never an error.
+  - Each language's tables are cached for 60 seconds per instance, and a failed load is not
+    cached. The language is in the URL, so the edge keys on it with no new `Vary`.
+- **Admin** (behind `requireAuth`): `GET /api/translations/sources?locale&productId` (each
+  English string and its state), `PUT /api/translations/batch` (through `saveTranslations`)
+  and `POST /api/translations/duda/refresh`.
+- **Quote matching** (`quoteProductMatcher()`) also recognises Duda's translated names, so
+  baskets filled on `/ar/` keep their product pictures. A translated name is used only when it
+  identifies exactly ONE product.
+- **Tests:**
+  - `npm run i18n:test` (also in pre-push) covers hashing, the pass-through rule, every
+    validator rule, locale normalisation and the harvest parsers. The parsers run on a
+    captured `/ar/` fixture in `backend/scripts/fixtures/`.
+  - `smoke.mjs` checks `?lang=ar` live.
+
 **What a translated page shows today:**
-- Interface text: in the page's language.
-- Hub content (descriptions, specs, benefits, applications, product names): still English. The
-  server ignores `?lang=` until phase 2.
+- Interface text and Duda's product names and category titles: in the page's language.
+- Descriptions, specs, benefits and applications: English until phase 3 imports their
+  translations.
 
 ## Category mode — the compatible carousel on static pages
 

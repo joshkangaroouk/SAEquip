@@ -133,6 +133,21 @@ await check("resources list and its file route", async () => {
   return `${j.products.length} products with datasheets; ${how}`;
 });
 
+await check("translated payloads (?lang=ar)", async () => {
+  const r = await fetch(withBust(`${BASE}/public/catalogue?lang=ar`), { headers: { Origin: SITE } });
+  expect(r.status === 200, `status ${r.status}`);
+  expect(r.headers.get("access-control-allow-origin") === SITE, `CORS header ${r.headers.get("access-control-allow-origin")}`);
+  expect(r.headers.get("vary")?.toLowerCase().includes("origin"), `Vary: ${r.headers.get("vary")}`);
+  const j = await r.json();
+  expect(j.lang === "ar", `lang ${j.lang}`);
+  const p = j.products?.find((x) => x.nameEn);
+  expect(p, "no nameEn on the products");
+  const translated = j.products.filter((x) => x.name !== x.nameEn).length;
+  const en = await fetch(withBust(`${BASE}/public/catalogue`), { headers: { Origin: SITE } }).then((x) => x.json());
+  expect(en.lang === "en", `the English catalogue says lang ${en.lang}`);
+  return `${translated}/${j.products.length} product names in Arabic; English unchanged`;
+});
+
 await check("edge cache keys on Origin (Vary)", async () => {
   const r = await fetch(withBust(`${BASE}/public/catalogue`));
   expect(r.headers.get("vary")?.toLowerCase().includes("origin"), `Vary: ${r.headers.get("vary")} — a no-Origin copy could be served to the live site`);

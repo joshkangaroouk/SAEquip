@@ -37,7 +37,9 @@
     "hub:sync-mirror": "tsx src/scripts/hubSyncMirror.ts",
     "redirects:build": "tsx src/scripts/buildRedirects.ts",
     "downloads:classify": "tsx src/scripts/classifyDownloads.ts",
-    "downloads:gate": "tsx src/scripts/gateDownloads.ts"
+    "downloads:gate": "tsx src/scripts/gateDownloads.ts",
+    "i18n:sync-duda": "tsx src/scripts/i18nSyncDuda.ts",
+    "i18n:test": "tsx scripts/i18n-test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

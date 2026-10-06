@@ -368,6 +368,15 @@ export const duda = {
     return dudaGet<DudaStore>(PATHS.store(site()));
   },
 
+  /**
+   * The site's languages, as Duda codes: the default (`"en-gb"` here, served
+   * unprefixed) and the extra ones, each served under `/<code>/…`. Read-only.
+   */
+  async getSiteLanguages(): Promise<{ default: string; additional: string[] }> {
+    const s = await dudaGet<{ lang?: string; additionalLanguages?: string[] | null }>(`/sites/multiscreen/${site()}`);
+    return { default: s.lang ?? "en", additional: Array.isArray(s.additionalLanguages) ? s.additionalLanguages : [] };
+  },
+
   listProducts({ limit = MAX_PAGE_SIZE, offset = 0 }: { limit?: number; offset?: number } = {}): Promise<DudaProductList> {
     const qs = new URLSearchParams({
       limit: String(Math.min(limit, MAX_PAGE_SIZE)),

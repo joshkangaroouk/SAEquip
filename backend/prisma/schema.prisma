@@ -486,3 +486,67 @@ model CategoryOrder {
   sortOrder      Int
   updatedAt      DateTime @updatedAt
 }
+
+// ---------------------------------------------------------------------------
+// Languages (see "Languages" in CLAUDE.md)
+// ---------------------------------------------------------------------------
+
+/// What a Hub-only string is, which is also its translation context.
+enum TranslationKind {
+  DESCRIPTION
+  SPEC_LABEL
+  SPEC_VALUE
+  LIST_ITEM
+  LOGO_TEXT
+}
+
+/// MT = machine (the Claude Code mass import, or Chrome's translator on save).
+/// STAFF = corrected by a person; never overwritten by a machine.
+enum TranslationOrigin {
+  MT
+  STAFF
+}
+
+/// A translation of Hub-only text, keyed by the ENGLISH it translates.
+///
+/// ⚠️ Keyed by text, not by row: specs, benefits and applications are deleted
+/// and recreated on every editor save, so a row id would orphan its translation
+/// each time. An identical string ("Weight") is translated once for every
+/// product that uses it.
+model Translation {
+  id         String            @id @default(cuid())
+  locale     String
+  kind       TranslationKind
+  /// sha256 of the normalised English (services/i18n/normalise.ts).
+  sourceHash String
+  sourceText String
+  /// Null when the last attempt failed validation — the English is served.
+  text       String?
+  origin     TranslationOrigin
+  /// "claude-code" for the mass import, "chrome" for translate-on-save.
+  engine     String?
+  lastError  String?
+  /// Staff email on STAFF rows.
+  updatedBy  String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([locale, kind, sourceHash])
+  @@index([locale, origin])
+}
+
+/// Duda's own translations of product names and category titles, copied from
+/// the published pages (Duda's API is English-only). Read-only in the Hub —
+/// they are edited in Duda → Store Languages.
+model DudaTranslation {
+  locale     String
+  /// "PRODUCT" | "CATEGORY"
+  entity     String
+  dudaId     String
+  text       String
+  /// The English when this was copied, so a later rename shows as stale.
+  sourceText String
+  fetchedAt  DateTime @updatedAt
+
+  @@id([locale, entity, dudaId])
+}

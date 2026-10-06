@@ -34,6 +34,10 @@ const envSchema = z.object({
   DUDA_API_USER: z.string().min(1, "DUDA_API_USER is required (Duda API credentials)"),
   DUDA_API_PASS: z.string().min(1, "DUDA_API_PASS is required (Duda API credentials)"),
   DUDA_API_BASE_URL: z.string().url().default("https://api.duda.co/api"),
+  // The PUBLISHED site, whose pages carry Duda's own translations of product
+  // names and category titles (its API is English-only). Change when the site
+  // moves to saequip.com.
+  PUBLIC_SITE_ORIGIN: z.string().url().default("https://saequip.multiscreensite.com"),
   // 8a8f03b5 is the site in use from 2026-09-07, live on
   // saequip.multiscreensite.com — the domain MOVED with the migration: it used
   // to belong to 099434f3, which is now retired on saequip-3.undefined.

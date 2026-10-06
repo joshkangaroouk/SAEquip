@@ -21,12 +21,30 @@ export interface MatchedProduct {
 }
 
 export async function quoteProductMatcher(): Promise<(name: string, sku: string | null) => MatchedProduct | null> {
-  const products = await prisma.hubProduct.findMany({
-    select: { dudaProductId: true, name: true, sku: true, thumbnailUrl: true },
-  });
+  const [products, translated] = await Promise.all([
+    prisma.hubProduct.findMany({
+      select: { dudaProductId: true, name: true, sku: true, thumbnailUrl: true },
+    }),
+    // Duda's translated names (services/i18n/dudaHarvest.ts): a basket filled
+    // on /ar/ sends the ARABIC name, which would otherwise match nothing.
+    prisma.dudaTranslation.findMany({ where: { entity: "PRODUCT" }, select: { dudaId: true, text: true } }),
+  ]);
   const key = (s: string) => s.trim().toLowerCase();
   const byName = new Map<string, (typeof products)[number]>();
   for (const p of products) if (p.name) byName.set(key(p.name), p);
+  // ⚠️ Machine translation can give two products the same name, so a
+  // translated name is used only when it points at exactly ONE product — and
+  // never over an English name, which Duda already keeps unique.
+  const byId = new Map(products.map((p) => [p.dudaProductId, p]));
+  const translatedIds = new Map<string, Set<string>>();
+  for (const t of translated) {
+    const k = key(t.text);
+    (translatedIds.get(k) ?? translatedIds.set(k, new Set()).get(k)!).add(t.dudaId);
+  }
+  for (const [k, ids] of translatedIds) {
+    const p = ids.size === 1 ? byId.get([...ids][0]) : undefined;
+    if (p && !byName.has(k)) byName.set(k, p);
+  }
   const bySku = new Map<string, (typeof products)[number][]>();
   for (const p of products) {
     if (!p.sku) continue;

@@ -15,6 +15,7 @@ import { categorySortKey, compareKeys } from "../services/categoryTree.js";
 import { quoteProductMatcher } from "../services/quoteProducts.js";
 import { CONSENT_TEXT, KIND_BUTTON, RESOURCE_TYPES, SCHEME_BUTTON, SCHEME_ORDER } from "../services/downloadKinds.js";
 import { LOCALES } from "../services/i18n/locales.js";
+import { categoryTitle, collator, parseLang, productName, tablesFor, tr } from "../services/i18n/overlay.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -177,28 +178,37 @@ publicRouter.get("/products/by-category", contentLimiter, async (req, res, next)
       return;
     }
 
-    const links = await prisma.productCategory.findMany({
-      // HIDDEN products are not listed: their page is not public.
-      where: { dudaCategoryId: cat.dudaCategoryId, hubProduct: LISTABLE },
-      select: { hubProduct: { select: { name: true, slug: true, thumbnailUrl: true } } },
-    });
+    const [links, tables] = await Promise.all([
+      prisma.productCategory.findMany({
+        // HIDDEN products are not listed: their page is not public.
+        where: { dudaCategoryId: cat.dudaCategoryId, hubProduct: LISTABLE },
+        select: { hubProduct: { select: { name: true, slug: true, thumbnailUrl: true, dudaProductId: true } } },
+      }),
+      tablesFor(parseLang(req.query.lang)),
+    ]);
+    const sorter = collator(tables);
 
     const items = links
       // A product with no slug has no page to link to. It can exist: `slug` is
       // backfilled from Duda, so a product imported but never opened has none.
       .filter((l) => l.hubProduct.slug)
       .map((l) => ({
-        name: l.hubProduct.name ?? "",
+        name: productName(tables, l.hubProduct.dudaProductId, l.hubProduct.name ?? ""),
+        nameEn: l.hubProduct.name ?? "",
         slug: l.hubProduct.slug!,
         url: `/product/${l.hubProduct.slug!}`,
         imageUrl: l.hubProduct.thumbnailUrl ?? null,
       }))
-      // ProductCategory carries no sortOrder, so order by name for a stable,
-      // predictable carousel rather than whatever the database returns.
-      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+      // ProductCategory carries no sortOrder, so order by name — in the page's
+      // language — for a stable, predictable carousel.
+      .sort((a, b) => sorter.compare(a.name, b.name));
 
     res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
-    res.json({ category: { title: cat.title, slug: cat.slug }, items });
+    res.json({
+      lang: tables ? tables.locale : "en",
+      category: { title: categoryTitle(tables, cat.dudaCategoryId, cat.title), titleEn: cat.title, slug: cat.slug },
+      items,
+    });
   } catch (err) {
     next(err);
   }
@@ -287,15 +297,16 @@ publicRouter.post("/categories/options", contentLimiter, async (req, res, next) 
  * The product card shape is identical to `compatible` and `by-category`, so one
  * renderer serves the carousel and the grid.
  */
-publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
+publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
   try {
-    const [categories, products] = await Promise.all([
+    const [categories, products, tables] = await Promise.all([
       orderedCategories(),
       prisma.hubProduct.findMany({
         // ⚠️ HIDDEN products are left out — a product created in the Hub
         // starts hidden, and used to appear here the moment it had a slug.
         where: { slug: { not: null }, ...LISTABLE },
         select: {
+          dudaProductId: true,
           name: true,
           slug: true,
           thumbnailUrl: true,
@@ -313,6 +324,7 @@ publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
         },
         orderBy: { name: "asc" },
       }),
+      tablesFor(parseLang(req.query.lang)),
     ]);
 
     // Depth is derived here so every consumer agrees on it, the same contract
@@ -329,27 +341,36 @@ publicRouter.get("/catalogue", contentLimiter, async (_req, res, next) => {
       return d;
     };
 
+    const sorter = collator(tables);
     res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
     res.json({
+      lang: tables ? tables.locale : "en",
       categories: categories.map((c) => ({
         id: c.dudaCategoryId,
-        title: c.title,
+        // Duda's own translation; the English stays alongside for search and
+        // for the listing's filter-group match.
+        title: categoryTitle(tables, c.dudaCategoryId, c.title),
+        titleEn: c.title,
         slug: c.slug,
         parentId: c.parentId,
         depth: depthOf(c.dudaCategoryId),
       })),
-      products: products.map((p) => ({
-        name: p.name ?? "",
-        slug: p.slug!,
-        url: `/product/${p.slug!}`,
-        imageUrl: p.thumbnailUrl ?? null,
-        categoryIds: p.categories.map((c) => c.dudaCategoryId),
-        certs: p.logos
-          .map((l) => l.logo)
-          .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((l) => (l.alt || l.label || "").trim())
-          .filter(Boolean),
-      })),
+      products: products
+        .map((p) => ({
+          name: productName(tables, p.dudaProductId, p.name ?? ""),
+          nameEn: p.name ?? "",
+          slug: p.slug!,
+          url: `/product/${p.slug!}`,
+          imageUrl: p.thumbnailUrl ?? null,
+          categoryIds: p.categories.map((c) => c.dudaCategoryId),
+          certs: p.logos
+            .map((l) => l.logo)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((l) => tr(tables, "LOGO_TEXT", (l.alt || l.label || "").trim()))
+            .filter(Boolean),
+        }))
+        // In the page's language: a translated list in English order reads as random.
+        .sort((a, b) => (tables ? sorter.compare(a.name, b.name) : 0)),
     });
   } catch (err) {
     next(err);
@@ -389,9 +410,11 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
   }
 
   try {
-    const products = await prisma.hubProduct.findMany({
+    const [products, tables] = await Promise.all([
+      prisma.hubProduct.findMany({
       where: { slug: { not: null }, ...LISTABLE, downloads: { some: { ...LISTED_DOWNLOAD, kind } } },
       select: {
+        dudaProductId: true,
         name: true,
         slug: true,
         thumbnailUrl: true,
@@ -409,7 +432,10 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
           },
         },
       },
-    });
+      }),
+      tablesFor(parseLang(req.query.lang)),
+    ]);
+    const sorter = collator(tables);
 
     const shaped = products.map((p) => {
       const range =
@@ -432,11 +458,16 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
       for (const d of files) counts.set(labelOf(d), (counts.get(labelOf(d)) ?? 0) + 1);
 
       return {
-        name: p.name ?? "",
+        name: productName(tables, p.dudaProductId, p.name ?? ""),
+        nameEn: p.name ?? "",
         url: `/product/${p.slug!}`,
         imageUrl: p.thumbnailUrl ?? null,
         range: range
-          ? { label: (range.alt || range.label || "").trim(), logoUrl: publicImageUrl(range.mediaAsset.storagePath), sortOrder: range.sortOrder }
+          ? {
+              label: tr(tables, "LOGO_TEXT", (range.alt || range.label || "").trim()),
+              logoUrl: publicImageUrl(range.mediaAsset.storagePath),
+              sortOrder: range.sortOrder,
+            }
           : null,
         downloads: files.map((d) => ({
           id: d.id,
@@ -458,12 +489,13 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
     shaped.sort(
       (a, b) =>
         (a.range?.sortOrder ?? Infinity) - (b.range?.sortOrder ?? Infinity) ||
-        a.name.localeCompare(b.name, "en", { sensitivity: "base", numeric: true }),
+        sorter.compare(a.name, b.name),
     );
 
     res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
     res.json({
       type,
+      lang: tables ? tables.locale : "en",
       products: shaped.map(({ range, ...p }) => ({
         ...p,
         range: range ? { label: range.label, logoUrl: range.logoUrl } : null,
@@ -674,7 +706,11 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
     // this endpoint makes NO Duda / external API calls.
     // (Timed with Date.now(), not console.time: a label is global per process,
     // so two overlapping requests on one instance collided and warned.)
-    const full = await prisma.hubProduct.findFirst({
+    // `?lang=` gives the page's language; English (or none) skips it all. The
+    // translation tables load beside the product, so a translated page costs
+    // no extra round trip.
+    const [full, tables] = await Promise.all([
+      prisma.hubProduct.findFirst({
       where,
       include: {
         logos: { include: { logo: { include: { mediaAsset: true } } } },
@@ -686,10 +722,12 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
           // A hidden product is not offered as compatible: its card would
           // link to a page visitors cannot open.
           where: { related: LISTABLE },
-          include: { related: { select: { name: true, slug: true, thumbnailUrl: true } } },
+          include: { related: { select: { name: true, slug: true, thumbnailUrl: true, dudaProductId: true } } },
         },
       },
-    });
+      }),
+      tablesFor(parseLang(req.query.lang)),
+    ]);
 
     if (!full) {
       res.status(404).json({ error: "not_found" });
@@ -700,8 +738,8 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
     const activeLogos = full.logos.map((l) => l.logo).sort((a, b) => a.sortOrder - b.sortOrder);
     const shapeLogo = (l: (typeof activeLogos)[number]) => ({
       url: publicImageUrl(l.mediaAsset.storagePath),
-      alt: l.alt,
-      label: l.label,
+      alt: l.alt ? tr(tables, "LOGO_TEXT", l.alt) : l.alt,
+      label: l.label ? tr(tables, "LOGO_TEXT", l.label) : l.label,
     });
     const sa = activeLogos.filter((l) => l.kind === "SA_LOGO").map(shapeLogo);
     const cert = activeLogos.filter((l) => l.kind === "CERT_LOGO").map(shapeLogo);
@@ -712,7 +750,10 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
     // within a request or two instead of waiting out a flat 60s cache.
     res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=55");
     res.json({
-      name: full.name,
+      // The language this payload is in ("en" when untranslated or asked none).
+      lang: tables ? tables.locale : "en",
+      name: full.name ? productName(tables, full.dudaProductId, full.name) : full.name,
+      nameEn: full.name,
       sku: full.sku,
       slug: full.slug,
       dudaProductId: full.dudaProductId,
@@ -735,11 +776,11 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       // XSS block. ⚠️ ANY OTHER CONSUMER of this field must sanitise it too.
       // (For a while each side's comment said the other was protecting it, and
       // neither was.)
-      descriptionHtml: full.descriptionHtml ?? null,
+      descriptionHtml: full.descriptionHtml ? tr(tables, "DESCRIPTION", full.descriptionHtml) : null,
       logos: { sa, cert },
-      specs: full.specRows.map((s) => ({ label: s.label, value: s.value })),
-      benefits: full.textItems.filter((t) => t.kind === "BENEFIT").map((t) => t.text),
-      applications: full.textItems.filter((t) => t.kind === "APPLICATION").map((t) => t.text),
+      specs: full.specRows.map((s) => ({ label: tr(tables, "SPEC_LABEL", s.label), value: tr(tables, "SPEC_VALUE", s.value) })),
+      benefits: full.textItems.filter((t) => t.kind === "BENEFIT").map((t) => tr(tables, "LIST_ITEM", t.text)),
+      applications: full.textItems.filter((t) => t.kind === "APPLICATION").map((t) => tr(tables, "LIST_ITEM", t.text)),
       // Withheld — see the note above this route.
       downloads: [],
       model3dUrl: full.glbAsset ? publicModelUrl(full.glbAsset.storagePath) : null,
@@ -760,7 +801,8 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       compatible: full.compatible
         .filter((c) => c.related.slug)
         .map((c) => ({
-          name: c.related.name ?? "",
+          name: productName(tables, c.related.dudaProductId, c.related.name ?? ""),
+          nameEn: c.related.name ?? "",
           slug: c.related.slug!,
           url: `/product/${c.related.slug!}`,
           imageUrl: c.related.thumbnailUrl ?? null,
