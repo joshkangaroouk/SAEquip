@@ -667,7 +667,10 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
     - Spanish: 95/96, 22/23
     - Portuguese: 94/96, 22/23
     - Chinese: 92/96, 23/23
-    - German is not on the site yet.
+    - German: 91/96, 23/23. The client published it at about 15:30. `/de/` pages 404'd until
+      that publish, then showed English names until 15:44: Duda translates store content in the
+      background, minutes after a language is published. Chinese took about 30 minutes the
+      same way. **Wait, then copy**; a copy taken too early now stores nothing rather than English.
   - **Re-run** after the client adds a language or edits names in Duda and republishes:
     `npm run i18n:sync-duda -- --confirm`, or **"Refresh all languages from Duda"** on the
     Translations page.
