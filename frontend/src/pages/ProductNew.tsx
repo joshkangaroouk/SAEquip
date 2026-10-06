@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, RichTextEditor, Select, Toggle, toast } from "../components/ui";
 import { apiJson } from "../lib/api";
 import type { ProductDetail } from "../lib/types";
+import { useTranslateOnSave } from "../components/product/useTranslateOnSave";
+import { TranslationProgressModal } from "../components/TranslationProgressModal";
 
 const NUMERIC = /^\d+(\.\d+)?$/;
 const TYPES = ["PHYSICAL", "DIGITAL", "SERVICE", "DONATION"];
@@ -41,6 +43,7 @@ export default function ProductNew() {
   const [form, setForm] = useState<NewProductForm>(blank);
   const [saving, setSaving] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
+  const translate = useTranslateOnSave();
 
   useEffect(() => {
     nameRef.current?.focus();
@@ -60,6 +63,10 @@ export default function ProductNew() {
 
   async function create(then: "edit" | "another") {
     if (!valid || saving) return;
+    // A description is translated as soon as the product exists. ⚠️ Started
+    // HERE, before the first await, because Chrome downloads a language pack
+    // only in response to a click (see useTranslateOnSave).
+    const session = form.description.trim() ? translate.begin() : undefined;
     setSaving(true);
     try {
       const created = await apiJson<ProductDetail>("/api/products", {
@@ -75,7 +82,8 @@ export default function ProductNew() {
           ...(form.description.trim() ? { description: form.description } : {}),
         }),
       });
-      toast.success(`Created “${created.name}”`);
+      const note = await translate.finish(session, created.id);
+      toast.success(`Created “${created.name}”${note ?? ""}`);
       if (then === "edit") {
         navigate(`/products/${created.id}`, { replace: true });
       } else {
@@ -84,6 +92,7 @@ export default function ProductNew() {
         nameRef.current?.focus();
       }
     } catch (e) {
+      translate.cancel(session);
       toast.error(e instanceof Error ? e.message : "Could not create the product");
     } finally {
       setSaving(false);
@@ -92,6 +101,7 @@ export default function ProductNew() {
 
   return (
     <div className="mx-auto max-w-2xl">
+      <TranslationProgressModal progress={translate.progress} onSkip={translate.skip} onDownload={translate.download} />
       <PageHeader
         title="New product"
         description="Creates the product in Duda with the fields it accepts at create time. Hidden by default, so a half-filled product never goes live."

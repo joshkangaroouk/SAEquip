@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { apiJson } from "../../lib/api";
-import { startTranslators, type TargetLocale, type TranslatorSet } from "../../lib/translator";
-import { listLabels, translateMissing, type LangProgress } from "../../lib/translations";
+import { useTranslateOnSave } from "./useTranslateOnSave";
 import { toast } from "../ui";
 import type {
   HubCompatible,
@@ -104,10 +102,7 @@ export function useProductEditor(
   const [saving, setSaving] = useState(false);
   const [savingLabel, setSavingLabel] = useState<string | null>(null);
   const [saveErrors, setSaveErrors] = useState<ErrorMap>({});
-  /** Per-language progress while translating after a save; null otherwise. */
-  const [translation, setTranslation] = useState<LangProgress[] | null>(null);
-  const translators = useRef<TranslatorSet | null>(null);
-  const navigate = useNavigate();
+  const translate = useTranslateOnSave();
 
   /**
    * Lets a caller suppress the navigate-away guard for a deliberate exit (e.g.
@@ -563,7 +558,7 @@ export function useProductEditor(
     // by the time the save tasks below have been awaited that has expired.
     const descriptionChanged = dirty.details && draft.details.description !== baseline.details.description;
     const wantsTranslation = descriptionChanged || TRANSLATED_SECTIONS.some((k) => dirty[k]);
-    const started = wantsTranslation ? startTranslators() : null;
+    const session = wantsTranslation ? translate.begin() : undefined;
 
     setSaving(true);
     setSaveErrors({});
@@ -596,42 +591,9 @@ export function useProductEditor(
     // Translations page.
     const translatedSaved =
       (descriptionChanged && savedKeys.has("details")) || TRANSLATED_SECTIONS.some((k) => savedKeys.has(k));
-    const openTranslations = { label: "Translations", onClick: () => navigate("/translations") };
     let translationNote: string | null = null;
-    if (!translatedSaved) {
-      started?.close();
-    } else if (!started) {
-      toast.warning("Not translated yet: this browser has no built-in translator.", {
-        description: "Save in Chrome or Edge on a computer, or translate from the Translations page.",
-        action: openTranslations,
-        duration: 10_000,
-      });
-    } else {
-      translators.current = started;
-      const summary = await translateMissing({ translators: started, productId, onProgress: setTranslation });
-      started.close();
-      translators.current = null;
-      setTranslation(null);
-      const failed = summary.progress.filter((p) => p.phase === "failed");
-      const rejected = summary.progress.reduce((n, p) => n + p.rejected, 0);
-      const translated = summary.progress.filter((p) => p.phase === "done" && p.total > 0).length;
-      if (failed.length) {
-        toast.warning(
-          summary.skipped
-            ? `Translation skipped for ${listLabels(failed.map((p) => p.locale))}.`
-            : `Not translated into ${listLabels(failed.map((p) => p.locale))}: ${failed[0].error ?? "the translator failed"}`,
-          { description: "Those languages show the English until translated.", action: openTranslations, duration: 10_000 },
-        );
-      }
-      if (rejected) {
-        toast.warning(`${rejected} ${rejected === 1 ? "translation was" : "translations were"} kept in English`, {
-          description: "The translator changed a number, certification mark or link. Check them on the Translations page.",
-          action: openTranslations,
-          duration: 10_000,
-        });
-      }
-      if (translated && !failed.length) translationNote = ` and translated into ${translated} ${translated === 1 ? "language" : "languages"}`;
-    }
+    if (translatedSaved) translationNote = await translate.finish(session, productId);
+    else translate.cancel(session);
 
     const failedCount = Object.keys(failures).length;
     if (failedCount === 0) {
@@ -647,12 +609,7 @@ export function useProductEditor(
       );
     }
     return false;
-  }, [productId, draft, baseline, saving, isValid, dirty, navigate]);
-
-  /** "Skip for now" in the translation dialog. The English is already saved. */
-  const skipTranslation = useCallback(() => translators.current?.close(), []);
-  /** A language's "Download" button — synchronous, so the click counts as Chrome's permission. */
-  const downloadLanguage = useCallback((locale: TargetLocale) => translators.current?.retry(locale), []);
+  }, [productId, draft, baseline, saving, isValid, dirty, translate]);
 
   return {
     context,
@@ -664,9 +621,9 @@ export function useProductEditor(
     saving,
     savingLabel,
     saveErrors,
-    translation,
-    skipTranslation,
-    downloadLanguage,
+    translation: translate.progress,
+    skipTranslation: translate.skip,
+    downloadLanguage: translate.download,
     validationErrors,
     dirty,
     isDirty,

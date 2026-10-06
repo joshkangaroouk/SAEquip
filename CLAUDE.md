@@ -732,9 +732,14 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
   desktop only). `frontend/src/lib/translations.ts` is the ONE routine, `translateMissing()`,
   shared by the product editor and the Translations page. It fetches what is missing, translates
   it, and saves it as `MT`/`"chrome"`, every 25 strings.
-- **The editor:** saving a changed description, specs, benefits or applications opens
-  **"Saving for multi-languages…"** (`TranslationProgressModal`) after the English is saved, and
-  translates that product's missing strings into all six languages.
+- **The editor and the New product page:** saving a changed description, specs, benefits or
+  applications (or creating a product with a description) opens **"Saving for
+  multi-languages…"** (`TranslationProgressModal`) after the English is saved. It translates that
+  product's missing strings into all six languages.
+  - Both screens go through ONE hook, `useTranslateOnSave()`: `begin()` runs in the click and
+    `finish()` runs after the save.
+  - ⚠️ New product was first left out, and it was the first thing tested live: a description
+    typed there reached the Hub untranslated, with no dialog.
   - "Skip for now" is always safe.
   - Any other browser gets a toast pointing at the Translations page.
 - **Measured on Chrome 154 (2026-10-06), and each one shaped the code:**
@@ -784,10 +789,8 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
   against translators that keep the tags, behave like Chrome and drop every tag. All 90 real
   descriptions must pass the validator; this part is skipped in a clone without
   `sources.json`.
-- **Not covered by translate-on-save:**
-  - A description written in `/products/new`: it is translated the next time the product is
-    saved, or by "Translate missing".
-  - Logo text edited on the Logos page: use "Translate missing".
+- **Not covered by translate-on-save:** logo text edited on the Logos page. Use "Translate
+  missing".
 
 **What a translated page shows today:**
 - Interface text, and Duda's product names and category titles, in the page's language.
