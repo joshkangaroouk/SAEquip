@@ -4,6 +4,7 @@ import { LogoActivationPanel } from "../components/LogoActivationPanel";
 import { SpecTableEditor } from "../components/SpecTableEditor";
 import { TextItemListEditor } from "../components/TextItemListEditor";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
+import { TranslationProgressModal } from "../components/TranslationProgressModal";
 import { CategoriesSection } from "../components/product/CategoriesSection";
 import { CompatibleProductsSection } from "../components/product/CompatibleProductsSection";
 import { DangerZoneSection } from "../components/product/DangerZoneSection";
@@ -34,6 +35,9 @@ export default function ProductDetail() {
     saving,
     savingLabel,
     saveErrors,
+    translation,
+    skipTranslation,
+    downloadLanguage,
     validationErrors,
     dirty,
     isDirty,
@@ -68,6 +72,7 @@ export default function ProductDetail() {
   return (
     <>
       <UnsavedChangesModal blocker={blocker} onSave={save} dirtyLabels={dirtyLabels} />
+      <TranslationProgressModal progress={translation} onSkip={skipTranslation} onDownload={downloadLanguage} />
 
       <div className={saveBarVisible ? "pb-28" : "pb-4"}>
         <Link to="/" className="text-sm text-muted hover:text-text">

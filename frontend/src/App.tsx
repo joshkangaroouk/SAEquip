@@ -11,6 +11,7 @@ import Logos from "./pages/Logos";
 import Widgets from "./pages/Widgets";
 import Quotes from "./pages/Quotes";
 import ResourceRequests from "./pages/ResourceRequests";
+import Translations from "./pages/Translations";
 import Status from "./pages/Status";
 // The component-kit showcase (pages/UIShowcase.tsx) is intentionally NOT
 // routed: it was a temporary reference for building the UI and is hidden from
@@ -72,6 +73,7 @@ export const router = createBrowserRouter([
       { path: "/widgets", element: <Widgets /> },
       { path: "/quotes", element: <Quotes /> },
       { path: "/resource-requests", element: <ResourceRequests /> },
+      { path: "/translations", element: <Translations /> },
       { path: "/users", element: <UsersPage /> },
       { path: "/security", element: <Security /> },
       { path: "/status", element: <Status /> },

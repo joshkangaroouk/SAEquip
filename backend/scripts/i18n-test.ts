@@ -74,5 +74,68 @@ check(tr(t, "SPEC_VALUE", "2560m3/hr") === "2560m3/hr", "pass-through text is ne
 check(productName(t, "p1", "EX Heater") === "سخان EX" && productName(t, "p2", "Other") === "Other" && categoryTitle(t, "c1", "Products") === "المنتجات",
   "Duda names and titles, with English fallback");
 
+// ---- the dashboard's translate-on-save helpers (frontend/src/lib/translator.ts)
+// They run in the staff member's browser; jsdom stands in for the DOM. The
+// "Chrome-like" fakes reproduce what Chrome 154's translator was MEASURED
+// doing (2026-10-06): translating brand names, re-casing marks, writing
+// decimal commas, mangling href, adding spaces inside tags, "& amp;".
+const { JSDOM } = await import("jsdom");
+const dom = new JSDOM("<!doctype html><body></body>");
+Object.assign(globalThis, { document: dom.window.document, Node: dom.window.Node });
+const { maskTerms, unmaskTerms, restoreMarks, translateHtml, protectTerms } = await import("../../frontend/src/lib/translator.ts");
+
+const m = maskTerms("The SA CYCLONE SAF35 is ATEX and IECEx certified, 99.98% for Zone 1 sites. FREE AIR FLOW");
+check(!/CYCLONE|SAF35|ATEX|IECEx|99\.98/.test(m.masked) && /\bSA\b/.test(m.masked) && /FREE AIR FLOW/.test(m.masked) && /Zone 1/.test(m.masked),
+  "masking hides marks, codes, brands and decimals — not 'SA', shouted English or plain numbers", m.masked);
+check(unmaskTerms(m.masked.replace("X1Q", "x1q"), m.terms) === "The SA CYCLONE SAF35 is ATEX and IECEx certified, 99.98% for Zone 1 sites. FREE AIR FLOW",
+  "unmasking restores every term, even a placeholder the translator lower-cased");
+check(maskTerms("Model X2Q spare").terms.length === 0, "text that already looks like a placeholder is sent unmasked");
+check(restoreMarks("<p>SA FLEXIHEAT for sa use</p>", "<p>SA FlexiHeat pour sa utilisation</p>") === "<p>SA FLEXIHEAT pour sa utilisation</p>",
+  "restoreMarks re-cases a re-cased mark, and leaves French 'sa' alone");
+check(restoreMarks("FREE AIR FLOW", "débit d'air libre") === "débit d'air libre", "restoreMarks never forces shouted English (French 'air')");
+check(restoreMarks('<a href="/LED">LED</a>', '<a href="/LED">led</a>') === '<a href="/LED">LED</a>', "restoreMarks touches text, not attributes");
+
+// The real descriptions, from the gitignored export (i18n:export-sources) —
+// skipped in a clone that has none.
+const descs = (() => {
+  try {
+    return (JSON.parse(readFileSync(path.join(HERE, "../../migration/i18n/sources.json"), "utf8")) as { kind: string; sourceText: string }[])
+      .filter((x) => x.kind === "DESCRIPTION");
+  } catch {
+    return [];
+  }
+})();
+// Wrap each text run in »…« so leftover English is detectable.
+const wrap = (s: string) => s.replace(/(^|>)([^<]+)/g, (all, a, b) => (b.trim() ? `${a}»${b}«` : all));
+const chromeLike = async (s: string) =>
+  wrap(s)
+    .replace(/<a>/g, '<a href="/ product/x" class="junk"> ')
+    .replace(/<\/a>/g, " </a>")
+    .replace(/&/g, "& amp;")
+    .replace(/\bCYCLONE\b/g, "旋风")
+    .replace(/(\d)\.(\d)/g, "$1,$2");
+const fakes: Record<string, (s: string) => Promise<string>> = {
+  "keeps the tags": async (s) => wrap(s),
+  "Chrome-like (links, entities, brands, decimals)": protectTerms(chromeLike),
+  "drops every tag": async (s) => "»" + s.replace(/<[^>]+>/g, "") + "«",
+};
+if (descs.length) {
+  for (const [name, fake] of Object.entries(fakes)) {
+    let valid = 0;
+    let leftover = 0;
+    for (const d of descs) {
+      const out = restoreMarks(d.sourceText, await translateHtml(d.sourceText, fake));
+      if (validateTranslation("DESCRIPTION", d.sourceText, out).ok) valid++;
+      if (/\p{L}/u.test(out.replace(/<[^>]+>/g, "").replace(/»[^«]*«/g, "").replace(/&[a-z]+;/g, ""))) leftover++;
+    }
+    check(valid === descs.length && leftover === 0, `translateHtml, translator that ${name}: all ${descs.length} real descriptions pass the validator, none left untranslated`,
+      `${valid} valid, ${leftover} with English left`);
+  }
+} else {
+  console.log("  (skipped: no migration/i18n/sources.json in this clone)");
+}
+const linked = await translateHtml('<p>Pair it with the <a href="/product/x">trolley</a>.</p>', protectTerms(chromeLike));
+check(linked.includes('<a href="/product/x">»trolley«</a>') && !linked.includes("junk"), "a link mangled by the translator comes back exactly as in the English", linked);
+
 console.log(`\n${fail === 0 ? "✓" : "✗"} ${pass} passed, ${fail} failed\n`);
 if (fail) process.exit(1);

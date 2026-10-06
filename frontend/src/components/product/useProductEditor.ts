@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiJson } from "../../lib/api";
+import { startTranslators, type TargetLocale, type TranslatorSet } from "../../lib/translator";
+import { listLabels, translateMissing, type LangProgress } from "../../lib/translations";
 import { toast } from "../ui";
 import type {
   HubCompatible,
@@ -71,6 +74,14 @@ const emptyDirty: DirtyMap = {
   downloads: false,
 };
 
+/**
+ * Sections whose English the website also shows in other languages, so a save
+ * of one of them is followed by translation. (The description is the fourth,
+ * checked separately because it shares the Details section with fields that
+ * are not translated.)
+ */
+const TRANSLATED_SECTIONS: SectionKey[] = ["specs", "benefits", "applications"];
+
 /** One unit of work in a save, plus the sections it banks on success. */
 interface SaveTask {
   keys: SectionKey[];
@@ -93,6 +104,10 @@ export function useProductEditor(
   const [saving, setSaving] = useState(false);
   const [savingLabel, setSavingLabel] = useState<string | null>(null);
   const [saveErrors, setSaveErrors] = useState<ErrorMap>({});
+  /** Per-language progress while translating after a save; null otherwise. */
+  const [translation, setTranslation] = useState<LangProgress[] | null>(null);
+  const translators = useRef<TranslatorSet | null>(null);
+  const navigate = useNavigate();
 
   /**
    * Lets a caller suppress the navigate-away guard for a deliberate exit (e.g.
@@ -542,10 +557,19 @@ export function useProductEditor(
       });
     }
 
+    // Changed English that the other languages show. ⚠️ The translators are
+    // started HERE — synchronously, still inside the Save click — because
+    // Chrome only downloads a language pack in response to a user action, and
+    // by the time the save tasks below have been awaited that has expired.
+    const descriptionChanged = dirty.details && draft.details.description !== baseline.details.description;
+    const wantsTranslation = descriptionChanged || TRANSLATED_SECTIONS.some((k) => dirty[k]);
+    const started = wantsTranslation ? startTranslators() : null;
+
     setSaving(true);
     setSaveErrors({});
     const failures: ErrorMap = {};
     let succeeded = 0;
+    const savedKeys = new Set<SectionKey>();
 
     for (const task of tasks) {
       setSavingLabel(task.label);
@@ -555,6 +579,7 @@ export function useProductEditor(
         setBaseline((b) => (b ? { ...b, ...confirmed } : b));
         setDraft((d) => (d ? { ...d, ...confirmed } : d));
         succeeded++;
+        for (const k of task.keys) savedKeys.add(k);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Save failed";
         for (const k of task.keys) failures[k] = msg;
@@ -565,9 +590,52 @@ export function useProductEditor(
     setSaving(false);
     setSaveErrors(failures);
 
+    // Translate whatever English is now missing a translation for this
+    // product. The English is saved by now, so nothing here can lose work:
+    // a language that fails just stays in English until translated from the
+    // Translations page.
+    const translatedSaved =
+      (descriptionChanged && savedKeys.has("details")) || TRANSLATED_SECTIONS.some((k) => savedKeys.has(k));
+    const openTranslations = { label: "Translations", onClick: () => navigate("/translations") };
+    let translationNote: string | null = null;
+    if (!translatedSaved) {
+      started?.close();
+    } else if (!started) {
+      toast.warning("Not translated yet: this browser has no built-in translator.", {
+        description: "Save in Chrome or Edge on a computer, or translate from the Translations page.",
+        action: openTranslations,
+        duration: 10_000,
+      });
+    } else {
+      translators.current = started;
+      const summary = await translateMissing({ translators: started, productId, onProgress: setTranslation });
+      started.close();
+      translators.current = null;
+      setTranslation(null);
+      const failed = summary.progress.filter((p) => p.phase === "failed");
+      const rejected = summary.progress.reduce((n, p) => n + p.rejected, 0);
+      const translated = summary.progress.filter((p) => p.phase === "done" && p.total > 0).length;
+      if (failed.length) {
+        toast.warning(
+          summary.skipped
+            ? `Translation skipped for ${listLabels(failed.map((p) => p.locale))}.`
+            : `Not translated into ${listLabels(failed.map((p) => p.locale))}: ${failed[0].error ?? "the translator failed"}`,
+          { description: "Those languages show the English until translated.", action: openTranslations, duration: 10_000 },
+        );
+      }
+      if (rejected) {
+        toast.warning(`${rejected} ${rejected === 1 ? "translation was" : "translations were"} kept in English`, {
+          description: "The translator changed a number, certification mark or link. Check them on the Translations page.",
+          action: openTranslations,
+          duration: 10_000,
+        });
+      }
+      if (translated && !failed.length) translationNote = ` and translated into ${translated} ${translated === 1 ? "language" : "languages"}`;
+    }
+
     const failedCount = Object.keys(failures).length;
     if (failedCount === 0) {
-      toast.success(tasks.length === 1 ? "Saved" : `Saved ${tasks.length} sections`);
+      toast.success((tasks.length === 1 ? "Saved" : `Saved ${tasks.length} sections`) + (translationNote ?? ""));
       return true;
     }
     if (succeeded === 0) {
@@ -579,7 +647,12 @@ export function useProductEditor(
       );
     }
     return false;
-  }, [productId, draft, baseline, saving, isValid, dirty]);
+  }, [productId, draft, baseline, saving, isValid, dirty, navigate]);
+
+  /** "Skip for now" in the translation dialog. The English is already saved. */
+  const skipTranslation = useCallback(() => translators.current?.close(), []);
+  /** A language's "Download" button — synchronous, so the click counts as Chrome's permission. */
+  const downloadLanguage = useCallback((locale: TargetLocale) => translators.current?.retry(locale), []);
 
   return {
     context,
@@ -591,6 +664,9 @@ export function useProductEditor(
     saving,
     savingLabel,
     saveErrors,
+    translation,
+    skipTranslation,
+    downloadLanguage,
     validationErrors,
     dirty,
     isDirty,

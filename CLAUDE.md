@@ -573,14 +573,17 @@ marketing checkbox, and "Submit & Download".
   there is no role model: any signed-in user can read every request. Requests are personal
   data — deletion on request is a database job until a delete button is built.
 
-## Languages — multi-language Duda sites (phase 1 built 2026-10-06)
+## Languages — multi-language Duda sites (phases 1–4 built 2026-10-06)
 
 The client added Arabic to the live site and wants Chinese (Simplified), French, German,
 Portuguese (Brazil) and Spanish. The full plan, measurements included, is
-`~/.claude/plans/splendid-gliding-dolphin.md`. **Built: phase 1 (the widgets speak the
-page's language) and phase 2 (translation storage, the public overlay, Duda's translated names).
-Not yet: phase 3 (the mass translation) and phase 4 (translate-on-save in the dashboard and the
-Translations page).**
+`~/.claude/plans/splendid-gliding-dolphin.md`. **Built:**
+- phase 1: the widgets speak the page's language
+- phase 2: translation storage, the public overlay, Duda's translated names
+- phase 3: the mass translation, all six languages imported
+- phase 4: translate-on-save in the dashboard, and the Translations page
+
+**Not yet: phase 5**: right-to-left if the client chooses it, a Chinese check, and native review.
 
 **Measured on the live site** (Arabic added by the client, 2026-10-06):
 - The default language is unprefixed; `/ar/…` for Arabic. **Slugs are NOT translated**
@@ -683,10 +686,116 @@ Translations page).**
     captured `/ar/` fixture in `backend/scripts/fixtures/`.
   - `smoke.mjs` checks `?lang=ar` live.
 
+**Phase 3 — the mass translation (imported 2026-10-06):**
+- **870 English strings × 6 languages = 5,220 `Translation` rows**, `origin MT`,
+  `engine "claude-code"`, 0 rejected:
+  - 90 descriptions
+  - 333 list items
+  - 139 spec labels
+  - 288 spec values
+  - 20 logo texts
+- **Workflow:**
+  - `npm run i18n:export-sources` writes the English to `migration/i18n/sources.json`
+    (gitignored).
+  - Claude Code translated it, one agent per language, into
+    `migration/i18n/<locale>/part-NN.json` (`[{h, k, t}]`).
+  - `npm run i18n:import -- --locale X` dry-runs every translation through the validator. With
+    `--confirm` it saves through `saveTranslations()`.
+  - The ENGLISH always comes from `sources.json`, never from the part files, so a translation
+    can only attach to the text it was made for.
+- ⚠️ **The validator cannot see a translation attached to the WRONG English** unless a number
+  happens to differ. One agent found four of its own spec values paired with their neighbours'
+  English, caught only because "460" went missing.
+  - So every language also had a separate review pass, entry by entry, for mis-pairing, changed
+    meaning and wrong language. It found **0 mis-pairings and 4 fixes**:
+    - Arabic: a stray English "& Worklights"
+    - German: "Emergency response units" had become "emergency vehicles"
+    - Spanish: "Coil frost protection" had become battery frost protection
+    - Spanish: an invented "A" (for height) in a HEPA filter size
+  - **Repeat that review for any future bulk translation.**
+- The translators kept every number as a digit. "3 Phase" written as "triphasé" or an Arabic
+  dual drops the "3", and the validator refuses it. A few Arabic entries therefore read
+  "مرحلتين (2)": deliberate, safe, and a native reviewer may want to polish them.
+- **English source defects the translators flagged.** They are typos in the HUB content, worth
+  fixing in the editor, and a fix needs no re-translation because translate-on-save picks it up:
+  - spelling: "Made in Britan", "East fit", "retardent", "staps", "mutliple", "temerature",
+    "powere", "sir supply", "aire powered", "ono the flange", "inclued"
+  - a stray "n" in "inhalable n dust"
+  - garbled words in the SA ENDURE High Capacity Dust Extraction description
+  - a `<strong>` that opens mid-word: "range o<strong>f"
+  - "2850 lumens (180°C)"
+  - "30 Pa C"
+  - "ATX | Ceag | Stahl"
+
+**Phase 4 — translate-on-save (Chrome's on-device translator):**
+- `frontend/src/lib/translator.ts` wraps Chrome's Translator API (Chrome 138+, Edge 148+,
+  desktop only). `frontend/src/lib/translations.ts` is the ONE routine, `translateMissing()`,
+  shared by the product editor and the Translations page. It fetches what is missing, translates
+  it, and saves it as `MT`/`"chrome"`, every 25 strings.
+- **The editor:** saving a changed description, specs, benefits or applications opens
+  **"Saving for multi-languages…"** (`TranslationProgressModal`) after the English is saved, and
+  translates that product's missing strings into all six languages.
+  - "Skip for now" is always safe.
+  - Any other browser gets a toast pointing at the Translations page.
+- **Measured on Chrome 154 (2026-10-06), and each one shaped the code:**
+  - ⚠️ **`Translator.create()` needs a user activation to download a pack, and Chrome downloads
+    only ONE pack per click.** French downloaded; German and Spanish in the same click were
+    refused (`NotAllowedError`). A pack already on the computer needs no click.
+    - The translators therefore start synchronously inside the Save click (`startTranslators()`,
+      before any `await`).
+    - A refused language waits at **"needs-click"** with a **Download** button in the dialog.
+      That click is the permission, and `retry()` must stay synchronous inside it.
+    - This happens once per language, per computer.
+  - ⚠️ **It translates brand names and re-cases marks.** Chinese turned "SA CYCLONE" into
+    "SA 旋风", Arabic turned "Endure" into a verb, "SA FLEXIHEAT" came back as "SA FlexiHeat",
+    and "99.98" as "99,98". The server rightly refuses each of these.
+    - It ignores `translate="no"`: it translated inside the span and mangled the attribute.
+    - Code-like placeholders survived in all six languages. So `protectTerms()` swaps every
+      mark, code, brand and decimal for `X1Q`, `X2Q`… before translating, and swaps them back
+      case-insensitively, since Portuguese returned "x1q". `restoreMarks()` re-cases anything
+      left over.
+    - ⚠️ Both skip "SA" and the shouted English the validator allows. Otherwise French "sa"
+      becomes "SA" and French "air" becomes "AIR".
+  - **It accepts HTML and keeps simple tags**, with better grammar than splitting the sentence
+    (it translated "trolley" as "tram" without the rest of the sentence). But it rewrote
+    `href="/product/x"` as `href="/ product/x"` and `&amp;` as "& amp;".
+    - So `translateHtml()` sends each block whole, with attributes stripped and entities as
+      plain characters.
+    - It then restores exactly the English's attributes by element order.
+    - It falls back to translating text node by text node if the tags changed.
+  - **Result on a real sample (49 strings × 6 languages): 291/294 pass the server's validator.**
+    The three refused are real omissions: Arabic dropped "zone 1 & 2", and Portuguese dropped a
+    product name and a "2500". They stay English and show on the Translations page.
+- **Translations page** (`/translations`, under Products in the sidebar):
+  - Filters: language, type and status (Missing / Machine / Edited / Kept in English), plus a
+    search over the English, the translation and product names.
+  - Clicking a row edits it. The edit is saved as `STAFF`, so no machine run overwrites it, and
+    an unsafe edit is refused with the reason.
+  - **"Translate missing (N)"** runs the same Chrome routine for the whole site.
+  - **CSV export and import** let a human translator work in a spreadsheet:
+    - Only the Key and Translation columns are read; the English comes from the Hub.
+    - ⚠️ Unchanged rows are skipped, or re-importing an untouched export would turn every
+      machine translation into a staff one.
+  - The **Names from Duda** tab (`GET /api/translations/duda`) shows Duda's copied names beside
+    the English, flags any whose English changed since, and has "Refresh from Duda".
+- `GET /api/translations/sources` also returns `products` (dudaId → name) for the "used on"
+  column.
+- **Tests:** `npm run i18n:test` covers masking, `restoreMarks` and `translateHtml` (via jsdom)
+  against translators that keep the tags, behave like Chrome and drop every tag. All 90 real
+  descriptions must pass the validator; this part is skipped in a clone without
+  `sources.json`.
+- **Not covered by translate-on-save:**
+  - A description written in `/products/new`: it is translated the next time the product is
+    saved, or by "Translate missing".
+  - Logo text edited on the Logos page: use "Translate missing".
+
 **What a translated page shows today:**
-- Interface text and Duda's product names and category titles: in the page's language.
-- Descriptions, specs, benefits and applications: English until phase 3 imports their
-  translations.
+- Interface text, and Duda's product names and category titles, in the page's language.
+- Descriptions, specs, benefits, applications and logo text, from the phase 3 import and from
+  translation on save.
+- Anything refused or not yet translated stays in English.
+- A language appears on the site only when the client adds it in Duda; the Hub already holds
+  all six.
 
 ## Category mode — the compatible carousel on static pages
 

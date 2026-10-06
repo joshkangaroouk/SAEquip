@@ -7,6 +7,7 @@ import {
   FolderTree,
   Globe,
   Images,
+  Languages,
   LogOut,
   Menu,
   Package,
@@ -59,6 +60,7 @@ const NAV: NavItem[] = [
       { to: "/options", label: "Product Options", icon: SlidersHorizontal },
       { to: "/media", label: "Media", icon: Images },
       { to: "/logos", label: "Logos", icon: ShieldCheck },
+      { to: "/translations", label: "Translations", icon: Languages },
     ],
   },
   /*
