@@ -303,8 +303,12 @@ export interface ResourceRequest {
   mobile: string | null;
   privacyConsent: boolean;
   marketingConsent: boolean;
-  /** The consent wording agreed to, one sentence per line. */
+  /** The consent wording agreed to, one sentence per line, in the language shown. */
   consentText: string | null;
+  /** The same consent in English (null on requests from before languages). */
+  consentTextEn: string | null;
+  /** The language the form was shown in ("en", "ar", …); null before languages. */
+  locale: string | null;
   createdAt: string;
   file: {
     title: string | null;

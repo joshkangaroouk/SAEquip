@@ -14,6 +14,7 @@ import { LISTABLE, LISTED_DOWNLOAD, PUBLIC_DOWNLOAD } from "../services/hubProdu
 import { categorySortKey, compareKeys } from "../services/categoryTree.js";
 import { quoteProductMatcher } from "../services/quoteProducts.js";
 import { CONSENT_TEXT, KIND_BUTTON, RESOURCE_TYPES, SCHEME_BUTTON, SCHEME_ORDER } from "../services/downloadKinds.js";
+import { LOCALES } from "../services/i18n/locales.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -440,6 +441,11 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
         downloads: files.map((d) => ({
           id: d.id,
           label: counts.get(labelOf(d))! > 1 ? d.title : labelOf(d),
+          // What the label MEANS, so the widget can say it in the page's own
+          // language. `labelFromTitle` marks the rare case where two files
+          // shared a label and the file's own title is shown instead.
+          labelKey: kind === "CERTIFICATE" ? d.certScheme! : kind,
+          labelFromTitle: counts.get(labelOf(d))! > 1,
           title: d.title,
           // A gated file opens only through the request form, so it gets no
           // direct link — the file route would refuse it anyway.
@@ -793,17 +799,34 @@ const headerSafe = (max: number) =>
  * future email or CRM hand-off cannot be given an injected header.
  */
 const nonBlank = (v: string) => v.length > 0;
+/**
+ * Phone numbers typed on an Arabic or Chinese keyboard arrive as Arabic-Indic
+ * (٠-٩, ۰-۹) or full-width (０-９, ＋, （）) characters, which the ASCII rule
+ * below would refuse. NFKC folds the full-width forms; the two Arabic digit
+ * ranges are mapped by hand, since NFKC leaves them alone.
+ */
+const asciiDigits = (v: unknown) =>
+  typeof v === "string"
+    ? v
+        .normalize("NFKC")
+        .replace(/[\u0660-\u0669]/g, (c) => String(c.charCodeAt(0) - 0x0660))
+        .replace(/[\u06f0-\u06f9]/g, (c) => String(c.charCodeAt(0) - 0x06f0))
+    : v;
 const phoneField = (label: string) =>
-  headerSafe(50).refine(
-    (v) => /^[0-9+()\-.\s]+$/.test(v) && (v.match(/[0-9]/g)?.length ?? 0) >= 6,
-    `${label} must be a phone number`,
+  z.preprocess(
+    asciiDigits,
+    headerSafe(50).refine(
+      (v) => /^[0-9+()\-.\s]+$/.test(v) && (v.match(/[0-9]/g)?.length ?? 0) >= 6,
+      `${label} must be a phone number`,
+    ),
   );
 const leadSchema = z
   .object({
     firstName: headerSafe(100).refine(nonBlank, "first name required"),
     lastName: headerSafe(100).refine(nonBlank, "last name required"),
     company: headerSafe(200).refine(nonBlank, "company required"),
-    email: z.string().trim().max(254).email("invalid email"),
+    // NFKC first: a full-width "＠" from a CJK keyboard is otherwise not an email.
+    email: z.preprocess((v) => (typeof v === "string" ? v.normalize("NFKC") : v), z.string().trim().max(254).email("invalid email")),
     phone: phoneField("telephone"),
     mobile: z.union([z.literal(""), phoneField("mobile")]).optional(),
     // Must be ticked: the form cannot be sent without agreeing to storage.
@@ -811,6 +834,9 @@ const leadSchema = z
     marketingConsent: z.boolean().optional(),
     website: z.string().max(200).optional(), // honeypot — must be empty
     elapsedMs: z.number().finite().nonnegative(),
+    // The language the form was shown in. Optional, so a widget from before
+    // languages (still cached in a browser) keeps working; absent means English.
+    locale: z.enum(LOCALES).optional(),
   })
   .strict();
 
@@ -884,6 +910,8 @@ publicRouter.post("/downloads/:downloadId/lead", leadLimiter, leadHourlyLimiter,
       return;
     }
     const marketing = d.marketingConsent === true;
+    const locale = d.locale ?? "en";
+    const consent = (c: { privacy: string; marketing: string }) => [c.privacy, marketing ? c.marketing : null].filter(Boolean).join("\n");
     await prisma.lead.create({
       data: {
         downloadId: dl.id,
@@ -897,7 +925,9 @@ publicRouter.post("/downloads/:downloadId/lead", leadLimiter, leadHourlyLimiter,
         privacyConsent: true,
         marketingConsent: marketing,
         // What they agreed to, worded as this server held it.
-        consentText: [CONSENT_TEXT.privacy, marketing ? CONSENT_TEXT.marketing : null].filter(Boolean).join("\n"),
+        consentText: consent(CONSENT_TEXT[locale]),
+        consentTextEn: consent(CONSENT_TEXT.en),
+        locale,
         // Snapshots, so the request outlives the download and the product.
         downloadTitle: dl.title,
         fileName: dl.mediaAsset.filename,

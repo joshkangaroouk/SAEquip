@@ -1,4 +1,5 @@
 import type { CertScheme, DownloadKind } from "@prisma/client";
+import type { Locale } from "./i18n/locales.js";
 
 /**
  * Download types and certificate schemes: what each resources page shows, and
@@ -51,13 +52,46 @@ export const TITLE_CLASSIFICATION: Record<string, { kind: DownloadKind; certSche
 };
 
 /**
- * The resource request form's two checkboxes, word for word.
+ * The resource request form's two checkboxes, word for word, in every language
+ * the widget speaks. `privacy` is the WHOLE sentence, link text included, as
+ * the visitor reads it.
  *
- * ⚠️ The SERVER's copy is what a request records as consented to, so it must
- * match what the widget shows. `widget:test` reads both and fails if they
- * differ — change the wording in widget.js and here together.
+ * ⚠️ The SERVER's copy is what a request records as consented to, so each
+ * language must match what the widget shows for that language. `widget:test`
+ * builds every language's sentence from the widget's own table and fails if
+ * any differs — or if either side has a language the other lacks. Change the
+ * wording in widget.js and here together.
+ *
+ * ⚠️ Non-English wording was machine-drafted (2026-10-06) and needs a
+ * native-speaker review before it is relied on — it is legal text.
  */
-export const CONSENT_TEXT = {
-  privacy: "I agree to my data being stored in line with our Privacy Policy",
-  marketing: "I'm happy to receive the latest news and promotions by email.",
-} as const;
+export const CONSENT_TEXT: Record<Locale, { privacy: string; marketing: string }> = {
+  en: {
+    privacy: "I agree to my data being stored in line with our Privacy Policy",
+    marketing: "I'm happy to receive the latest news and promotions by email.",
+  },
+  ar: {
+    privacy: "أوافق على تخزين بياناتي بما يتوافق مع سياسة الخصوصية",
+    marketing: "يسعدني تلقي آخر الأخبار والعروض الترويجية عبر البريد الإلكتروني.",
+  },
+  zh: {
+    privacy: "我同意按照我们的隐私政策存储我的数据",
+    marketing: "我愿意通过电子邮件接收最新消息和促销信息。",
+  },
+  fr: {
+    privacy: "J'accepte que mes données soient conservées conformément à notre Politique de confidentialité",
+    marketing: "J'accepte de recevoir les dernières actualités et promotions par e-mail.",
+  },
+  de: {
+    privacy: "Ich bin mit der Speicherung meiner Daten gemäß unserer Datenschutzerklärung einverstanden",
+    marketing: "Ich möchte die neuesten Nachrichten und Angebote per E-Mail erhalten.",
+  },
+  "pt-br": {
+    privacy: "Concordo que meus dados sejam armazenados de acordo com nossa Política de Privacidade",
+    marketing: "Aceito receber as últimas novidades e promoções por e-mail.",
+  },
+  es: {
+    privacy: "Acepto que mis datos se almacenen de acuerdo con nuestra Política de privacidad",
+    marketing: "Acepto recibir las últimas noticias y promociones por correo electrónico.",
+  },
+};

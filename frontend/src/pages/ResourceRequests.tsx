@@ -16,6 +16,16 @@ function formatDate(iso: string): string {
   });
 }
 
+/** "Arabic" for "ar", "Brazilian Portuguese" for "pt-br"; the code itself if the browser can't name it. */
+function languageName(code: string | null): string {
+  if (!code) return "English";
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 /** "EX Heater - UKEX Certificate", or whichever half is known. */
 function fileLabel(r: ResourceRequest): string {
   return [r.file.productName, r.file.title].filter(Boolean).join(" - ") || "—";
@@ -24,7 +34,7 @@ function fileLabel(r: ResourceRequest): string {
 function exportRequests(requests: ResourceRequest[]) {
   const header = [
     "Name", "First name", "Last name", "Company", "Email", "Telephone", "Mobile",
-    "Marketing emails", "Product", "SKU", "File", "File name", "Date",
+    "Marketing emails", "Language", "Product", "SKU", "File", "File name", "Date",
   ];
   const rows = requests.map((r) => [
     r.name,
@@ -35,6 +45,7 @@ function exportRequests(requests: ResourceRequest[]) {
     r.phone ?? "",
     r.mobile ?? "",
     r.marketingConsent ? "Yes" : "No",
+    languageName(r.locale),
     r.file.productName ?? "",
     r.file.productSku ?? "",
     r.file.title ?? "",
@@ -69,10 +80,18 @@ function RequestDetail({ request: r }: { request: ResourceRequest }) {
         <Detail label="Mobile">{r.mobile}</Detail>
         <Detail label="Marketing emails">{r.marketingConsent ? "Yes - opted in" : "No"}</Detail>
         <Detail label="Submitted">{formatDate(r.createdAt)}</Detail>
-        {/* What they agreed to, as the server recorded it at the time. */}
+        <Detail label="Language">{languageName(r.locale)}</Detail>
+        <div className="hidden sm:block" aria-hidden="true" />
+        {/* What they agreed to, as the server recorded it at the time — in the
+            language they read it in, with the English beneath when that differs. */}
         <Detail label="Consent given" wide>
           {r.consentText}
         </Detail>
+        {r.consentTextEn && r.consentTextEn !== r.consentText && (
+          <Detail label="Consent given (English)" wide>
+            {r.consentTextEn}
+          </Detail>
+        )}
       </div>
 
       <div>

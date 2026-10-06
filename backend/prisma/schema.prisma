@@ -255,8 +255,15 @@ model Lead {
   /// The optional "news and promotions" box.
   marketingConsent Boolean @default(false)
   /// The consent wording as the SERVER held it when the visitor agreed — what
-  /// they actually consented to, should the wording change later.
+  /// they actually consented to, should the wording change later — in the
+  /// language they read it in.
   consentText   String?
+  /// The same consent in English, so staff can read what was agreed to
+  /// whatever language the form was shown in.
+  consentTextEn String?
+  /// The language the form was shown in ("en", "ar", …); null on requests from
+  /// before languages existed.
+  locale        String?
   download      Download? @relation(fields: [downloadId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])

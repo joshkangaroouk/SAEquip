@@ -37,6 +37,9 @@ resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
         privacyConsent: l.privacyConsent,
         marketingConsent: l.marketingConsent,
         consentText: l.consentText,
+        // English copy of the consent, for a request made in another language.
+        consentTextEn: l.consentTextEn,
+        locale: l.locale,
         createdAt: l.createdAt,
         file: {
           title: l.downloadTitle,
