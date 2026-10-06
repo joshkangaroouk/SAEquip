@@ -36,6 +36,9 @@ check(ok("SPEC_LABEL", "Zone 1", "المنطقة ١"), "Arabic-Indic digits coun
 check(!ok("LIST_ITEM", "ATEX certified for Zone 1", "Certifié pour la zone 1"), "a dropped certification mark is rejected");
 check(!ok("LIST_ITEM", "Bright LED lighting", "Éclairage lumineux"), "a dropped acronym (LED) is rejected");
 check(ok("LIST_ITEM", "Bright LED lighting", "Éclairage LED lumineux"), "…and kept, accepted");
+check(ok("DESCRIPTION", "<p>PRODUCT CODE: SARF300</p>", "<p>CODE PRODUIT : SARF300</p>") && ok("DESCRIPTION", "<p>PRODUCT CODE: SARF300</p>", "<p>رمز المنتج: SARF300</p>"),
+  "shouted English (PRODUCT CODE) may be translated; the code itself must stay");
+check(!ok("DESCRIPTION", "<p>SA CYCLONE range</p>", "<p>Gamme SA Cyclone</p>"), "a brand in capitals must stay in capitals");
 check(!ok("LIST_ITEM", "Robust housing", "Boîtier <b>robuste</b>"), "markup added to plain text is rejected");
 check(!ok("LIST_ITEM", "Robust housing", "Voir https://evil.example"), "a URL added to plain text is rejected");
 check(!ok("LIST_ITEM", "Robust housing", "   "), "an empty translation is rejected");

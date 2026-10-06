@@ -39,6 +39,8 @@
     "downloads:classify": "tsx src/scripts/classifyDownloads.ts",
     "downloads:gate": "tsx src/scripts/gateDownloads.ts",
     "i18n:sync-duda": "tsx src/scripts/i18nSyncDuda.ts",
+    "i18n:export-sources": "tsx src/scripts/i18nExportSources.ts",
+    "i18n:import": "tsx src/scripts/i18nImport.ts",
     "i18n:test": "tsx scripts/i18n-test.ts"
   },
   "dependencies": {

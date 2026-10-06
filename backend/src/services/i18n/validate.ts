@@ -25,9 +25,21 @@ function digitRuns(s: string): string[] {
   return asciiDigits(s).match(/\d+(?:[.,]\d+)?/g) ?? [];
 }
 
-/** All-caps tokens of three or more characters (LED, PVC, IP65, SAPH18440). */
+/**
+ * Shouted ENGLISH words in the catalogue — "PRODUCT CODE: SARF300" — which a
+ * translation may and should translate. Every other all-caps token is a mark,
+ * brand, standard or code that must survive. Taken from the 89 all-caps tokens
+ * actually in the content (2026-10-06); a new shouted word added later will be
+ * rejected until listed here, which errs on the safe side.
+ */
+const SHOUTED_WORDS = new Set([
+  "PRODUCT", "CODE", "FREE", "VERSION", "THE", "LIGHTS", "TRANSFORMER",
+  "CONNECTION", "OPTIONS", "AIR", "FLOW", "AIRFLOW", "SET", "AND", "FOR", "WITH",
+]);
+
+/** All-caps tokens of three or more characters (LED, PVC, IP65, SAPH18440, CYCLONE). */
 function acronyms(s: string): string[] {
-  return (s.match(/\b[A-Z][A-Z0-9]{2,}\b/g) ?? []).filter((t) => /[A-Z].*[A-Z]/.test(t));
+  return (s.match(/\b[A-Z][A-Z0-9]{2,}\b/g) ?? []).filter((t) => /[A-Z].*[A-Z]/.test(t) && !SHOUTED_WORDS.has(t));
 }
 
 function tagSequence(html: string): string {
