@@ -1,13 +1,13 @@
 <div class="atq-wrapper">
-  <div class="atq-error-msg" id="atq-error" role="alert" aria-live="polite" style="display:none;">
+  <div class="atq-error-msg" id="atq-error" role="alert" aria-live="polite" style="display:none;" data-qi18n="chooseAll">
     Please select all options before adding to your quote.
   </div>
 
   <div class="atq-row">
     <div class="atq-qty">
-      <button type="button" class="atq-qty-dec" aria-label="Decrease quantity">&minus;</button>
-      <input type="number" class="atq-qty-input" id="atq-qty" min="1" value="1" aria-label="Quantity">
-      <button type="button" class="atq-qty-inc" aria-label="Increase quantity">+</button>
+      <button type="button" class="atq-qty-dec" aria-label="Decrease quantity" data-qi18n-aria="dec">&minus;</button>
+      <input type="number" class="atq-qty-input" id="atq-qty" min="1" value="1" aria-label="Quantity" data-qi18n-aria="qty">
+      <button type="button" class="atq-qty-inc" aria-label="Increase quantity" data-qi18n-aria="inc">+</button>
     </div>
 
     <button class="atq-btn" id="atq-btn" type="button">{{buttonText}}</button>

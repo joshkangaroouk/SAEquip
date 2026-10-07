@@ -14,16 +14,16 @@
   </button>
 
   <div class="qc-overlay">
-    <div class="qc-modal" role="dialog" aria-modal="true" aria-label="Quote list">
-      <button class="qc-close" type="button" aria-label="Close">&times;</button>
+    <div class="qc-modal" role="dialog" aria-modal="true" aria-label="Quote list" data-qi18n-aria="dialog">
+      <button class="qc-close" type="button" aria-label="Close" data-qi18n-aria="close">&times;</button>
 
-      <div class="qc-eyebrow">Your equipment enquiry</div>
-      <h2 class="qc-title">Quote List <span class="qc-num">0</span></h2>
+      <div class="qc-eyebrow" data-qi18n="eyebrow">Your equipment enquiry</div>
+      <h2 class="qc-title"><span data-qi18n="title">Quote List</span> <span class="qc-num">0</span></h2>
 
       <div class="qc-panel">
         <div class="qc-empty">
-          No products added yet.
-          <button class="qc-continue" type="button">Continue browsing</button>
+          <span data-qi18n="empty">No products added yet.</span>
+          <button class="qc-continue" type="button" data-qi18n="continue">Continue browsing</button>
         </div>
         <div class="qc-items"></div>
       </div>
@@ -34,7 +34,7 @@
         {{/custom_button}}
         {{/custom_link}}
       </div>
-      <button class="qc-clear" type="button">Clear all</button>
+      <button class="qc-clear" type="button" data-qi18n="clear">Clear all</button>
     </div>
   </div>
 </div>

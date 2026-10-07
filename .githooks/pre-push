@@ -28,4 +28,11 @@ if ! npm run --silent widget:test --workspace=backend > /dev/null 2>&1; then
   echo "✗ widget tests failed — push stopped"
   exit 1
 fi
+echo "pre-push ▸ quote widgets (pasted into Duda)"
+node scripts/build-quote-widgets.mjs --check
+if ! npm run --silent quote-widgets:test --workspace=backend > /dev/null 2>&1; then
+  npm run --silent quote-widgets:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30
+  echo "✗ quote widget tests failed — push stopped"
+  exit 1
+fi
 echo "✓ pre-push checks passed"

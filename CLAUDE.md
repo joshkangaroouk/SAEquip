@@ -817,6 +817,9 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
 - **Not covered by translate-on-save:** logo text edited on the Logos page. Use "Translate
   missing".
 
+**The quote widgets** (Add to Quote, the basket header, the Basket Page) are translated too,
+since 2026-10-07: see "The quote widgets in every language" under Quote Requests.
+
 **What a translated page shows today:**
 - Interface text, and Duda's product names and category titles, in the page's language.
 - Descriptions, specs, benefits, applications and logo text, from the phase 3 import and from
@@ -906,7 +909,7 @@ Each product may have one interactive `.glb` 3D model, uploaded per-product on t
 
 ## Quote Requests / basket flow (separate from product-content widgets)
 
-SAEquip has **no native pricing/checkout** for these products — instead there's a custom "request a quote" flow, built as **three separate Duda Widget Builder custom widgets** (edited directly in Duda's Widget Builder UI, NOT in this repo):
+SAEquip has **no native pricing/checkout** for these products — instead there's a custom "request a quote" flow, built as **three separate Duda Widget Builder custom widgets**. They run as self-contained code PASTED into Duda's Widget Builder (deliberately not moved into `widget.js`; the decision stands, see Languages below). Their source is in this repo: `duda-widgets/{add-to-quote,quote-header,basket-page}/` plus `duda-widgets/quote-shared.js`. `node scripts/build-quote-widgets.mjs` copies the shared block into all three and regenerates `3-widgets-in-duda.md`, the file to paste from. ⚠️ Never edit that file by hand; the pre-push hook fails if it is stale (`--check`). `npm run quote-widgets:test --workspace=backend` runs the real widget code in jsdom, wrapped as Duda wraps it.
 - **"SAEquip - Add to Quote"** — per-product button, reads selected variation options + product SSR data off the page, writes to a shared client-side store (`window.SAEquipQuote`, localStorage-backed).
 - **"SAEquip - Quote Basket Header"** — site-header count + hover mini-cart, reads the same store.
 - **"SAEquip - Basket Page"** — full basket list + the quote request form. On submit, POSTs JSON to this backend's `POST /public/quotes` (replaced the old `quote-mailer.php` on a separate PHP/Plesk host — same request/response contract `{ok:true}`/`{ok:false,error}` so the widget JS didn't need a rewrite, just its `ENDPOINT` constant updated). On success it clears the basket and shows an **in-page thank-you** with "Retrieve Basket" (restores the submitted items) and "Back to Home". (This line used to say it redirected to a Thank You page; the widget code — copied into `3-widgets-in-duda.md` — shows otherwise.)
@@ -916,6 +919,54 @@ SAEquip has **no native pricing/checkout** for these products — instead there'
 **Each basket line is matched to its catalogue product** (`services/quoteProducts.ts`) for a picture and a link to the product editor on `/quotes`. The widget sends only name and SKU, so the match is by NAME (Duda refuses duplicate titles, case-insensitively) with SKU only as a fallback when exactly one product carries it — 4 SKUs are shared. The product id and thumbnail are SNAPSHOTTED onto `QuoteRequestItem` when the quote arrives, with no foreign key, so a quote keeps its picture after a rename or delete; quotes from before that are matched when shown. A failed lookup never costs the customer the quote. There is no price column: SAEquip quotes prices, so the basket never carries one.
 
 ⚠️ **A dashboard tab left open across a deploy keeps running the OLD code** until it is refreshed — the new quote fields "not showing" on 2026-10-02 was exactly that (they were stored correctly).
+
+### The quote widgets in every language (2026-10-07)
+
+- **The basket lives in `localStorage`, which every language of the site shares.** That is
+  right: a visitor who switches to French keeps their basket. Session storage was never involved.
+- ⚠️ **The bug was what each line stored.** Lines stored the name and options as SHOWN
+  ("EX Heater", "Hire/Purchase: Hire") and the full page URL. Switching language kept the
+  English, linked to the English page, and adding the same product again in French made a
+  second line.
+- **Store v2 (`quote-shared.js`) adds Duda's ids to each line:** `dudaId`, `slug`, and
+  `choices` `{optionId: choiceId}`. Add to Quote reads them from the page's `productView`;
+  option and choice ids are identical in every language (measured).
+  - Lines with ids merge across languages.
+  - A v1 line (no ids) still shows as saved, and is resolved by the slug in its saved URL
+    where possible.
+  - ⚠️ v2 REPLACES a v1 store already on the page, because each widget carries its own copy
+    and whichever runs first defines `window.SAEquipQuote`. Paste all three widgets in one go.
+- **`GET /public/quote-labels?lang=xx`** returns every LISTABLE product's name and slug, plus
+  every option and choice name, in that language (Duda's own translations, falling back to
+  English). It is a pure Hub read, edge-cached, ~10KB. The header and basket page re-render
+  with it once it arrives, and it is cached for 10 minutes in `sessionStorage`. Any failure
+  shows lines as saved.
+- **Option names come from the Duda copy** (`i18n:sync-duda`), stored as `DudaTranslation`
+  entity `OPTION`/`CHOICE`.
+  - The translated names are read from each language page's `productView`.
+  - The English come from Duda's options API and are stored under locale `"en"`. The basket
+    page is not a product page, so it has nothing else to read them from.
+- **Quotes reach staff in English.** `POST /public/quotes` accepts `items[].dudaId`,
+  `items[].choices` and a top-level `locale`, all `.catch(undefined)`: a malformed value is
+  DROPPED, never a 400, so the old widgets keep working.
+  - A line named by id is stored with the product's English name, and its options in English
+    when every id resolves.
+  - `QuoteRequest.locale` records the page language and shows on `/quotes` and in its CSV.
+  - The matcher (`quoteProductMatcher()`) tries the id first.
+- **Text:**
+  - ⚠️ **Duda already translates the widgets' CONTENT-PANEL fields:** the Add to Quote
+    button, the header label and "View Quote Basket" (measured on fr/de/ar/es/pt-br/zh). Only
+    text written into the widgets' code needed us; it is marked `data-qi18n` (or `-aria`,
+    `-ph`) and translated by `SAEquipQuoteI18n.apply()`.
+  - English pages are byte-for-byte as before.
+  - "Quote List" uses Duda's own wording per language, so the header's two copies agree.
+- **What is sent stays English in every language.**
+  - "When do you need this equipment?" options have explicit English `value`s.
+  - Countries carry their ISO code: the visible name comes from `Intl.DisplayNames` and is
+    sorted with `Intl.Collator`, while the value is still WooCommerce's English name.
+- ⚠️ **Duda's link fields do NOT add the language:** "View Quote Basket" on `/de/` pointed at
+  `/basket`. `apply()` prefixes every `a[href^="/"]` inside the widgets, using the same
+  "first segment must match the page's language" rule as `widget.js`'s `sitePrefix()`.
 
 ⚠️ **The `/quotes` CSV export guards against formula injection** — every cell is typed by the public, and a "name" of `=HYPERLINK(…)` would have run when staff opened the file. It had no guard until 2026-10-02 (the products export did).
 
@@ -1256,7 +1307,8 @@ whole API and the live widget down for ~3 minutes.
    `routes/duda.ts → services/descriptionHtml.ts → sanitize-html`.
 2. **Before every push** — `.githooks/pre-push`: the bundle check, `tsc` for both workspaces
    (Vercel's build typechecks neither), `scripts/check-doc-refs.mjs` (every function this file
-   names as `name()` must still exist in the code), and `widget:test`. ~12s. Enabled per clone with
+   names as `name()` must still exist in the code), `widget:test`, `i18n:test`, and the quote
+   widgets (`build-quote-widgets.mjs --check` plus `quote-widgets:test`). ~12s. Enabled per clone with
    `git config core.hooksPath .githooks`; run on demand with `npm run check`; skip once,
    deliberately, with `git push --no-verify`.
 3. **After every deploy** — `.github/workflows/post-deploy-smoke.yml` waits until
