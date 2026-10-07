@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { isPassThrough, normaliseSource, sourceHash } from "../src/services/i18n/normalise.js";
 import { validateTranslation } from "../src/services/i18n/validate.js";
 import { normaliseLocale } from "../src/services/i18n/locales.js";
-import { categoriesFromHtml, categoryNameFromHtml, cleanText, parseJsonLd, productNameFromHtml, titleFromHtml } from "../src/services/i18n/dudaHarvest.js";
+import { categoriesFromHtml, categoryNameFromHtml, cleanText, parseJsonLd, productNameFromHtml, productViewFromHtml, titleFromHtml } from "../src/services/i18n/dudaHarvest.js";
 import { parseLang, productName, tr, categoryTitle, type Tables } from "../src/services/i18n/overlay.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -68,6 +68,17 @@ check(categoryNameFromHtml(cat) === "الإضاءة والطاقة", "a category
 const frCat = '<title>SEO title</title><script type="application/ld+json">{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":2,"item":{"name":"Produits"}},{"@type":"ListItem","position":1,"item":{"name":"Accueil","id":"/fr"}}]}</script>';
 check(categoryNameFromHtml(frCat) === "Produits", "…taken by position, not array order", String(categoryNameFromHtml(frCat)));
 check(categoryNameFromHtml("<title>Produits | SAEquip</title>") === "Produits", "…and falls back to the <title> without breadcrumbs");
+// The quote basket's option names come from the page's productView
+// (captured from the live French EX Heater page, 2026-10-07).
+const pv = productViewFromHtml(readFileSync(path.join(HERE, "fixtures/fr-product-ex-heater-productview.txt"), "utf8"));
+check(pv?.identifier === "01M1XRCFGGHYEJ0QGGXCJ3582N", "productView: the product's Duda id", String(pv?.identifier));
+check(
+  pv?.options.length === 1 && pv.options[0].id === "01KW9TRW04JDNAQXD6P8QKX15T" && pv.options[0].name === "Location-vente" &&
+    pv.options[0].choices.map((c) => c.value).join() === "Location,Acheter",
+  "productView: the option and its two choices, by id, in the page's language", JSON.stringify(pv?.options),
+);
+check(productViewFromHtml('x "productView": {"identifier":"a","note":"a } brace","options":[]} y')?.identifier === "a", "productView: a brace inside a string does not end the object");
+check(productViewFromHtml("no data here") === null && productViewFromHtml('"productView": {broken') === null, "productView: absent or broken gives null");
 check(parseJsonLd('<script type="application/ld+json">{broken</script><script type="application/ld+json">{"@type":"Product","name":"X"}</script>').length === 1,
   "a broken JSON-LD block does not hide the next one");
 check(cleanText("<b>x</b>") === "x" && cleanText("a".repeat(301)) === null && cleanText("") === null && cleanText(3) === null, "harvested text is plain, short and non-empty");

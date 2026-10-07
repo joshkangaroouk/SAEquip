@@ -18,9 +18,20 @@ import { prisma } from "../prisma.js";
 export interface MatchedProduct {
   dudaProductId: string;
   imageUrl: string | null;
+  /** The product's ENGLISH name, for staff. */
+  name: string | null;
+  /** True when the basket named the product by its Duda id — an exact match. */
+  byId: boolean;
 }
 
-export async function quoteProductMatcher(): Promise<(name: string, sku: string | null) => MatchedProduct | null> {
+/**
+ * A matcher for basket lines. `dudaId` (sent by the basket widgets since
+ * 2026-10-07) is an exact match and wins; name, then SKU, are for baskets
+ * filled before the widgets sent it, and for widgets not yet updated.
+ */
+export async function quoteProductMatcher(): Promise<
+  (name: string, sku: string | null, dudaId?: string | null) => MatchedProduct | null
+> {
   const [products, translated] = await Promise.all([
     prisma.hubProduct.findMany({
       select: { dudaProductId: true, name: true, sku: true, thumbnailUrl: true },
@@ -51,8 +62,10 @@ export async function quoteProductMatcher(): Promise<(name: string, sku: string 
     const k = key(p.sku);
     (bySku.get(k) ?? bySku.set(k, []).get(k)!).push(p);
   }
-  return (name, sku) => {
-    const hit = (name && byName.get(key(name))) || (sku && bySku.get(key(sku))?.length === 1 ? bySku.get(key(sku))![0] : undefined);
-    return hit ? { dudaProductId: hit.dudaProductId, imageUrl: hit.thumbnailUrl } : null;
+  return (name, sku, dudaId) => {
+    const exact = dudaId ? byId.get(dudaId) : undefined;
+    const hit =
+      exact || (name && byName.get(key(name))) || (sku && bySku.get(key(sku))?.length === 1 ? bySku.get(key(sku))![0] : undefined);
+    return hit ? { dudaProductId: hit.dudaProductId, imageUrl: hit.thumbnailUrl, name: hit.name, byId: !!exact } : null;
   };
 }

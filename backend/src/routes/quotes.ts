@@ -36,6 +36,7 @@ function shapeQuote(q: QuoteWithItems, match: Matcher) {
     address: q.address,
     country: q.country,
     postcode: q.postcode,
+    locale: q.locale,
     createdAt: q.createdAt,
     emailSent: q.emailSent,
     items: q.items.map((item) => ({

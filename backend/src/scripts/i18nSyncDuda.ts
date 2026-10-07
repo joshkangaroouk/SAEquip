@@ -35,6 +35,7 @@ async function main() {
     const r = await harvestDuda(lang, { confirm, only: arg("--only") });
     console.log(`  products:   ${r.products.found}/${r.products.total} names found, ${r.products.translated} translated in Duda (the rest are still English there)`);
     if (!arg("--only")) console.log(`  categories: ${r.categories.found}/${r.categories.total} titles found, ${r.categories.translated} translated in Duda`);
+    console.log(`  options:    ${r.options.found} option and choice names found, ${r.options.translated} translated in Duda${r.options.error ? ` — ✗ ${r.options.error}` : ""}`);
     for (const s of r.samples) console.log(`    e.g. ${s}`);
     for (const f of [...r.products.failed, ...r.categories.failed].slice(0, 10)) console.log(`  ✗ ${f}`);
     console.log(confirm ? `  wrote ${r.written} translation(s)` : "  dry run — re-run with --confirm to write");

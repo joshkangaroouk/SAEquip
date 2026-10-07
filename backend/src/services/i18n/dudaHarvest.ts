@@ -130,6 +130,59 @@ async function pool<T>(items: T[], n: number, fn: (item: T) => Promise<void>) {
 }
 
 /** The site's translated languages: our locale and Duda's code (its URL prefix). */
+export interface PageOption {
+  id: string;
+  name: string;
+  choices: { id: string; value: string }[];
+}
+
+/**
+ * A product page's own data block (`"productView": {…}` in Duda's server
+ * render): its id and its options in the PAGE's language, with ids that are the
+ * same in every language (measured 2026-10-06: English "Hire/Purchase" and
+ * French "Location-vente" share option id 01KW9TRW04…). Null when absent or
+ * unparsable. Import-free: the brace matching skips braces inside strings.
+ */
+export function productViewFromHtml(html: string): { identifier: string | null; options: PageOption[] } | null {
+  const marker = html.indexOf('"productView":');
+  if (marker === -1) return null;
+  const start = html.indexOf("{", marker);
+  if (start === -1) return null;
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = start; i < html.length; i++) {
+    const c = html[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) {
+      try {
+        const v = JSON.parse(html.slice(start, i + 1)) as {
+          identifier?: unknown;
+          options?: Array<{ id?: unknown; name?: unknown; opt_choices?: Array<{ id?: unknown; value?: unknown }> }>;
+        };
+        const options: PageOption[] = [];
+        for (const o of Array.isArray(v.options) ? v.options : []) {
+          const name = cleanText(o?.name);
+          if (typeof o?.id !== "string" || !name) continue;
+          const choices = (Array.isArray(o.opt_choices) ? o.opt_choices : [])
+            .map((ch) => ({ id: ch?.id, value: cleanText(ch?.value) }))
+            .filter((ch): ch is { id: string; value: string } => typeof ch.id === "string" && !!ch.value);
+          options.push({ id: o.id, name, choices });
+        }
+        return { identifier: typeof v.identifier === "string" ? v.identifier : null, options };
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
 export async function siteLanguages(): Promise<{ locale: Locale; code: string }[]> {
   const { additional } = await duda.getSiteLanguages();
   const out: { locale: Locale; code: string }[] = [];
@@ -146,6 +199,8 @@ export interface HarvestReport {
   /** found: a name was read; translated: it differs from the English. */
   products: { total: number; found: number; translated: number; failed: string[] };
   categories: { total: number; found: number; translated: number; failed: string[] };
+  /** Product options and their choices ("Hire/Purchase" → "Hire", "Purchase"), for the quote basket. */
+  options: { found: number; translated: number; error?: string };
   samples: string[];
   written: number;
 }
@@ -171,11 +226,30 @@ export async function harvestDuda(
     code: lang.code,
     products: { total: products.length, found: 0, translated: 0, failed: [] },
     categories: { total: opts.only ? 0 : cats.length, found: 0, translated: 0, failed: [] },
+    options: { found: 0, translated: 0 },
     samples: [],
     written: 0,
   };
   const productNames = new Map<string, { text: string; en: string }>();
   const catNames = new Map<string, { text: string; en: string }>();
+  // Options are store-level in Duda, so one English list covers every product.
+  // ⚠️ Without it there is nothing to compare against, so options are skipped
+  // for this run rather than stored without their English.
+  const englishOptions = await duda.listOptions().then(
+    (l) => l.results ?? [],
+    (e: unknown) => {
+      report.options.error = `Duda options list: ${e instanceof Error ? e.message : e}`;
+      return null;
+    },
+  );
+  const optionEn = new Map<string, string>();
+  const choiceEn = new Map<string, string>();
+  for (const o of englishOptions ?? []) {
+    optionEn.set(o.id, o.name);
+    for (const ch of o.choices ?? []) choiceEn.set(ch.id, ch.value);
+  }
+  const optionNames = new Map<string, { text: string; en: string }>();
+  const choiceNames = new Map<string, { text: string; en: string }>();
 
   // Category pages first: a category's own page is the authority for its
   // name (see categoryNameFromHtml). Product breadcrumbs only fill a gap.
@@ -196,6 +270,10 @@ export async function harvestDuda(
       const name = productNameFromHtml(html);
       if (name) productNames.set(p.dudaProductId, { text: name, en: p.name ?? "" });
       else report.products.failed.push(`${p.slug}: no Product name in the page`);
+      for (const o of productViewFromHtml(html)?.options ?? []) {
+        if (optionEn.has(o.id)) optionNames.set(o.id, { text: o.name, en: optionEn.get(o.id)! });
+        for (const ch of o.choices) if (choiceEn.has(ch.id)) choiceNames.set(ch.id, { text: ch.value, en: choiceEn.get(ch.id)! });
+      }
       for (const [slug, title] of categoriesFromHtml(html)) {
         const c = catBySlug.get(slug.toLowerCase());
         if (c && !catNames.has(c.dudaCategoryId)) catNames.set(c.dudaCategoryId, { text: title, en: c.title });
@@ -220,12 +298,34 @@ export async function harvestDuda(
   report.categories.translated = [...catNames.values()].filter(differs).length;
   for (const [, v] of [...productNames].filter(([, v]) => differs(v)).slice(0, 3)) report.samples.push(`${v.en} → ${v.text}`);
   for (const [, v] of [...catNames].filter(([, v]) => differs(v)).slice(0, 2)) report.samples.push(`${v.en} → ${v.text}`);
+  report.options.found = optionNames.size + choiceNames.size;
+  report.options.translated = [...optionNames.values(), ...choiceNames.values()].filter(differs).length;
 
   if (opts.confirm) {
     const rows = [
       ...[...productNames].map(([dudaId, v]) => ({ entity: "PRODUCT", dudaId, ...v })),
       ...[...catNames].map(([dudaId, v]) => ({ entity: "CATEGORY", dudaId, ...v })),
+      ...[...optionNames].map(([dudaId, v]) => ({ entity: "OPTION", dudaId, ...v })),
+      ...[...choiceNames].map(([dudaId, v]) => ({ entity: "CHOICE", dudaId, ...v })),
     ];
+    // ⚠️ The ENGLISH option names, stored under locale "en". The basket page
+    // is not a product page, so it has no productView to read them from, and
+    // an item added on /fr/ must still read "Hire" on the English site — and
+    // in the quote staff receive. Nothing else reads "en" rows.
+    for (const [id, name] of optionEn) {
+      await prisma.dudaTranslation.upsert({
+        where: { locale_entity_dudaId: { locale: "en", entity: "OPTION", dudaId: id } },
+        create: { locale: "en", entity: "OPTION", dudaId: id, text: name, sourceText: name },
+        update: { text: name, sourceText: name },
+      });
+    }
+    for (const [id, value] of choiceEn) {
+      await prisma.dudaTranslation.upsert({
+        where: { locale_entity_dudaId: { locale: "en", entity: "CHOICE", dudaId: id } },
+        create: { locale: "en", entity: "CHOICE", dudaId: id, text: value, sourceText: value },
+        update: { text: value, sourceText: value },
+      });
+    }
     for (const r of rows) {
       const where = { locale_entity_dudaId: { locale: lang.locale, entity: r.entity, dudaId: r.dudaId } };
       if (!differs(r)) {

@@ -4,6 +4,7 @@ import { apiFetch } from "../lib/api";
 import { Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState, Badge } from "../components/ui";
 import type { ResourceRequest, ResourceRequestsResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
+import { languageName } from "../lib/language";
 import { ProductThumb } from "../components/ProductThumb";
 
 function formatDate(iso: string): string {
@@ -16,15 +17,6 @@ function formatDate(iso: string): string {
   });
 }
 
-/** "Arabic" for "ar", "Brazilian Portuguese" for "pt-br"; the code itself if the browser can't name it. */
-function languageName(code: string | null): string {
-  if (!code) return "English";
-  try {
-    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code;
-  } catch {
-    return code;
-  }
-}
 
 /** "EX Heater - UKEX Certificate", or whichever half is known. */
 function fileLabel(r: ResourceRequest): string {

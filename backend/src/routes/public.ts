@@ -14,7 +14,7 @@ import { LISTABLE, LISTED_DOWNLOAD, PUBLIC_DOWNLOAD } from "../services/hubProdu
 import { categorySortKey, compareKeys } from "../services/categoryTree.js";
 import { quoteProductMatcher } from "../services/quoteProducts.js";
 import { CONSENT_TEXT, KIND_BUTTON, RESOURCE_TYPES, SCHEME_BUTTON, SCHEME_ORDER } from "../services/downloadKinds.js";
-import { LOCALES } from "../services/i18n/locales.js";
+import { LOCALES, normaliseLocale } from "../services/i18n/locales.js";
 import { categoryTitle, collator, parseLang, productName, tablesFor, tr } from "../services/i18n/overlay.js";
 
 /**
@@ -993,6 +993,58 @@ publicRouter.post("/downloads/:downloadId/lead", leadLimiter, leadHourlyLimiter,
 });
 
 /**
+ * GET /public/quote-labels?lang=fr — what the quote basket widgets (pasted into
+ * Duda; see 3-widgets-in-duda.md) need to show a basket in the page's language:
+ * every product's name and slug, and every option and choice name, by Duda id.
+ *
+ * ⚠️ The basket lives in the visitor's browser and is shared by every language
+ * of the site, so an item keeps IDS, and its text is looked up here for the
+ * page it is shown on — an item added on the English page then reads in French
+ * on /fr/. Names are Duda's own translations (DudaTranslation, copied by the
+ * Duda sync), falling back to the English, so they match Duda's product pages.
+ *
+ * HIDDEN products are left out, as from every listing: this is a public list,
+ * and a product created in the Hub starts hidden until it is ready. A basket
+ * line for one keeps the text it was added with.
+ *
+ * A pure Hub read, edge-cached like the catalogue.
+ */
+publicRouter.get("/quote-labels", contentLimiter, async (req, res, next) => {
+  try {
+    const lang = parseLang(req.query.lang); // null = English
+    const [products, tables, rows] = await Promise.all([
+      prisma.hubProduct.findMany({
+        where: { slug: { not: null }, ...LISTABLE },
+        select: { dudaProductId: true, name: true, slug: true },
+      }),
+      tablesFor(lang),
+      prisma.dudaTranslation.findMany({
+        where: { entity: { in: ["OPTION", "CHOICE"] }, locale: { in: lang ? ["en", lang] : ["en"] } },
+        select: { locale: true, entity: true, dudaId: true, text: true },
+      }),
+    ]);
+    const options: Record<string, string> = {};
+    const choices: Record<string, string> = {};
+    // English first, then the page's language over it: a name Duda has not
+    // translated stays English, exactly as Duda's own page shows it.
+    for (const pass of ["en", lang]) {
+      for (const r of rows) if (r.locale === pass) (r.entity === "OPTION" ? options : choices)[r.dudaId] = r.text;
+    }
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
+    res.json({
+      lang: lang ?? "en",
+      products: Object.fromEntries(
+        products.map((p) => [p.dudaProductId, { name: productName(tables, p.dudaProductId, p.name ?? ""), slug: p.slug }]),
+      ),
+      options,
+      choices,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * A basket line's selected variation options, e.g. `{ Voltage: "240V" }`.
  *
  * ⚠️ Was `z.any()`, which accepted anything at all — a deeply nested or
@@ -1012,6 +1064,18 @@ const quoteItemSchema = z.object({
   options: quoteOptionsSchema.optional(),
   price: z.string().trim().max(100).optional(),
   quantity: z.coerce.number().int().positive().max(100_000).optional(),
+  /*
+   * Since 2026-10-07 the basket keeps Duda's ids (see /public/quote-labels):
+   * the product's, and each chosen option's choice. ⚠️ `.catch(undefined)`:
+   * a malformed id is DROPPED, never a 400 — a quote must not be lost over a
+   * field the old widgets never sent.
+   */
+  dudaId: z.string().trim().min(1).max(64).optional().catch(undefined),
+  choices: z
+    .record(z.string().max(64), z.string().max(64))
+    .refine((o) => Object.keys(o).length <= 40)
+    .optional()
+    .catch(undefined),
 });
 
 
@@ -1044,6 +1108,8 @@ const quoteSchema = z
     postcode: headerSafe(20).optional(),
     message: z.string().trim().max(5000).optional(),
     items: z.array(quoteItemSchema).min(1, "at least one item is required").max(100, "too many items"),
+    /** The page's language, so staff know which language to reply in. Anything unknown is dropped. */
+    locale: z.string().max(20).optional().catch(undefined),
   })
   .superRefine((q, ctx) => {
     const need = (ok: unknown, message: string) => {
@@ -1092,6 +1158,7 @@ publicRouter.post("/quotes", quoteLimiter, quoteHourlyLimiter, async (req, res) 
     }
     const { name, firstName, lastName, email, company, phone, requiredBy, address, country, postcode, message, items } =
       parsed.data;
+    const locale = normaliseLocale(parsed.data.locale);
     // `name` is still written for every request — "First Last" from the
     // current form — so older readers of the column keep working.
     const fullName = firstName || lastName ? `${firstName ?? ""} ${lastName ?? ""}`.trim() : (name ?? "");
@@ -1099,6 +1166,20 @@ publicRouter.post("/quotes", quoteLimiter, quoteHourlyLimiter, async (req, res) 
     // Each line's product and picture, snapshotted now — see services/quoteProducts.ts.
     // Best effort: a lookup failure must never cost the customer their quote.
     const match = await quoteProductMatcher().catch(() => () => null);
+    // English option names, so a quote filled in on /fr/ reads "Hire" to staff.
+    const englishLabels = items.some((i) => i.choices)
+      ? await prisma.dudaTranslation
+          .findMany({ where: { locale: "en", entity: { in: ["OPTION", "CHOICE"] } }, select: { entity: true, dudaId: true, text: true } })
+          .catch(() => [])
+      : [];
+    const optionEn = new Map(englishLabels.filter((r) => r.entity === "OPTION").map((r) => [r.dudaId, r.text]));
+    const choiceEn = new Map(englishLabels.filter((r) => r.entity === "CHOICE").map((r) => [r.dudaId, r.text]));
+    /** Every chosen option in English — or, if any id is unknown, the options exactly as the visitor saw them. */
+    const optionsInEnglish = (item: (typeof items)[number]) => {
+      const pairs = Object.entries(item.choices ?? {});
+      if (!pairs.length || pairs.some(([o, c]) => !optionEn.has(o) || !choiceEn.has(c))) return item.options;
+      return Object.fromEntries(pairs.map(([o, c]) => [optionEn.get(o)!, choiceEn.get(c)!]));
+    };
 
     const created = await prisma.quoteRequest.create({
       data: {
@@ -1113,13 +1194,16 @@ publicRouter.post("/quotes", quoteLimiter, quoteHourlyLimiter, async (req, res) 
         country: country || null,
         postcode: postcode || null,
         message: message || null,
+        locale,
         items: {
           create: items.map((item) => {
-            const product = match(item.name, item.sku || null);
+            const product = match(item.name, item.sku || null, item.dudaId);
             return {
-              name: item.name,
+              // The English name when the widget named the product by id, so
+              // staff read English whatever language the customer browsed in.
+              name: (product?.byId && product.name) || item.name,
               sku: item.sku || null,
-              options: item.options ?? undefined,
+              options: optionsInEnglish(item) ?? undefined,
               price: item.price || null,
               quantity: item.quantity ?? 1,
               dudaProductId: product?.dudaProductId ?? null,

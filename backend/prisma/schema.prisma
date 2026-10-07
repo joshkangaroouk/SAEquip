@@ -376,6 +376,10 @@ model QuoteRequest {
   address    String?
   country    String?
   postcode   String?
+  /// The page's language when the quote was sent ("en", "fr"…), so staff know
+  /// which language to reply in. Null for quotes from before 2026-10-07, or
+  /// from a basket widget not yet updated.
+  locale     String?
   createdAt DateTime           @default(now())
   emailSent Boolean            @default(false)
   items     QuoteRequestItem[]
@@ -540,7 +544,8 @@ model Translation {
 /// they are edited in Duda → Store Languages.
 model DudaTranslation {
   locale     String
-  /// "PRODUCT" | "CATEGORY"
+  /// "PRODUCT" | "CATEGORY" | "OPTION" | "CHOICE". OPTION/CHOICE also have
+  /// locale "en" rows: the English option names, for the quote basket.
   entity     String
   dudaId     String
   text       String

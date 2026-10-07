@@ -1,0 +1,15 @@
+<div class="atq-wrapper">
+  <div class="atq-error-msg" id="atq-error" role="alert" aria-live="polite" style="display:none;">
+    Please select all options before adding to your quote.
+  </div>
+
+  <div class="atq-row">
+    <div class="atq-qty">
+      <button type="button" class="atq-qty-dec" aria-label="Decrease quantity">&minus;</button>
+      <input type="number" class="atq-qty-input" id="atq-qty" min="1" value="1" aria-label="Quantity">
+      <button type="button" class="atq-qty-inc" aria-label="Increase quantity">+</button>
+    </div>
+
+    <button class="atq-btn" id="atq-btn" type="button">{{buttonText}}</button>
+  </div>
+</div>

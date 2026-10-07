@@ -148,6 +148,17 @@ await check("translated payloads (?lang=ar)", async () => {
   return `${translated}/${j.products.length} product names in Arabic; English unchanged`;
 });
 
+await check("quote basket labels (?lang=fr)", async () => {
+  // The quote widgets pasted into Duda show basket lines through this.
+  const r = await fetch(withBust(`${BASE}/public/quote-labels?lang=fr`), { headers: { Origin: SITE } });
+  expect(r.status === 200, `status ${r.status}`);
+  expect(r.headers.get("access-control-allow-origin") === SITE, `CORS header ${r.headers.get("access-control-allow-origin")}`);
+  const j = await r.json();
+  const n = Object.keys(j.products ?? {}).length;
+  expect(j.lang === "fr" && n > 0 && Object.values(j.products).every((p) => p.name && p.slug), `lang ${j.lang}, ${n} products`);
+  return `${n} products, ${Object.keys(j.options ?? {}).length} options, ${Object.keys(j.choices ?? {}).length} choices`;
+});
+
 await check("edge cache keys on Origin (Vary)", async () => {
   const r = await fetch(withBust(`${BASE}/public/catalogue`));
   expect(r.headers.get("vary")?.toLowerCase().includes("origin"), `Vary: ${r.headers.get("vary")} — a no-Origin copy could be served to the live site`);

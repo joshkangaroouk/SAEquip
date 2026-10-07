@@ -4,6 +4,7 @@ import { apiFetch } from "../lib/api";
 import { Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
+import { languageName } from "../lib/language";
 import { ProductThumb } from "../components/ProductThumb";
 
 function formatDate(iso: string): string {
@@ -23,7 +24,7 @@ function itemsSummary(quote: QuoteRequest): string {
 function exportQuotes(requests: QuoteRequest[]) {
   const header = [
     "Name", "First name", "Last name", "Company", "Email", "Telephone", "When needed",
-    "Address", "Postcode", "Country", "Message", "Date", "Items",
+    "Address", "Postcode", "Country", "Message", "Language", "Date", "Items",
   ];
   const rows = requests.map((q) => [
     q.name,
@@ -37,6 +38,7 @@ function exportQuotes(requests: QuoteRequest[]) {
     q.postcode ?? "",
     q.country ?? "",
     q.message ?? "",
+    q.locale ? languageName(q.locale) : "",
     formatDate(q.createdAt),
     itemsSummary(q),
   ]);
@@ -81,6 +83,9 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
         <Detail label="When needed">{quote.requiredBy}</Detail>
         <Detail label="Address">{address}</Detail>
         <Detail label="Submitted">{formatDate(quote.createdAt)}</Detail>
+        {/* The page language the customer used, so a reply can be in it.
+            Unknown (—) for quotes from before 2026-10-07. */}
+        <Detail label="Language">{quote.locale ? languageName(quote.locale) : null}</Detail>
         <Detail label="Message" wide>
           {quote.message}
         </Detail>

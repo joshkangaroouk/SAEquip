@@ -280,6 +280,8 @@ export interface QuoteRequest {
   address: string | null;
   country: string | null;
   postcode: string | null;
+  /** The page's language when sent ("fr"…). Null on quotes from before 2026-10-07. */
+  locale: string | null;
   createdAt: string;
   emailSent: boolean;
   items: QuoteRequestItem[];

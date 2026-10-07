@@ -39,7 +39,11 @@ async function load(locale: Locale): Promise<Tables | null> {
   try {
     const [rows, duda] = await Promise.all([
       prisma.translation.findMany({ where: { locale, text: { not: null } }, select: { kind: true, sourceHash: true, text: true } }),
-      prisma.dudaTranslation.findMany({ where: { locale }, select: { entity: true, dudaId: true, text: true } }),
+      // Options and choices live here too, for the quote basket (see quoteLabels).
+      prisma.dudaTranslation.findMany({
+        where: { locale, entity: { in: ["PRODUCT", "CATEGORY"] } },
+        select: { entity: true, dudaId: true, text: true },
+      }),
     ]);
     const tables: Tables = { locale, text: new Map(), product: new Map(), category: new Map() };
     for (const r of rows) tables.text.set(`${r.kind}:${r.sourceHash}`, r.text!);

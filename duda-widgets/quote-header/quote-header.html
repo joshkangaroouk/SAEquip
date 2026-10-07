@@ -1,0 +1,40 @@
+<style>
+  /* hold hidden until styled (prevents FOUC); main CSS reveals via .qc { visibility: visible !important } */
+  .qc { visibility: hidden; animation: qc-reveal 0.01s linear 2.5s forwards; }
+  @keyframes qc-reveal { to { visibility: visible; } }
+  .qc-icon svg { width: 1.2em; height: 1.2em; }
+  .qc-overlay { opacity: 0; visibility: hidden; }
+</style>
+
+<div class="qc">
+  <button class="qc-btn" type="button" aria-haspopup="dialog" aria-expanded="false">
+    <span class="qc-icon"><svg style="width:1.2em;height:1.2em" fill="currentColor" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 902.86 902.86" xml:space="preserve"><g><g><path d="M671.504,577.829l110.485-432.609H902.86v-68H729.174L703.128,179.2L0,178.697l74.753,399.129h596.751V577.829z M685.766,247.188l-67.077,262.64H131.199L81.928,246.756L685.766,247.188z"></path><path d="M578.418,825.641c59.961,0,108.743-48.783,108.743-108.744s-48.782-108.742-108.743-108.742H168.717c-59.961,0-108.744,48.781-108.744,108.742s48.782,108.744,108.744,108.744c59.962,0,108.743-48.783,108.743-108.744c0-14.4-2.821-28.152-7.927-40.742h208.069c-5.107,12.59-7.928,26.342-7.928,40.742C469.675,776.858,518.457,825.641,578.418,825.641z M209.46,716.897c0,22.467-18.277,40.744-40.743,40.744c-22.466,0-40.744-18.277-40.744-40.744c0-22.465,18.277-40.742,40.744-40.742C191.183,676.155,209.46,694.432,209.46,716.897z M619.162,716.897c0,22.467-18.277,40.744-40.743,40.744s-40.743-18.277-40.743-40.744c0-22.465,18.277-40.742,40.743-40.742S619.162,694.432,619.162,716.897z"></path></g></g></svg></span>
+    <span class="qc-label">{{labelText}}</span>
+    <span class="qc-count"><span class="qc-num">0</span></span>
+  </button>
+
+  <div class="qc-overlay">
+    <div class="qc-modal" role="dialog" aria-modal="true" aria-label="Quote list">
+      <button class="qc-close" type="button" aria-label="Close">&times;</button>
+
+      <div class="qc-eyebrow">Your equipment enquiry</div>
+      <h2 class="qc-title">Quote List <span class="qc-num">0</span></h2>
+
+      <div class="qc-panel">
+        <div class="qc-empty">
+          No products added yet.
+          <button class="qc-continue" type="button">Continue browsing</button>
+        </div>
+        <div class="qc-items"></div>
+      </div>
+
+      <div class="qc-view">
+        {{#custom_link quotePageLink}}
+        {{#custom_button viewBtnText class="qc-view-btn"}}
+        {{/custom_button}}
+        {{/custom_link}}
+      </div>
+      <button class="qc-clear" type="button">Clear all</button>
+    </div>
+  </div>
+</div>
