@@ -968,6 +968,41 @@ SAEquip has **no native pricing/checkout** for these products — instead there'
   `/basket`. `apply()` prefixes every `a[href^="/"]` inside the widgets, using the same
   "first segment must match the page's language" rule as `widget.js`'s `sitePrefix()`.
 
+### The Find a Distributor widget (`duda-widgets/find-a-distributor/`, 2026-10-09)
+
+A fourth widget pasted into Duda's Widget Builder, for `/find-a-distributor`: a region filter
+(a sidebar list, or a dropdown on tablets and phones), a search, and a card per distributor.
+The cards are read at runtime from the Duda **collection "Distributors"** (15 rows) through
+`dmAPI.loadCollectionsAPI()`, named by the Content field "Collection name". Paste its HTML, CSS
+and JS from the three files; `build-quote-widgets.mjs` copies `quote-shared.js` into its JS
+(for `SAEquipQuoteI18n`), and `npm run distributor-widget:test --workspace=backend` (24 tests,
+in pre-push) runs it in jsdom with the collections API behaving as measured.
+
+**Measured on the live site, all six languages:**
+- ⚠️ **Duda translates the "Collection name" Content field** like any other text:
+  `"Distributors"` became `"Distributeurs"`, `"Vertriebspartner"`, `"الموزعون"` and so on, and
+  the collections API answered "No collection for site alias…". So every translated page showed
+  **zero distributors.** The widget now falls back to `DEFAULT_COLLECTION` (`"Distributors"`)
+  when the configured name finds nothing. Verified on the live `/fr/` page with Duda's real API:
+  15 cards where the live widget showed 0.
+- ⚠️ **Duda does NOT translate collection rows.** Countries, regions and names come back in
+  English on every language page. So the widget translates them itself:
+  - regions from its `REGION` table;
+  - countries through `Intl.DisplayNames`, with a reverse map built from the browser's English
+    names plus `COUNTRY_ALIAS`;
+  - SA Equip's own offices ("SA Equip – Global Headquarters") from `HQ_NAME`.
+  Company names and addresses stay as entered. Filtering still uses the English value, and
+  search matches both languages.
+- The template's built-in English (used when a Content field is empty) is wrapped in
+  `data-qi18n` elements and translated by `SAEquipQuoteI18n.apply()`. A Content field the site
+  owner FILLS IN is left to Duda, which translates those itself.
+- The count line uses `Intl.PluralRules` (Arabic's six forms), and outside English it is built
+  as "N distributeurs · Région", because the English "in {region}" preposition does not
+  translate word for word.
+- Also fixed: with no "Collection name" set, the template's own `distributors` rows were never
+  initialised. `init()` set the guard flag and then called `initCore()`, which returned at once
+  because of it.
+
 ⚠️ **The `/quotes` CSV export guards against formula injection** — every cell is typed by the public, and a "name" of `=HYPERLINK(…)` would have run when staff opened the file. It had no guard until 2026-10-02 (the products export did).
 
 Backend side (`backend/src/routes/quotes.ts`, `backend/src/services/email.ts`): stores every submission (`QuoteRequest`/`QuoteRequestItem`) regardless of email config, so nothing is ever lost. Email notification via Resend is **fully optional** — `isEmailConfigured()` requires all three of `RESEND_API_KEY`, `QUOTE_NOTIFY_FROM`, `QUOTE_NOTIFY_TO`.
@@ -1307,8 +1342,9 @@ whole API and the live widget down for ~3 minutes.
    `routes/duda.ts → services/descriptionHtml.ts → sanitize-html`.
 2. **Before every push** — `.githooks/pre-push`: the bundle check, `tsc` for both workspaces
    (Vercel's build typechecks neither), `scripts/check-doc-refs.mjs` (every function this file
-   names as `name()` must still exist in the code), `widget:test`, `i18n:test`, and the quote
-   widgets (`build-quote-widgets.mjs --check` plus `quote-widgets:test`). ~12s. Enabled per clone with
+   names as `name()` must still exist in the code), `widget:test`, `i18n:test`, and the widgets
+   pasted into Duda (`build-quote-widgets.mjs --check`, `quote-widgets:test` and
+   `distributor-widget:test`). ~12s. Enabled per clone with
    `git config core.hooksPath .githooks`; run on demand with `npm run check`; skip once,
    deliberately, with `git push --no-verify`.
 3. **After every deploy** — `.github/workflows/post-deploy-smoke.yml` waits until

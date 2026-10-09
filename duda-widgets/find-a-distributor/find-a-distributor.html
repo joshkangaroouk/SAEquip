@@ -1,0 +1,226 @@
+{{!--
+  SA Equip — Find a Distributor widget
+  ------------------------------------
+  COLLECTION BINDING
+  A Content field named "Collection name" lets the site owner type the name of a
+  site collection to pull distributors from at runtime (loaded via JS). If left
+  blank, or no matching collection is found, the widget falls back to the
+  distributors added below via one widget Content field of type "Collection"
+  named: distributors
+  Map the collection fields to these names (they match the CSV headers):
+    name, country, continents, address, email, phone, phone_link,
+    website, website_label, image, image_alt, map_link, is_headquarters
+
+  Field types (limited by what Duda's CSV import accepts):
+    image, website, map_link ....... Link / Image  (stored as a plain URL string,
+                                     so {{this.image}} and {{this.website}} work
+                                     directly — no .src or .url needed)
+    everything else ................ Plain Text
+
+  Note: "image" is used as a small logo shown inside the card, to the left of
+  the location and company name — not as a large photo.
+
+  Note: email and phone are Plain Text on purpose. Duda's Email and Phone field
+  types cannot be filled by a CSV import, and the template builds the mailto:
+  and tel: hrefs itself anyway.
+
+  SIDEBAR / HQ BLOCK
+  These are plain widget Content fields (text / URL), not collection fields:
+    intro_heading, intro_text, no_distributor_text, search_placeholder,
+    hq_heading, hq_address, hq_map_link, hq_email, hq_phone, hq_phone_link,
+    hq_website, hq_website_label
+
+  LANGUAGES (2026-10-09)
+  Duda translates the Content fields above on every language page; it does
+  NOT translate the default wording written into this template, nor the
+  collection's rows. So each default sits in an element marked data-qi18n,
+  which the JS translates — and only when its Content field is empty, so a
+  field the site owner fills in is left to Duda. ⚠️ Edit this widget in the
+  repo (duda-widgets/find-a-distributor/) and paste it from there.
+--}}
+
+<div class="sae-dist" data-sae-distributors>
+
+  {{!-- ---------- icon sprite (single family, 24px, 1.75 stroke) ---------- --}}
+  <svg class="sae-dist__sprite" aria-hidden="true" focusable="false" width="0" height="0">
+    <defs>
+      <symbol id="sae-i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 10c0 5.25-8 12-8 12s-8-6.75-8-12a8 8 0 1 1 16 0Z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </symbol>
+      <symbol id="sae-i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"/>
+        <path d="m3.5 7 7.6 5.3a1.6 1.6 0 0 0 1.8 0L20.5 7"/>
+      </symbol>
+      <symbol id="sae-i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15.6 21a12.9 12.9 0 0 1-9.9-6.3A12.6 12.6 0 0 1 3 8.3 2.2 2.2 0 0 1 5.2 6h2a1.4 1.4 0 0 1 1.4 1.2l.5 2.5a1.4 1.4 0 0 1-.6 1.4l-1.1.8a11 11 0 0 0 4.7 4.7l.8-1.1a1.4 1.4 0 0 1 1.4-.6l2.5.5A1.4 1.4 0 0 1 18 16.8v2A2.2 2.2 0 0 1 15.6 21Z"/>
+      </symbol>
+      <symbol id="sae-i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M3.3 9h17.4M3.3 15h17.4"/>
+        <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18Z"/>
+      </symbol>
+      <symbol id="sae-i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/>
+        <path d="m20 20-3.7-3.7"/>
+      </symbol>
+      <symbol id="sae-i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 6 12 12M18 6 6 18"/>
+      </symbol>
+      <symbol id="sae-i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m9 5 7 7-7 7"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="sae-dist__layout">
+
+    {{!-- ================= SIDEBAR ================= --}}
+    <aside class="sae-dist__sidebar">
+
+      <div class="sae-dist__intro">
+        <h2 class="sae-dist__heading">{{#if intro_heading}}{{intro_heading}}{{else}}<span data-qi18n="introHeading">Find a distributor in your area</span>{{/if}}</h2>
+        <p class="sae-dist__intro-text">{{#if intro_text}}{{intro_text}}{{else}}<span data-qi18n="introText">Select your region from the list below to see the distributors in your area.</span>{{/if}}</p>
+      </div>
+
+      {{!-- desktop / tablet-up filter list, built by JS from the collection --}}
+      <nav class="sae-dist__filters" data-sae-filters aria-label="Filter distributors by region" data-qi18n-aria="filterAria"></nav>
+
+      <div class="sae-dist__hq">
+        <p class="sae-dist__hq-note">{{#if no_distributor_text}}{{no_distributor_text}}{{else}}<span data-qi18n="hqNote">If there is no distributor in your area, please contact us at SA Equip Global Headquarters.</span>{{/if}}</p>
+
+        <h3 class="sae-dist__hq-title">{{#if hq_heading}}{{hq_heading}}{{else}}<span data-qi18n="hqTitle">SA Equip &ndash; Global Headquarters</span>{{/if}}</h3>
+
+        <ul class="sae-dist__meta sae-dist__meta--hq">
+          <li class="sae-dist__meta-row">
+            <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-pin"></use></svg></span>
+            {{#if hq_map_link}}
+              <a class="sae-dist__meta-link" href="{{hq_map_link}}" target="_blank" rel="noopener">{{#if hq_address}}{{hq_address}}{{else}}10 Clifton View, East Mains Industrial Estate, Broxburn, EH52 5NE, United Kingdom{{/if}}</a>
+            {{else}}
+              <span class="sae-dist__meta-text">{{#if hq_address}}{{hq_address}}{{else}}10 Clifton View, East Mains Industrial Estate, Broxburn, EH52 5NE, United Kingdom{{/if}}</span>
+            {{/if}}
+          </li>
+          <li class="sae-dist__meta-row">
+            <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-mail"></use></svg></span>
+            <a class="sae-dist__meta-link" href="mailto:{{#if hq_email}}{{hq_email}}{{else}}info@saequip.com{{/if}}">{{#if hq_email}}{{hq_email}}{{else}}info@saequip.com{{/if}}</a>
+          </li>
+          <li class="sae-dist__meta-row">
+            <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-phone"></use></svg></span>
+            <a class="sae-dist__meta-link" href="tel:{{#if hq_phone_link}}{{hq_phone_link}}{{else}}+443332571851{{/if}}">{{#if hq_phone}}{{hq_phone}}{{else}}+44 (0)333 257 1851{{/if}}</a>
+          </li>
+          <li class="sae-dist__meta-row">
+            <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-globe"></use></svg></span>
+            <a class="sae-dist__meta-link" href="{{#if hq_website}}{{hq_website}}{{else}}https://saequip.com/{{/if}}" target="_blank" rel="noopener">{{#if hq_website_label}}{{hq_website_label}}{{else}}saequip.com{{/if}}</a>
+          </li>
+        </ul>
+      </div>
+
+    </aside>
+
+    {{!-- ================= MAIN ================= --}}
+    <div class="sae-dist__main">
+
+      <div class="sae-dist__toolbar">
+
+        {{!-- custom dropdown: tablet + mobile only, options injected by JS --}}
+        <div class="sae-dist__select" data-sae-select>
+          <button type="button" class="sae-dist__select-trigger" data-sae-select-trigger
+                  aria-haspopup="listbox" aria-expanded="false">
+            <span class="sae-dist__select-label" data-sae-select-label data-qi18n="allRegions">All regions</span>
+            <span class="sae-dist__select-caret"><svg aria-hidden="true" focusable="false"><use href="#sae-i-chevron"></use></svg></span>
+          </button>
+          <div class="sae-dist__select-panel" data-sae-select-panel>
+            <ul class="sae-dist__select-list" role="listbox" tabindex="-1" data-sae-select-list aria-label="Filter distributors by region" data-qi18n-aria="filterAria"></ul>
+          </div>
+        </div>
+
+        <div class="sae-dist__search">
+          <span class="sae-dist__search-icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-search"></use></svg></span>
+          <label class="sae-dist__sr" for="sae-dist-search" data-qi18n="searchLabel">Search distributors</label>
+          <input id="sae-dist-search" class="sae-dist__search-input" type="search" autocomplete="off"
+                 data-sae-search {{#if search_placeholder}}{{else}}data-qi18n-ph="searchPh"{{/if}}
+                 placeholder="{{#if search_placeholder}}{{search_placeholder}}{{else}}Search by country, city or company{{/if}}">
+          <button type="button" class="sae-dist__search-clear" data-sae-search-clear hidden>
+            <span class="sae-dist__sr" data-qi18n="clearSearch">Clear search</span>
+            <svg aria-hidden="true" focusable="false"><use href="#sae-i-close"></use></svg>
+          </button>
+        </div>
+
+      </div>
+
+      <p class="sae-dist__count" data-sae-count role="status" aria-live="polite"></p>
+
+      <div class="sae-dist__grid" data-sae-grid>
+
+        {{#each distributors}}
+        <article class="sae-dist__card"
+                 data-sae-card
+                 data-continents="{{this.continents}}"
+                 data-search="{{this.name}} {{this.country}} {{this.address}} {{this.continents}}">
+
+          <div class="sae-dist__body">
+            <div class="sae-dist__head">
+              <span class="sae-dist__logo">
+                {{#if this.image}}
+                  <img class="sae-dist__logo-img" src="{{this.image}}" alt="{{#if this.image_alt}}{{this.image_alt}}{{else}}{{this.name}} logo{{/if}}" loading="lazy" decoding="async">
+                {{else}}
+                  <span class="sae-dist__logo-fallback" aria-hidden="true"><svg focusable="false"><use href="#sae-i-pin"></use></svg></span>
+                {{/if}}
+              </span>
+              <div class="sae-dist__head-text">
+                <p class="sae-dist__country">{{this.country}}</p>
+                <h3 class="sae-dist__name">{{this.name}}</h3>
+              </div>
+            </div>
+
+            <ul class="sae-dist__meta sae-dist__meta--footer">
+              {{#if this.address}}
+              <li class="sae-dist__meta-row">
+                <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-pin"></use></svg></span>
+                {{#if this.map_link}}
+                  <a class="sae-dist__meta-link" href="{{this.map_link}}" target="_blank" rel="noopener">{{this.address}}</a>
+                {{else}}
+                  <span class="sae-dist__meta-text">{{this.address}}</span>
+                {{/if}}
+              </li>
+              {{/if}}
+
+              {{#if this.email}}
+              <li class="sae-dist__meta-row">
+                <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-mail"></use></svg></span>
+                <a class="sae-dist__meta-link" href="mailto:{{this.email}}">{{this.email}}</a>
+              </li>
+              {{/if}}
+
+              {{#if this.phone}}
+              <li class="sae-dist__meta-row">
+                <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-phone"></use></svg></span>
+                <a class="sae-dist__meta-link" href="tel:{{#if this.phone_link}}{{this.phone_link}}{{else}}{{this.phone}}{{/if}}">{{this.phone}}</a>
+              </li>
+              {{/if}}
+
+              {{#if this.website}}
+              <li class="sae-dist__meta-row">
+                <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-globe"></use></svg></span>
+                <a class="sae-dist__meta-link" href="{{this.website}}" target="_blank" rel="noopener">{{#if this.website_label}}{{this.website_label}}{{else}}{{this.website}}{{/if}}</a>
+              </li>
+              {{/if}}
+            </ul>
+          </div>
+
+        </article>
+        {{/each}}
+
+      </div>
+
+      <div class="sae-dist__empty" data-sae-empty hidden>
+        <span class="sae-dist__empty-icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-search"></use></svg></span>
+        <p class="sae-dist__empty-title" data-qi18n="emptyTitle">No distributors match your search</p>
+        <p class="sae-dist__empty-text" data-qi18n="emptyText">Try a different region or search term, or contact SA Equip Global Headquarters directly.</p>
+        <button type="button" class="sae-dist__btn" data-sae-reset data-qi18n="reset">Clear filters</button>
+      </div>
+
+    </div>
+
+  </div>
+</div>

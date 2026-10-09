@@ -10,6 +10,9 @@
  * ">>> shared quote code" and "<<< shared quote code" markers) and rebuilds
  * 3-widgets-in-duda.md — the file to paste from — from those files.
  *
+ * OTHER_WIDGETS get the same shared block for its language helpers, but are
+ * pasted from their own three files rather than from 3-widgets-in-duda.md.
+ *
  *   node scripts/build-quote-widgets.mjs           write
  *   node scripts/build-quote-widgets.mjs --check   fail if anything is stale (pre-push)
  *
@@ -35,6 +38,10 @@ const WIDGETS = [
   { dir: "add-to-quote", title: "Add to Quote widget", duda: "SAEquip - Add to Quote" },
 ];
 
+/* Pasted from duda-widgets/<dir>/ directly; they use the shared block's
+   SAEquipQuoteI18n (the page's language, and translating marked text). */
+const OTHER_WIDGETS = [{ dir: "find-a-distributor" }];
+
 const stale = [];
 const write = (file, content) => {
   const before = (() => {
@@ -49,17 +56,24 @@ const write = (file, content) => {
   else writeFileSync(file, content);
 };
 
+/** The widget's JS with the shared block copied in, written back to its file. */
+function inline(dir) {
+  let js = readFileSync(path.join(W, dir, `${dir}.js`), "utf8").trimEnd();
+  const a = js.indexOf(START);
+  const b = js.indexOf(END);
+  if (a === -1 || b === -1 || b < a) throw new Error(`${dir}.js: the shared-code markers are missing`);
+  js = `${js.slice(0, a)}${START}\n${shared}\n${js.slice(b)}`;
+  write(path.join(W, dir, `${dir}.js`), `${js}\n`);
+  return js;
+}
+
 const parts = [];
 for (const w of WIDGETS) {
   const read = (ext) => readFileSync(path.join(W, w.dir, `${w.dir}.${ext}`), "utf8").trimEnd();
-  let js = read("js");
-  const a = js.indexOf(START);
-  const b = js.indexOf(END);
-  if (a === -1 || b === -1 || b < a) throw new Error(`${w.dir}.js: the shared-code markers are missing`);
-  js = `${js.slice(0, a)}${START}\n${shared}\n${js.slice(b)}`;
-  write(path.join(W, w.dir, `${w.dir}.js`), `${js}\n`);
+  const js = inline(w.dir);
   parts.push(`${w.title}:\n\nHTML:\n${read("html")}\nCSS:\n${read("css")}\nJS:\n${js}\n`);
 }
+for (const w of OTHER_WIDGETS) inline(w.dir);
 
 const doc = `THE THREE QUOTE WIDGETS — what to paste into Duda's Widget Builder.
 

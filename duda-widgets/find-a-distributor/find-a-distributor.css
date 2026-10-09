@@ -1,0 +1,775 @@
+/* ==========================================================================
+   SA Equip — Find a Distributor widget
+   Light theme. Typography inherited from the Duda site theme.
+   Colours pull from Duda theme vars with safe fallbacks.
+   ========================================================================== */
+
+.sae-dist {
+  /* ---- Duda theme colours (override any of these in the Design panel) ---- */
+  --sae-accent:        var(--color_7, #F6B60B);   /* key accent            */
+  --sae-black:         var(--color_1, #111111);   /* black / on-accent txt */
+  --sae-border:        var(--color_3, #E4E4E4);   /* borders + dividers    */
+  --sae-surface:       var(--color_3, #F5F5F5);   /* content background    */
+  --sae-text:          var(--color_4, #55595F);   /* paragraph text        */
+  --sae-heading:       var(--color_6, #16181C);   /* headings              */
+  --sae-page:          #FFFFFF;                   /* card / page white     */
+
+  /* soft accent tint used behind icons — recalculated where supported */
+  --sae-accent-soft:   #FDF1CC;
+  --sae-accent-ring:   rgba(246, 182, 11, .28);
+
+  /* ---- shape + rhythm ---- */
+  --sae-radius:        0px;
+  --sae-radius-sm:     0px;
+  --sae-gap:           28px;
+  --sae-card-gap:      24px;
+  --sae-sidebar-w:     340px;
+  --sae-shadow:        0 1px 2px rgba(17, 17, 17, .04);
+  --sae-shadow-hover:  0 10px 28px rgba(17, 17, 17, .09);
+
+  /* ---- motion ---- */
+  --sae-ease:          cubic-bezier(.22, .61, .36, 1);
+  --sae-dur:           .45s;
+  --sae-stagger:       70ms;
+
+  color: var(--sae-text);
+  font-family: inherit;
+  line-height: 1.55;
+  box-sizing: border-box;
+}
+
+@supports (color: color-mix(in srgb, red 10%, white)) {
+  .sae-dist {
+    --sae-accent-soft: color-mix(in srgb, var(--sae-accent) 16%, #FFFFFF);
+    --sae-accent-ring: color-mix(in srgb, var(--sae-accent) 32%, transparent);
+  }
+}
+
+.sae-dist *,
+.sae-dist *::before,
+.sae-dist *::after { box-sizing: inherit; }
+
+/* [hidden] must always win over the display rules below */
+.sae-dist [hidden] { display: none !important; }
+
+.sae-dist__sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.sae-dist__sr {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Layout
+   -------------------------------------------------------------------------- */
+
+.sae-dist__layout {
+  display: grid;
+  grid-template-columns: var(--sae-sidebar-w) minmax(0, 1fr);
+  gap: calc(var(--sae-gap) * 1.6);
+  align-items: start;
+}
+
+/* vertical rule between the sidebar and the list, as on the current page */
+.sae-dist__main {
+  min-width: 0;
+  padding-left: calc(var(--sae-gap) * .8);
+  margin-left: calc(var(--sae-gap) * -.8);
+  border-left: 1px solid var(--sae-border);
+}
+
+/* --------------------------------------------------------------------------
+   Sidebar
+   -------------------------------------------------------------------------- */
+
+.sae-dist__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  position: sticky;
+  top: 24px;
+}
+
+.sae-dist__heading {
+  margin: 0 0 12px;
+  color: var(--sae-heading);
+  font-family: inherit;
+  text-transform: none;
+}
+
+.sae-dist__intro-text,
+.sae-dist__hq-note {
+  margin: 0;
+  color: var(--sae-text);
+  font-size: .95em;
+}
+
+/* ---- region filter list (tablet-up) ---- */
+
+.sae-dist__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--sae-border);
+}
+
+.sae-dist__filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px 9px 14px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--sae-radius-sm);
+  color: var(--sae-heading);
+  font: inherit;
+  font-size: .97em;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color .22s var(--sae-ease), color .22s var(--sae-ease);
+}
+
+.sae-dist__filter::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 50%;
+  width: 3px; height: 0;
+  background: var(--sae-accent);
+  transform: translateY(-50%);
+  transition: height .28s var(--sae-ease);
+}
+
+.sae-dist__filter:hover { background: var(--sae-surface); }
+
+.sae-dist__filter:focus-visible {
+  outline: 2px solid var(--sae-accent);
+  outline-offset: 2px;
+}
+
+.sae-dist__filter[aria-current="true"] {
+  background: var(--sae-surface);
+  font-weight: 700;
+}
+
+.sae-dist__filter[aria-current="true"]::before { height: 58%; }
+
+.sae-dist__filter-arrow {
+  display: inline-flex;
+  width: 16px; height: 16px;
+  flex: 0 0 auto;
+  color: var(--sae-accent);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity .24s var(--sae-ease), transform .24s var(--sae-ease);
+}
+
+.sae-dist__filter-arrow svg { width: 100%; height: 100%; }
+
+.sae-dist__filter:hover .sae-dist__filter-arrow,
+.sae-dist__filter[aria-current="true"] .sae-dist__filter-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.sae-dist__filter-count {
+  margin-left: auto;
+  color: var(--sae-text);
+  font-size: .82em;
+  font-weight: 400;
+  opacity: .75;
+}
+
+/* ---- HQ block ---- */
+
+.sae-dist__hq {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  background: var(--sae-surface);
+  border-radius: var(--sae-radius);
+}
+
+.sae-dist__hq-title {
+  margin: 0;
+  color: var(--sae-heading);
+  font-family: inherit;
+  font-size: 1.02em;
+  text-transform: none;
+}
+
+/* --------------------------------------------------------------------------
+   Icon + meta rows (shared by cards and the HQ block)
+   -------------------------------------------------------------------------- */
+
+.sae-dist__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sae-dist__meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 0;
+  font-size: .93em;
+  line-height: 1.5;
+}
+
+.sae-dist__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  background: var(--sae-accent-soft);
+  border-radius: var(--sae-radius-sm);
+  color: var(--sae-black);
+  transition: background-color .24s var(--sae-ease);
+}
+
+.sae-dist__icon svg { width: 16px; height: 16px; }
+
+.sae-dist__meta-link,
+.sae-dist__meta-text {
+  padding-top: 5px;
+  color: var(--sae-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.sae-dist__meta-link {
+  background-image: linear-gradient(var(--sae-accent), var(--sae-accent));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0 2px;
+  transition: background-size .3s var(--sae-ease), color .2s var(--sae-ease);
+}
+
+.sae-dist__meta-link:hover,
+.sae-dist__meta-link:focus-visible {
+  color: var(--sae-heading);
+  background-size: 100% 2px;
+}
+
+.sae-dist__meta--footer .sae-dist__meta-link,
+.sae-dist__meta--footer .sae-dist__meta-text {
+  color: var(--sae-heading);
+}
+
+.sae-dist__meta-link:focus-visible {
+  outline: 2px solid var(--sae-accent);
+  outline-offset: 3px;
+}
+
+.sae-dist__meta-row:hover .sae-dist__icon { background: var(--sae-accent); }
+
+/* --------------------------------------------------------------------------
+   Toolbar: search + mobile region dropdown
+   -------------------------------------------------------------------------- */
+
+.sae-dist__toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+/* ---- search ---- */
+
+.sae-dist__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sae-dist__search-icon {
+  position: absolute;
+  left: 16px;
+  display: inline-flex;
+  width: 18px; height: 18px;
+  color: var(--sae-heading);
+  opacity: .5;
+  pointer-events: none;
+  transition: opacity .2s var(--sae-ease), color .2s var(--sae-ease);
+}
+
+.sae-dist__search-icon svg { width: 100%; height: 100%; }
+
+.sae-dist__search-input {
+  width: 100%;
+  padding: 14px 46px 14px 46px;
+  background: var(--sae-page);
+  border: 1px solid var(--sae-border);
+  border-radius: var(--sae-radius);
+  color: var(--sae-heading);
+  font: inherit;
+  font-size: .97em;
+  appearance: none;
+  transition: border-color .24s var(--sae-ease), box-shadow .24s var(--sae-ease);
+}
+
+.sae-dist__search-input::placeholder { color: var(--sae-text); opacity: .7; }
+.sae-dist__search-input::-webkit-search-cancel-button { display: none; }
+
+.sae-dist__search-input:focus {
+  outline: none;
+  border-color: var(--sae-accent);
+  box-shadow: 0 0 0 4px var(--sae-accent-ring);
+}
+
+.sae-dist__search:focus-within .sae-dist__search-icon { opacity: 1; }
+
+.sae-dist__search-clear {
+  position: absolute;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  padding: 0;
+  background: var(--sae-surface);
+  border: 0;
+  color: var(--sae-heading);
+  cursor: pointer;
+  transition: background-color .2s var(--sae-ease), transform .2s var(--sae-ease);
+}
+
+.sae-dist__search-clear svg { width: 14px; height: 14px; }
+.sae-dist__search-clear:hover { background: var(--sae-accent); transform: scale(1.06); }
+.sae-dist__search-clear:focus-visible { outline: 2px solid var(--sae-accent); outline-offset: 2px; }
+
+/* ---- custom region dropdown (hidden on desktop) ---- */
+
+.sae-dist__select { position: relative; display: none; }
+
+.sae-dist__select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--sae-page);
+  border: 1px solid var(--sae-border);
+  border-radius: var(--sae-radius);
+  color: var(--sae-heading);
+  font: inherit;
+  font-size: .97em;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .24s var(--sae-ease), box-shadow .24s var(--sae-ease);
+}
+
+.sae-dist__select-trigger:hover { border-color: var(--sae-accent); }
+
+.sae-dist__select-trigger:focus-visible {
+  outline: none;
+  border-color: var(--sae-accent);
+  box-shadow: 0 0 0 4px var(--sae-accent-ring);
+}
+
+.sae-dist__select-caret {
+  display: inline-flex;
+  width: 18px; height: 18px;
+  flex: 0 0 auto;
+  color: var(--sae-black);
+  transform: rotate(90deg);
+  transition: transform .34s var(--sae-ease);
+}
+
+.sae-dist__select-caret svg { width: 100%; height: 100%; }
+
+.sae-dist__select.is-open .sae-dist__select-caret { transform: rotate(-90deg); }
+.sae-dist__select.is-open .sae-dist__select-trigger {
+  border-color: var(--sae-accent);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.sae-dist__select-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% - 1px);
+  left: 0; right: 0;
+  overflow: hidden;
+  background: var(--sae-page);
+  border: 1px solid var(--sae-accent);
+  border-top: 0;
+  border-radius: 0 0 var(--sae-radius) var(--sae-radius);
+  box-shadow: var(--sae-shadow-hover);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  max-height: 0;
+  transition: max-height .36s var(--sae-ease),
+              opacity .26s var(--sae-ease),
+              transform .3s var(--sae-ease),
+              visibility 0s linear .36s;
+}
+
+.sae-dist__select.is-open .sae-dist__select-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  max-height: 340px;
+  transition: max-height .4s var(--sae-ease),
+              opacity .26s var(--sae-ease),
+              transform .3s var(--sae-ease),
+              visibility 0s;
+}
+
+.sae-dist__select-list {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: 328px;
+  overflow-y: auto;
+}
+
+.sae-dist__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--sae-radius-sm);
+  color: var(--sae-heading);
+  font: inherit;
+  font-size: .95em;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: background-color .18s var(--sae-ease);
+}
+
+.sae-dist__select.is-open .sae-dist__option {
+  animation: sae-option-in .32s var(--sae-ease) forwards;
+}
+
+.sae-dist__option:hover,
+.sae-dist__option.is-active { background: var(--sae-surface); }
+
+.sae-dist__option:focus-visible { outline: 2px solid var(--sae-accent); outline-offset: -2px; }
+
+.sae-dist__option[aria-selected="true"] {
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--sae-accent);
+  background: var(--sae-surface);
+}
+
+.sae-dist__option-count { color: var(--sae-text); font-size: .85em; font-weight: 400; opacity: .75; }
+
+@keyframes sae-option-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --------------------------------------------------------------------------
+   Results count
+   -------------------------------------------------------------------------- */
+
+.sae-dist__count {
+  margin: 0 0 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--sae-border);
+  color: var(--sae-text);
+  font-size: .88em;
+}
+
+/* --------------------------------------------------------------------------
+   Grid + cards
+   Logo sits inside the card, to the left of the location and title.
+   -------------------------------------------------------------------------- */
+
+.sae-dist__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sae-card-gap);
+}
+
+.sae-dist__card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sae-page);
+  border: 1px solid var(--sae-border);
+  border-radius: var(--sae-radius);
+  box-shadow: var(--sae-shadow);
+  transition: border-color .28s var(--sae-ease),
+              box-shadow .28s var(--sae-ease),
+              transform .28s var(--sae-ease);
+}
+
+.sae-dist__card:hover {
+  border-color: var(--sae-accent);
+  box-shadow: var(--sae-shadow-hover);
+  transform: translateY(-3px);
+}
+
+.sae-dist__card[hidden] { display: none; }
+
+/* ---- body ---- */
+
+.sae-dist__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  padding: 22px 22px 0;
+}
+
+/* ---- head: logo + country/name ---- */
+
+.sae-dist__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.sae-dist__logo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  width: 104px;
+  height: 104px;
+  overflow: hidden;
+  background: var(--sae-page);
+  border: 1px solid var(--sae-border);
+}
+
+.sae-dist__logo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+}
+
+.sae-dist__logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sae-heading);
+  opacity: .3;
+}
+
+.sae-dist__logo-fallback svg { width: 22px; height: 22px; }
+
+.sae-dist__head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sae-dist__country {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--sae-text);
+  font-size: .82em;
+  letter-spacing: .02em;
+}
+
+.sae-dist__country::before {
+  content: "";
+  width: 14px; height: 2px;
+  background: var(--sae-accent);
+}
+
+.sae-dist__name {
+  margin: 0;
+  color: var(--sae-heading);
+  font-family: inherit;
+  font-size: 1.12em;
+  line-height: 1.3;
+  text-transform: none;
+}
+
+.sae-dist__meta--footer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 0 auto;
+  gap: 10px;
+  margin: 18px -22px 0 -22px !important;
+  padding: 18px 22px !important;
+  background: var(--sae-surface);
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   Empty state
+   -------------------------------------------------------------------------- */
+
+.sae-dist__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 56px 24px;
+  background: var(--sae-surface);
+  border-radius: var(--sae-radius);
+  text-align: center;
+  animation: sae-rise var(--sae-dur) var(--sae-ease) both;
+}
+
+.sae-dist__empty[hidden] { display: none; }
+
+.sae-dist__empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px; height: 46px;
+  background: var(--sae-accent-soft);
+  color: var(--sae-black);
+}
+
+.sae-dist__empty-icon svg { width: 20px; height: 20px; }
+
+.sae-dist__empty-title {
+  margin: 4px 0 0;
+  color: var(--sae-heading);
+  font-size: 1.05em;
+  font-weight: 700;
+}
+
+.sae-dist__empty-text { margin: 0; max-width: 42ch; font-size: .93em; }
+
+.sae-dist__btn {
+  margin-top: 8px;
+  padding: 12px 24px;
+  background: var(--sae-accent);
+  border: 0;
+  border-radius: var(--sae-radius-sm);
+  color: var(--sae-black);
+  font: inherit;
+  font-size: .93em;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .2s var(--sae-ease), transform .2s var(--sae-ease);
+}
+
+.sae-dist__btn:hover { filter: brightness(.94); transform: translateY(-1px); }
+.sae-dist__btn:focus-visible { outline: 2px solid var(--sae-black); outline-offset: 2px; }
+
+/* --------------------------------------------------------------------------
+   Entrance animation for cards
+   -------------------------------------------------------------------------- */
+
+@keyframes sae-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sae-dist[data-sae-anim] .sae-dist__card { opacity: 0; }
+
+.sae-dist[data-sae-anim] .sae-dist__card.is-in {
+  animation: sae-rise var(--sae-dur) var(--sae-ease) both;
+  animation-delay: var(--sae-delay, 0ms);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive — tablet and below: 1 column, image to the left, dropdown filter
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+  /* the sidebar dissolves so intro / list / HQ can be reordered in one column */
+  .sae-dist__layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .sae-dist__sidebar { display: contents; }
+
+  .sae-dist__intro   { order: 0; }
+  .sae-dist__filters { display: none; }
+
+  .sae-dist__main {
+    order: 1;
+    padding-left: 0;
+    margin-left: 0;
+    border-left: 0;
+  }
+  .sae-dist__hq      { order: 2; }
+
+  .sae-dist__select { display: block; }
+
+  .sae-dist__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* dropdown and search sit side by side once there is room */
+@media (min-width: 560px) and (max-width: 1024px) {
+  .sae-dist__toolbar { flex-direction: row; align-items: center; }
+  .sae-dist__select  { flex: 0 0 38%; }
+  .sae-dist__search  { flex: 1 1 auto; }
+}
+
+@media (max-width: 1024px) {
+  .sae-dist__body { padding: 20px 22px 0; }
+  .sae-dist__meta--footer { margin: 18px -22px 0 -22px !important; padding: 18px 22px !important; }
+}
+
+@media (max-width: 767px) {
+  .sae-dist {
+    --sae-card-gap: 16px;
+  }
+
+  .sae-dist__body { padding: 16px 16px 0; gap: 3px; }
+  .sae-dist__meta--footer { margin: 14px -16px 0 -16px !important; padding: 16px !important; gap: 8px; }
+  .sae-dist__head { margin-bottom: 12px; }
+  .sae-dist__logo { width: 84px; height: 84px; }
+  .sae-dist__name { font-size: 1.04em; }
+  .sae-dist__meta { gap: 8px; }
+  .sae-dist__icon { width: 26px; height: 26px; }
+  .sae-dist__icon svg { width: 14px; height: 14px; }
+  .sae-dist__meta-row { font-size: .88em; }
+  .sae-dist__meta-link, .sae-dist__meta-text { padding-top: 3px; }
+  .sae-dist__hq { padding: 20px 18px; }
+  .sae-dist__search-input { padding: 13px 44px; }
+}
+
+@media (max-width: 420px) {
+  .sae-dist__body { padding: 14px 14px 0; }
+  .sae-dist__meta--footer { margin: 12px -14px 0 -14px !important; padding: 14px !important; gap: 8px; }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sae-dist *,
+  .sae-dist *::before,
+  .sae-dist *::after {
+    animation-duration: .01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: .01ms !important;
+  }
+  .sae-dist[data-sae-anim] .sae-dist__card { opacity: 1; }
+  .sae-dist__card:hover { transform: none; }
+}

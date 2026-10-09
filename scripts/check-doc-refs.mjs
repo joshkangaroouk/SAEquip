@@ -21,7 +21,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const doc = readFileSync(path.join(ROOT, "CLAUDE.md"), "utf8");
 const names = [...new Set([...doc.matchAll(/`([A-Za-z_][A-Za-z0-9_]*)\(\)`/g)].map((m) => m[1]))];
 
-const SEARCH = ["backend/src", "backend/scripts", "frontend/src", "scripts"];
+const SEARCH = ["backend/src", "backend/scripts", "frontend/src", "scripts", "duda-widgets"];
 const files = [];
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {

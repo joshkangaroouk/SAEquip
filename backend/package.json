@@ -42,7 +42,8 @@
     "i18n:export-sources": "tsx src/scripts/i18nExportSources.ts",
     "i18n:import": "tsx src/scripts/i18nImport.ts",
     "i18n:test": "tsx scripts/i18n-test.ts",
-    "quote-widgets:test": "node scripts/quote-widgets-test.mjs"
+    "quote-widgets:test": "node scripts/quote-widgets-test.mjs",
+    "distributor-widget:test": "node scripts/distributor-widget-test.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
