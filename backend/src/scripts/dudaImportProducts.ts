@@ -35,8 +35,11 @@
  *   npm run duda:import-products --workspace=backend -- --lists --confirm
  *   npm run duda:import-products --workspace=backend -- --specs --confirm
  *
- * Undo (deletes only products THIS script created, per the ledger):
- *   npm run duda:import-products --workspace=backend -- --rollback --confirm
+ * Undo (deletes only products THIS script created, per the ledger). ⚠️ These
+ * are now LIVE products. Without --confirm it only lists them; --only/--limit
+ * scope it; the whole ledger needs --all plus --expect <exact count>:
+ *   npm run duda:import-products --workspace=backend -- --rollback --only 12880
+ *   npm run duda:import-products --workspace=backend -- --rollback --only 12880 --confirm
  *
  * ── Why this script writes files, unlike every other script here ──
  * `POST /ecommerce/products` is not idempotent, so a re-run without memory of
@@ -1602,30 +1605,82 @@ async function syncHub(products: WooProduct[]): Promise<void> {
 
 // ------------------------------------------------------------------- rollback
 
-async function rollback(): Promise<void> {
+/**
+ * Delete products this script created, from Duda AND the Hub.
+ *
+ * ⚠️ The catalogue this ledger describes is now the LIVE site, and there are
+ * no database backups. This used to reload the whole ledger and ignore
+ * --only/--limit, so `--rollback --only <one> --confirm` deleted 95 of the 96
+ * live products, EX Heater included. Now:
+ *   - a scoped run (--only / --limit / --retry-failed) deletes only those;
+ *   - an unscoped run needs --all AND --expect <count> matching exactly;
+ *   - without --confirm it lists what would go and deletes nothing;
+ *   - every Hub row is snapshotted to migration/ before anything is deleted.
+ */
+async function rollback(scope: Set<string> | null): Promise<void> {
   const ledger = loadLedger();
   // Only delete what this script actually CREATED. Adopted rows point at
   // products that existed beforehand — deleting those would destroy data the
   // migration never owned.
   const entries = Object.values(ledger).filter(
-    (e) => !DENY_DUDA_IDS.has(e.dudaProductId) && !e.adopted,
+    (e) => !DENY_DUDA_IDS.has(e.dudaProductId) && !e.adopted && (!scope || scope.has(e.wpId)),
   );
-  if (!entries.length) fail("ledger holds nothing this script created — nothing to roll back.");
+  if (!entries.length) fail("ledger holds nothing this script created in that scope — nothing to roll back.");
+
+  console.log(`\n${entries.length} product(s) in scope${scope ? "" : " (the WHOLE ledger)"}:`);
+  for (const e of entries) console.log(`  · wp#${e.wpId}  ${e.sku || "(no sku)"}  ${e.name}`);
+
+  if (!flag("confirm")) {
+    console.log(`\nDry run — nothing deleted. Add --confirm to delete these from Duda and the Hub.\n`);
+    return;
+  }
+  if (!scope) {
+    const expect = Number(arg("expect"));
+    if (!flag("all") || expect !== entries.length) {
+      fail(
+        `refusing to delete ${entries.length} LIVE products with no --only/--limit.\n` +
+          `  This is the whole live catalogue and there are no database backups.\n` +
+          `  If that really is the intent: --rollback --all --expect ${entries.length} --confirm`,
+      );
+    }
+  }
+
+  // Insurance: everything the Hub holds for these products, before it goes.
+  const snapshot = await prisma.hubProduct.findMany({
+    where: { dudaProductId: { in: entries.map((e) => e.dudaProductId) } },
+    include: {
+      logos: true,
+      compatible: true,
+      compatibleFor: true,
+      categories: true,
+      specRows: true,
+      textItems: true,
+      downloads: true,
+    },
+  });
+  mkdirSync(MIGRATION_DIR, { recursive: true });
+  const snapshotPath = path.join(MIGRATION_DIR, `rollback-snapshot-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+  writeFileSync(snapshotPath, JSON.stringify({ entries, hubProducts: snapshot }, null, 2));
+  console.log(`\nSnapshot of ${snapshot.length} Hub row(s) → ${snapshotPath}`);
 
   console.log(`\nDeleting ${entries.length} product(s) created by this script…\n`);
+  let deleted = 0;
   for (const e of entries) {
     try {
       await duda.deleteProduct(e.dudaProductId);
       await prisma.hubProduct.deleteMany({ where: { dudaProductId: e.dudaProductId } });
       delete ledger[e.wpId];
       saveLedger(ledger);
+      deleted++;
       console.log(`  ✓ deleted ${e.sku || "(no sku)"} ${e.name}`);
     } catch (err) {
       console.log(`  ✗ ${e.name}: ${err instanceof Error ? err.message.slice(0, 120) : "?"}`);
     }
     await sleep(DELAY_BETWEEN_PRODUCTS_MS);
   }
-  console.log(`\n✓ Rollback complete.\n`);
+  const failed = entries.length - deleted;
+  console.log(`\n${failed ? "✗" : "✓"} Rollback: ${deleted} deleted, ${failed} failed.\n`);
+  if (failed) process.exitCode = 1;
 }
 
 // ------------------------------------------------------------------------ main
@@ -1661,8 +1716,8 @@ async function main(): Promise<void> {
   }
 
   if (flag("rollback")) {
-    if (!flag("confirm")) fail("--rollback requires --confirm (this DELETES live Duda products).");
-    await rollback();
+    const scoped = Boolean(only || limit || flag("retry-failed"));
+    await rollback(scoped ? new Set(products.map((p) => p.wpId)) : null);
     return;
   }
 

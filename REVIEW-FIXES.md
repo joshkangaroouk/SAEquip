@@ -22,8 +22,19 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     the error handler answers 400 `invalid_id`.
   - Verified with `npm run duda-ids:test` (in pre-push, 67 checks). With the guard removed,
     61 checks fail.
-- [ ] **2. `duda:import-products --rollback` ignores `--only`/`--limit`** and would delete 95
-  of the 96 live products, EX Heater included.
+- [x] **2. `duda:import-products --rollback` ignored `--only`/`--limit`** and would have deleted
+  95 of the 96 live products, EX Heater included.
+  - Fix: the rollback is now:
+    - scoped to the selection;
+    - a dry run without `--confirm`;
+    - for the whole ledger, refused unless given `--all --expect <exact count>`;
+    - preceded by a snapshot of the Hub rows to `migration/`;
+    - honest about deleted and failed counts.
+  - Verified with the Duda API pointed at a dead port, so nothing could be deleted:
+    - a scoped dry run listed 1 product, and an unscoped dry run listed 95;
+    - unscoped `--confirm`, a wrong `--expect` and an `--only` matching nothing were each refused;
+    - a scoped `--confirm` wrote its snapshot, the delete failed, and the ledger was unchanged.
+  - The live catalogue still has 96 products afterwards.
 - [ ] **3a. 2FA login tries only the first verified authenticator**, so a backup device's codes
   are refused (`AuthContext.tsx` `verifyMfa`).
 - [ ] **3b. Password reset for a 2FA user needs an aal2 session.** `/reset-password` has no
