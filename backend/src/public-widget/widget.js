@@ -315,6 +315,7 @@
       "tab.applications": "Applications",
       "specs.heading": "Technical Specifications",
       "3d.close": "Close 3D viewer",
+      "3d.title": "3D viewer",
       "3d.pause": "Pause spin",
       "3d.resume": "Resume spin",
       "3d.reset": "Reset view",
@@ -391,6 +392,7 @@
       "tab.applications": "التطبيقات",
       "specs.heading": "المواصفات الفنية",
       "3d.close": "إغلاق العارض ثلاثي الأبعاد",
+      "3d.title": "عارض ثلاثي الأبعاد",
       "3d.pause": "إيقاف الدوران",
       "3d.resume": "استئناف الدوران",
       "3d.reset": "إعادة ضبط العرض",
@@ -474,6 +476,7 @@
       "tab.applications": "应用领域",
       "specs.heading": "技术规格",
       "3d.close": "关闭 3D 查看器",
+      "3d.title": "3D 查看器",
       "3d.pause": "暂停旋转",
       "3d.resume": "继续旋转",
       "3d.reset": "重置视图",
@@ -550,6 +553,7 @@
       "tab.applications": "Applications",
       "specs.heading": "Caractéristiques techniques",
       "3d.close": "Fermer la visionneuse 3D",
+      "3d.title": "Visionneuse 3D",
       "3d.pause": "Arrêter la rotation",
       "3d.resume": "Reprendre la rotation",
       "3d.reset": "Réinitialiser la vue",
@@ -626,6 +630,7 @@
       "tab.applications": "Anwendungen",
       "specs.heading": "Technische Daten",
       "3d.close": "3D-Ansicht schließen",
+      "3d.title": "3D-Ansicht",
       "3d.pause": "Drehung anhalten",
       "3d.resume": "Drehung fortsetzen",
       "3d.reset": "Ansicht zurücksetzen",
@@ -702,6 +707,7 @@
       "tab.applications": "Aplicações",
       "specs.heading": "Especificações técnicas",
       "3d.close": "Fechar visualizador 3D",
+      "3d.title": "Visualizador 3D",
       "3d.pause": "Pausar rotação",
       "3d.resume": "Retomar rotação",
       "3d.reset": "Redefinir visualização",
@@ -778,6 +784,7 @@
       "tab.applications": "Aplicaciones",
       "specs.heading": "Especificaciones técnicas",
       "3d.close": "Cerrar visor 3D",
+      "3d.title": "Visor 3D",
       "3d.pause": "Pausar giro",
       "3d.resume": "Reanudar giro",
       "3d.reset": "Restablecer vista",
@@ -2294,17 +2301,37 @@
   }
 
   function closeModel3dModal(overlay) {
-    if (overlay.__escHandler) document.removeEventListener("keydown", overlay.__escHandler);
+    if (overlay.__escHandler) document.removeEventListener("keydown", overlay.__escHandler, true);
     document.documentElement.style.overflow = overlay.__prevOverflow || "";
     if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    if (hub.model3dOpen === overlay) hub.model3dOpen = null;
+    try {
+      if (overlay.__opener && overlay.__opener.isConnected) overlay.__opener.focus();
+    } catch (e) {
+      /* the button may have been re-rendered away */
+    }
   }
 
   // Builds and opens the full-screen 3D viewer modal. Torn down completely on
   // close (not just hidden) so a re-open always starts clean.
-  function openModel3dModal(url) {
+  /*
+   * ⚠️ A real dialog since 2026-10-12, built like the request form's: named,
+   * modal, focus moved in and held there, and returned to the opener. It used
+   * to leave focus on the button behind the overlay, so a second Enter opened
+   * a SECOND overlay that saved "hidden" as the scroll value to restore — one
+   * Escape then closed both and left the product page unable to scroll. A
+   * second open while one is showing is now a no-op.
+   */
+  function openModel3dModal(url, opener) {
+    if (hub.model3dOpen && hub.model3dOpen.parentNode) return hub.model3dOpen;
     var overlay = stampLang(el("div", "saeh-3d-overlay"));
     var sheet = el("div", "saeh-3d-sheet");
+    sheet.setAttribute("role", "dialog");
+    sheet.setAttribute("aria-modal", "true");
+    sheet.setAttribute("aria-label", T("3d.title"));
     overlay.appendChild(sheet);
+    overlay.__opener = opener || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
+    hub.model3dOpen = overlay;
 
     // Click on the backdrop (outside the sheet) closes; clicks inside the
     // sheet never reach this listener because they never bubble past it.
@@ -2329,11 +2356,33 @@
     document.documentElement.style.overflow = "hidden"; // lock background scroll while open
 
     overlay.__escHandler = function (e) {
-      if (e.key === "Escape") closeModel3dModal(overlay);
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeModel3dModal(overlay);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // model-viewer is itself a focus stop once its camera controls load.
+      var f = [].slice.call(sheet.querySelectorAll("button:not([disabled]),model-viewer"));
+      if (!f.length) return;
+      var first = f[0];
+      var last = f[f.length - 1];
+      var active = document.activeElement;
+      if (!sheet.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    document.addEventListener("keydown", overlay.__escHandler);
+    document.addEventListener("keydown", overlay.__escHandler, true);
 
     document.body.appendChild(overlay);
+    closeBtn.focus();
 
     loadModelViewer(function () {
       try {
@@ -2417,7 +2466,7 @@
     btn.appendChild(icon);
 
     btn.addEventListener("click", function () {
-      openModel3dModal(url);
+      openModel3dModal(url, btn);
     });
     sec.appendChild(btn);
     return sec;

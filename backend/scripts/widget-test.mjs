@@ -1045,6 +1045,35 @@ async function main() {
       "button goes full width on narrow screens");
   }
 
+  console.log("\n=== 3D viewer: a real dialog, one at a time ===");
+  {
+    const { d, w } = await boot({
+      payload: { ...FULL, model3dUrl: "https://example.test/m.glb" },
+      props: { section: "3d-viewer", slug: "x" },
+    });
+    const btn = d.querySelector(".saeh-3d-btn");
+    btn.focus();
+    btn.click();
+    const sheet = d.querySelector(".saeh-3d-sheet");
+    check(sheet && sheet.getAttribute("role") === "dialog" && sheet.getAttribute("aria-modal") === "true",
+      "the viewer is a modal dialog");
+    check(sheet.getAttribute("aria-label") === "3D viewer", "and is named", String(sheet.getAttribute("aria-label")));
+    check(d.activeElement === d.querySelector(".saeh-3d-close"), "focus moves to the close button");
+    // The bug: a second Enter on the button behind the overlay opened a second
+    // overlay, which saved "hidden" as the scroll value to restore.
+    btn.click();
+    check(d.querySelectorAll(".saeh-3d-overlay").length === 1, "a second open is a no-op");
+    const tab = new w.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    d.activeElement.dispatchEvent(tab);
+    check(tab.defaultPrevented && sheet.contains(d.activeElement), "Tab stays inside the viewer");
+    d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    check(d.querySelectorAll(".saeh-3d-overlay").length === 0, "Escape closes it");
+    check(d.documentElement.style.overflow === "", "and the page can scroll again", JSON.stringify(d.documentElement.style.overflow));
+    check(d.activeElement === btn, "focus returns to the button that opened it");
+    btn.click();
+    check(d.querySelectorAll(".saeh-3d-overlay").length === 1, "it opens again after closing");
+  }
+
   console.log("\n=== spec table: multi-line specs and sub-headings ===");
   {
     const { d } = await boot({ props: { section: "specs", slug: "x" } });

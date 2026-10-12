@@ -139,8 +139,14 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 
 ## Phase 4: public site and widgets
 
-- [ ] The 3D viewer is not a real modal. Opening it twice and pressing Escape leaves the page
+- [x] The 3D viewer was not a real modal. Opening it twice and pressing Escape left the page
   unable to scroll.
+  - Fix:
+    - a named, modal dialog;
+    - focus moves to the close button, is trapped, and returns to the opener;
+    - a second open is a no-op.
+  - Verified: `widget:test` passes 9 new checks (525 total). The old widget fails 6 of them,
+    including the stuck `overflow: hidden`.
 - [x] The Arabic request form scrolled ~10,000px sideways (the honeypot's `left:-9999px`
   inside a right-to-left scroll box).
   - Fix: the honeypot is clipped in place.
