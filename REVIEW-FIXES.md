@@ -176,8 +176,19 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 
 ## Phase 5: dependencies
 
-- [ ] `npm audit` reports 9 production advisories, all with fixes available: proxy-addr,
-  brace-expansion, compression/serve, source-map-js, fast-uri, ip-address, qs, dompurify.
+- [x] `npm audit` reported 9 production advisories: proxy-addr, brace-expansion,
+  compression/serve, source-map-js, fast-uri, ip-address, qs, dompurify.
+  - Fix:
+    - removed `serve` (only the old Railway `start` script used it; `start` is now
+      `vite preview`);
+    - `npm audit fix`;
+    - Express 4.22.1 → 4.22.3 (published 2026-09-14), which moves its pinned `qs` to 6.16.
+  - Verified:
+    - `npm audit --omit=dev`: 0 vulnerabilities;
+    - `npm run check` passes, and the frontend builds.
+- [-] 9 advisories remain in dev-only tooling. They are fixed only by majors: Tailwind 3 → 4 (a
+  config rewrite) and Vite 5 → 8. Neither runs in production; Vite's matter only for a dev
+  server exposed on a network. Left for a planned upgrade.
 
 ## Phase 6: low
 
