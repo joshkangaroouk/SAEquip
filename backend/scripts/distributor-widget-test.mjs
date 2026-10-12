@@ -87,7 +87,7 @@ const ROWS = [
  * the template is rendered with it; `templateRows` fills the "distributors"
  * Collection field instead of the runtime collection.
  */
-async function page({ lang = "en", config = {}, templateRows = [] }) {
+async function page({ lang = "en", config = {}, templateRows = [], rows = ROWS }) {
   const html = render(HTML, { ...config, distributors: templateRows });
   const dom = new JSDOM(`<!doctype html><html lang="${lang}"><body><div id="w">${html}</div></body></html>`, {
     url: `https://saequip.multiscreensite.com/${lang === "en" ? "" : lang + "/"}find-a-distributor`,
@@ -105,7 +105,7 @@ async function page({ lang = "en", config = {}, templateRows = [] }) {
         get: async () => {
           asked.push(name);
           if (name !== "Distributors") throw new Error(`No collection for site alias: 8a8f03b5, name: ${name}`);
-          return { values: ROWS.map((d, n) => ({ id: String(n), data: d })) };
+          return { values: rows.map((d, n) => ({ id: String(n), data: d })) };
         },
       }),
     }),
@@ -198,6 +198,19 @@ async function page({ lang = "en", config = {}, templateRows = [] }) {
   check(p.asked.length === 0 && p.visible().length === 2 && p.$("[data-sae-count]").textContent === "2 distributeurs · Toutes les régions",
     "with no Collection name the template's rows are used — and are now initialised (they never were)", p.$("[data-sae-count]").textContent);
   check(p.$(".sae-dist__country").textContent === "Royaume-Uni", "…translated the same way");
+}
+
+// ── Links from the collection and the Content fields never run script ─────────
+{
+  const evil = { ...ROWS[0], name: "Evil Ltd", website: "javascript:alert(1)", website_label: "evil.example", map_link: " JaVaScRiPt:alert(2)" };
+  const bad = (p) => p.$$("a[href]").filter((a) => !/^(https?:|mailto:|tel:|\/(?!\/)|#)/i.test(a.getAttribute("href").trim()));
+  const p = await page({ lang: "en", config: { collection_name: "Distributors", hq_website: "javascript:alert(3)" }, rows: [evil, ...ROWS] });
+  check(bad(p).length === 0, "collection rows: no javascript: link is rendered", bad(p).map((a) => a.getAttribute("href")).join(" "));
+  const card = p.$$("[data-sae-card]").find((c) => c.textContent.includes("Evil Ltd"));
+  check(!!card && card.textContent.includes(evil.address), "…the address still shows, as text");
+  check(p.$$("a[href]").some((a) => a.getAttribute("href") === "https://saequip.com/") && p.$$("a[href]").some((a) => a.getAttribute("href") === "https://maps/x"), "real https website and map links are kept");
+  const t = await page({ lang: "en", config: {}, templateRows: [evil] });
+  check(bad(t).length === 0, "template-rendered rows: the same rule applies", bad(t).map((a) => a.getAttribute("href")).join(" "));
 }
 
 console.log(`\n${fail === 0 ? "✓" : "✗"} ${pass} passed, ${fail} failed\n`);

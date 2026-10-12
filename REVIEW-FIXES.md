@@ -210,7 +210,11 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     typechecked.
   - Not exercised by an automated test, because the route writes rate-limit rows. **After
     deploy, Josh to place one clearly fake quote, then delete it.**
-- [ ] Distributor widget: scheme-check the website and map links (`javascript:`).
+- [x] Distributor widget: scheme-check the website and map links (`javascript:`).
+  - Fix: JS-built cards take only http(s) links, and `scrubLinks()` removes a non-web href that
+    Duda's template rendered, including head-office links.
+  - Verified with 4 new `distributor-widget:test` checks (28 total). The old code fails 2 of
+    them, rendering `javascript:` links.
 - [-] RLS off and the global `cors()` on `/api`: defence in depth only, so left for now.
 
 **Correctness**

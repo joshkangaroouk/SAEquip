@@ -1004,6 +1004,7 @@ in pre-push) runs it in jsdom with the collections API behaving as measured.
 - The count line uses `Intl.PluralRules` (Arabic's six forms), and outside English it is built
   as "N distributeurs · Région", because the English "in {region}" preposition does not
   translate word for word.
+- ⚠️ **A link from the collection or a Content field gets an href only if it is safe** (fixed 2026-10-12). `escapeHtml()` and Duda's Handlebars stop markup, not a `javascript:` URL, so a website or map link holding one would have run on the live page when clicked. JS-built cards take only http(s) (`webUrl()`), and `scrubLinks()` drops any other scheme from what Duda's template rendered, head-office links included; the text still shows.
 - Also fixed: with no "Collection name" set, the template's own `distributors` rows were never
   initialised. `init()` set the guard flag and then called `initCore()`, which returned at once
   because of it.

@@ -553,6 +553,26 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /* ⚠️ A web address from the collection goes into an href only if it is
+     http(s). escapeHtml() stops markup, not a `javascript:` URL, which would
+     run on the live page when clicked (fixed 2026-10-12). Anything else is
+     shown as plain text instead of a link. */
+  function webUrl(value) {
+    var v = String(value == null ? '' : value).trim();
+    return /^https?:\/\//i.test(v) ? v : '';
+  }
+
+  /* The same rule for links Duda's own template rendered from the
+     collection and the Content fields (Handlebars escapes HTML, not URL
+     schemes): only web, mail, phone, site-relative and in-page links keep
+     their href. */
+  function scrubLinks(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('a[href]'), function (a) {
+      var h = (a.getAttribute('href') || '').trim();
+      if (!/^(https?:|mailto:|tel:|\/(?!\/)|#)/i.test(h)) a.removeAttribute('href');
+    });
+  }
+
   function buildCardHtml(item) {
     var d = item.data || item;
     var logo = d.image
@@ -562,8 +582,8 @@
     var rows = '';
     if (d.address) {
       rows += '<li class="sae-dist__meta-row"><span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-pin"></use></svg></span>' +
-        (d.map_link
-          ? '<a class="sae-dist__meta-link" href="' + escapeHtml(d.map_link) + '" target="_blank" rel="noopener">' + escapeHtml(d.address) + '</a>'
+        (webUrl(d.map_link)
+          ? '<a class="sae-dist__meta-link" href="' + escapeHtml(webUrl(d.map_link)) + '" target="_blank" rel="noopener">' + escapeHtml(d.address) + '</a>'
           : '<span class="sae-dist__meta-text">' + escapeHtml(d.address) + '</span>') + '</li>';
     }
     if (d.email) {
@@ -574,9 +594,9 @@
       rows += '<li class="sae-dist__meta-row"><span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-phone"></use></svg></span>' +
         '<a class="sae-dist__meta-link" href="tel:' + escapeHtml(d.phone_link || d.phone) + '">' + escapeHtml(d.phone) + '</a></li>';
     }
-    if (d.website) {
+    if (webUrl(d.website)) {
       rows += '<li class="sae-dist__meta-row"><span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-globe"></use></svg></span>' +
-        '<a class="sae-dist__meta-link" href="' + escapeHtml(d.website) + '" target="_blank" rel="noopener">' + escapeHtml(d.website_label || d.website) + '</a></li>';
+        '<a class="sae-dist__meta-link" href="' + escapeHtml(webUrl(d.website)) + '" target="_blank" rel="noopener">' + escapeHtml(d.website_label || d.website) + '</a></li>';
     }
 
     var continents = d.continents || '';
@@ -615,7 +635,7 @@
     }).then(function (values) {
       if (!values) { done(null); return; }
       var grid = root.querySelector('[data-sae-grid]');
-      if (grid) { grid.innerHTML = values.map(buildCardHtml).join(''); }
+      if (grid) { grid.innerHTML = values.map(buildCardHtml).join(''); scrubLinks(grid); }
       done(values);
     }).catch(function () { done(null); });
   }
@@ -623,6 +643,8 @@
   function init(root) {
     if (!root || root.__saeDistInit) { return; }
     root.__saeDistInit = true;
+
+    scrubLinks(root);
 
     /* The template's default wording, in the page's language (a filled-in
        Content field is Duda's to translate, and carries no marker). */
