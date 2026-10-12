@@ -29,6 +29,13 @@ if ! npm run --silent duda-ids:test --workspace=backend > /dev/null 2>&1; then
   exit 1
 fi
 
+echo "pre-push ▸ script guards"
+if ! npm run --silent script-guards:test --workspace=backend > /dev/null 2>&1; then
+  npm run --silent script-guards:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30
+  echo "✗ script guard tests failed — push stopped"
+  exit 1
+fi
+
 echo "pre-push ▸ widget tests"
 if ! npm run --silent widget:test --workspace=backend > /dev/null 2>&1; then
   npm run --silent widget:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30

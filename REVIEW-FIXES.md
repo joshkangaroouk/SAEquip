@@ -103,8 +103,16 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 
 ## Phase 3: scripts and safety guards
 
-- [ ] `duda:sync-categories --confirm` with an empty Hub empties every Duda category. Its dry
-  run writes the mirror, and an empty category list deletes every mirror row.
+- [x] `duda:sync-categories --confirm` with an empty Hub emptied every Duda category. An empty
+  category list deleted every mirror row.
+  - Fix: plan first, then write. `syncRefusal()` refuses an empty Hub, and a removal of more than
+    a quarter of the links without `--allow-removals`. No categories from Duda means the mirror
+    is left alone.
+  - The dry run's mirror refresh is deliberate; I corrected the header that said it writes
+    nothing.
+  - Verified:
+    - `script-guards:test` (10/10, in pre-push);
+    - a live dry run is unchanged: 23 categories, 194 links in step, 0 to drop.
 - [ ] The destructive-DB guard hook misses:
   - heredocs fed to bash, node or psql
   - commands after a `<<<` here-string

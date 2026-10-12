@@ -1357,7 +1357,7 @@ whole API and the live widget down for ~3 minutes.
    `routes/duda.ts → services/descriptionHtml.ts → sanitize-html`.
 2. **Before every push** — `.githooks/pre-push`: the bundle check, `tsc` for both workspaces
    (Vercel's build typechecks neither), `scripts/check-doc-refs.mjs` (every function this file
-   names as `name()` must still exist in the code), `widget:test`, `i18n:test`, `duda-ids:test`, and the widgets
+   names as `name()` must still exist in the code), `widget:test`, `i18n:test`, `duda-ids:test`, `script-guards:test`, and the widgets
    pasted into Duda (`build-quote-widgets.mjs --check`, `quote-widgets:test` and
    `distributor-widget:test`). ~12s. Enabled per clone with
    `git config core.hooksPath .githooks`; run on demand with `npm run check`; skip once,
@@ -2121,7 +2121,16 @@ because `PATCH /categories/{id}` takes the category's whole product list. Dry ru
 diff; `--confirm` applies.
 
 ⚠️ **One-way, Hub → Duda.** Duda's copy is overwritten wholesale each run, so an assignment
-made in Duda's own admin is lost at the next sync. Change them in the Hub — the product
+made in Duda's own admin is lost at the next sync.
+
+⚠️ **`--confirm` refuses an empty Hub, and a sweeping removal** (fixed 2026-10-12;
+`syncRefusal()` in `scripts/lib/syncGuard.ts`, tested by `script-guards:test`). With zero Hub
+assignments it used to empty every category in Duda and only then say "nothing to push", which
+after a wipe (or with `DATABASE_URL` pointed elsewhere) destroys the one surviving copy. Every
+category is now read before anything is written. Removing more than a quarter of Duda's links
+(and more than 10) needs `--allow-removals`, and a Duda reply with no categories stops the run
+before the mirror is touched (it would otherwise delete every mirror row). A dry run still
+refreshes `CategoryMirror`, deliberately; it writes nothing to Duda. Change them in the Hub — the product
 editor's Categories panel or a category's own page.
 
 Verified end-to-end on throwaway assignments, then reverted: staging two Hub assignments and

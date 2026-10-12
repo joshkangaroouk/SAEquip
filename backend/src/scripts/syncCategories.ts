@@ -1,11 +1,19 @@
 /**
  * Push the Hub's product↔category assignments into Duda.
  *
- * Dry run (default — prints the diff, writes nothing):
+ * Dry run (default — prints the diff and writes nothing to DUDA; it does
+ * refresh the local CategoryMirror, see below):
  *   npm run duda:sync-categories --workspace=backend
  *
  * Apply:
  *   npm run duda:sync-categories --workspace=backend -- --confirm
+ *
+ * ⚠️ Refuses to apply when the Hub holds NO assignments, and when it would
+ * take more than a quarter of Duda's links away (--allow-removals overrides
+ * the second). After the 2026-09-29 wipe Duda's copy was the one that
+ * survived; an empty or wrong DATABASE_URL used to empty every category in
+ * Duda and only then say "nothing to push". Every category is read before
+ * anything is written, so the totals are known first.
  *
  * Print the live tree and each category's product count:
  *   npm run duda:sync-categories --workspace=backend -- --verify
@@ -32,6 +40,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { duda } from "../services/duda.js";
+import { syncRefusal } from "./lib/syncGuard.js";
 
 const prisma = new PrismaClient();
 
@@ -110,6 +119,14 @@ async function main() {
   console.log(`  categories in Duda    : ${categories.length}`);
   console.log(`  assignments in the Hub: ${links.length}`);
 
+  if (!categories.length) {
+    // listAllCategories() falls back to [] — and an empty list would delete
+    // every mirror row below, emptying every listing page on the site.
+    console.error("\n✗ Duda returned no categories. Refusing to touch Duda or the mirror.\n");
+    process.exitCode = 1;
+    return;
+  }
+
   let changed = 0;
   let alreadyRight = 0;
   const failures: string[] = [];
@@ -118,6 +135,8 @@ async function main() {
   /** Duda's re-hosted image URL, so the dashboard list needs no per-row call. */
   const imageOf = new Map<string, string>();
 
+  // Pass 1: read every category, so the plan is known before anything moves.
+  const plans: { c: (typeof categories)[number]; have: string[]; want: string[] }[] = [];
   for (const c of categories) {
     const want = (wanted.get(c.id) ?? []).map((p) => p.id);
 
@@ -126,21 +145,35 @@ async function main() {
      * carries no slug, and the mirror needs one for every category or the
      * listing page cannot resolve that category from its URL.
      */
-    let have: string[] = [];
     try {
       const full = (await duda.getCategory(c.id)) as unknown as {
         products?: { id: string }[];
         seo?: { url?: string };
         image?: { url?: string } | null;
       };
-      have = (full.products ?? []).map((p) => p.id);
       if (full.seo?.url) slugOf.set(c.id, full.seo.url);
       if (full.image?.url) imageOf.set(c.id, full.image.url);
+      plans.push({ c, have: (full.products ?? []).map((p) => p.id), want });
     } catch (err) {
       failures.push(`${c.title}: could not read — ${err instanceof Error ? err.message.slice(0, 120) : err}`);
-      continue;
     }
+  }
 
+  const linkedInDuda = plans.reduce((n, p) => n + p.have.length, 0);
+  const removals = plans.reduce((n, p) => n + p.have.filter((id) => !p.want.includes(id)).length, 0);
+  console.log(`  links in Duda now     : ${linkedInDuda}`);
+  console.log(`  links this would drop : ${removals}\n`);
+
+  const refuse = syncRefusal({
+    confirm,
+    hubLinks: links.length,
+    linkedInDuda,
+    removals,
+    allowRemovals: flag("allow-removals"),
+  });
+
+  // Pass 2: write (or, on a dry run or a refusal, only report).
+  for (const { c, have, want } of plans) {
     if (sameSet(have, want)) {
       alreadyRight++;
       console.log(`  ⊘ ${c.title.padEnd(44)} already correct (${want.length})`);
@@ -148,7 +181,7 @@ async function main() {
     }
 
     const delta = `${have.length} → ${want.length}`;
-    if (!confirm) {
+    if (!confirm || refuse) {
       changed++;
       console.log(`  → ${c.title.padEnd(44)} ${delta}`);
       continue;
@@ -164,6 +197,11 @@ async function main() {
       failures.push(`${c.title}: ${msg}`);
       console.log(`  ✗ ${c.title.padEnd(44)} ${msg}`);
     }
+  }
+
+  if (refuse) {
+    console.error(`\n✗ Refusing to apply: ${refuse}\n  Nothing was written to Duda.\n`);
+    process.exitCode = 1;
   }
 
   /*
@@ -200,7 +238,7 @@ async function main() {
 
   console.log(`\n=== CATEGORY SYNC ===`);
   console.log(`  mirror rows        : ${seen.size}${dropped.count ? `  (${dropped.count} removed)` : ""}`);
-  console.log(`  categories updated : ${changed}${confirm ? "" : " (would be)"}`);
+  console.log(`  categories updated : ${changed}${confirm && !refuse ? "" : " (would be)"}`);
   console.log(`  already correct    : ${alreadyRight}`);
   console.log(`  failed             : ${failures.length}`);
   for (const f of failures) console.log(`     ${f}`);
