@@ -193,7 +193,9 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 ## Phase 6: low
 
 **Security and privacy**
-- [ ] Rate-limit rows (visitor IPs) are never deleted: `sweepExpiredRateLimits()` has no caller.
+- [x] Rate-limit rows (visitor IPs) were never deleted: `sweepExpiredRateLimits()` had no caller.
+  - Fix: `increment()` runs the sweep on about 1 call in 20, unawaited and best-effort.
+  - Verified: one manual sweep removed the 9 stored rows, all expired (0 were live).
 - [ ] `.gitignore` misses `.env.local` and `.env.production`.
 - [ ] Remove the unused `staffToken()` with its hard-coded test credential (`mediaVerifyUpload.ts`).
 - [ ] The CSP is report-only and has nowhere to report.

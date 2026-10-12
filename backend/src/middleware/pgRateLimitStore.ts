@@ -16,9 +16,18 @@ import { prisma } from "../prisma.js";
  * dependency to provision, monitor and pay for.
  *
  * Rows are self-expiring by comparison (`expiresAt` in the past = fresh
- * window), so nothing has to be swept for correctness. `sweepExpired()` exists
- * only to stop the table growing forever.
+ * window), so nothing has to be swept for correctness.
+ *
+ * ⚠️ But the sweep is about PRIVACY, not correctness: a key is the visitor's
+ * IP address, and on the lead and quote forms that is the IP of someone who
+ * just submitted personal data. `sweepExpiredRateLimits()` existed and was
+ * never called, so every such IP was kept forever (fixed 2026-10-12). It now
+ * runs from `increment()` on roughly one call in SWEEP_ONE_IN, unawaited and
+ * best-effort: an expired row means nothing to the limit, so deleting it only
+ * forgets the address.
  */
+const SWEEP_ONE_IN = 20;
+
 export class PgRateLimitStore implements Store {
   /** Namespace so several limiters can share the table without colliding.
    *  Named `keyPrefix`, not `prefix`, because express-rate-limit's own Store
@@ -64,6 +73,7 @@ export class PgRateLimitStore implements Store {
       RETURNING "hits", "expiresAt"
     `;
     const row = rows[0];
+    if (Math.random() < 1 / SWEEP_ONE_IN) void sweepExpiredRateLimits().catch(() => {});
     return { totalHits: row?.hits ?? 1, resetTime: row?.expiresAt ?? expires };
   }
 
@@ -85,7 +95,8 @@ export class PgRateLimitStore implements Store {
   }
 }
 
-/** Housekeeping only — expiry is decided by comparison, not by deletion. */
+/** Forget expired counters (and the IP addresses in their keys). Expiry
+ *  itself is decided by comparison, so this never changes a limit. */
 export function sweepExpiredRateLimits(): Promise<number> {
   return prisma.rateLimitCounter
     .deleteMany({ where: { expiresAt: { lt: new Date() } } })
