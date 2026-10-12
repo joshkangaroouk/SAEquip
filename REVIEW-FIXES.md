@@ -35,10 +35,16 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     - unscoped `--confirm`, a wrong `--expect` and an `--only` matching nothing were each refused;
     - a scoped `--confirm` wrote its snapshot, the delete failed, and the ledger was unchanged.
   - The live catalogue still has 96 products afterwards.
-- [ ] **3a. 2FA login tries only the first verified authenticator**, so a backup device's codes
-  are refused (`AuthContext.tsx` `verifyMfa`).
-- [ ] **3b. Password reset for a 2FA user needs an aal2 session.** `/reset-password` has no
-  code step. Not tried live.
+- [x] **3a. 2FA login tried only the first verified authenticator**, so a backup device's codes
+  were refused.
+  - Fix: `verifyTotpCode()` in `lib/mfa.ts` tries each confirmed factor in turn.
+- [x] **3b. Password reset for a 2FA user needs an aal2 session.**
+  - Fix: `/reset-password` now asks for the code when the account has a factor, and handles an
+    `insufficient_aal` reply the same way.
+  - 3a and 3b: typechecked only.
+  - **Josh to check in the browser:**
+    - add a second device on `/security`, then sign in with a code from it;
+    - send a reset to a 2FA account and complete it.
 - [ ] **4. Dropping several images keeps only the last.** Uploads append to a stale gallery.
   The same bug reverts alt-text edits made during an upload.
 

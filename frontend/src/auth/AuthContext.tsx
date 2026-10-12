@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { verifyTotpCode } from "../lib/mfa";
 
 type AuthContextValue = {
   user: User | null;
@@ -73,22 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null, mfaRequired };
   }
 
-  /** Complete the second factor with a TOTP code from the user's app. */
-  async function verifyMfa(code: string): Promise<{ error: string | null }> {
-    const { data: list, error: listError } = await supabase.auth.mfa.listFactors();
-    if (listError) return { error: listError.message };
-    const factor = (list.totp ?? []).find((f) => f.status === "verified");
-    if (!factor) return { error: "No confirmed authenticator on this account." };
-
-    const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id });
-    if (challenge.error) return { error: challenge.error.message };
-
-    const { error } = await supabase.auth.mfa.verify({
-      factorId: factor.id,
-      challengeId: challenge.data.id,
-      code: code.trim(),
-    });
-    return { error: error ? error.message : null };
+  /**
+   * Complete the second factor with a TOTP code from ANY of the user's
+   * authenticators — see verifyTotpCode() for why not just the first.
+   */
+  function verifyMfa(code: string): Promise<{ error: string | null }> {
+    return verifyTotpCode(code);
   }
 
   async function signOut() {

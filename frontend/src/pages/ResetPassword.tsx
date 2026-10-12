@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Button, Field, Input } from "../components/ui";
 import { assessPassword } from "../lib/passwordPolicy";
+import { needsSecondFactor, verifyTotpCode } from "../lib/mfa";
 import logoUrl from "../assets/saequip-logo.svg";
 
 /**
@@ -18,6 +19,12 @@ import logoUrl from "../assets/saequip-logo.svg";
  * access, not of knowing the password; ending it forces one clean sign-in with
  * the new credential and, once MFA is enabled, sends the user through the
  * second factor rather than leaving them on a session that skipped it.
+ *
+ * ⚠️ An account with 2FA needs its code HERE too. The recovery link gives an
+ * aal1 session, and Supabase refuses a password change from one once MFA is
+ * on ("AAL2 session is required to update email or password when MFA is
+ * enabled"). Without this step the page showed that raw error and the only
+ * way out was the CLI. The code raises the recovery session to aal2 first.
  */
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -26,6 +33,8 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState("");
 
   /*
    * ⚠️ Both a listener AND a getSession() call, because the recovery token
@@ -42,6 +51,7 @@ export default function ResetPassword() {
       if (session && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
         settled = true;
         setReady("ok");
+        void needsSecondFactor().then(setNeedsCode);
       }
     });
 
@@ -50,6 +60,7 @@ export default function ResetPassword() {
       if (data.session) {
         settled = true;
         setReady("ok");
+        void needsSecondFactor().then(setNeedsCode);
         return;
       }
       // Give the fragment exchange a moment before declaring the link dead.
@@ -67,11 +78,31 @@ export default function ResetPassword() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!verdict.ok || mismatch) return;
+    if (needsCode && code.length < 6) return;
     setSubmitting(true);
     setError(null);
+
+    if (needsCode) {
+      const step = await verifyTotpCode(code);
+      if (step.error) {
+        setSubmitting(false);
+        setCode("");
+        setError(`That code didn't work: ${step.error}`);
+        return;
+      }
+      setNeedsCode(false);
+    }
+
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       setSubmitting(false);
+      // The check above missed it (a factor confirmed since the page loaded):
+      // ask for the code rather than show Supabase's wording.
+      if ((error as { code?: string }).code === "insufficient_aal") {
+        setNeedsCode(true);
+        setError("This account uses two-factor authentication. Enter the code from your authenticator app.");
+        return;
+      }
       setError(error.message);
       return;
     }
@@ -123,7 +154,28 @@ export default function ResetPassword() {
                     onChange={(e) => setConfirm(e.target.value)}
                   />
                 </Field>
+                {needsCode && (
+                  <Field label="Authentication code" htmlFor="code">
+                    <Input
+                      id="code"
+                      // As on the login page: numeric keypad on mobile, and
+                      // password managers and iOS autofill can offer the code.
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      required
+                      placeholder="123456"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    />
+                  </Field>
+                )}
               </div>
+              {needsCode && (
+                <p className="mt-2 text-small text-muted">
+                  This account uses two-factor authentication, so enter the 6-digit code from your
+                  authenticator app as well.
+                </p>
+              )}
 
               {password.length > 0 && !verdict.ok && (
                 <ul className="mt-3 list-disc space-y-0.5 pl-5 text-small text-muted">
@@ -138,7 +190,7 @@ export default function ResetPassword() {
               <Button
                 type="submit"
                 className="mt-6 w-full"
-                disabled={submitting || !verdict.ok || mismatch || !confirm}
+                disabled={submitting || !verdict.ok || mismatch || !confirm || (needsCode && code.length < 6)}
               >
                 {submitting ? "Saving…" : "Save new password"}
               </Button>
