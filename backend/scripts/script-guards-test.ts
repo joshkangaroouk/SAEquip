@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { syncRefusal } from "../src/scripts/lib/syncGuard.js";
+import { keepEditedDescription, planDownloadSet, planTypeLinks } from "../src/scripts/lib/importGuards.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +31,45 @@ check(sync({ removals: 40 }) === null, "sync: 40 of 194 removed (≤ a quarter) 
 check(/more than a quarter/.test(sync({ removals: 60 }) ?? ""), "sync: 60 of 194 removed → refused");
 check(sync({ removals: 60, allowRemovals: true }) === null, "sync: 60 of 194 with --allow-removals → allowed");
 check(sync({ linkedInDuda: 8, removals: 8 }) === null, "sync: a tiny catalogue (≤ 10 removals) → allowed");
+
+// ---- duda:import-products --descriptions
+check(keepEditedDescription("<p>edited</p>", "<p>csv</p>", false), "descriptions: a Hub edit is kept");
+check(!keepEditedDescription("<p>edited</p>", "<p>csv</p>", true), "descriptions: --force overwrites it");
+check(!keepEditedDescription("<p>csv</p>", "<p>csv</p>\n", false), "descriptions: identical (bar whitespace) → not 'kept'");
+check(!keepEditedDescription(null, "<p>csv</p>", false), "descriptions: an empty Hub copy is filled");
+
+// ---- downloads:import (a keyed diff, never recreate)
+const existing = [
+  { id: "d1", mediaAssetId: "fileA" },
+  { id: "d2", mediaAssetId: "fileB" },
+];
+const plan = planDownloadSet(existing, [
+  { mediaAssetId: "fileB", title: "Datasheet" },
+  { mediaAssetId: "fileC", title: "UKEX Certificate" },
+]);
+check(!("error" in plan), "downloads: a known set plans");
+if (!("error" in plan)) {
+  check(JSON.stringify(plan.deleteIds) === '["d1"]', "downloads: only the dropped file's row is deleted");
+  check(plan.updates.length === 1 && plan.updates[0].id === "d2" && plan.updates[0].sortOrder === 0, "downloads: a surviving file keeps its row (id, type, gating, leads)");
+  check(
+    plan.creates.length === 1 && plan.creates[0].kind === "CERTIFICATE" && plan.creates[0].certScheme === "UKEX" && plan.creates[0].sortOrder === 1,
+    "downloads: a new file is typed from its title",
+  );
+}
+check("error" in planDownloadSet([], [{ mediaAssetId: "x", title: "Brochure" }]), "downloads: an unknown title is refused before any write");
+check("error" in planDownloadSet([], [{ mediaAssetId: "x", title: "constructor" }]), "downloads: a prototype key is not a title");
+
+// ---- duda:assign-product-types (scoped to the products it assigns)
+{
+  const L = (p: string, c: string) => ({ hubProductId: p, dudaCategoryId: c });
+  const current = [L("csv1", "LIGHT"), L("csv1", "PRODUCTS"), L("csv2", "FUME"), L("csv2", "PRODUCTS"), L("handmade", "CLIMATE"), L("handmade", "PRODUCTS")];
+  const writes = [L("csv1", "LIGHT"), L("csv1", "PRODUCTS"), L("csv2", "CLIMATE"), L("csv2", "PRODUCTS")];
+  const tp = planTypeLinks(current, writes);
+  check(tp.leftAlone.length === 2 && tp.leftAlone.every((l) => l.hubProductId === "handmade"), "types: a product not in the CSV keeps its links");
+  check(JSON.stringify(tp.removals) === JSON.stringify([L("csv2", "FUME")]), "types: only a CSV product's changed type is removed");
+  check(JSON.stringify(tp.adds) === JSON.stringify([L("csv2", "CLIMATE")]), "types: only the missing link is added");
+  check(planTypeLinks(writes, writes).adds.length === 0 && planTypeLinks(writes, writes).removals.length === 0, "types: in step → nothing to do");
+}
 
 // ---- .claude/hooks/block-destructive-db.sh (the harness's PreToolUse guard)
 // The destructive words are assembled, like the hook's own pattern, so this

@@ -121,10 +121,21 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     arithmetic shifts no longer open a heredoc. The pattern allows `@<version>`.
   - Verified with 14 hook cases in `script-guards:test`: the new hook passes all 14, and the old
     hook fails the 6 gap cases.
-- [ ] Imports unsafe to re-run against live data:
-  - `--descriptions --confirm` overwrites editor edits
-  - `downloads:import --force` recreates rows ungated and untyped
-  - `duda:assign-product-types` clears hand assignments
+- [x] Imports unsafe to re-run against live data:
+  - `--descriptions --confirm` overwrote editor edits
+    - Fix: `keepEditedDescription()`; `--force` overwrites after a snapshot.
+  - `downloads:import --force` recreated rows ungated and untyped, and detached requests
+    - Fix: `planDownloadSet()`, a keyed diff in which new rows are gated and typed.
+    - `--verify` now flags ungated or untyped rows.
+  - `duda:assign-product-types` cleared hand assignments
+    - Fix: `planTypeLinks()` scopes the changes to the products it assigns, and the dry run
+      lists them.
+  - Verified:
+    - `script-guards:test` now has 38 cases;
+    - all live, read-only:
+      - `downloads:import --verify` reconciles 176/176 as gated and typed;
+      - the product-types dry run has 0 to add, 0 to remove and 0 left alone;
+      - 94/94 descriptions are unedited today, so nothing was at risk yet.
 
 ## Phase 4: public site and widgets
 

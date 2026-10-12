@@ -1526,6 +1526,8 @@ The ~96-product legacy catalogue is being moved off the WordPress/WooCommerce si
 
 `npm run duda:import-products --workspace=backend -- --descriptions --confirm` writes a sanitised description to **both** Duda's native `description` and `HubProduct.descriptionHtml`, and `/public/products/content` now returns `descriptionHtml`. Both, because Duda's field is what the product template renders while the public endpoint is a pure Supabase read that must never call Duda — so a widget-rendered "Overview" tab needs the Hub's own copy. That leaves the connected-data and widget routes equally open. (Since 2026-10-02 the product editor writes both copies too — see "The product editor".)
 
+⚠️ **A re-run KEEPS any description edited in the Hub since** (fixed 2026-10-12, `keepEditedDescription()` in `scripts/lib/importGuards.ts`). It was the one import with no skip-if-existing guard, and even its "Duda already matches" branch rewrote the Hub copy, so a re-run would have replaced every editor change with the CSV's text. `--force` overwrites, after a snapshot to `migration/descriptions-snapshot-*.json`. Measured when fixed: 94 of 94 still identical to the import, so nothing had been at risk yet.
+
 **One description field, not two.** WooCommerce has `Short description` + `Description`; Duda has one. Measured across the 96: 49 shorts are contained verbatim in the long text, 24 products have only a short, 2 have neither — so collapsing is safe for 75. But **21 shorts carry text the long one doesn't**, and `composeDescription()` sorts them: 11 are paraphrases (dropped, they'd only repeat), 1 is a call-to-action from the WP page template (dropped — "select an option below" points at controls Duda hasn't got), and **9 are prepended as the opening paragraph**. That last group matters: 5 carry sales disclaimers ("available for purchase only", "options for UK hire and sale may vary") that exist *nowhere else*, and SATL100/SG/CR5 and SEFU/RF-DU/BD2 share only 14% of their words with the long text. Collapsing naively would have silently dropped all of it.
 
 **`services/descriptionHtml.ts` is the sanitiser** — pure, no network/DB, so Stage 3 can reuse it. It fixes six measured defects: line breaks double-encoded as a real newline plus a literal `\n` (252 of them, which would render as visible `\n` text); 114 of 164 fields not wrapped in block tags at all (WordPress builds paragraphs at render time via `wpautop`); 157 non-breaking spaces; `class="p1"`/`class="page|section|layoutArea|column"`/`title="Page 1"` editor and PDF-converter cruft; stray inline styles including one `color:#ffffff` that would have been invisible white-on-white text; and a `[video]` WordPress shortcode that would have rendered as literal text.
@@ -1727,6 +1729,8 @@ The import:
 - A product whose files did not all upload is **skipped whole** — a partial set is worse than
   none. Rows resolve through the **ledger, never SKU**. `--force` replaces a populated
   product's set and snapshots its rows to `migration/` first.
+
+⚠️ **The import writes a keyed diff on the file, gated and typed** (fixed 2026-10-12, `planDownloadSet()` in `scripts/lib/importGuards.ts`). It used to delete a product's set and recreate it `gated: false` with no `kind`, so `--force` took that product's files off the resources pages and, once retyped, left them ungated, detaching every request from its download besides. A surviving file keeps its row (id, type, gating); a new one is gated and typed from `TITLE_CLASSIFICATION`, and an unknown title fails that product before any write. `--verify` now flags a download that is NOT gated or has no type (it used to flag a gated one).
 
 `@@unique([hubProductId, mediaAssetId])` was added first — safe because no product repeated a
 file and the Hub had no Download rows. It makes a re-run safe structurally, and it makes the
@@ -2008,8 +2012,7 @@ deliberately. Both branches also fail if a product maps to two types; none does 
 does not need this — it already scopes a parent page to the parent plus its children — but
 without it Duda's own `products_count` and storefront read 0 under Products.
 
-The delete-then-recreate is scoped to the four categories this script owns, so an Industry or
-Site Challenge ticked by hand is never cleared.
+⚠️ **Writes are scoped to the four categories it owns AND to the products it assigns** (fixed 2026-10-12, `planTypeLinks()` in `scripts/lib/importGuards.ts`), so an Industry or Site Challenge ticked by hand is never cleared, and nor is the type of a product created after the import. It used to delete every link in those four categories and recreate only the CSV's, which would have stripped a hand-made product of its type and its Products link with nothing in the dry run to say so. The dry run now lists the links it would add and remove.
 
 ### `/categories/:id` — the category edit page
 

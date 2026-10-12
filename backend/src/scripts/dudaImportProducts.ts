@@ -28,6 +28,8 @@
  *
  * Stage 2 — sanitised descriptions into Duda's native field and the Hub:
  *   npm run duda:import-products --workspace=backend -- --descriptions --confirm
+ * (Keeps any description edited in the Hub since; --force overwrites, after a
+ * snapshot to migration/.)
  *
  * Stage 3 — key benefits + applications into the Hub (never Duda). Products
  * that already have items are skipped unless --force, since these are
@@ -57,6 +59,7 @@ import { syncHubProduct } from "../services/hubProduct.js";
 import { publicImageUrl, uploadObject } from "../services/storage.js";
 import { LogoKind } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { keepEditedDescription } from "./lib/importGuards.js";
 import {
   acfRepeater,
   certLogoValues,
@@ -798,6 +801,30 @@ async function importDescriptions(products: WooProduct[]): Promise<void> {
   let written = 0;
   let unchanged = 0;
   let skipped = 0;
+  /**
+   * ⚠️ Products whose Hub description was EDITED since the import (in the
+   * dashboard's editor) are kept unless --force. This mode used to overwrite
+   * every product in the ledger, Duda and Hub alike, with the CSV's text —
+   * the one import with no skip-if-existing guard, though the catalogue is
+   * now authored in the Hub. Even the "Duda already matches" branch below
+   * rewrote the Hub copy, so the check comes before both.
+   */
+  const kept: string[] = [];
+  const force = flag("force");
+  const hubNow = new Map(
+    (
+      await prisma.hubProduct.findMany({
+        where: { dudaProductId: { in: products.map((p) => ledger[p.wpId]?.dudaProductId).filter(Boolean) as string[] } },
+        select: { dudaProductId: true, name: true, descriptionHtml: true },
+      })
+    ).map((h) => [h.dudaProductId, h]),
+  );
+  if (force) {
+    mkdirSync(MIGRATION_DIR, { recursive: true });
+    const snap = path.join(MIGRATION_DIR, `descriptions-snapshot-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+    writeFileSync(snap, JSON.stringify([...hubNow.values()], null, 2));
+    console.log(`\n--force: snapshot of ${hubNow.size} Hub description(s) → ${snap}`);
+  }
 
   console.log(`\nComposing descriptions for ${products.length} product(s)…\n`);
 
@@ -828,6 +855,11 @@ async function importDescriptions(products: WooProduct[]): Promise<void> {
     const dudaHtml = stripAnchors(composed.html);
     if (dudaHtml !== composed.html) {
       linkStripped.push(`${p.sku || "(no sku)"} ${p.name}`);
+    }
+
+    if (keepEditedDescription(hubNow.get(entry.dudaProductId)?.descriptionHtml, composed.html, force)) {
+      kept.push(`${p.sku || "(no sku)"} ${p.name}`);
+      continue;
     }
 
     try {
@@ -863,6 +895,9 @@ async function importDescriptions(products: WooProduct[]): Promise<void> {
   console.log(`  written  : ${written}`);
   console.log(`  unchanged: ${unchanged}`);
   console.log(`  skipped  : ${skipped} (no description, or not in the ledger)`);
+  console.log(`  kept     : ${kept.length} (edited in the Hub since the import — --force overwrites, after a snapshot)`);
+  for (const k of kept.slice(0, 20)) console.log(`     ${k}`);
+  if (kept.length > 20) console.log(`     …and ${kept.length - 20} more`);
   console.log(`  failed   : ${failures.length}`);
   for (const f of failures) console.log(`     ${f}`);
 

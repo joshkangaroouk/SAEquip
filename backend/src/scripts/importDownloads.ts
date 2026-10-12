@@ -4,6 +4,7 @@ import path from "node:path";
 import { prisma } from "../prisma.js";
 import { MAX_BYTES, objectInfo, uploadObject } from "../services/storage.js";
 import type { ScrapedDownload } from "./wpScrapeDownloads.js";
+import { planDownloadSet } from "./lib/importGuards.js";
 
 /**
  * Stage 3e — bring the WordPress downloads into the Hub and link them.
@@ -29,7 +30,11 @@ import type { ScrapedDownload } from "./wpScrapeDownloads.js";
  *      `migration/downloads/`, uploaded to the PRIVATE `product-files` bucket.
  *   2. LINKS — per product, one Download row per item, in page order.
  *
- * ⚠️ Gating is OFF (decided 2026-10-01): every row is written `gated: false`.
+ * ⚠️ Every file is GATED since 2026-10-05, and a row is typed (kind and
+ * certificate scheme) from its title. Rows are written as a keyed diff on the
+ * file (planDownloadSet), never delete-all-then-recreate: --force used to
+ * recreate a product's whole set `gated: false` and untyped, dropping its
+ * files off the resources pages.
  */
 
 const MIGRATION_DIR = path.resolve(process.cwd(), "..", "migration");
@@ -305,18 +310,27 @@ async function main() {
       console.log(`    snapshot → ${path.basename(snap)}`);
     }
 
+    const plan = planDownloadSet(
+      existing,
+      p.items.map((it) => ({ mediaAssetId: assetIdOf.get(it.url)!, title: it.title })),
+    );
+    if ("error" in plan) {
+      linkFailures.push(`${tag}: ${plan.error}`);
+      console.log(`  ✗ ${tag.slice(0, 54).padEnd(56)} ${plan.error}`);
+      continue;
+    }
+
     try {
       await prisma.$transaction(async (tx) => {
-        await tx.download.deleteMany({ where: { hubProductId: hub.id } });
-        await tx.download.createMany({
-          data: p.items.map((it, i) => ({
-            hubProductId: hub.id,
-            mediaAssetId: assetIdOf.get(it.url)!,
-            title: it.title,
-            sortOrder: i,
-            gated: false,
-          })),
-        });
+        // Deletes first, so a file removed and re-added cannot trip the
+        // (hubProductId, mediaAssetId) unique index.
+        if (plan.deleteIds.length) await tx.download.deleteMany({ where: { id: { in: plan.deleteIds } } });
+        for (const u of plan.updates) {
+          await tx.download.update({ where: { id: u.id }, data: { title: u.title, sortOrder: u.sortOrder } });
+        }
+        for (const c of plan.creates) {
+          await tx.download.create({ data: { hubProductId: hub.id, gated: true, ...c } });
+        }
       });
       linked++;
       console.log(`  ✓ ${tag.slice(0, 54).padEnd(56)} ${p.items.map((i) => i.title).join(" · ")}`);
@@ -381,7 +395,9 @@ async function verify(
     const have = rows.map((r) => `${r.mediaAsset.storagePath}|${r.title}`).join("\n");
     if (want !== have) problems.push(`wp#${wpId} ${p.name}: ${rows.length} download(s) do not match the scrape in order`);
     if (rows.some((r, i) => r.sortOrder !== i)) problems.push(`wp#${wpId} ${p.name}: sortOrder is not dense`);
-    if (rows.some((r) => r.gated)) problems.push(`wp#${wpId} ${p.name}: a download is gated (gating is off)`);
+    // Every file is gated since 2026-10-05, and must be typed to be listed.
+    if (rows.some((r) => !r.gated)) problems.push(`wp#${wpId} ${p.name}: a download is NOT gated`);
+    if (rows.some((r) => !r.kind)) problems.push(`wp#${wpId} ${p.name}: a download has no type, so no resources page lists it`);
   }
 
   const expected = entries.reduce((n, [, p]) => n + p.items.length, 0);

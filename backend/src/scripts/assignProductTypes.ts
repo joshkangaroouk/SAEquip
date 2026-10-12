@@ -24,6 +24,7 @@ import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import { duda } from "../services/duda.js";
 import { parsePublishedProducts, productCategories, saRangeLogos } from "../services/wooImport.js";
+import { planTypeLinks } from "./lib/importGuards.js";
 
 const prisma = new PrismaClient();
 
@@ -239,18 +240,35 @@ async function main() {
     for (const n of noHub) console.log(`     ${n}`);
   }
 
+  // Only the links this script owns (its four categories), and only for the
+  // products it assigns: an Industry or Site Challenge is never touched, nor
+  // is a product created after the import and typed by hand.
+  const current = await prisma.productCategory.findMany({
+    where: { dudaCategoryId: { in: ownedIds } },
+    select: { hubProductId: true, dudaCategoryId: true },
+  });
+  const plan = planTypeLinks(current, writes);
+  const nameOf = new Map([...hubByDudaId.values()].map((h) => [h.id, h.name ?? h.id]));
+  const titleOf = new Map([...idOf.entries()].map(([t, id]) => [id, t]));
+  console.log(`\n  links to add       : ${plan.adds.length}`);
+  console.log(`  links to remove    : ${plan.removals.length}`);
+  for (const r of plan.removals.slice(0, 30)) {
+    console.log(`     − ${nameOf.get(r.hubProductId) ?? r.hubProductId}  ×  ${titleOf.get(r.dudaCategoryId) ?? r.dudaCategoryId}`);
+  }
+  console.log(`  left alone         : ${plan.leftAlone.length} (products not in the CSV)`);
+
   if (!confirm) {
     console.log(`\n  Re-run with --confirm to write, then: npm run duda:sync-categories -- --confirm\n`);
     return;
   }
 
-  // Replace only the links this script owns; anything else the product is in
-  // (an Industry, a Site Challenge) is untouched.
   await prisma.$transaction(async (tx) => {
-    await tx.productCategory.deleteMany({ where: { dudaCategoryId: { in: ownedIds } } });
-    await tx.productCategory.createMany({ data: writes, skipDuplicates: true });
+    for (const r of plan.removals) {
+      await tx.productCategory.deleteMany({ where: { hubProductId: r.hubProductId, dudaCategoryId: r.dudaCategoryId } });
+    }
+    if (plan.adds.length) await tx.productCategory.createMany({ data: plan.adds, skipDuplicates: true });
   });
-  console.log(`\n  ✓ ${writes.length} link(s) written. Next: npm run duda:sync-categories --workspace=backend -- --confirm\n`);
+  console.log(`\n  ✓ ${plan.adds.length} added, ${plan.removals.length} removed. Next: npm run duda:sync-categories --workspace=backend -- --confirm\n`);
 }
 
 main()
