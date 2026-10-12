@@ -166,7 +166,13 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     - 7 new `i18n:test` cases (79 total): a dropped sign, a flipped sign, an added number, a
       kept minus, U+2212, a separator dash, a range;
     - the shipped validator over all 5,238 stored translations: 0 newly rejected.
-- [ ] The quote basket merges lines with different options when the choice ids are missing.
+- [x] The quote basket merged lines with different options when the choice ids were missing.
+  - Fix: ids are compared only when both lines have them, otherwise the option text; an id match
+    is tried first.
+  - Verified:
+    - 4 new `quote-widgets:test` checks (42 total); the old code fails all 4 (Purchase vanished);
+    - `distributor-widget:test` passes 24/24.
+  - **Josh to re-paste all three quote widgets (and the distributor JS) into Duda.**
 
 ## Phase 5: dependencies
 

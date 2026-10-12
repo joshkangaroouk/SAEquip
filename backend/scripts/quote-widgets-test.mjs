@@ -237,6 +237,25 @@ const oldLine = {
   check(p.stored().length === 2 && JSON.stringify(p.stored()[1].choices) === JSON.stringify({ [OPT]: BUY }), "a different choice is a different line");
 }
 
+// ── 4b. Lines with NO choice ids keep different options apart ────────────────
+{
+  const p = await page({ path: "/product/ex-heater", lang: "en", widgets: ["add-to-quote"], pv: productView("en") });
+  const Q = p.window.SAEquipQuote;
+  const base = { dudaId: "X", name: "Thing", sku: "", quantity: 1 };
+  Q.add({ ...base, options: { Mode: "Hire" } });
+  Q.add({ ...base, options: { Mode: "Purchase" } });
+  check(p.stored().length === 2, "no ids: Hire and Purchase stay two lines (the second choice used to vanish)",
+    JSON.stringify(p.stored().map((l) => [l.options, l.quantity])));
+  Q.add({ ...base, options: { Mode: "Hire" } });
+  check(p.stored().length === 2 && p.stored()[0].quantity === 2, "no ids: the same option text still merges");
+  Q.add({ ...base, options: { Mode: "Location" }, choices: { O: "C1" } });
+  check(p.stored().length === 3, "a line with ids and French text is not merged into an English line without ids");
+  Q.add({ ...base, options: { Mode: "Hire" }, choices: { O: "C1" } });
+  check(p.stored().length === 3 && p.stored()[2].quantity === 2 && p.stored()[0].quantity === 2,
+    "with ids on both, the language of the text does not matter, and an id match wins over a text match",
+    JSON.stringify(p.stored().map((l) => [l.options, l.quantity])));
+}
+
 // ── 5. Older widgets, failures ───────────────────────────────────────────────
 {
   // A v1 store already on the page (an older widget ran first) is replaced.

@@ -936,6 +936,7 @@ SAEquip has **no native pricing/checkout** for these products — instead there'
   `choices` `{optionId: choiceId}`. Add to Quote reads them from the page's `productView`;
   option and choice ids are identical in every language (measured).
   - Lines with ids merge across languages.
+  - ⚠️ **Ids are compared only when BOTH lines have them** (fixed 2026-10-12). A line keeps `choices` only when the page's options matched ids, and comparing ids alone treated "none" as equal to "none": Hire and Purchase of one product merged into one line, and the second choice vanished from the quote. Without ids on both sides it compares the option text, and `add()` tries an id match before a text match. Not live on EX Heater, whose labels match; it would have become live as Hire/Purchase spread.
   - A v1 line (no ids) still shows as saved, and is resolved by the slug in its saved URL
     where possible.
   - ⚠️ v2 REPLACES a v1 store already on the page, because each widget carries its own copy

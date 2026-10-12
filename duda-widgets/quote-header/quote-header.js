@@ -40,10 +40,18 @@
     obj = obj || {};
     return JSON.stringify(Object.keys(obj).sort().reduce(function (a, k) { a[k] = obj[k]; return a; }, {}));
   }
-  /* The same line: by ids when both have them (whatever language each was
-     added in), otherwise by the text, as before v2. */
+  /* The same line: by ids when BOTH lines have their choice ids (whatever
+     language each was added in), otherwise by the text, as before v2.
+     ⚠️ A line keeps `choices` only when the page's options could be matched
+     to ids. Comparing ids alone treated "no ids" as equal to "no ids", so
+     Hire and Purchase of one product merged into ONE line and the second
+     choice vanished from the quote (fixed 2026-10-12). Without ids on both
+     sides it falls back to the option text, which keeps them apart. */
+  function hasIds(l) { return !!(l.choices && Object.keys(l.choices).length); }
   function sameLine(e, item) {
-    if (e.dudaId && item.dudaId) return e.dudaId === item.dudaId && sortedKey(e.choices) === sortedKey(item.choices);
+    if (e.dudaId && item.dudaId && e.dudaId !== item.dudaId) return false;
+    if (e.dudaId && item.dudaId && hasIds(e) && hasIds(item)) return sortedKey(e.choices) === sortedKey(item.choices);
+    if (e.dudaId && item.dudaId) return sortedKey(e.options) === sortedKey(item.options);
     return e.name === item.name && e.sku === item.sku && sortedKey(e.options) === sortedKey(item.options);
   }
 
@@ -52,7 +60,10 @@
     count: function () { return read().reduce(function (n, e) { return n + (parseInt(e.quantity, 10) || 1); }, 0); },
     add: function (item) {
       var basket = read();
-      var existing = basket.find(function (e) { return sameLine(e, item); });
+      // An id match first: a line in another language may share no text with
+      // this one, and a text-only line must not win over it.
+      var existing = basket.find(function (e) { return hasIds(e) && hasIds(item) && sameLine(e, item); }) ||
+        basket.find(function (e) { return sameLine(e, item); });
       if (existing) {
         existing.quantity = (parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1);
         existing.addedAt  = new Date().toISOString();
