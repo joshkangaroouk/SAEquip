@@ -17,3 +17,9 @@ migration/
 # database password.
 .env.backup*
 **/.env.backup*
+
+# Every other .env variant. `vercel env pull` writes .env.local by default, and
+# with PRODUCTION secrets; .env.production and friends are the same risk. Only
+# the annotated examples are meant to be committed.
+.env*
+!**/.env.example
