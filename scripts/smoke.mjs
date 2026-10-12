@@ -179,6 +179,17 @@ await check("dashboard loads", async () => {
   return "/ and /login";
 });
 
+await check("a missing build asset is a 404, not the dashboard's HTML", async () => {
+  // It used to fall through to the SPA rewrite: 200, text/html, under the
+  // immutable /assets cache header — a lazy import in a tab left open across a
+  // deploy got HTML for JavaScript.
+  const r = await fetch(`${BASE}/assets/smoke-missing-${Date.now()}.js`);
+  const type = r.headers.get("content-type") ?? "";
+  // (Vercel's own 404 page is HTML too, so the status is what is checked.)
+  expect(r.status === 404, `→ ${r.status} ${type}`);
+  return `${r.status} ${type || "(no type)"}`;
+});
+
 const failed = results.filter((r) => !r.ok);
 console.log(`\nSmoke test — ${BASE}\n`);
 for (const r of results) console.log(`  ${r.ok ? "✓" : "✗"} ${r.name}${r.detail ? `  — ${r.detail}` : ""}`);

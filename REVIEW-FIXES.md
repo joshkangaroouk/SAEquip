@@ -223,7 +223,12 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified:
     - 5 new `duda-ids:test` checks (72 total);
     - the output is identical to the old version for all 94 stored descriptions.
-- [ ] A missing `/assets/*` file is served as `index.html` with an immutable year-long cache.
+- [x] A missing `/assets/*` file was served as `index.html` with an immutable year-long cache.
+  - Fix: the SPA rewrite excludes `/assets/`, so a missing file 404s.
+  - Verified: a new `smoke.mjs` check. It fails against the current production (200 text/html),
+    as expected, and should pass after the deploy.
+  - Caveat: Vercel may still attach the immutable header to that 404. That matters only if a
+    rollback revives the exact same hash.
 - [ ] Lead limits (30/hour/IP) are tight now that every download needs the form.
 - [ ] A stale Hub slug blocks a new product with the same slug.
 - [ ] Option-delete cascades can hit the 60s function limit.
