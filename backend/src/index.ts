@@ -113,6 +113,14 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
+  // A malformed %-escape in the path (`/public/downloads/%E0/file`): Express
+  // throws a URIError while decoding the route param. The caller's fault, so
+  // 400 — it used to fall through to the 500 below and log a stack.
+  if (err instanceof URIError) {
+    res.status(400).json({ error: "bad_request" });
+    return;
+  }
+
   // Body-parser rejections (malformed JSON, a body over the limit) are the
   // CALLER's fault and carry their own status. They used to fall through to
   // the 500 below, so junk from a bot read as a server fault in the logs.

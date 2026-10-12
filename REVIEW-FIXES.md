@@ -232,7 +232,9 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 - [ ] Lead limits (30/hour/IP) are tight now that every download needs the form.
 - [ ] A stale Hub slug blocks a new product with the same slug.
 - [ ] Option-delete cascades can hit the 60s function limit.
-- [ ] Malformed percent-encoding returns 500 instead of 400.
+- [x] Malformed percent-encoding returned 500 instead of 400.
+  - Fix: the error handler answers a `URIError` with 400.
+  - Verified: a `duda-ids:test` check on the real app passes; the old handler gives 500.
 
 **Dashboard**
 - [ ] "+ Create a subcategory" does nothing.

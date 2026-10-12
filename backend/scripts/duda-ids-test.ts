@@ -112,5 +112,16 @@ check(stripAnchors('<p><a title="a > b" href="/x">t</a></p>') === "<p>t</p>", "a
 check(noHref(stripAnchors('<A HREF="/x">t</A>')), "upper case");
 check(stripAnchors("<p>abbr <abbr>x</abbr> <article>y</article></p>") === "<p>abbr <abbr>x</abbr> <article>y</article></p>", "other tags starting with a are untouched");
 
+// ---- the real app's error handler: a malformed %-escape is the caller's fault
+{
+  process.env.VERCEL = process.env.VERCEL ?? "1"; // export the app without listening
+  const { default: app } = await import("../src/index.js");
+  const srv = app.listen(0);
+  await new Promise((r) => srv.once("listening", r));
+  const res = await realFetch(`http://127.0.0.1:${(srv.address() as AddressInfo).port}/public/downloads/%E0/file`);
+  check(res.status === 400, "a malformed %-escape in the path → 400, not 500", String(res.status));
+  srv.close();
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
