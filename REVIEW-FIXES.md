@@ -45,8 +45,14 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - **Josh to check in the browser:**
     - add a second device on `/security`, then sign in with a code from it;
     - send a reset to a 2FA account and complete it.
-- [ ] **4. Dropping several images keeps only the last.** Uploads append to a stale gallery.
-  The same bug reverts alt-text edits made during an upload.
+- [x] **4. Dropping several images kept only the last.** Uploads appended to a stale gallery,
+  and the same bug reverted alt-text edits made during an upload.
+  - Fix: `setSection` takes a function of the current slice; `ImagesSection` uses it, and
+    `FileDropzone` calls the current handler through a ref.
+  - Verified in a jsdom harness on the real components, dropping 3 files with uploads finishing
+    at different times:
+    - old code kept `[existing, c]`;
+    - fixed code keeps `[existing, a, b, c]`.
 
 ## Phase 2: dashboard data loss and access
 

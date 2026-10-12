@@ -170,10 +170,27 @@ export function useProductEditor(
     void load();
   }, [load]);
 
-  /** Patch one slice of the draft. */
+  /**
+   * Patch one slice of the draft — with a value, or with a function of the
+   * slice as it is NOW.
+   *
+   * ⚠️ Use the function form for anything that completes later (an upload).
+   * A value computed from the slice at the time of the action overwrites
+   * whatever changed since: dropping three images used to keep only the last
+   * to finish, each upload appending to the gallery as it was at the drop.
+   * No slice is itself a function, so `typeof` is a safe discriminator.
+   */
   const setSection = useCallback(
-    <K extends keyof EditorSnapshot>(key: K, value: EditorSnapshot[K]) => {
-      setDraft((d) => (d ? { ...d, [key]: value } : d));
+    <K extends keyof EditorSnapshot>(
+      key: K,
+      value: EditorSnapshot[K] | ((prev: EditorSnapshot[K]) => EditorSnapshot[K]),
+    ) => {
+      setDraft((d) => {
+        if (!d) return d;
+        const next =
+          typeof value === "function" ? (value as (prev: EditorSnapshot[K]) => EditorSnapshot[K])(d[key]) : value;
+        return { ...d, [key]: next };
+      });
     },
     [],
   );

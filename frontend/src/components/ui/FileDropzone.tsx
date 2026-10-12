@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useDropzone, type Accept } from "react-dropzone";
 import { uploadFile } from "../../lib/upload";
 import { cn } from "../../lib/cn";
@@ -41,6 +41,10 @@ export function FileDropzone({
   className,
 }: FileDropzoneProps) {
   const [items, setItems] = useState<UploadItem[]>([]);
+  // An upload finishes after later renders, so it calls the CURRENT handler,
+  // not the one captured when the file was dropped.
+  const onUploadedRef = useRef(onUploaded);
+  onUploadedRef.current = onUploaded;
 
   const uploadOne = useCallback(
     async (file: File, id: string) => {
@@ -53,7 +57,7 @@ export function FileDropzone({
           prev.map((it) => (it.id === id ? { ...it, progress: 100, status: "done" } : it)),
         );
         toast.success(`Uploaded ${file.name}`);
-        onUploaded?.(asset);
+        onUploadedRef.current?.(asset);
       } catch (err) {
         const detail = err instanceof Error ? err.message : "Upload failed";
         setItems((prev) =>
@@ -62,7 +66,7 @@ export function FileDropzone({
         toast.error(`Failed to upload ${file.name}: ${detail}`);
       }
     },
-    [onUploaded],
+    [],
   );
 
   const onDrop = useCallback(

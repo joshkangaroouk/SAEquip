@@ -25,19 +25,26 @@ export function ImagesSection({
   error,
 }: {
   images: ImageDraft[];
-  onChange: (next: ImageDraft[]) => void;
+  /** A value, or a function of the gallery as it is when the change lands. */
+  onChange: (next: ImageDraft[] | ((prev: ImageDraft[]) => ImageDraft[])) => void;
   dirty: boolean;
   error?: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  /*
+   * ⚠️ Functional updates, all three. An upload completes seconds after the
+   * drop, and appending to `images` as captured then kept only the LAST of
+   * several dropped files, and undid any alt text typed or image removed while
+   * the upload ran.
+   */
   const append = (url: string, alt: string) =>
-    onChange([...images, { key: crypto.randomUUID(), url, alt }]);
+    onChange((prev) => [...prev, { key: crypto.randomUUID(), url, alt }]);
 
   const setAlt = (key: string, alt: string) =>
-    onChange(images.map((img) => (img.key === key ? { ...img, alt } : img)));
+    onChange((prev) => prev.map((img) => (img.key === key ? { ...img, alt } : img)));
 
-  const remove = (key: string) => onChange(images.filter((img) => img.key !== key));
+  const remove = (key: string) => onChange((prev) => prev.filter((img) => img.key !== key));
 
   /**
    * Add a library image to the gallery. Duda ingests a gallery image by
