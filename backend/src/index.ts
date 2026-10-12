@@ -14,7 +14,7 @@ import { translationsRouter } from "./routes/translations.js";
 import { usersRouter } from "./routes/users.js";
 import { websiteEditorRouter } from "./routes/websiteEditor.js";
 import { publicRouter, publicCors } from "./routes/public.js";
-import { DudaApiError } from "./services/duda.js";
+import { DudaApiError, InvalidDudaIdError } from "./services/duda.js";
 import { StorageError, ensureBuckets } from "./services/storage.js";
 
 const app = express();
@@ -87,6 +87,11 @@ function prismaErrorCode(err: unknown): string | null {
 
 // Error handler: surface upstream failures with useful status codes.
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  // Refused before any request left for Duda (see DUDA_ID in services/duda.ts).
+  if (err instanceof InvalidDudaIdError) {
+    res.status(400).json({ error: "invalid_id" });
+    return;
+  }
   if (err instanceof DudaApiError) {
     // Map the upstream status through rather than blanket-502ing. A Duda 4xx
     // means OUR payload was wrong, and reporting that as 502 hides the real

@@ -1033,6 +1033,16 @@ Backend side (`backend/src/routes/quotes.ts`, `backend/src/services/email.ts`): 
 
 Base URL `https://api.duda.co/api`, HTTP Basic auth (`DUDA_API_USER`/`DUDA_API_PASS`). SAEquip's `site_name` is **`8a8f03b5`**, live on **`saequip.multiscreensite.com`** — see "Site migration" below; the former `099434f3` is retired and nothing should read from it. **Path pattern includes a `multiscreen` segment that's easy to miss** — omitting it 404s (`RESTEASY003210`): `/sites/multiscreen/{site}/ecommerce/store`, `.../ecommerce/products`, `.../ecommerce/products/{id}` (see `backend/src/services/duda.ts`). Duda's product `custom_fields` are deliberately unused (see the Duda-vs-Hub split above) — don't reintroduce writes to them.
 
+⚠️ **Every Duda id goes through `seg()` before it enters a URL path** (`DUDA_ID` in
+`services/duda.ts`, fixed 2026-10-12). Ids used to be pasted in raw. Express decodes `%2F` in a
+route param back into `/` (Vercel forwards `%2F` undecoded, probed live), and `fetch` resolves
+`../`, so an id like `..%2F..%2F…` walked out of this catalogue onto any path the AGENCY
+credential reaches: ~871 client sites, deletes included, for any signed-in user. `seg()` refuses
+anything but `[A-Za-z0-9_-]{1,64}` (every real id is a 26-character ULID) and encodes what
+passes; the error handler answers 400 `invalid_id`. **Any new path builder must use it.**
+`npm run duda-ids:test` (in pre-push) drives the real routes with escaping ids and fails if any
+request reaches Duda.
+
 ### Site migration: `099434f3` → `8a8f03b5` (2026-09-07)
 
 The Hub now reads and writes **only** `8a8f03b5`. The old site is retired; `GRANTABLE_SITES` in `dudaEditorProvision.ts` no longer allows it, and editor access on it was revoked.
@@ -1342,7 +1352,7 @@ whole API and the live widget down for ~3 minutes.
    `routes/duda.ts → services/descriptionHtml.ts → sanitize-html`.
 2. **Before every push** — `.githooks/pre-push`: the bundle check, `tsc` for both workspaces
    (Vercel's build typechecks neither), `scripts/check-doc-refs.mjs` (every function this file
-   names as `name()` must still exist in the code), `widget:test`, `i18n:test`, and the widgets
+   names as `name()` must still exist in the code), `widget:test`, `i18n:test`, `duda-ids:test`, and the widgets
    pasted into Duda (`build-quote-widgets.mjs --check`, `quote-widgets:test` and
    `distributor-widget:test`). ~12s. Enabled per clone with
    `git config core.hooksPath .githooks`; run on demand with `npm run check`; skip once,

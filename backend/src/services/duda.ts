@@ -12,24 +12,56 @@ import { env } from "../env.js";
  * product of the attached choices; they can be PATCHed but never created or
  * deleted directly. See CLAUDE.md.
  */
+
+/**
+ * The shape every Duda id must have before it goes into a URL path.
+ *
+ * ⚠️ Load-bearing. Route params arrive DECODED — Express turns `%2F` back into
+ * `/` (and Vercel forwards `%2F` undecoded, so this is reachable in
+ * production) — and `fetch` resolves `../`. Interpolated raw, an id of
+ * `../../../../../sites/multiscreen/<site>` walked out of this catalogue and
+ * onto any path the AGENCY credential reaches: ~871 client sites, deletes
+ * included. Every real id is a 26-character ULID (measured: products,
+ * categories, options, choices and variations); the allowlist is wider only so
+ * a new id format is not refused. `.`, `/`, `?`, `#` and `%` can never pass.
+ */
+const DUDA_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** An id that cannot be a Duda id. The error handler answers 400. */
+export class InvalidDudaIdError extends Error {
+  constructor(readonly value: unknown) {
+    super("Invalid Duda id");
+    this.name = "InvalidDudaIdError";
+  }
+}
+
+/** Checked and encoded — both, so neither alone has to be perfect. */
+function seg(id: string): string {
+  if (typeof id !== "string" || !DUDA_ID.test(id)) throw new InvalidDudaIdError(id);
+  return encodeURIComponent(id);
+}
+
 const PATHS = {
   store: (site: string) => `/sites/multiscreen/${site}/ecommerce/store`,
   products: (site: string) => `/sites/multiscreen/${site}/ecommerce/products`,
   product: (site: string, productId: string) =>
-    `/sites/multiscreen/${site}/ecommerce/products/${productId}`,
+    `/sites/multiscreen/${site}/ecommerce/products/${seg(productId)}`,
   productVariation: (site: string, productId: string, variationId: string) =>
-    `/sites/multiscreen/${site}/ecommerce/products/${productId}/variations/${variationId}`,
+    `/sites/multiscreen/${site}/ecommerce/products/${seg(productId)}/variations/${seg(variationId)}`,
   options: (site: string) => `/sites/multiscreen/${site}/ecommerce/options`,
   option: (site: string, optionId: string) =>
-    `/sites/multiscreen/${site}/ecommerce/options/${optionId}`,
+    `/sites/multiscreen/${site}/ecommerce/options/${seg(optionId)}`,
   optionChoices: (site: string, optionId: string) =>
-    `/sites/multiscreen/${site}/ecommerce/options/${optionId}/choices`,
+    `/sites/multiscreen/${site}/ecommerce/options/${seg(optionId)}/choices`,
   optionChoice: (site: string, optionId: string, choiceId: string) =>
-    `/sites/multiscreen/${site}/ecommerce/options/${optionId}/choices/${choiceId}`,
+    `/sites/multiscreen/${site}/ecommerce/options/${seg(optionId)}/choices/${seg(choiceId)}`,
   categories: (site: string) => `/sites/multiscreen/${site}/ecommerce/categories`,
   category: (site: string, categoryId: string) =>
-    `/sites/multiscreen/${site}/ecommerce/categories/${categoryId}`,
+    `/sites/multiscreen/${site}/ecommerce/categories/${seg(categoryId)}`,
 } as const;
+
+/** For tests: the path builders, so the guard can be checked without a network. */
+export const __dudaPathsForTest = PATHS;
 
 /**
  * Duda clamps `limit` on the product list to 200 (verified: asking for 1000
