@@ -1305,12 +1305,25 @@ from committing a live database password.
 outright. Enforced by the harness rather than by anyone's judgement, which is the point —
 the warning above is the layer that had already failed.
 
-⚠️ **It strips heredoc BODIES before matching, and that is load-bearing.** The first
-version matched the raw command string, so it blocked the very commit whose message
+⚠️ **It strips heredoc BODIES before matching — but only bodies nothing executes.** The
+first version matched the raw command string, so it blocked the very commit whose message
 explained the incident, and then blocked the command that would have replaced it. A guard
-you cannot write about is one people route around. Real invocations are still caught; the
-same words in a `<<'EOF'` body are prose. Seven cases cover both directions — edit the
-script and re-run them rather than loosening the pattern.
+you cannot write about is one people route around. So a body read by `cat`, `tee` or
+`git commit -F -` is prose and ignored.
+
+⚠️ **A body fed to an interpreter RUNS, and is checked** (fixed 2026-10-12). Skipping every
+body let the command through when fed to `bash`, `sh`, `node`, `python`, `psql` and the like
+(or piped into one). Three more gaps closed at the same time:
+- A `<<<` here-string was taken for a heredoc opener, so every later line went unchecked.
+- So was a `$((1<<X))` arithmetic shift.
+- `prisma@<version>` slipped past the pattern.
+
+Consequence: documenting the destructive commands from a `python3 - <<EOF` edit is now
+blocked. Edit docs with the file tools instead.
+
+The 14 cases covering both directions live in `backend/scripts/script-guards-test.ts`
+(`script-guards:test`, in pre-push). The old hook fails 6 of them. Edit the script and re-run
+them rather than loosening the pattern.
 
 **The safe way to generate a migration here** is what the rest of this section already says: `migrate diff --from-schema-datasource` (read-only against the live DB) or `--from-migrations` with **no** shadow URL at all, then apply with `migrate deploy`. If a shadow database is genuinely needed, it must be a throwaway database that exists for nothing else.
 

@@ -113,10 +113,14 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified:
     - `script-guards:test` (10/10, in pre-push);
     - a live dry run is unchanged: 23 categories, 194 links in step, 0 to drop.
-- [ ] The destructive-DB guard hook misses:
+- [x] The destructive-DB guard hook missed:
   - heredocs fed to bash, node or psql
-  - commands after a `<<<` here-string
+  - commands after a `<<<` here-string (and after a `$((1<<X))` shift)
   - `prisma@<version>`
+  - Fix: heredoc bodies are checked when the line names an interpreter. Here-strings and
+    arithmetic shifts no longer open a heredoc. The pattern allows `@<version>`.
+  - Verified with 14 hook cases in `script-guards:test`: the new hook passes all 14, and the old
+    hook fails the 6 gap cases.
 - [ ] Imports unsafe to re-run against live data:
   - `--descriptions --confirm` overwrites editor edits
   - `downloads:import --force` recreates rows ungated and untyped

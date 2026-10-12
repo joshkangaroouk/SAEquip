@@ -1,35 +1,49 @@
 #!/usr/bin/env bash
 # PreToolUse/Bash guard: refuse commands that destroy database contents.
 #
-# ⚠️ Heredoc BODIES are stripped before matching, and that is not a nicety.
-# The first version matched the raw command string, so it blocked the very
-# commit whose message explained the incident — and then blocked the command
-# that would have replaced it. A guard that cannot be written about is one
-# people route around.
+# ⚠️ Heredoc bodies are stripped before matching ONLY when nothing executes
+# them. The first version matched the raw command string, so it blocked the
+# very commit whose message explained the incident — and then blocked the
+# command that would have replaced it. A guard that cannot be written about is
+# one people route around. So a body read by cat/tee/git commit is prose and
+# ignored.
 #
-# Only the shell lines that actually run are matched. A real invocation is
-# still caught; the same words inside a <<'EOF' body are prose and ignored.
+# ⚠️ But a body fed to bash, sh, node, python, psql… RUNS, and skipping those
+# let a destructive command through (fixed 2026-10-12, with three more gaps:
+# a `<<<` here-string or a `$((1<<X))` shift was taken for a heredoc opener,
+# so every line after it went unchecked; and `prisma@<version>` slipped past
+# the pattern). Cases live in backend/scripts/script-guards-test.ts — edit
+# this file and re-run them rather than loosening the pattern.
 set -uo pipefail
 
 cmd=$(jq -r '.tool_input.command // ""')
 
-# Strip heredoc bodies: print each runnable line, and while inside a heredoc
-# skip everything up to its terminator.
+# Print every line that runs: each shell line, plus the body of any heredoc
+# whose line also names an interpreter.
 runnable=$(printf '%s\n' "$cmd" | awk '
-  inhd { if ($0 ~ "^[[:space:]]*" delim "[[:space:]]*$") inhd = 0; next }
+  inhd {
+    if ($0 ~ "^[[:space:]]*" delim "[[:space:]]*$") { inhd = 0; next }
+    if (execbody) print
+    next
+  }
   {
     print
-    if (match($0, /<<-?[[:space:]]*["'"'"']?[A-Za-z_][A-Za-z0-9_]*["'"'"']?/)) {
-      d = substr($0, RSTART, RLENGTH)
+    probe = $0
+    # Neither of these is a heredoc: an arithmetic shift, and a here-string.
+    gsub(/\$\(\([^)]*\)\)/, "", probe)
+    gsub(/<<</, "", probe)
+    if (match(probe, /<<-?[[:space:]]*["'"'"']?[A-Za-z_][A-Za-z0-9_]*["'"'"']?/)) {
+      d = substr(probe, RSTART, RLENGTH)
       gsub(/^<<-?[[:space:]]*/, "", d)
       gsub(/["'"'"']/, "", d)
       delim = d; inhd = 1
+      execbody = (probe ~ /(^|[|;&(`[:space:]])(bash|sh|zsh|dash|ksh|node|deno|bun|python|python3|ruby|perl|psql|tsx|npx|eval|source|xargs)([[:space:]]|$)/)
     }
   }
 ')
 
 # Assembled so this file can describe what it blocks without blocking itself.
-PAT="shadow-database-url|prisma[[:space:]]+migrate[[:space:]]+re""set|prisma[[:space:]]+db[[:space:]]+pu""sh"
+PAT="shadow-database-url|prisma(@[^[:space:]]+)?[[:space:]]+migrate[[:space:]]+re""set|prisma(@[^[:space:]]+)?[[:space:]]+db[[:space:]]+pu""sh"
 
 if printf '%s\n' "$runnable" | grep -qiE "$PAT"; then
   jq -n '{
@@ -46,8 +60,9 @@ if printf '%s\n' "$runnable" | grep -qiE "$PAT"; then
         "  migrate diff --from-schema-datasource prisma/schema.prisma --script\n" +
         "  migrate deploy\n" +
         "Neither needs a shadow database.\n\n" +
-        "Note: heredoc bodies are ignored, so documenting these commands is fine -\n" +
-        "this fired on a line that would actually run."
+        "Note: heredoc bodies read by cat/tee/git are ignored, so documenting these\n" +
+        "commands is fine - this fired on a line that would actually run, or on a\n" +
+        "heredoc fed to an interpreter."
       )
     }
   }'
