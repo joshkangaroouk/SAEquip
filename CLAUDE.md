@@ -2000,7 +2000,7 @@ Site Challenge ticked by hand is never cleared.
 
 ### `/categories/:id` — the category edit page
 
-⚠️ **A PAGE, not a modal, and the image is why.** Choosing one opens `MediaPicker`, and a
+⚠️ **A PAGE, not a modal, and the image is why.** (Since 2026-10-12 `Modal` keeps a stack, so only the TOP dialog answers Escape and Tab; it also caps its height and scrolls its body, moves focus in and back, and is labelled by its title. `MediaPicker` is still not a `Modal`, so the layering below still applies.) Choosing one opens `MediaPicker`, and a
 picker inside a `Modal` is two independent overlays: **`Modal` closes on Escape and
 `MediaPicker` has no Escape handler at all**, so Escape dismissed the form *underneath* the
 open picker. Both are `z-50` and only `Modal` portals to `<body>`, so the picker also

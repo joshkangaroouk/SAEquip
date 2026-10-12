@@ -78,7 +78,18 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     - its rule matches supabase-js's own `getAuthenticatorAssuranceLevel`, which I read.
 - [ ] Keyboard access: clickable table rows have no link or button, and `SelectMenu` has no
   keyboard support.
-- [ ] `Modal` can't scroll, has no focus management and no `aria-labelledby`.
+- [x] `Modal` couldn't scroll, had no focus management and no `aria-labelledby`.
+  - Fix:
+    - the panel is capped at the viewport and its body scrolls;
+    - focus moves in, is trapped, and returns on close;
+    - the dialog is labelled by its title and description;
+    - only the top dialog in a stack handles Escape and Tab (Escape used to close every open
+      dialog).
+  - Verified:
+    - a jsdom harness on the real `Modal` passed all 10 checks: focus in, labels, Tab and
+      Shift+Tab wrap, Escape closes only the top dialog, focus and overflow restored;
+    - a Vite build emits the `max-height` rules.
+  - Josh to eyeball: a long DESCRIPTION translation in the edit dialog on a laptop.
 
 ## Phase 3: scripts and safety guards
 

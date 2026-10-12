@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useRef,
   useState,
   type ReactNode,
@@ -31,7 +32,30 @@ export interface ModalProps {
   dismissable?: boolean;
 }
 
-/** Rounded dialog rendered in a portal with a dimmed backdrop. */
+/**
+ * Open modals, innermost last. Only the TOP one answers Escape and Tab:
+ * every modal listens on `document`, so without this a confirm opened over
+ * another dialog closed both on one Escape, and two focus traps fought over
+ * every Tab.
+ */
+const openStack: symbol[] = [];
+
+const FOCUSABLE =
+  'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"]),[contenteditable="true"]';
+
+/**
+ * Rounded dialog rendered in a portal with a dimmed backdrop.
+ *
+ * ⚠️ The panel is capped at the viewport and its BODY scrolls, between a
+ * fixed header and footer. It used to be `overflow-hidden` with no height
+ * cap while the page behind was scroll-locked, so a tall dialog — a long
+ * translation, a quote with many lines, anything on a phone — was cut off
+ * with its Save button out of reach.
+ *
+ * Focus moves in on open (unless something inside already took it, e.g. an
+ * `autoFocus` input), is held inside, and returns to where it was on close;
+ * the title and description name the dialog for assistive tech.
+ */
 export function Modal({
   open,
   onClose,
@@ -42,47 +66,105 @@ export function Modal({
   size = "md",
   dismissable = true,
 }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  // The latest handler without re-running the open/close effect on each render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const dismissableRef = useRef(dismissable);
+  dismissableRef.current = dismissable;
+
   useEffect(() => {
     if (!open) return;
+    const me = Symbol("modal");
+    openStack.push(me);
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const panel = panelRef.current;
+    if (panel && !panel.contains(document.activeElement)) panel.focus();
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && dismissable) onClose();
+      if (openStack[openStack.length - 1] !== me) return;
+      if (e.key === "Escape") {
+        if (dismissableRef.current) onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab" || !panel) return;
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement,
+      );
+      if (!items.length) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (!panel.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && (active === first || active === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
+      const at = openStack.indexOf(me);
+      if (at !== -1) openStack.splice(at, 1);
       document.body.style.overflow = prevOverflow;
+      if (opener && opener.isConnected) opener.focus();
     };
-  }, [open, onClose, dismissable]);
+  }, [open]);
 
   if (!open) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={() => dismissable && onClose()}
       />
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descriptionId : undefined}
+        tabIndex={-1}
         className={cn(
-          "relative w-full overflow-hidden rounded-xl bg-surface border border-border shadow-2xl",
+          "relative flex w-full flex-col overflow-hidden rounded-xl bg-surface border border-border shadow-2xl outline-none",
+          "max-h-[calc(100vh-2rem)] supports-[height:100dvh]:max-h-[calc(100dvh-2rem)]",
           sizes[size],
         )}
       >
         {(title || description) && (
-          <div className="border-b border-border px-6 py-5">
-            {title && <h2 className="text-h3 font-semibold text-text">{title}</h2>}
-            {description && <p className="mt-1 text-small text-muted">{description}</p>}
+          <div className="shrink-0 border-b border-border px-6 py-5">
+            {title && (
+              <h2 id={titleId} className="text-h3 font-semibold text-text">
+                {title}
+              </h2>
+            )}
+            {description && (
+              <p id={descriptionId} className="mt-1 text-small text-muted">
+                {description}
+              </p>
+            )}
           </div>
         )}
-        {children && <div className="px-6 py-5 text-body text-text">{children}</div>}
+        {children && (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 text-body text-text">{children}</div>
+        )}
         {footer && (
-          <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-border px-6 py-4">
             {footer}
           </div>
         )}
