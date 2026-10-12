@@ -43,19 +43,6 @@ function anonKey(): string {
   return m[1].trim();
 }
 
-/** Sign in as staff to get a real `authenticated` JWT, exactly as the browser has. */
-async function staffToken(): Promise<string> {
-  const url = /^SUPABASE_URL\s*=\s*"?([^"\n]+)"?/m.exec(readFileSync(".env", "utf8"))![1].trim();
-  const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { apikey: anonKey(), "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "test@saequip.com", password: "Test123" }),
-  });
-  const body = (await res.json()) as { access_token?: string; error_description?: string };
-  if (!body.access_token) throw new Error(`sign-in failed: ${body.error_description ?? JSON.stringify(body).slice(0, 120)}`);
-  return body.access_token;
-}
-
 async function main() {
   console.log("=== applying bucket limits ===");
   await ensureBuckets();

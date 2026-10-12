@@ -196,8 +196,10 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 - [x] Rate-limit rows (visitor IPs) were never deleted: `sweepExpiredRateLimits()` had no caller.
   - Fix: `increment()` runs the sweep on about 1 call in 20, unawaited and best-effort.
   - Verified: one manual sweep removed the 9 stored rows, all expired (0 were live).
-- [ ] `.gitignore` misses `.env.local` and `.env.production`.
-- [ ] Remove the unused `staffToken()` with its hard-coded test credential (`mediaVerifyUpload.ts`).
+- [x] `.gitignore` missed `.env.local` and `.env.production`.
+  - Fix: `.env*` is ignored, except the `.env.example` files.
+  - Verified: 6 variants are ignored and both examples are still tracked.
+- [x] Removed the unused `staffToken()` and its hard-coded test credential (`mediaVerifyUpload.ts`).
 - [ ] The CSP is report-only and has nowhere to report.
 - [ ] The dashboard loads model-viewer without an SRI hash.
 - [ ] Require `elapsedMs` and the honeypot field on `/public/quotes`.
