@@ -623,6 +623,7 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
     our own overlay, and in a left-to-right box Arabic sentences put the full stop beside the
     first word.
   - Email and phone fields stay `dir="ltr"`.
+  - ⚠️ **The form's honeypot is clipped in place, never pushed off-screen** (fixed 2026-10-12). It was `left:-9999px`, which inside the overlay (a scroll container) is scrollable overflow, and in a right-to-left box overflow to the LEFT is reachable: the Arabic form scrolled ~10,000px sideways. Measured in headless Chrome, scroll width 10,620px against a 485px box before, 485px after. `widget:test` pins the rule, since jsdom cannot see layout.
 - The form shows a translated message per HTTP status, never the server's own text, which
   showed "rate_limited" raw.
 - `filterGroup` matches the category slug, then the English title (`titleEn`).

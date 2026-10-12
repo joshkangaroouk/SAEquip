@@ -141,8 +141,11 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 
 - [ ] The 3D viewer is not a real modal. Opening it twice and pressing Escape leaves the page
   unable to scroll.
-- [ ] The Arabic request form scrolls ~10,000px sideways (the honeypot's `left:-9999px`
+- [x] The Arabic request form scrolled ~10,000px sideways (the honeypot's `left:-9999px`
   inside a right-to-left scroll box).
+  - Fix: the honeypot is clipped in place.
+  - Verified in headless Chrome: the scroll width went from 10,620px in a 485px box to 485px,
+    in both Arabic and English. `widget:test` pins the rule (516 checks).
 - [ ] The translation overlay has no time limit on its table load. One live request took 57s.
 - [ ] The translation validator ignores a dropped minus sign and numbers the translation adds.
 - [ ] The quote basket merges lines with different options when the choice ids are missing.

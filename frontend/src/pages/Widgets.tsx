@@ -58,7 +58,7 @@ const WIDGET_CSS = `
 .saeh-form{flex-basis:100%;display:none;flex-wrap:wrap;gap:8px;margin-top:10px;padding:14px;background:#f7f7f7;border-radius:8px}
 .saeh-form.saeh-open{display:flex}
 .saeh-in{flex:1 1 180px;font-family:var(--saeh-body);padding:9px;border:1px solid #ccc;border-radius:5px;font-size:16px;font-weight:400;font-style:normal}
-.saeh-hp{position:absolute!important;left:-9999px!important;width:1px;height:1px;opacity:0}
+.saeh-hp{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;opacity:0}
 .saeh-msg{flex-basis:100%;font-size:16px;font-weight:400;font-style:normal;margin-top:2px}
 .saeh-ok{color:#137333}
 .saeh-err{color:#c5221f}

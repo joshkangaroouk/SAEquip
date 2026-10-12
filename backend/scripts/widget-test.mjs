@@ -1509,6 +1509,12 @@ async function main() {
       check(/prefers-reduced-motion:reduce\)\{\.saeh-rs-row\{animation:none\}/.test(css), "row animation honours reduced motion");
       check(!/saeh-rs-row[^{]*\{[^}]*margin-top/.test(css) && /\.saeh-rs-list\{[^}]*gap:12px/.test(css),
         "rows are spaced only by the list's gap, so every gap is the same");
+      // jsdom cannot see layout, so the rule itself is pinned: a honeypot pushed
+      // off-screen inside the form's scroll box made the ARABIC form scroll
+      // ~10,000px sideways (measured in headless Chrome, 2026-10-12).
+      const hp = (css.match(/\.saeh-hp\{[^}]*\}/) || [""])[0];
+      check(hp !== "" && !/(left|right|text-indent):-\d/.test(hp) && /clip:rect\(0 0 0 0\)/.test(hp),
+        "the honeypot is clipped in place, never offset off-screen (RTL sideways scroll)");
       check(/\.saeh-pl-search input,\.saeh-rs-search input(,[^{,]+)*\{/.test(css) && /\.saeh-pl-search input:focus,\.saeh-rs-search input:focus(,[^{,]+)*\{/.test(css),
         "the search field SHARES the listing's rules rather than copying them");
       check(/\.saeh-pl-search input,\.saeh-rs-search input,\.saeh-rq-in\{/.test(css) && /,\.saeh-rq-in:focus\{outline:none;/.test(css) &&
