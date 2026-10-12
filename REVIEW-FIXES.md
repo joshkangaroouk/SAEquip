@@ -69,8 +69,13 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
       - the edit stays and reads as unsaved;
       - the order is `variations` then `options`, and the SKU survives;
       - a failed variations save skips options and shows Duda's error.
-- [ ] Reloading on the 2FA code step strands the user. Pages using raw `apiFetch` miss
+- [x] Reloading on the 2FA code step stranded the user. Pages using raw `apiFetch` missed
   `mfa_required`.
+  - Fix: `mfaPending` is derived from the session. `ProtectedRoute` and `Login` route on it, and
+    `apiFetch` handles `mfa_required`.
+  - Verified:
+    - `sessionNeedsSecondFactor()` passed 7/7 against crafted tokens;
+    - its rule matches supabase-js's own `getAuthenticatorAssuranceLevel`, which I read.
 - [ ] Keyboard access: clickable table rows have no link or button, and `SelectMenu` has no
   keyboard support.
 - [ ] `Modal` can't scroll, has no focus management and no `aria-labelledby`.

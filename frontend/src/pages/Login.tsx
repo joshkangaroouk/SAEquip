@@ -41,7 +41,7 @@ function EyeOffIcon() {
 }
 
 export default function Login() {
-  const { user, loading, signIn, verifyMfa, signOut } = useAuth();
+  const { user, loading, mfaPending, signIn, verifyMfa, signOut } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,7 +59,9 @@ export default function Login() {
    * the API refuses with `mfa_required`, i.e. a dashboard that looks logged in
    * and loads nothing.
    */
-  if (!loading && user && !needsCode) return <Navigate to="/" replace />;
+  if (!loading && user && !needsCode && !mfaPending) return <Navigate to="/" replace />;
+  // A session that still owes its code (e.g. after a reload) resumes the step.
+  const showCode = needsCode || (!loading && !!user && mfaPending);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -121,7 +123,7 @@ export default function Login() {
           {/* Compact logo for small screens, where the brand panel is hidden. */}
           <img src={logoUrl} alt="SAEquip" className="mx-auto mb-8 h-28 w-auto lg:hidden" />
 
-          {needsCode ? (
+          {showCode ? (
             <form
               onSubmit={onSubmitCode}
               className="rounded-xl border border-border bg-surface p-8 shadow-sm"

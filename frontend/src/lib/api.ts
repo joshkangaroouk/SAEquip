@@ -30,7 +30,27 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     headers.set("Authorization", `Bearer ${session.access_token}`);
   }
 
-  return fetch(`${API_BASE}${path}`, { ...init, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+
+  /*
+   * ⚠️ `mfa_required` means the session is valid but only aal1, and the
+   * account has a confirmed authenticator (see requireAuth). Every request
+   * will fail this way until a code is entered, so end the session and let
+   * the login screen run the challenge properly. Handled HERE, not in
+   * apiJson: Products, Quotes, Resource Requests and Media call apiFetch
+   * directly, and used to show "returned 403" and load nothing.
+   */
+  if (res.status === 403) {
+    const body = (await res
+      .clone()
+      .json()
+      .catch(() => null)) as { error?: unknown } | null;
+    if (body?.error === "mfa_required") {
+      await supabase.auth.signOut();
+      window.location.assign("/login");
+    }
+  }
+  return res;
 }
 
 /**
@@ -88,19 +108,6 @@ export async function apiJson<T = unknown>(path: string, init: RequestInit = {})
     : {};
 
   if (!res.ok) {
-    /*
-     * ⚠️ `mfa_required` means the session is valid but only aal1, and the
-     * account has a confirmed authenticator (see requireAuth). Every request
-     * will fail this way until a code is entered, so the only useful move is
-     * to end the session and let the login screen run the challenge properly.
-     * Left alone, the dashboard sits there looking signed in and loading
-     * nothing.
-     */
-    if (res.status === 403 && json.error === "mfa_required") {
-      await supabase.auth.signOut();
-      window.location.assign("/login");
-    }
-
     const details = json.details as { fieldErrors?: Record<string, string[]> } | undefined;
     const fieldErrors = details?.fieldErrors;
     const message = details

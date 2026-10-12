@@ -7,12 +7,19 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
-import { verifyTotpCode } from "../lib/mfa";
+import { sessionNeedsSecondFactor, verifyTotpCode } from "../lib/mfa";
 
 type AuthContextValue = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /**
+   * Signed in, but the second factor is still owed. ⚠️ Derived from the
+   * session, not remembered by the login page: a reload during the code step
+   * used to lose that page's state, send the user to a dashboard the API
+   * refuses, and bounce /login straight back to it.
+   */
+  mfaPending: boolean;
   signIn: (
     email: string,
     password: string,
@@ -90,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     session,
     loading,
+    mfaPending: sessionNeedsSecondFactor(session),
     signIn,
     verifyMfa,
     signOut,
