@@ -112,6 +112,45 @@ check(stripAnchors('<p><a title="a > b" href="/x">t</a></p>') === "<p>t</p>", "a
 check(noHref(stripAnchors('<A HREF="/x">t</A>')), "upper case");
 check(stripAnchors("<p>abbr <abbr>x</abbr> <article>y</article></p>") === "<p>abbr <abbr>x</abbr> <article>y</article></p>", "other tags starting with a are untouched");
 
+// ---- a stale Hub row cannot hold a new product's slug (fake db, stubbed Duda)
+{
+  const { syncHubProduct } = await import("../src/services/hubProduct.js");
+  const { duda, DudaApiError } = await import("../src/services/duda.js");
+  const realGet = duda.getProduct;
+  const run = async (staleStatus: number) => {
+    const rows = [{ id: "old", dudaProductId: "GONE", slug: "ex-thing" }];
+    const fakeDb = {
+      hubProduct: {
+        findFirst: async ({ where }: { where: { slug: string; NOT: { dudaProductId: string } } }) =>
+          rows.find((r) => r.slug === where.slug && r.dudaProductId !== where.NOT.dudaProductId) ?? null,
+        update: async ({ where, data }: { where: { id: string }; data: { slug: null } }) => Object.assign(rows.find((r) => r.id === where.id)!, data),
+        upsert: async () => {
+          if (rows.some((r) => r.slug === "ex-thing")) throw Object.assign(new Error("Unique"), { code: "P2002" });
+          return { id: "new" };
+        },
+      },
+    };
+    (duda as { getProduct: unknown }).getProduct = async () => {
+      if (staleStatus === 200) return { id: "GONE" };
+      throw new DudaApiError(staleStatus, "", "x");
+    };
+    try {
+      await syncHubProduct({ id: "NEW", name: "Thing", sku: null, seo: { product_url: "ex-thing" } } as never, fakeDb as never);
+      return { ok: true, slugLeft: rows[0].slug };
+    } catch (e) {
+      return { ok: false, slugLeft: rows[0].slug, code: (e as { code?: string }).code };
+    } finally {
+      (duda as { getProduct: unknown }).getProduct = realGet;
+    }
+  };
+  const gone = await run(404);
+  check(gone.ok && gone.slugLeft === null, "a slug held by a row whose Duda product is GONE is freed, and the new product syncs");
+  const live = await run(200);
+  check(!live.ok && live.code === "P2002" && live.slugLeft === "ex-thing", "a slug held by a LIVE product is left alone (the clash is real)");
+  const flaky = await run(500);
+  check(!flaky.ok && flaky.slugLeft === "ex-thing", "a Duda error that is not a 404 frees nothing");
+}
+
 // ---- the real app's error handler: a malformed %-escape is the caller's fault
 {
   process.env.VERCEL = process.env.VERCEL ?? "1"; // export the app without listening

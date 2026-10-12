@@ -1441,6 +1441,7 @@ before publishing.
 - ⚠️ **Filter with `LISTABLE` (`services/hubProduct.ts`), never `{ status: { not: "HIDDEN" } }`.**
   That compiles to `status <> 'HIDDEN'`, which SQL evaluates as NULL — false — for a row
   never synced, and would silently drop every such product from the site.
+- ⚠️ **A product deleted IN DUDA leaves its Hub row holding its slug**, and `slug` is unique, so a new product given the same slug failed every sync (P2002 → 409) and could not be opened. Since 2026-10-12 `syncHubProduct()` frees the slug first via `releaseStaleSlug()`, but only when Duda answers 404 for the holder; a live holder is a real clash and still 409s.
 - ⚠️ **Hiding or un-hiding a product IN DUDA does not reach the Hub until it syncs** —
   opening it in the dashboard, saving it there, or `npm run hub:sync-mirror --workspace=backend -- --confirm`.
   That script walks Duda itself (one paged list call), so unlike `--sync-hub` it covers

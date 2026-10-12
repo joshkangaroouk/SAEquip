@@ -1,6 +1,6 @@
 import type { HubProduct, Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import { duda, type DudaProduct } from "./duda.js";
+import { duda, DudaApiError, type DudaProduct } from "./duda.js";
 
 /** Prisma client or an interactive transaction client. */
 type Db = Prisma.TransactionClient | typeof prisma;
@@ -14,7 +14,7 @@ type Db = Prisma.TransactionClient | typeof prisma;
  *
  * Pass `db` to enrol the sync in a surrounding transaction.
  */
-export function syncHubProduct(
+export async function syncHubProduct(
   product: DudaProduct,
   db: Db = prisma,
   /**
@@ -42,11 +42,39 @@ export function syncHubProduct(
     ...(descriptionHtml !== undefined ? { descriptionHtml } : {}),
   };
 
+  if (slug) await releaseStaleSlug(slug, product.id, db);
+
   return db.hubProduct.upsert({
     where: { dudaProductId: product.id },
     create: { dudaProductId: product.id, ...fields },
     update: fields,
   });
+}
+
+/**
+ * Free a slug held by a Hub row whose Duda product no longer exists.
+ *
+ * ⚠️ `HubProduct.slug` is unique, and a product deleted IN DUDA (not through
+ * the Hub, which hard-deletes the row) leaves its row behind holding the
+ * slug. A new product Duda then gives the same slug failed every sync with
+ * P2002 — so it could not be opened in the editor at all (fixed 2026-10-12).
+ * Only a definite 404 from Duda frees the slug; any other answer leaves the
+ * row alone and the usual `duplicate_slug` 409 stands.
+ */
+async function releaseStaleSlug(slug: string, ownerDudaId: string, db: Db): Promise<void> {
+  const holder = await db.hubProduct.findFirst({
+    where: { slug, NOT: { dudaProductId: ownerDudaId } },
+    select: { id: true, dudaProductId: true },
+  });
+  if (!holder) return;
+  try {
+    await duda.getProduct(holder.dudaProductId);
+    return; // still a live product: a genuine clash, reported as before
+  } catch (err) {
+    if (!(err instanceof DudaApiError) || err.status !== 404) return;
+  }
+  console.warn(`[hub] slug "${slug}" freed from a Hub row whose Duda product ${holder.dudaProductId} no longer exists`);
+  await db.hubProduct.update({ where: { id: holder.id }, data: { slug: null } });
 }
 
 /**

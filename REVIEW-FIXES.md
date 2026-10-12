@@ -230,7 +230,10 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Caveat: Vercel may still attach the immutable header to that 404. That matters only if a
     rollback revives the exact same hash.
 - [ ] Lead limits (30/hour/IP) are tight now that every download needs the form.
-- [ ] A stale Hub slug blocks a new product with the same slug.
+- [x] A stale Hub slug blocked a new product with the same slug.
+  - Fix: `releaseStaleSlug()` frees the slug only when Duda answers 404 for the holder.
+  - Verified with 3 fake-db cases in `duda-ids:test`: a gone holder is freed, a live holder
+    still clashes, and a non-404 error frees nothing.
 - [ ] Option-delete cascades can hit the 60s function limit.
 - [x] Malformed percent-encoding returned 500 instead of 400.
   - Fix: the error handler answers a `URIError` with 400.
