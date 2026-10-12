@@ -218,7 +218,11 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 - [-] RLS off and the global `cors()` on `/api`: defence in depth only, so left for now.
 
 **Correctness**
-- [ ] `stripAnchors` misses an unclosed `<a href>`, so the save fails with Duda's 403.
+- [x] `stripAnchors` missed an unclosed `<a href>`, so the save failed with Duda's 403.
+  - Fix: opening and closing tags are removed separately, and quoted attributes are skipped.
+  - Verified:
+    - 5 new `duda-ids:test` checks (72 total);
+    - the output is identical to the old version for all 94 stored descriptions.
 - [ ] A missing `/assets/*` file is served as `index.html` with an immutable year-long cache.
 - [ ] Lead limits (30/hour/IP) are tight now that every download needs the form.
 - [ ] A stale Hub slug blocks a new product with the same slug.

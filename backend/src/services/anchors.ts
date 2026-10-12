@@ -21,5 +21,13 @@
  * in `routes/public.ts`.
  */
 export function stripAnchors(html: string): string {
-  return html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, (_m, text: string) => text);
+  /*
+   * Opening and closing tags removed SEPARATELY, keeping the text between.
+   * ⚠️ It used to match balanced pairs only, so an unclosed `<a href>` typed
+   * in the editor's HTML tab reached Duda intact, the WAF 403'd and the whole
+   * Details save failed with an opaque error (fixed 2026-10-12). Quoted
+   * attribute values are skipped whole, so a `>` inside one cannot end the
+   * tag early and leave half of it behind.
+   */
+  return html.replace(/<a\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, "").replace(/<\/a\s*>/gi, "");
 }

@@ -9,6 +9,7 @@ import type { AddressInfo } from "node:net";
 import { InvalidDudaIdError, __dudaPathsForTest as PATHS } from "../src/services/duda.js";
 import { dudaRouter } from "../src/routes/duda.js";
 import { categoriesRouter } from "../src/routes/categories.js";
+import { stripAnchors } from "../src/services/anchors.js";
 
 let pass = 0;
 let fail = 0;
@@ -102,6 +103,14 @@ check(outbound.length === 0, "no request reached Duda", outbound.join(", "));
 
 server.close();
 globalThis.fetch = realFetch;
+
+// ---- what reaches Duda's WAF: never an <a href> (it 403s the whole save)
+const noHref = (h: string) => !/<a\b[^>]*href/i.test(h);
+check(stripAnchors('<p>See <a href="/product/x">the trolley</a>.</p>') === "<p>See the trolley.</p>", "a balanced link keeps its text");
+check(noHref(stripAnchors("<p>See <a href=/product/x>x.</p>")), "an UNCLOSED link is still stripped");
+check(stripAnchors('<p><a title="a > b" href="/x">t</a></p>') === "<p>t</p>", "a > inside a quoted attribute does not cut the tag short");
+check(noHref(stripAnchors('<A HREF="/x">t</A>')), "upper case");
+check(stripAnchors("<p>abbr <abbr>x</abbr> <article>y</article></p>") === "<p>abbr <abbr>x</abbr> <article>y</article></p>", "other tags starting with a are untouched");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
