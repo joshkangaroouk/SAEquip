@@ -51,10 +51,20 @@ export function TBody({ className, children, ...rest }: React.HTMLAttributes<HTM
   );
 }
 
+/**
+ * A table row. With `hover` and `onClick` the whole row is a mouse target.
+ *
+ * ⚠️ A clickable row is NOT a keyboard target — a `<tr>` takes no focus — so
+ * every such row must ALSO carry a real link or button in one of its cells
+ * (Products, Quotes, Resource Requests and Translations were mouse-only until
+ * 2026-10-12). A click that starts on such a control is left to it, so the
+ * action does not run twice — twice is two history entries for a link.
+ */
 export function TR({
   hover = false,
   className,
   children,
+  onClick,
   ...rest
 }: React.HTMLAttributes<HTMLTableRowElement> & { hover?: boolean }) {
   return (
@@ -64,6 +74,13 @@ export function TR({
         hover && "cursor-pointer transition-colors hover:bg-surface-2/70",
         className,
       )}
+      onClick={
+        onClick &&
+        ((e) => {
+          if ((e.target as Element).closest("a,button,input,select,textarea,label")) return;
+          onClick(e);
+        })
+      }
       {...rest}
     >
       {children}

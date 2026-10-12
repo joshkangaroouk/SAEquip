@@ -255,7 +255,12 @@ export default function Quotes() {
             <TBody>
               {requests.map((q) => (
                 <TR key={q.id} hover onClick={() => setSelected(q)}>
-                  <TD className="font-semibold text-text">{q.name}</TD>
+                  <TD className="font-semibold text-text">
+                    <button type="button" onClick={() => setSelected(q)} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50">
+                      <span className="sr-only">Open the quote from </span>
+                      {q.name}
+                    </button>
+                  </TD>
                   <TD>{q.email}</TD>
                   <TD>{q.company || "—"}</TD>
                   <TD>{q.items.length}</TD>

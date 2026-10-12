@@ -2208,6 +2208,8 @@ dropped (2026-09-30): both live on the product page, and neither is what you sca
   `overflow` clips an absolute sibling, and no z-index fixes that), flips above when it will
   not fit below, caps at 320px and scrolls, and indents by `depth` so the tree survives a
   truncated label.
+  ⚠️ **It is a select-only combobox for the keyboard** (fixed 2026-10-12): focus stays on the trigger, arrows/Home/End/type-ahead move a highlight announced via `aria-activedescendant`, Enter/Space/Tab choose, Escape closes (and is stopped there, so a dialog underneath stays open). The options were buttons with no key handling in a portal at the END of `<body>`, so the filter and sort were mouse-only.
+  ⚠️ **A clickable table row needs a real link or button in a cell** — a `<tr>` takes no focus, so `hover onClick` alone is mouse-only. Products, Quotes, Resource Requests and Translations each have one now, and `TR` leaves a click that starts on such a control to it (a link plus a row navigate would be two history entries).
   ⚠️ **Its close-on-scroll listener must ignore scrolls from inside the list.** A
   capture-phase `scroll` handler sees the menu's own scrolling too, so without that check the
   list closes the moment you scroll it — the reason `DropdownMenu`'s simpler version cannot

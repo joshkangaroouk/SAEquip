@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import {
   Button,
@@ -420,9 +420,9 @@ export default function Products() {
                           <div className="h-[100px] w-[100px] shrink-0 rounded border border-border bg-surface-2" />
                         )}
                         <div>
-                          <div className="font-medium text-text">
+                          <Link to={`/products/${p.id}`} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 font-medium text-text">
                             <Highlight text={p.name} query={query} />
-                          </div>
+                          </Link>
                           <div className="text-small text-subtle">{p.type}</div>
                         </div>
                       </div>

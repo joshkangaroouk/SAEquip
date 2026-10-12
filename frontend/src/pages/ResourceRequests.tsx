@@ -223,7 +223,12 @@ export default function ResourceRequests() {
             <TBody>
               {requests.map((r) => (
                 <TR key={r.id} hover onClick={() => setSelected(r)}>
-                  <TD className="font-semibold text-text">{r.name}</TD>
+                  <TD className="font-semibold text-text">
+                    <button type="button" onClick={() => setSelected(r)} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50">
+                      <span className="sr-only">Open the request from </span>
+                      {r.name}
+                    </button>
+                  </TD>
                   <TD>{r.email}</TD>
                   <TD>{r.company || "—"}</TD>
                   <TD>{fileLabel(r)}</TD>

@@ -76,8 +76,18 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified:
     - `sessionNeedsSecondFactor()` passed 7/7 against crafted tokens;
     - its rule matches supabase-js's own `getAuthenticatorAssuranceLevel`, which I read.
-- [ ] Keyboard access: clickable table rows have no link or button, and `SelectMenu` has no
+- [x] Keyboard access: clickable table rows had no link or button, and `SelectMenu` had no
   keyboard support.
+  - Fix:
+    - Products rows link to the product; Quotes, Resource Requests and Translations rows have a
+      button;
+    - `TR` skips a click that started on a control;
+    - `SelectMenu` follows the select-only combobox pattern.
+  - Verified in a jsdom harness on the real components (11/11):
+    - `SelectMenu`: open, start on the selected option, arrows, End, type-ahead, Enter chooses,
+      focus stays on the trigger, Escape closes without reaching `document`, options are not
+      tab stops;
+    - rows: the cell's button fires once and a plain-cell click still opens the row.
 - [x] `Modal` couldn't scroll, had no focus management and no `aria-labelledby`.
   - Fix:
     - the panel is capped at the viewport and its body scrolls;
