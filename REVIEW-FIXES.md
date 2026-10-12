@@ -158,7 +158,14 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     - a translated request answered in English is `no-store`.
   - Verified: `i18n:test` (72 checks) stubs a load that never settles. It now answers in English
     after 2,504ms, and the cache headers are right in every case.
-- [ ] The translation validator ignores a dropped minus sign and numbers the translation adds.
+- [x] The translation validator ignored a dropped minus sign and numbers the translation added.
+  - Fix:
+    - an output-only number is refused;
+    - each figure must carry a minus exactly as often as in the English.
+  - Verified:
+    - 7 new `i18n:test` cases (79 total): a dropped sign, a flipped sign, an added number, a
+      kept minus, U+2212, a separator dash, a range;
+    - the shipped validator over all 5,238 stored translations: 0 newly rejected.
 - [ ] The quote basket merges lines with different options when the choice ids are missing.
 
 ## Phase 5: dependencies

@@ -155,6 +155,15 @@ if (descs.length) {
 const linked = await translateHtml('<p>Pair it with the <a href="/product/x">trolley</a>.</p>', protectTerms(chromeLike));
 check(linked.includes('<a href="/product/x">»trolley«</a>') && !linked.includes("junk"), "a link mangled by the translator comes back exactly as in the English", linked);
 
+// ---- signs and added numbers (the cases that once passed)
+check(!validateTranslation("LIST_ITEM", "-50°C to +50°C operating temperature", "50°C à +50°C température de fonctionnement").ok, "a dropped minus sign is refused");
+check(!validateTranslation("LIST_ITEM", "-50°C to +50°C operating temperature", "-50°C à -50°C température de fonctionnement").ok, "a sign flipped onto another number is refused");
+check(!validateTranslation("SPEC_VALUE", "Zone 1 and 2", "Zone 1 et 2 et 0").ok, "a number the English does not have is refused");
+check(validateTranslation("LIST_ITEM", "-20°C to +40°C", "-20 °C à +40 °C").ok, "a kept minus passes");
+check(validateTranslation("LIST_ITEM", "-20°C to +40°C", "\u221220 °C à +40 °C").ok, "a typographic minus (U+2212) counts as a minus");
+check(validateTranslation("SPEC_LABEL", "Dust - 2 Stage Standard", "Staub – 2-stufig Standard").ok, "a dash used as a separator is not a sign");
+check(validateTranslation("SPEC_VALUE", "Zone 1-2", "Zone 1-2").ok, "a range is not a negative");
+
 // ---- the overlay never makes a page wait on a stalled table load (no DB:
 // both loads are stubbed to hang forever)
 {

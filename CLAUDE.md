@@ -686,6 +686,7 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
   - Every translation is checked by `validateTranslation()`. Every number (Arabic-Indic
     digits count), certification mark, brand and acronym must survive, and a description must
     keep identical tags and links.
+  - ⚠️ **No number may be ADDED, and a minus sign must stay on the same figure** (fixed 2026-10-12). The check only asked that each English number appear, so "-50°C" as "50°C", "+50" as "-50", or "Zone 1 and 2" as "Zone 1 et 2 et 0" all passed. A sign is a minus (or U+2212) hard against the digit and not after a letter, digit or decimal mark, so ranges ("Zone 1-2") and separator dashes ("Dust - 2 Stage") are not negatives. Run over all 5,238 stored translations: 0 newly rejected.
   - ⚠️ A machine translation NEVER replaces a STAFF one.
   - An unsafe machine result is stored as rejected, and the English is shown.
   - An unsafe staff edit is refused.

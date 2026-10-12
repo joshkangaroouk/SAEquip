@@ -26,6 +26,18 @@ function digitRuns(s: string): string[] {
 }
 
 /**
+ * Numbers carrying a minus SIGN: a hyphen-minus or U+2212 hard against the
+ * digit and NOT after a letter, digit or decimal mark — so "-20°C" counts, but
+ * a range ("10-20", "Zone 1-2") or a dash used as a separator ("Dust - 2
+ * Stage") does not. Measured over all 5,238 stored translations: 186 have a
+ * negative in the English, none lost it.
+ */
+function negatives(s: string): string[] {
+  const t = asciiDigits(s).replace(/\u2212/g, "-");
+  return [...t.matchAll(/(^|[^\p{L}\p{N}.,])-(\d+(?:[.,]\d+)?)/gu)].map((m) => m[2]);
+}
+
+/**
  * Shouted ENGLISH words in the catalogue — "PRODUCT CODE: SARF300" — which a
  * translation may and should translate. Every other all-caps token is a mark,
  * brand, standard or code that must survive. Taken from the 89 all-caps tokens
@@ -63,9 +75,32 @@ export function validateTranslation(kind: TranslationKind, source: string, trans
   const ratio = out.length / Math.max(src.length, 1);
   if (src.length >= 12 && (ratio < 0.15 || ratio > 4)) return { ok: false, reason: `length ratio ${ratio.toFixed(2)}` };
 
+  const srcDigits = new Set(digitRuns(src));
   const outDigits = new Set(digitRuns(out));
-  for (const d of new Set(digitRuns(src))) {
+  for (const d of srcDigits) {
     if (!outDigits.has(d)) return { ok: false, reason: `number "${d}" missing` };
+  }
+  /*
+   * ⚠️ The two checks below were missing (fixed 2026-10-12): the number check
+   * only asked that each English number APPEAR, so "-50°C" rendered as
+   * "50°C", and "Zone 1 and 2" as "Zone 1 et 2 et 0", both passed — on
+   * hazardous-area kit, where Zone 0 is the most dangerous zone. Neither rule
+   * rejects any of the 5,238 translations stored when it was added (the
+   * minus rule compared as exact counts per number).
+   */
+  for (const d of outDigits) {
+    if (!srcDigits.has(d)) return { ok: false, reason: `number "${d}" added` };
+  }
+  // Each number carries a minus exactly as often as in the English: a sign
+  // lost ("-50" → "50") or moved onto another figure ("+50" → "-50") fails.
+  const signs = (t: string) => negatives(t).reduce((m, d) => m.set(d, (m.get(d) ?? 0) + 1), new Map<string, number>());
+  const srcSigns = signs(src);
+  const outSigns = signs(out);
+  for (const d of new Set([...srcSigns.keys(), ...outSigns.keys()])) {
+    const want = srcSigns.get(d) ?? 0;
+    const got = outSigns.get(d) ?? 0;
+    if (got < want) return { ok: false, reason: `minus sign on "-${d}" lost` };
+    if (got > want) return { ok: false, reason: `minus sign added to "${d}"` };
   }
 
   for (const term of GLOSSARY) {
