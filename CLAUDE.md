@@ -1026,7 +1026,7 @@ Backend side (`backend/src/routes/quotes.ts`, `backend/src/services/email.ts`): 
 - `name`/`company`/`phone` are stripped of CR/LF and control characters, so switching the mailer to SMTP cannot reintroduce header injection.
 
 **Does NOT hold — know these**
-- ⚠️ **The `elapsedMs` timing check is skipped when the field is ABSENT.** `Number(undefined)` is `NaN`, `Number.isFinite(NaN)` is false, so the guard passes. It only catches a bot that bothers to send a small value. Making it required would need confirmation that the live basket widget sends it — the widget lives in Duda, not this repo.
+- ~~The `elapsedMs` timing check is skipped when the field is ABSENT.~~ **Fixed 2026-10-12:** both `elapsedMs` and the `website` honeypot field must be PRESENT, or the request gets a 400 (deliberately not a silent `{ok:true}`, so an outdated client sees the failure instead of losing the quote). Confirmed first that the live `/basket` widget sends both.
 - ⚠️ **The honeypot only catches bots that fill it in.** A cheap filter, not a control.
 - ⚠️ **Origin filtering is bypassed by omitting the header.** `publicCors` 403s a *disallowed* Origin, but the check is `if (origin && …)` — no Origin at all skips it, which is the default for curl and every non-browser client. It stops a malicious website posting on a visitor's behalf; it is no barrier to a script.
 - ⚠️ **Rate limits are IP-keyed**, so a distributed source defeats them. **Vercel Firewall** rate-limit rules run before the function is invoked and are the right layer for that; application code cannot solve it.

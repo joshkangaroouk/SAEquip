@@ -1145,7 +1145,19 @@ publicRouter.post("/quotes", quoteLimiter, quoteHourlyLimiter, async (req, res) 
     }
 
     const elapsedMs = Number(body.elapsedMs);
-    if (Number.isFinite(elapsedMs) && elapsedMs < 1500) {
+    /*
+     * ⚠️ Both REQUIRED since 2026-10-12. An absent `elapsedMs` used to skip the
+     * timing check outright — Number(undefined) is NaN, and the guard only
+     * acted on a finite value — so only a bot that bothered to send a small
+     * number was caught. The basket widget sends both (checked on the live
+     * /basket page, 2026-10-12). A 400, not a silent {ok:true}: a broken or
+     * outdated client must SEE the failure rather than lose the quote.
+     */
+    if (typeof body.website !== "string" || body.elapsedMs === undefined || body.elapsedMs === null || !Number.isFinite(elapsedMs)) {
+      res.status(400).json({ ok: false, error: "Please refresh the page and try again." });
+      return;
+    }
+    if (elapsedMs < 1500) {
       res.status(200).json({ ok: false, error: "Please try again." });
       return;
     }

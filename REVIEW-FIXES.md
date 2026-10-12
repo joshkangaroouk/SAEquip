@@ -204,7 +204,12 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 - [x] The dashboard loaded model-viewer without an SRI hash.
   - Fix: the widget's pinned sha384 plus `crossOrigin`, and a failed load is no longer cached.
   - Verified: the hash recomputed from the CDN matches.
-- [ ] Require `elapsedMs` and the honeypot field on `/public/quotes`.
+- [x] Require `elapsedMs` and the honeypot field on `/public/quotes`.
+  - Fix: both must be present, otherwise 400 (not a silent `{ok:true}`).
+  - Verified: the live `/basket` page's widget sends both, which I read in the page source;
+    typechecked.
+  - Not exercised by an automated test, because the route writes rate-limit rows. **After
+    deploy, Josh to place one clearly fake quote, then delete it.**
 - [ ] Distributor widget: scheme-check the website and map links (`javascript:`).
 - [-] RLS off and the global `cors()` on `/api`: defence in depth only, so left for now.
 
