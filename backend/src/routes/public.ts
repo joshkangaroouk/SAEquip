@@ -15,7 +15,7 @@ import { categorySortKey, compareKeys } from "../services/categoryTree.js";
 import { quoteProductMatcher } from "../services/quoteProducts.js";
 import { CONSENT_TEXT, KIND_BUTTON, RESOURCE_TYPES, SCHEME_BUTTON, SCHEME_ORDER } from "../services/downloadKinds.js";
 import { LOCALES, normaliseLocale } from "../services/i18n/locales.js";
-import { categoryTitle, collator, parseLang, productName, tablesFor, tr } from "../services/i18n/overlay.js";
+import { categoryTitle, collator, overlayCacheControl, parseLang, productName, tablesFor, tr } from "../services/i18n/overlay.js";
 
 /**
  * CORS allowlist for the public widget API. Browser requests from a
@@ -203,7 +203,7 @@ publicRouter.get("/products/by-category", contentLimiter, async (req, res, next)
       // language — for a stable, predictable carousel.
       .sort((a, b) => sorter.compare(a.name, b.name));
 
-    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
+    res.setHeader("Cache-Control", overlayCacheControl(req.query.lang, tables, "public, max-age=30, s-maxage=60, stale-while-revalidate=60"));
     res.json({
       lang: tables ? tables.locale : "en",
       category: { title: categoryTitle(tables, cat.dudaCategoryId, cat.title), titleEn: cat.title, slug: cat.slug },
@@ -342,7 +342,7 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
     };
 
     const sorter = collator(tables);
-    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
+    res.setHeader("Cache-Control", overlayCacheControl(req.query.lang, tables, "public, max-age=30, s-maxage=60, stale-while-revalidate=60"));
     res.json({
       lang: tables ? tables.locale : "en",
       categories: categories.map((c) => ({
@@ -492,7 +492,7 @@ publicRouter.get("/resources", contentLimiter, async (req, res, next) => {
         sorter.compare(a.name, b.name),
     );
 
-    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
+    res.setHeader("Cache-Control", overlayCacheControl(req.query.lang, tables, "public, max-age=30, s-maxage=60, stale-while-revalidate=60"));
     res.json({
       type,
       lang: tables ? tables.locale : "en",
@@ -748,7 +748,7 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
     // Short freshness window + background revalidation: visitors get an instant
     // (at most 5s-stale) response, and edits (e.g. toggling a logo) propagate
     // within a request or two instead of waiting out a flat 60s cache.
-    res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=55");
+    res.setHeader("Cache-Control", overlayCacheControl(req.query.lang, tables, "public, max-age=5, stale-while-revalidate=55"));
     res.json({
       // The language this payload is in ("en" when untranslated or asked none).
       lang: tables ? tables.locale : "en",
@@ -1030,7 +1030,7 @@ publicRouter.get("/quote-labels", contentLimiter, async (req, res, next) => {
     for (const pass of ["en", lang]) {
       for (const r of rows) if (r.locale === pass) (r.entity === "OPTION" ? options : choices)[r.dudaId] = r.text;
     }
-    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60");
+    res.setHeader("Cache-Control", overlayCacheControl(req.query.lang, tables, "public, max-age=30, s-maxage=60, stale-while-revalidate=60"));
     res.json({
       lang: lang ?? "en",
       products: Object.fromEntries(

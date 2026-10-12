@@ -698,6 +698,7 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
   - Translation happens LAST, so the Rental check and the filter-group match run on English.
   - ⚠️ **It fails open:** a missing string, an unknown language or a failed table load gives
     English, never an error.
+  - ⚠️ **…and it fails open on a HANG too** (fixed 2026-10-12). A request waits at most 2.5s (`LOAD_TIMEOUT_MS`) for a language's tables, then answers in English while the load carries on for the next request. A French product request once took 57s of the function's 60, while every other language answered in under 0.2s. A translated request answered in English is `no-store` (`overlayCacheControl()`), so the edge never serves that English under the French URL. `i18n:test` stubs a load that never settles.
   - Each language's tables are cached for 60 seconds per instance, and a failed load is not
     cached. The language is in the URL, so the edge keys on it with no new `Vary`.
 - **Admin** (behind `requireAuth`): `GET /api/translations/sources?locale&productId` (each

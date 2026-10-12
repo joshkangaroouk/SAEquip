@@ -27,6 +27,15 @@ export interface Tables {
 }
 
 const TTL_MS = 60_000;
+/**
+ * How long a request waits for a language's tables before answering in
+ * English. ⚠️ Fail-open covered an ERROR but not a HANG: a translated product
+ * request once took 57s (of the function's 60) while every other language
+ * answered in under 0.2s, consistent with a stalled table load. The load
+ * itself carries on and is cached for the next request; only this request
+ * stops waiting.
+ */
+const LOAD_TIMEOUT_MS = 2_500;
 const cache = new Map<Locale, { at: number; tables: Promise<Tables | null> }>();
 
 /** `?lang=` → a translated locale, or null for English / unsupported / absent. */
@@ -67,7 +76,28 @@ export async function tablesFor(locale: Locale | null): Promise<Tables | null> {
   void tables.then((v) => {
     if (!v && cache.get(locale)?.tables === tables) cache.delete(locale);
   });
-  return tables;
+  return withinTimeout(tables, locale);
+}
+
+function withinTimeout(tables: Promise<Tables | null>, locale: Locale): Promise<Tables | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[i18n] ${locale} translations took over ${LOAD_TIMEOUT_MS}ms — serving English`);
+      resolve(null);
+    }, LOAD_TIMEOUT_MS);
+  });
+  return Promise.race([tables, late]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * The Cache-Control for a public listing. ⚠️ A TRANSLATED request answered in
+ * English (tables failed or were too slow) is `no-store`: the language is in
+ * the URL, so the edge would otherwise serve that English to every visitor of
+ * the French page for a minute.
+ */
+export function overlayCacheControl(langRaw: unknown, tables: Tables | null, normal: string): string {
+  return parseLang(langRaw) && !tables ? "no-store" : normal;
 }
 
 /** Hub-only text in the page's language, or the English unchanged. */

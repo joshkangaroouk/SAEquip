@@ -152,7 +152,12 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Fix: the honeypot is clipped in place.
   - Verified in headless Chrome: the scroll width went from 10,620px in a 485px box to 485px,
     in both Arabic and English. `widget:test` pins the rule (516 checks).
-- [ ] The translation overlay has no time limit on its table load. One live request took 57s.
+- [x] The translation overlay had no time limit on its table load. One live request took 57s.
+  - Fix:
+    - a 2.5s limit, then English;
+    - a translated request answered in English is `no-store`.
+  - Verified: `i18n:test` (72 checks) stubs a load that never settles. It now answers in English
+    after 2,504ms, and the cache headers are right in every case.
 - [ ] The translation validator ignores a dropped minus sign and numbers the translation adds.
 - [ ] The quote basket merges lines with different options when the choice ids are missing.
 

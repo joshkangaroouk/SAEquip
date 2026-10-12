@@ -9,7 +9,8 @@ import { isPassThrough, normaliseSource, sourceHash } from "../src/services/i18n
 import { validateTranslation } from "../src/services/i18n/validate.js";
 import { normaliseLocale } from "../src/services/i18n/locales.js";
 import { categoriesFromHtml, categoryNameFromHtml, cleanText, parseJsonLd, productNameFromHtml, productViewFromHtml, titleFromHtml } from "../src/services/i18n/dudaHarvest.js";
-import { parseLang, productName, tr, categoryTitle, type Tables } from "../src/services/i18n/overlay.js";
+import { parseLang, productName, tr, categoryTitle, clearOverlayCache, overlayCacheControl, tablesFor, type Tables } from "../src/services/i18n/overlay.js";
+import { prisma } from "../src/prisma.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 let pass = 0;
@@ -153,6 +154,27 @@ if (descs.length) {
 }
 const linked = await translateHtml('<p>Pair it with the <a href="/product/x">trolley</a>.</p>', protectTerms(chromeLike));
 check(linked.includes('<a href="/product/x">»trolley«</a>') && !linked.includes("junk"), "a link mangled by the translator comes back exactly as in the English", linked);
+
+// ---- the overlay never makes a page wait on a stalled table load (no DB:
+// both loads are stubbed to hang forever)
+{
+  const t = prisma.translation as unknown as { findMany: unknown };
+  const d = prisma.dudaTranslation as unknown as { findMany: unknown };
+  const [tf, df] = [t.findMany, d.findMany];
+  t.findMany = () => new Promise(() => {});
+  d.findMany = () => new Promise(() => {});
+  clearOverlayCache();
+  const started = Date.now();
+  const tables = await tablesFor("fr");
+  const took = Date.now() - started;
+  check(tables === null && took >= 2400 && took < 4000, "a hung table load answers in English after ~2.5s, not at the function's limit", `${took}ms`);
+  check(overlayCacheControl("fr", tables, "public, s-maxage=60") === "no-store", "…and that English is not cached at the edge under the French URL");
+  check(overlayCacheControl(undefined, null, "public, s-maxage=60") === "public, s-maxage=60", "an English request keeps its cache header");
+  check(overlayCacheControl("fr", { locale: "fr" } as Tables, "public, s-maxage=60") === "public, s-maxage=60", "a translated answer keeps its cache header");
+  t.findMany = tf;
+  d.findMany = df;
+  clearOverlayCache();
+}
 
 console.log(`\n${fail === 0 ? "✓" : "✗"} ${pass} passed, ${fail} failed\n`);
 if (fail) process.exit(1);
