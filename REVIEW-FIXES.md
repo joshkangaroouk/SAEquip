@@ -56,8 +56,19 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 
 ## Phase 2: dashboard data loss and access
 
-- [ ] Edits typed while a save runs are overwritten (`useProductEditor.ts` save tasks).
-- [ ] A variation edit is lost when options change in the same save, but the toast says "Saved".
+- [x] Edits typed while a save ran were overwritten.
+  - Fix: a finished task banks only into a draft slice untouched since it was sent.
+- [x] A variation edit was lost when options changed in the same save, but the toast said "Saved".
+  - Fix: variations save first. If they fail, the option change refuses to run, and a section's
+    first error is kept.
+  - Both verified in a jsdom harness on the real `useProductEditor`, with the API stubbed.
+    - Old code:
+      - typing during a save was lost and read as clean;
+      - the SKU edit was never sent.
+    - Fixed code:
+      - the edit stays and reads as unsaved;
+      - the order is `variations` then `options`, and the SKU survives;
+      - a failed variations save skips options and shows Duda's error.
 - [ ] Reloading on the 2FA code step strands the user. Pages using raw `apiFetch` miss
   `mfa_required`.
 - [ ] Keyboard access: clickable table rows have no link or button, and `SelectMenu` has no

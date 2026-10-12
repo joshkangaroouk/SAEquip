@@ -313,6 +313,7 @@ export function useProductEditor(
     if (!SECTION_KEYS.some((k) => dirty[k])) return true;
 
     const tasks: SaveTask[] = [];
+    const failures: ErrorMap = {};
 
     if (dirty.details) {
       tasks.push({
@@ -356,15 +357,67 @@ export function useProductEditor(
       });
     }
 
-    // Options BEFORE variations: Duda regenerates variations (with new ids) on
-    // an option change, so any variation edit in the same save would target
-    // dead ids. The UI locks the variations table while options are dirty, and
-    // the backend 409s on stale ids as a backstop.
+    const variationsTask = (): SaveTask => ({
+      keys: ["variations"],
+      label: "variations",
+      run: async () => {
+        const res = await apiJson<{ product: ProductDetail }>(
+          `/api/products/${productId}/variations`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              // ⚠️ Only the CHANGED rows. The route makes one Duda call per
+              // variation it is sent, and a product can have up to 300, so
+              // sending all of them on every save risked a timeout for an
+              // edit to one SKU. Untouched rows are already what Duda holds.
+              variations: draft.variations
+                .filter((v) => {
+                  const before = baseline.variations.find((b) => b.id === v.id);
+                  return (
+                    !before ||
+                    before.sku !== v.sku ||
+                    before.price_difference !== v.price_difference ||
+                    before.status !== v.status
+                  );
+                })
+                .map((v) => ({
+                  id: v.id,
+                  sku: v.sku,
+                  price_difference: v.price_difference,
+                  status: v.status === "HIDDEN" ? "HIDDEN" : "ACTIVE",
+                })),
+            }),
+          },
+        );
+        setContext((c) => (c ? { ...c, product: res.product } : c));
+        return { variations: variationsFrom(res.product.variations) };
+      },
+    });
+
+    /*
+     * Variations BEFORE options, when both changed. Duda regenerates every
+     * variation (with new ids) on an option change, so a variation edit has to
+     * reach Duda while its id is still alive: the UI locks the variations table
+     * once options are dirty, so any variation edit in this save was made
+     * against the CURRENT ids. Saved first, the option change then carries it
+     * across like any other stored SKU.
+     *
+     * ⚠️ This used to be options-only when both were dirty: the variation edit
+     * was never sent, the regenerated rows replaced it in the draft, and the
+     * toast said "Saved". And if the variations fail, the option change must
+     * not run — it would discard exactly the edits that just failed.
+     */
+    if (dirty.variations) tasks.push(variationsTask());
     if (dirty.options) {
       tasks.push({
         keys: ["options", "variations"],
         label: "options",
         run: async () => {
+          if (failures.variations) {
+            throw new Error(
+              "Not saved: the variation changes could not be saved first, and changing options now would discard them. Save again.",
+            );
+          }
           const res = await apiJson<{
             product: ProductDetail;
             variationData: { restored: number; dropped: string[]; failed?: { signature: string; error: string }[] };
@@ -401,43 +454,6 @@ export function useProductEditor(
             options: optionsFrom(res.product.options),
             variations: variationsFrom(res.product.variations),
           };
-        },
-      });
-    } else if (dirty.variations) {
-      tasks.push({
-        keys: ["variations"],
-        label: "variations",
-        run: async () => {
-          const res = await apiJson<{ product: ProductDetail }>(
-            `/api/products/${productId}/variations`,
-            {
-              method: "PUT",
-              body: JSON.stringify({
-                // ⚠️ Only the CHANGED rows. The route makes one Duda call per
-                // variation it is sent, and a product can have up to 300, so
-                // sending all of them on every save risked a timeout for an
-                // edit to one SKU. Untouched rows are already what Duda holds.
-                variations: draft.variations
-                  .filter((v) => {
-                    const before = baseline.variations.find((b) => b.id === v.id);
-                    return (
-                      !before ||
-                      before.sku !== v.sku ||
-                      before.price_difference !== v.price_difference ||
-                      before.status !== v.status
-                    );
-                  })
-                  .map((v) => ({
-                    id: v.id,
-                    sku: v.sku,
-                    price_difference: v.price_difference,
-                    status: v.status === "HIDDEN" ? "HIDDEN" : "ACTIVE",
-                  })),
-              }),
-            },
-          );
-          setContext((c) => (c ? { ...c, product: res.product } : c));
-          return { variations: variationsFrom(res.product.variations) };
         },
       });
     }
@@ -579,9 +595,22 @@ export function useProductEditor(
 
     setSaving(true);
     setSaveErrors({});
-    const failures: ErrorMap = {};
     let succeeded = 0;
     const savedKeys = new Set<SectionKey>();
+
+    /*
+     * What this save last put in (or sent from) each draft slice. A slice that
+     * is still exactly that object was not touched while the save ran.
+     *
+     * ⚠️ Nothing locks the editor during a save, and banking used to overwrite
+     * the draft wholesale — so text typed into the description during a 1–3s
+     * Duda PATCH was replaced by what had been sent, the section read clean,
+     * and the edit was gone. Now a slice edited meanwhile keeps the edit and
+     * simply reads as unsaved against the new baseline. Compared by reference
+     * (every draft change replaces only the slice it touches), and the updater
+     * stays pure because StrictMode runs it twice.
+     */
+    const sent: Partial<EditorSnapshot> = { ...draft };
 
     for (const task of tasks) {
       setSavingLabel(task.label);
@@ -589,12 +618,23 @@ export function useProductEditor(
         const confirmed = await task.run();
         // Bank immediately: this section is now saved even if a later task fails.
         setBaseline((b) => (b ? { ...b, ...confirmed } : b));
-        setDraft((d) => (d ? { ...d, ...confirmed } : d));
+        const before = { ...sent };
+        setDraft((d) => {
+          if (!d) return d;
+          const next = { ...d };
+          for (const k of Object.keys(confirmed) as (keyof EditorSnapshot)[]) {
+            if (d[k] === before[k]) (next as Record<string, unknown>)[k] = confirmed[k];
+          }
+          return next;
+        });
+        Object.assign(sent, confirmed);
         succeeded++;
         for (const k of task.keys) savedKeys.add(k);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Save failed";
-        for (const k of task.keys) failures[k] = msg;
+        // The first failure for a section is the real one: a later task that
+        // was skipped because of it must not overwrite its message.
+        for (const k of task.keys) failures[k] ??= msg;
       }
     }
 
