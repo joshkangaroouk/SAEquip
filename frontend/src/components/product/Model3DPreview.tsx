@@ -2,6 +2,14 @@ import { useEffect, useRef } from "react";
 
 const MODEL_VIEWER_SRC =
   "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js";
+/**
+ * ⚠️ The same pin AND hash as the public widget's MODEL_VIEWER_SRI. The
+ * dashboard holds the staff session, so a third-party script here needs the
+ * integrity check more than the live site does — and had none (fixed
+ * 2026-10-12). Change the version and the hash together, in both places:
+ *   curl -s <url> | openssl dgst -sha384 -binary | openssl base64 -A
+ */
+const MODEL_VIEWER_SRI = "sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW";
 
 let loaderPromise: Promise<void> | null = null;
 
@@ -12,9 +20,16 @@ function ensureModelViewerLoaded(): Promise<void> {
     loaderPromise = new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.type = "module";
+      script.integrity = MODEL_VIEWER_SRI;
+      script.crossOrigin = "anonymous";
       script.src = MODEL_VIEWER_SRC;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load the 3D viewer."));
+      script.onerror = () => {
+        // Not remembered: a network blip must not disable previews until reload.
+        loaderPromise = null;
+        script.remove();
+        reject(new Error("Failed to load the 3D viewer."));
+      };
       document.head.appendChild(script);
     });
   }

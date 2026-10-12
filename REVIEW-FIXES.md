@@ -201,7 +201,9 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified: 6 variants are ignored and both examples are still tracked.
 - [x] Removed the unused `staffToken()` and its hard-coded test credential (`mediaVerifyUpload.ts`).
 - [ ] The CSP is report-only and has nowhere to report.
-- [ ] The dashboard loads model-viewer without an SRI hash.
+- [x] The dashboard loaded model-viewer without an SRI hash.
+  - Fix: the widget's pinned sha384 plus `crossOrigin`, and a failed load is no longer cached.
+  - Verified: the hash recomputed from the CDN matches.
 - [ ] Require `elapsedMs` and the honeypot field on `/public/quotes`.
 - [ ] Distributor widget: scheme-check the website and map links (`javascript:`).
 - [-] RLS off and the global `cors()` on `/api`: defence in depth only, so left for now.
