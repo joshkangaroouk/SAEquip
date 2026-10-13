@@ -3122,7 +3122,7 @@
    * product taxonomy are deliberately absent from the sidebar: they are how you
    * arrived, not how you refine.
    */
-  function productListSection(data, props) {
+  function productListSection(data, props, record) {
     var cats = (data && data.categories) || [];
     var products = (data && data.products) || [];
     if (!cats.length) return null;
@@ -3133,8 +3133,11 @@
     });
 
     var resolved = resolveCategory(cats, props);
-    hub.lastInit.categoryFrom = resolved.from;
-    hub.lastInit.category = resolved.cat ? resolved.cat.slug : null;
+    // On THIS init's record: written after the fetch, hub.lastInit may by then
+    // be another widget's (see init()).
+    var diag = record || hub.lastInit;
+    diag.categoryFrom = resolved.from;
+    diag.category = resolved.cat ? resolved.cat.slug : null;
 
     /*
      * Everything under the page's category. A PARENT page (…/industries) scopes
@@ -3483,7 +3486,7 @@
   }
 
   /** Render the listing. Its own path — there is no product to resolve here. */
-  function renderListInto(container, props, onEmpty) {
+  function renderListInto(container, props, onEmpty, record) {
     var t = ticket(container);
     try {
       container.setAttribute("data-saeh-section", "product-list");
@@ -3494,7 +3497,7 @@
     return fetchCatalogue().then(function (data) {
       try {
         if (!stillCurrent(container, t)) return;
-        var node = productListSection(data, props);
+        var node = productListSection(data, props, record);
         if (!node) return onEmpty();
         injectStyles();
         var root = stampLang(el("div", "saeh-root saeh-wide"));
@@ -4456,7 +4459,7 @@
           // Stashed for resolveCategory(): on a category page this is the
           // category's own row, not a product's.
           hub.lastPageData = pd || null;
-          renderListInto(container, props, onEmpty);
+          renderListInto(container, props, onEmpty, record);
         });
         return;
       }
@@ -4492,8 +4495,13 @@
       dudaPageProduct().then(function (pd) {
         var fromDuda = refFrom({ dudaId: pd && pd.identifier, slug: pd && pd.seo_url });
         var ref = fromDuda || refFrom({ slug: pathSlug() });
-        hub.lastInit.ref = ref;
-        hub.lastInit.refFrom = fromDuda ? "dmAPI" : ref ? "url" : "none";
+        // ⚠️ `record`, not hub.lastInit: this runs after pageData() resolves,
+        // by when lastInit is whichever widget initialised LAST — so a listing
+        // and a carousel inited in the same tick swapped diagnostics, and the
+        // console reads CLAUDE.md points at said the wrong thing (fixed
+        // 2026-10-12).
+        record.ref = ref;
+        record.refFrom = fromDuda ? "dmAPI" : ref ? "url" : "none";
         renderInto(container, sections, ref, onEmpty);
       });
     } catch (e) {

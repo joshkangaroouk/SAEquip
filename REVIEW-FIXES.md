@@ -309,7 +309,10 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Fix: it removes itself once its accordion is detached, like the resize listener.
   - Verified with a new `widget:test` check: after 5 re-inits and a breakpoint change, 5 were
     added and 4 removed. The old code removes none.
-- [ ] Async diagnostics land on the wrong `lastInit` record.
+- [x] Async diagnostics landed on the wrong `lastInit` record.
+  - Fix: the async writes go to the init's own `record`, which is threaded into the listing.
+  - Verified with 2 new `widget:test` checks (529 total). The old code fails both: the listing's
+    category was recorded on the carousel's record.
 - [ ] Category mode rewrites `data-saeh-section`.
 - [ ] A human submit under 1.5s gets the generic error.
 - [ ] Focus can escape the request form via the backdrop.

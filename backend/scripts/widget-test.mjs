@@ -1098,6 +1098,27 @@ async function main() {
     check(added === 5 && removed === 4, "detached accordions drop their layout listener; the live one keeps it", `added ${added}, removed ${removed}`);
   }
 
+  console.log("\n=== each init's diagnostics land on its own record ===");
+  {
+    const dom = new JSDOM(`<!doctype html><html><body><div id="a"></div><div id="b"></div></body></html>`, {
+      url: "https://saequip.multiscreensite.com/category/lighting-and-power", runScripts: "dangerously", pretendToBeVisual: true,
+    });
+    const w = dom.window, d = w.document;
+    const CAT = { categories: [{ id: "c1", slug: "lighting-and-power", title: "L", parentId: "ROOT" }], products: [{ name: "P1", url: "/product/p1", categoryIds: ["c1"] }] };
+    w.fetch = (u) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(/catalogue/.test(u) ? CAT : { items: [{ name: "X", url: "/product/x" }] }) });
+    const tag = d.createElement("script"); tag.src = "https://sa-equip-backend.vercel.app/public/widget.js"; d.body.appendChild(tag);
+    const run = d.createElement("script"); run.textContent = SRC; d.body.appendChild(run);
+    await new Promise((r) => setTimeout(r, 20));
+    // A listing and a category-mode carousel, initialised in one tick, as live.
+    w.SAEquipHubWidget.init({ container: d.getElementById("a"), props: { section: "product-list" } });
+    w.SAEquipHubWidget.init({ container: d.getElementById("b"), props: { section: "compatible", singlePage: true, productCategory: "lighting-and-power" } });
+    await new Promise((r) => setTimeout(r, 60));
+    const [listing, carousel] = w.__saequipHub.inits;
+    check(listing.mode === "product-list" && listing.category === "lighting-and-power" && !!listing.categoryFrom,
+      "the listing's category diagnostics are on the listing's record", JSON.stringify(listing));
+    check(carousel.mode === "category" && carousel.categoryFrom === undefined, "and not on the carousel's", JSON.stringify(carousel));
+  }
+
   console.log("\n=== 3D viewer: a real dialog, one at a time ===");
   {
     const { d, w } = await boot({
