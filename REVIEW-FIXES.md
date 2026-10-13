@@ -301,7 +301,10 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified with 2 new `quote-widgets:test` checks (52 total). **Re-paste needed.**
 
 **widget.js**
-- [ ] A late response can overwrite a newer render after re-init.
+- [x] A late response could overwrite a newer render after re-init.
+  - Fix: render tickets per container in all four render paths and `clean()`.
+  - Verified with a new `widget:test` race check (526 total): the fixed widget shows the manuals,
+    and the old one showed DATASHEET-ROW.
 - [ ] The media-query listener leaks on every re-init.
 - [ ] Async diagnostics land on the wrong `lastInit` record.
 - [ ] Category mode rewrites `data-saeh-section`.

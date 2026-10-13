@@ -2807,7 +2807,26 @@
    * mounts collapse the Duda element, while a Widget Builder widget hands
    * control back so it can leave an editor placeholder in place.
    */
+  /*
+   * A render ticket per container: each render into it takes the next number,
+   * and an async result may write — or collapse the mount — only while its
+   * ticket is still the newest. ⚠️ Without it a re-init (every content-panel
+   * edit in Duda's editor) raced the one before: switching a resources widget
+   * from Datasheets to User Manuals could show the manuals and then, when the
+   * slower reply landed, the datasheets again under a "manual" attribute
+   * (fixed 2026-10-12). clean() takes a ticket too, so nothing pending can
+   * repopulate a cleaned container.
+   */
+  function ticket(container) {
+    container.__saehGen = (container.__saehGen || 0) + 1;
+    return container.__saehGen;
+  }
+  function stillCurrent(container, t) {
+    return container.__saehGen === t;
+  }
+
   function renderInto(container, sections, ref, onEmpty) {
+    var t = ticket(container);
     // Stamp the requested section onto the container, so the wiring between
     // Duda's four widgets and the sections they render is visible in the DOM
     // itself — `$$('[data-saeh-section]')` in the console reads back the
@@ -2822,6 +2841,7 @@
     return fetchContent(ref)
       .then(function (data) {
         try {
+          if (!stillCurrent(container, t)) return;
           if (!data) return onEmpty(); // unknown product / fetch error
           var root = stampLang(el("div", "saeh-root"));
           for (var i = 0; i < sections.length; i++) {
@@ -2883,6 +2903,7 @@
    * matter — at risk for the benefit of a second use case.
    */
   function renderCategoryInto(container, category, heading, onEmpty) {
+    var t = ticket(container);
     try {
       container.setAttribute("data-saeh-section", "compatible:category=" + category);
     } catch (e) {
@@ -2891,6 +2912,7 @@
     if (!hub.api || !category) return onEmpty();
     return fetchByCategory(category).then(function (data) {
       try {
+        if (!stillCurrent(container, t)) return;
         var items = data && data.items;
         if (!items || !items.length) return onEmpty();
         var node = compatibleSection(items, heading);
@@ -3453,6 +3475,7 @@
 
   /** Render the listing. Its own path — there is no product to resolve here. */
   function renderListInto(container, props, onEmpty) {
+    var t = ticket(container);
     try {
       container.setAttribute("data-saeh-section", "product-list");
     } catch (e) {
@@ -3461,6 +3484,7 @@
     if (!hub.api) return onEmpty();
     return fetchCatalogue().then(function (data) {
       try {
+        if (!stillCurrent(container, t)) return;
         var node = productListSection(data, props);
         if (!node) return onEmpty();
         injectStyles();
@@ -4154,6 +4178,7 @@
    * Live, it collapses like every other empty section.
    */
   function renderResourcesInto(container, type, heading, subheading, inEditor, onEmpty) {
+    var t = ticket(container);
     try {
       // ⚠️ The type goes in its OWN attribute. `data-saeh-section` is what
       // init() reads first on a re-init, so it must stay exactly "resources".
@@ -4178,6 +4203,7 @@
     }
     return fetchResources(type).then(function (data) {
       try {
+        if (!stillCurrent(container, t)) return;
         var node = resourcesSection(data, heading, subheading, type);
         if (!node) {
           return placeholder(data ? "No products have a file of this type yet." : "The resources list could not be loaded.");
@@ -4476,7 +4502,10 @@
   function clean(opts) {
     try {
       var container = (opts && (opts.container || opts.element)) || null;
-      if (container) container.innerHTML = "";
+      if (container) {
+        ticket(container); // a reply still in flight must not repopulate it
+        container.innerHTML = "";
+      }
     } catch (e) {
       /* never break the host page */
     }

@@ -1045,6 +1045,34 @@ async function main() {
       "button goes full width on narrow screens");
   }
 
+  console.log("\n=== a re-init is never overwritten by the init before it ===");
+  {
+    // Duda's editor re-inits on every content-panel edit. Switch a resources
+    // widget from Datasheets to User Manuals before the (slower) datasheets
+    // reply lands: it used to arrive last and replace the manuals.
+    const dom = new JSDOM(`<!doctype html><html><body><div id="host"></div></body></html>`, {
+      url: "https://saequip.multiscreensite.com/datasheets", runScripts: "dangerously", pretendToBeVisual: true,
+    });
+    const w = dom.window, d = w.document;
+    const mk = (type, name) => ({ type, products: [{ name, url: "/product/x", imageUrl: null, range: null, downloads: [{ id: "a1", label: "L", title: "T", gated: false }] }] });
+    w.fetch = (u) => {
+      const slow = /type=datasheet/.test(u);
+      const body = slow ? mk("datasheet", "DATASHEET-ROW") : mk("manual", "MANUAL-ROW");
+      return new Promise((r) => setTimeout(() => r({ ok: true, status: 200, json: () => Promise.resolve(body) }), slow ? 120 : 5));
+    };
+    const tag = d.createElement("script"); tag.src = "https://sa-equip-backend.vercel.app/public/widget.js"; d.body.appendChild(tag);
+    const run = d.createElement("script"); run.textContent = SRC; d.body.appendChild(run);
+    await new Promise((r) => setTimeout(r, 20));
+    const host = d.getElementById("host");
+    host.setAttribute("data-saeh-section", "resources");
+    w.SAEquipHubWidget.init({ container: host, props: { section: "resources", resourceType: "datasheet", inEditor: true } });
+    w.SAEquipHubWidget.clean({ container: host });
+    w.SAEquipHubWidget.init({ container: host, props: { section: "resources", resourceType: "manual", inEditor: true } });
+    await new Promise((r) => setTimeout(r, 200));
+    check(d.querySelector(".saeh-rs-name")?.textContent === "MANUAL-ROW" && host.querySelectorAll(".saeh-root").length === 1,
+      "the late reply from the earlier init does not replace the newer render", d.querySelector(".saeh-rs-name")?.textContent);
+  }
+
   console.log("\n=== 3D viewer: a real dialog, one at a time ===");
   {
     const { d, w } = await boot({
