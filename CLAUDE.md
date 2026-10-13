@@ -2366,7 +2366,9 @@ The container carries `aria-busy` + `aria-live` + a label; the blocks themselves
   be paused until the English site is finished, then translated in ONE pass before launch. That
   replaces the post-publish translation check that was planned. The pass must cover:
   - **The 10 new Site Challenges** (created 2026-10-13). Duda translates store category names
-    in the background after a publish. Then copy them with "Refresh all languages from Duda".
+    by itself, without a publish: a French dry run on 2026-10-13 already read 33/33 category
+    titles translated. Copy them with "Refresh all languages from Duda" once the languages are
+    live again, and check each language.
   - **The mobile menu.** It has three new column headings, the 14 challenge links and the
     accordion renamed "Site Challenges". These edits were made to the English header.
     Each language's header probably keeps its own copy, still showing "Solutions" and the
