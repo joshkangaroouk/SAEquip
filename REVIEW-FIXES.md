@@ -252,7 +252,13 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified with a jsdom data-router harness:
     - disarm then navigate → leaves, unblocked;
     - a dirty navigate → blocked.
-- [ ] A category deleted in Duda makes a product's categories unsaveable.
+- [x] A category deleted in Duda made a product's categories unsaveable.
+  - Fix: `AssignPickList` shows a notice with a "Remove" button for selected ids that no longer
+    exist.
+  - Verified in jsdom (4/4):
+    - the notice shows;
+    - Remove drops only the missing id;
+    - no notice before the list loads, nor when every id is known.
 - [ ] Switching language quickly on Translations can save text into the wrong language.
   `Logos` has the same race when switching tabs.
 - [ ] A failed category drag discards unsaved form edits.

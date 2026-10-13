@@ -142,8 +142,33 @@ export function AssignPickList({
     onChange([...items.filter((i) => next.has(i.id)).map((i) => i.id), ...unknown]);
   };
 
+  /*
+   * Selected ids with no item: a category deleted IN DUDA. They are carried
+   * through untouched (see toggle), but the server refuses an unknown id —
+   * so they used to make every save of this list fail with "No such category
+   * in Duda", with nothing here to show why or how to fix it (fixed
+   * 2026-10-12). Only once the list has loaded, or everything would look
+   * missing.
+   */
+  const missing = items.length ? selected.filter((id) => !byId.has(id)) : [];
+
   return (
     <div>
+      {missing.length > 0 && (
+        <div role="alert" className="mb-2 flex items-start justify-between gap-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+          <span>
+            {missing.length === 1 ? "1 selected item no longer exists" : `${missing.length} selected items no longer exist`}{" "}
+            (deleted in Duda), so this list cannot be saved until {missing.length === 1 ? "it is" : "they are"} removed.
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange(selected.filter((id) => byId.has(id)))}
+            className="shrink-0 font-semibold underline underline-offset-2 hover:no-underline"
+          >
+            Remove
+          </button>
+        </div>
+      )}
       {showTools && (
         <>
           <Input
