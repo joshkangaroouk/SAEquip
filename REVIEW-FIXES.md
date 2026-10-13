@@ -200,7 +200,13 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Fix: `.env*` is ignored, except the `.env.example` files.
   - Verified: 6 variants are ignored and both examples are still tracked.
 - [x] Removed the unused `staffToken()` and its hard-coded test credential (`mediaVerifyUpload.ts`).
-- [ ] The CSP is report-only and has nowhere to report.
+- [ ] **Decision needed:** the CSP is report-only and has nowhere to report.
+  - Options:
+    - (a) enforce it after checking every dashboard page in a browser. The Adobe kit's
+      `@import` of p.typekit.net may need adding;
+    - (b) add a reporting endpoint first;
+    - (c) remove the header.
+  - Enforcing untested could break the dashboard.
 - [x] The dashboard loaded model-viewer without an SRI hash.
   - Fix: the widget's pinned sha384 plus `crossOrigin`, and a failed load is no longer cached.
   - Verified: the hash recomputed from the CDN matches.
@@ -229,12 +235,18 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     as expected, and should pass after the deploy.
   - Caveat: Vercel may still attach the immutable header to that 404. That matters only if a
     rollback revives the exact same hash.
-- [ ] Lead limits (30/hour/IP) are tight now that every download needs the form.
+- [ ] **Decision needed:** lead limits (10/min, 30/hour per IP) are tight now that every
+  download needs the form.
+  - A distributor collecting a certificate pack, or an office behind one NAT, can hit them.
+  - Suggestion: 30/min and 120/hour, leaving real abuse control to Vercel Firewall.
 - [x] A stale Hub slug blocked a new product with the same slug.
   - Fix: `releaseStaleSlug()` frees the slug only when Duda answers 404 for the holder.
   - Verified with 3 fake-db cases in `duda-ids:test`: a gone holder is freed, a live holder
     still clashes, and a non-404 error frees nothing.
-- [ ] Option-delete cascades can hit the 60s function limit.
+- [ ] **Decision needed:** option-delete cascades can hit the 60s function limit once options
+  spread (today: 1 option, on EX Heater only).
+  - Options: move the store-wide cascade to the CLI, or persist progress and resume.
+  - Latent; it's worth deciding before Hire/Purchase rolls out.
 - [x] Malformed percent-encoding returned 500 instead of 400.
   - Fix: the error handler answers a `URIError` with 400.
   - Verified: a `duda-ids:test` check on the real app passes; the old handler gives 500.
