@@ -11,6 +11,10 @@
  *   - Category: the product type under "Products". A product whose type
  *     differs is changed ONLY if it is in `approvedCategoryChange`; every other
  *     difference is reported as a flag and left as it is. `null` = leave alone.
+ *   - Site Challenge ORDER: `siteChallengesOrder` (the sheet's
+ *     `site_challenges_display_order`, SA Equip's priority per product) is
+ *     stored as each challenge link's `sortOrder`, 0 first; a listing card
+ *     shows the first two. It must name exactly the product's challenges.
  * Only links inside those three branches are ever touched, and only for the
  * products given: anything else a product is in, and every product not given
  * (HOLD, not in the sheet), is left exactly as it is.
@@ -24,13 +28,15 @@ export const INDUSTRIES = "Industries";
 export const PRODUCTS = "Products";
 
 export type Cat = { id: string; title: string; parentId: string };
-export type Link = { hubProductId: string; dudaCategoryId: string };
+export type Link = { hubProductId: string; dudaCategoryId: string; sortOrder?: number | null };
 export type Wanted = {
   hubProductId: string;
   dudaProductId: string;
   name: string;
   category: string | null;
   siteChallenges: string[] | null;
+  /** The same challenges in display order. null = store no order. */
+  siteChallengesOrder?: string[] | null;
   industries: string[] | null;
 };
 export type Field = "Site Challenges" | "Industries" | "Category";
@@ -40,6 +46,8 @@ export type Plan = {
   flags: (Change & { reason: string })[];
   adds: Link[];
   removals: Link[];
+  /** Existing links whose sortOrder changes (new links carry theirs in `adds`). */
+  reorders: Link[];
 };
 
 export function planAssignments(input: {
@@ -72,9 +80,11 @@ export function planAssignments(input: {
   }
 
   const current = new Map<string, Set<string>>();
+  const orderOf = new Map<string, number | null>();
   for (const l of links) {
     if (!current.has(l.hubProductId)) current.set(l.hubProductId, new Set());
     current.get(l.hubProductId)!.add(l.dudaCategoryId);
+    orderOf.set(`${l.hubProductId}|${l.dudaCategoryId}`, l.sortOrder ?? null);
   }
   const title = (id: string) => byId.get(id)?.title ?? `(unknown ${id})`;
   const resolve = (b: ReturnType<typeof branch>, titles: string[], w: Wanted) =>
@@ -85,26 +95,39 @@ export function planAssignments(input: {
     });
   const same = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every((x) => b.has(x));
 
-  const plan: Plan = { changes: [], flags: [], adds: [], removals: [] };
-  const add = (hubProductId: string, dudaCategoryId: string) => plan.adds.push({ hubProductId, dudaCategoryId });
+  const plan: Plan = { changes: [], flags: [], adds: [], removals: [], reorders: [] };
+  const add = (hubProductId: string, dudaCategoryId: string, sortOrder: number | null = null) =>
+    plan.adds.push({ hubProductId, dudaCategoryId, sortOrder });
   const remove = (hubProductId: string, dudaCategoryId: string) => plan.removals.push({ hubProductId, dudaCategoryId });
 
   for (const w of wanted) {
     const have = current.get(w.hubProductId) ?? new Set<string>();
-    const listBranch = (b: ReturnType<typeof branch>, field: Field, titles: string[] | null) => {
+    const listBranch = (b: ReturnType<typeof branch>, field: Field, titles: string[] | null, orderTitles: string[] | null = null) => {
       if (titles == null) return; // null = unknown: leave alone
       const want = new Set(resolve(b, titles, w));
+      // Position in the display order, when one is given for this branch.
+      let pos: Map<string, number> | null = null;
+      if (orderTitles != null) {
+        const ordered = resolve(b, orderTitles, w);
+        if (ordered.length !== want.size || !same(new Set(ordered), want))
+          throw new Error(`${w.name} (${w.dudaProductId}): the ${field} display order does not name exactly its ${field}`);
+        pos = new Map(ordered.map((id, i) => [id, i]));
+      }
       const cur = new Set([...have].filter((id) => b.ids.has(id)));
       if (!same(cur, want)) {
-        plan.changes.push({ dudaProductId: w.dudaProductId, name: w.name, field, from: [...cur].map(title).sort(), to: titles });
+        plan.changes.push({ dudaProductId: w.dudaProductId, name: w.name, field, from: [...cur].map(title).sort(), to: orderTitles ?? titles });
         for (const id of cur) if (!want.has(id)) remove(w.hubProductId, id);
-        for (const id of want) if (!cur.has(id)) add(w.hubProductId, id);
+        for (const id of want) if (!cur.has(id)) add(w.hubProductId, id, pos?.get(id) ?? null);
       }
+      if (pos)
+        for (const id of want)
+          if (cur.has(id) && orderOf.get(`${w.hubProductId}|${id}`) !== pos.get(id))
+            plan.reorders.push({ hubProductId: w.hubProductId, dudaCategoryId: id, sortOrder: pos.get(id)! });
       const hasParent = have.has(b.parent.id);
       if (want.size && !hasParent) add(w.hubProductId, b.parent.id);
       if (!want.size && hasParent) remove(w.hubProductId, b.parent.id);
     };
-    listBranch(sc, "Site Challenges", w.siteChallenges);
+    listBranch(sc, "Site Challenges", w.siteChallenges, w.siteChallengesOrder ?? null);
     listBranch(ind, "Industries", w.industries);
 
     if (w.category != null) {
@@ -126,11 +149,12 @@ export function planAssignments(input: {
   return plan;
 }
 
-/** The link set after a plan: current − removals + adds. */
+/** The link set after a plan: current − removals + adds, with reorders applied. */
 export function applyPlan(links: Link[], plan: Plan): Link[] {
   const key = (l: Link) => `${l.hubProductId}|${l.dudaCategoryId}`;
   const gone = new Set(plan.removals.map(key));
-  const out = new Map(links.filter((l) => !gone.has(key(l))).map((l) => [key(l), l]));
+  const out = new Map(links.filter((l) => !gone.has(key(l))).map((l) => [key(l), { ...l }]));
   for (const a of plan.adds) out.set(key(a), a);
+  for (const r of plan.reorders) out.set(key(r), { ...out.get(key(r))!, sortOrder: r.sortOrder });
   return [...out.values()];
 }

@@ -88,6 +88,8 @@ type SheetProduct = {
   duda_name: string;
   category: string | null;
   site_challenges: string[] | null;
+  /** SA Equip's priority order for the same challenges (decides the two a card shows). */
+  site_challenges_display_order?: string[] | null;
   industries: string[] | null;
 };
 
@@ -103,6 +105,11 @@ async function main() {
 
   const sheet = JSON.parse(readFileSync(masterPath, "utf8")) as { products: SheetProduct[] };
   const ready = sheet.products.filter((p) => p.status === "READY");
+  // ⚠️ The display order is required, not optional: without it the cards
+  // would fall back to the tree's order, which is exactly what it replaces.
+  const unordered = ready.filter((p) => p.site_challenges != null && !Array.isArray(p.site_challenges_display_order));
+  if (unordered.length)
+    throw new Error(`the sheet has no site_challenges_display_order on ${unordered.length} of ${ready.length} READY products (e.g. ${unordered[0].duda_name}) — is this the updated file?`);
   for (const [id, name] of APPROVED_CATEGORY_CHANGE) {
     const p = ready.find((r) => r.duda_product_id === id);
     if (!p || p.duda_name !== name) throw new Error(`approved category change ${id} is not the READY "${name}" in the sheet`);
@@ -126,13 +133,14 @@ async function main() {
   });
   if (mirrorDrift.length) throw new Error(`the Hub mirror disagrees with Duda on: ${mirrorDrift.map((c) => c.title).join(", ")} — run duda:sync-categories (dry run) first`);
 
-  const links: Link[] = await prisma.productCategory.findMany({ select: { hubProductId: true, dudaCategoryId: true } });
+  const links: Link[] = await prisma.productCategory.findMany({ select: { hubProductId: true, dudaCategoryId: true, sortOrder: true } });
   const wanted = ready.map((p) => ({
     hubProductId: hubByDuda.get(p.duda_product_id)!.id,
     dudaProductId: p.duda_product_id,
     name: hubByDuda.get(p.duda_product_id)!.name ?? p.duda_name,
     category: p.category,
     siteChallenges: p.site_challenges,
+    siteChallengesOrder: p.site_challenges_display_order ?? null,
     industries: p.industries,
   }));
   const plan = planAssignments({ wanted, links, cats, approvedCategoryChange: new Set(APPROVED_CATEGORY_CHANGE.keys()) });
@@ -182,6 +190,7 @@ async function main() {
   lines.push(`| Category differences flagged, not changed | ${plan.flags.length} |`);
   lines.push(`| Category links to add | ${plan.adds.length} |`);
   lines.push(`| Category links to remove | ${plan.removals.length} |`);
+  lines.push(`| Site Challenge links given SA Equip's display order | ${plan.adds.filter((a) => a.sortOrder != null).length + plan.reorders.length} |`);
   lines.push(`| Category links now → after (all products) | ${links.length} → ${after.length} |`, ``);
   if (plan.flags.length) {
     lines.push(`## Flagged, not changed`, ``, `| Product | Now | Sheet |`, `|---|---|---|`);
@@ -207,7 +216,9 @@ async function main() {
       const p = catById.get(c.parentId);
       lines.push(`| ${md(p ? `${p.title} › ${c.title}` : c.title)} | ${e.add} | ${e.remove} |`);
     });
-  lines.push(``, `## Every change (product, field, now → after)`, ``, `| Product | Field | Now | After |`, `|---|---|---|---|`);
+  lines.push(``, `## Every change (product, field, now → after)`, ``);
+  lines.push(`Site Challenges are listed in SA Equip's display order (\`site_challenges_display_order\`); a listing card shows the first two.`, ``);
+  lines.push(`| Product | Field | Now | After |`, `|---|---|---|---|`);
   const order = new Map(ready.map((p, i) => [p.duda_product_id, i]));
   [...plan.changes]
     .sort((a, b) => order.get(a.dudaProductId)! - order.get(b.dudaProductId)!)
@@ -219,7 +230,7 @@ async function main() {
 
   console.log(`\n${confirm ? "Applying" : "Dry run —"} ${ready.length} READY products`);
   console.log(`  changes: Site Challenges ${byField("Site Challenges")}, Industries ${byField("Industries")}, Category ${byField("Category")}; flagged ${plan.flags.length}`);
-  console.log(`  links: +${plan.adds.length} −${plan.removals.length}  (${links.length} → ${after.length})`);
+  console.log(`  links: +${plan.adds.length} −${plan.removals.length} reordered ${plan.reorders.length}  (${links.length} → ${after.length})`);
   console.log(mismatches.length ? `  ✗ ${mismatches.length} count(s) differ from the brief:\n    ${mismatches.join("\n    ")}` : "  ✓ every count matches the brief");
   if (nameDiffs.length) console.log(`  ${nameDiffs.length} name(s) differ from the sheet's duda_name (matched by id; nothing renamed)`);
   console.log(`  plan: ${path.join(out, "phase2-plan.json")}${reportPath ? `\n  report: ${path.resolve(process.cwd(), reportPath)}` : ""}`);
@@ -234,11 +245,18 @@ async function main() {
   writeFileSync(path.join(out, `hub-product-categories-before-apply-${Date.now()}.json`), JSON.stringify(all, null, 2) + "\n");
   await prisma.$transaction([
     ...plan.removals.map((r) => prisma.productCategory.deleteMany({ where: { hubProductId: r.hubProductId, dudaCategoryId: r.dudaCategoryId } })),
-    prisma.productCategory.createMany({ data: plan.adds, skipDuplicates: true }),
+    prisma.productCategory.createMany({
+      data: plan.adds.map((a) => ({ hubProductId: a.hubProductId, dudaCategoryId: a.dudaCategoryId, sortOrder: a.sortOrder ?? null })),
+      skipDuplicates: true,
+    }),
+    ...plan.reorders.map((r) =>
+      prisma.productCategory.updateMany({ where: { hubProductId: r.hubProductId, dudaCategoryId: r.dudaCategoryId }, data: { sortOrder: r.sortOrder ?? null } }),
+    ),
   ]);
-  const reread: Link[] = await prisma.productCategory.findMany({ select: { hubProductId: true, dudaCategoryId: true } });
+  const reread: Link[] = await prisma.productCategory.findMany({ select: { hubProductId: true, dudaCategoryId: true, sortOrder: true } });
   const again = planAssignments({ wanted, links: reread, cats, approvedCategoryChange: new Set(APPROVED_CATEGORY_CHANGE.keys()) });
-  if (again.changes.length || again.adds.length || again.removals.length) throw new Error(`applied, but a re-plan still finds ${again.changes.length} change(s) — investigate before syncing`);
+  if (again.changes.length || again.adds.length || again.removals.length || again.reorders.length)
+    throw new Error(`applied, but a re-plan still finds ${again.changes.length + again.adds.length + again.removals.length + again.reorders.length} difference(s) — investigate before syncing`);
   console.log(`\n✓ Applied: ${reread.length} links in the Hub. Next: npm run duda:sync-categories --workspace=backend (dry run), then -- --confirm.\n`);
 }
 

@@ -39,7 +39,7 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 - `MediaAsset` — the shared "media centre" library backing `Logo`, `Download`, and a product's 3D model. `kind` is `"image" | "file" | "model"`.
 - `HubProduct.glbAssetId` — a product's **interactive 3D model** (`.glb`), one per product (not a shared catalog like Logos). See "3D Model Viewer" below.
 - `CompatibleLink` — product→product "Compatible Products & Accessories", ordered, keyed on Hub ids with both sides cascading. Edited in the product editor's Compatible Products section and rendered by the `compatible` carousel; 286 links imported (Stage 3d).
-- `ProductCategory` — product↔category assignment, **Hub-owned** (no FK; categories live in Duda), pushed to Duda by `duda:sync-categories`. `CategoryMirror` is the local copy of Duda's tree the public endpoints read; `CategoryOrder` is the Hub-owned drag order. See "Categories" below.
+- `ProductCategory` — product↔category assignment, **Hub-owned** (no FK; categories live in Duda), pushed to Duda by `duda:sync-categories`. Its nullable `sortOrder` is the product's own order for its categories (SA Equip's Site Challenge priority); ⚠️ the product editor's category save is therefore a DIFF that keeps surviving links, not delete-all-then-recreate, which would reset it. `CategoryMirror` is the local copy of Duda's tree the public endpoints read; `CategoryOrder` is the Hub-owned drag order. See "Categories" below.
 - `HubProduct` also **mirrors** Duda's `name`, `sku`, `slug` (`seo.product_url`), `thumbnailUrl` (`images[0]`) and `status`, written by `syncHubProduct` and refreshed in bulk by `hub:sync-mirror`, so public endpoints never call Duda. Its `descriptionHtml` is NOT a mirror — it is the authored copy the Overview tab renders (see the product editor section).
 - `DudaEditorAccount` + `DudaEditorSiteAccess` + `DudaSsoAudit` — staff→Duda-account mapping, the per-site SSO allowlist, and an append-only audit of editor-access requests. See "Website Editor" below.
 - `QuoteRequest` + `QuoteRequestItem` — see Quote Requests section below.
@@ -319,9 +319,11 @@ category template, or the page shows two listings.
 - ⚠️ **Chips are WHITE.** They were `#f1f1f1` on the body's `#f4f4f4` — three values apart,
   so the Site Challenge label was effectively invisible.
 - **At most two chips per card, then "+N more"** (`CARD_CHIP_LIMIT`, Josh 2026-10-13). A
-  product can carry six challenges. The two shown are the first in the TREE's order (the
-  master list's, via the catalogue's category order), never the product's link order, so they
-  are the same two wherever the card appears. "+N more" is outlined rather than filled, so it
+  product can carry six challenges. The two shown are the first in the PRODUCT'S OWN order:
+  SA Equip's priority (`site_challenges_display_order` in their sheet), stored as
+  `ProductCategory.sortOrder` and applied by `/public/catalogue`, which sends each product's
+  `categoryIds` in that order (tree order for links without one). The widget does not
+  re-sort them, so the order is decided once, on the server. "+N more" is outlined rather than filled, so it
   reads as a count rather than another challenge, and its tooltip lists the hidden ones. It is
   plural-aware in all seven languages (`pl.moreChips`). Filtering and search read the product's
   categories, not the chips, so a hidden challenge still finds the product. Product pages show
@@ -1965,7 +1967,9 @@ under its parent, creates only what is missing (clean slug, SEO title = its name
 an extra, and sets the Hub's order (`CategoryOrder`) to the master order. It added the 10
 missing Site Challenges on 2026-10-13. `npm run taxonomy:assign --workspace=backend -- --master
 <json> --report <md> --out <dir>` assigns the sheet's challenges, industries and product type to
-its READY products (dry run by default, `--confirm` writes the HUB). The rules are
+its READY products (dry run by default, `--confirm` writes the HUB). It also stores each product's
+`site_challenges_display_order` as the challenge links' `sortOrder`, and refuses to run on a sheet
+that lacks it (the cards would otherwise fall back to the tree's order). The rules are
 `planAssignments()` in `scripts/lib/taxonomyPlan.ts`, tested by `script-guards:test`:
 - the sheet's list REPLACES a product's children of that parent;
 - the parent link is held exactly when a child is;

@@ -44,7 +44,7 @@ async function main() {
 
   const [links, mirror, order, logos, productLogos, products, logoText, dudaNames] = await Promise.all([
     prisma.productCategory.findMany({
-      select: { dudaCategoryId: true, hubProduct: { select: { dudaProductId: true, name: true } } },
+      select: { dudaCategoryId: true, sortOrder: true, hubProduct: { select: { dudaProductId: true, name: true } } },
       orderBy: [{ dudaCategoryId: "asc" }],
     }),
     prisma.categoryMirror.findMany(),
@@ -55,7 +55,7 @@ async function main() {
     prisma.translation.findMany({ where: { kind: "LOGO_TEXT" } }),
     prisma.dudaTranslation.findMany({ where: { entity: "CATEGORY" } }),
   ]);
-  save("hub-product-categories", links.map((l) => ({ dudaCategoryId: l.dudaCategoryId, dudaProductId: l.hubProduct.dudaProductId, product: l.hubProduct.name })));
+  save("hub-product-categories", links.map((l) => ({ dudaCategoryId: l.dudaCategoryId, sortOrder: l.sortOrder, dudaProductId: l.hubProduct.dudaProductId, product: l.hubProduct.name })));
   save("hub-category-mirror", mirror);
   save("hub-category-order", order);
   save("hub-logos", logos);

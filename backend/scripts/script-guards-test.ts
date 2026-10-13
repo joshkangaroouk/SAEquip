@@ -112,6 +112,21 @@ check("error" in planDownloadSet([], [{ mediaAssetId: "x", title: "constructor" 
   check(throws(() => run([W("a", { industries: ["Oil and Gas"] })])), "assign: a title not in the tree (spelling) stops the plan");
   check(throws(() => run([W("a", { siteChallenges: ["Oil & Gas"] })])), "assign: a title from the wrong branch stops the plan");
   check(throws(() => run([W("a"), W("a")])), "assign: a product given twice stops the plan");
+
+  // SA Equip's display order, stored as each challenge link's sortOrder.
+  const ord = run([W("a", { siteChallenges: ["Dust", "Tank"], siteChallengesOrder: ["Tank", "Dust"] })]);
+  const sortOf = (xs: { hubProductId: string; dudaCategoryId: string; sortOrder?: number | null }[], c: string) => xs.find((x) => x.dudaCategoryId === c)?.sortOrder;
+  check(sortOf(ord.adds, "tank") === 0 && sortOf(ord.adds, "dust") === 1, "assign: new challenge links carry the display order (0 first)");
+  check(ord.changes.find((c) => c.field === "Site Challenges")?.to.join(",") === "Tank,Dust", "assign: the dry run lists challenges in display order");
+  const held = [L("a", "SC"), { ...L("a", "dust"), sortOrder: 0 }, { ...L("a", "tank"), sortOrder: 1 }];
+  const re = run([W("a", { siteChallenges: ["Dust", "Tank"], siteChallengesOrder: ["Tank", "Dust"], industries: null, category: null })], [], held);
+  check(!re.changes.length && re.reorders.length === 2 && sortOf(re.reorders, "tank") === 0, "assign: same challenges, new order → reordered, not re-created");
+  check(throws(() => run([W("a", { siteChallenges: ["Dust", "Tank"], siteChallengesOrder: ["Dust"] })])), "assign: an order missing a challenge stops the plan");
+  check(throws(() => run([W("a", { siteChallenges: ["Dust"], siteChallengesOrder: ["Dust", "Weld"] })])), "assign: an order naming an extra challenge stops the plan");
+  const ow = [W("a", { siteChallengesOrder: ["Dust"] }), W("b", { siteChallengesOrder: ["Dust"] })];
+  const done = applyPlan(links, run(ow, ["Db"]));
+  const twice = run(ow, ["Db"], done);
+  check(!twice.adds.length && !twice.removals.length && !twice.reorders.length, "assign: with an order, applying the plan still converges");
 }
 
 // ---- .claude/hooks/block-destructive-db.sh (the harness's PreToolUse guard)

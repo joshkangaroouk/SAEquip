@@ -499,8 +499,9 @@ async function main() {
 
   console.log("\n=== product listing: at most two challenge labels per card ===");
   {
-    // Six challenges, linked in an order unlike the tree's: the card shows the
-    // TREE's first two (the master list's order), then "+4 more".
+    // Six challenges, sent in the product's OWN order (SA Equip's priority,
+    // which the catalogue decides), unlike the tree's: the card shows the
+    // first two in THAT order, never re-sorted by the tree, then "+4 more".
     const six = ["c1", "c2", "c3", "c4", "c5", "c6"].map((id, i) => CAT(id, `Challenge ${i + 1}`, `challenge-${i + 1}`, "sc"));
     const cat = {
       categories: [...CATALOGUE.categories, ...six],
@@ -516,12 +517,12 @@ async function main() {
     };
     const { d } = await boot({ props: PL, cataloguePayload: cat, url: AT });
     const s = chipsOf(d, "Six");
-    check(s.map((c) => c.textContent).join("|") === "Challenge 1|Challenge 2|+4 more",
-      "six challenges → the tree's first two, then +4 more", s.map((c) => c.textContent).join("|"));
-    check(s[2].classList.contains("saeh-pl-chip-more") && s[2].getAttribute("title") === "Challenge 3, Challenge 4, Challenge 5, Challenge 6",
-      "…and the hidden four are in the +N label's tooltip, in order", s[2].getAttribute("title"));
-    check(chipsOf(d, "Two").map((c) => c.textContent).join("|") === "Challenge 1|Challenge 2", "exactly two → no +N label");
-    check(chipsOf(d, "Three").map((c) => c.textContent).join("|") === "Challenge 1|Challenge 2|+1 more", "three → +1 more");
+    check(s.map((c) => c.textContent).join("|") === "Challenge 6|Challenge 3|+4 more",
+      "six challenges → the product's own first two (not the tree's), then +4 more", s.map((c) => c.textContent).join("|"));
+    check(s[2].classList.contains("saeh-pl-chip-more") && s[2].getAttribute("title") === "Challenge 1, Challenge 5, Challenge 2, Challenge 4",
+      "…and the hidden four are in the +N label's tooltip, in the product's order", s[2].getAttribute("title"));
+    check(chipsOf(d, "Two").map((c) => c.textContent).join("|") === "Challenge 2|Challenge 1", "exactly two → no +N label, in the product's order");
+    check(chipsOf(d, "Three").map((c) => c.textContent).join("|") === "Challenge 3|Challenge 2|+1 more", "three → +1 more");
     tick(d, "c5");
     check(names(d).join(",") === "Six", "filtering still finds a product by a challenge its card does not show", names(d).join(","));
     const { d: fr } = await boot({ props: PL, cataloguePayload: cat, url: AT, htmlLang: "fr" });

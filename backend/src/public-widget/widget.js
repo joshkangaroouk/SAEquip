@@ -3057,8 +3057,9 @@
       /*
        * At most CARD_CHIP_LIMIT labels, then "+N more" (Josh, 2026-10-13): a
        * product can carry six challenges, and six shouted labels push the
-       * name down the card. The caller passes them in the master list's order,
-       * so the first ones shown are the same on every card. The hidden ones
+       * name down the card. The caller passes them in the product's own
+       * priority order (SA Equip's), so the two shown are the two that
+       * matter most for THAT product. The hidden ones
        * are in the "+N more" label's tooltip; nothing is lost from filtering
        * or search, which read the product's categories, not these labels.
        */
@@ -3160,11 +3161,8 @@
     if (!cats.length) return null;
 
     var byId = {};
-    // The catalogue sends categories in the dashboard's order (categorySortKey).
-    var rank = {};
-    cats.forEach(function (c, i) {
+    cats.forEach(function (c) {
       byId[c.id] = c;
-      rank[c.id] = i;
     });
 
     var resolved = resolveCategory(cats, props);
@@ -3344,8 +3342,9 @@
       }
 
       shown.slice(rendered, shownCount).forEach(function (p) {
-        // In the tree's order (the master list's), not the product's link
-        // order, so "the first two" are the same two wherever they appear.
+        // In the order the catalogue sends each product's categoryIds: the
+        // product's OWN priority (SA Equip's display order), then the tree's.
+        // Decided on the server, so the card does not re-sort them.
         var chipTitles = filterParent
           ? (p.categoryIds || [])
               .map(function (id) {
@@ -3353,9 +3352,6 @@
               })
               .filter(function (c) {
                 return c && c.parentId === filterParent.id;
-              })
-              .sort(function (a, b) {
-                return rank[a.id] - rank[b.id];
               })
               .map(function (c) {
                 return c.title;

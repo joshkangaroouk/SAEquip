@@ -1070,11 +1070,16 @@ dudaRouter.put("/products/:id/categories", async (req, res, next) => {
       wanted = withAncestors(wanted, flat);
     }
 
+    // ⚠️ A diff, not delete-all-then-recreate: a link that stays keeps its
+    // `sortOrder` (SA Equip's Site Challenge priority, which decides the two
+    // labels a listing card shows). Recreating every link on each editor save
+    // would quietly reset that order to the tree's. A new link has no order.
     const saved = await prisma.$transaction(async (tx) => {
-      await tx.productCategory.deleteMany({ where: { hubProductId: hub.id } });
+      await tx.productCategory.deleteMany({ where: { hubProductId: hub.id, dudaCategoryId: { notIn: wanted } } });
       if (wanted.length) {
         await tx.productCategory.createMany({
           data: wanted.map((dudaCategoryId) => ({ hubProductId: hub.id, dudaCategoryId })),
+          skipDuplicates: true,
         });
       }
       return tx.productCategory.findMany({ where: { hubProductId: hub.id }, select: { dudaCategoryId: true } });

@@ -310,7 +310,7 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
           name: true,
           slug: true,
           thumbnailUrl: true,
-          categories: { select: { dudaCategoryId: true } },
+          categories: { select: { dudaCategoryId: true, sortOrder: true } },
           /*
            * Certification text for the card. `alt` first, then `label`:
            * every alt is empty today, so labels are what render — but a card
@@ -342,6 +342,18 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
     };
 
     const sorter = collator(tables);
+    /*
+     * Each product's category ids in ITS OWN order: the link's sortOrder (SA
+     * Equip's Site Challenge priority, set by taxonomy:assign) first, then the
+     * tree's order for anything without one. The listing card shows the first
+     * two challenges in exactly this order, so the order is decided here, once.
+     */
+    const rank = new Map(categories.map((c, i) => [c.dudaCategoryId, i]));
+    const last = Number.MAX_SAFE_INTEGER;
+    const ownOrder = (cs: { dudaCategoryId: string; sortOrder: number | null }[]) =>
+      [...cs]
+        .sort((a, b) => (a.sortOrder ?? last) - (b.sortOrder ?? last) || (rank.get(a.dudaCategoryId) ?? last) - (rank.get(b.dudaCategoryId) ?? last))
+        .map((c) => c.dudaCategoryId);
     res.setHeader("Cache-Control", overlayCacheControl(req.query.lang, tables, "public, max-age=30, s-maxage=60, stale-while-revalidate=60"));
     res.json({
       lang: tables ? tables.locale : "en",
@@ -362,7 +374,7 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
           slug: p.slug!,
           url: `/product/${p.slug!}`,
           imageUrl: p.thumbnailUrl ?? null,
-          categoryIds: p.categories.map((c) => c.dudaCategoryId),
+          categoryIds: ownOrder(p.categories),
           certs: p.logos
             .map((l) => l.logo)
             .sort((a, b) => a.sortOrder - b.sortOrder)

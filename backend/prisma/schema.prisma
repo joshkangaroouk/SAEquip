@@ -323,6 +323,11 @@ model ProductCategory {
   id             String     @id @default(cuid())
   hubProductId   String
   dudaCategoryId String
+  /// The product's OWN order for its categories, lowest first: SA Equip's
+  /// priority for each product's Site Challenges (the sheet's
+  /// `site_challenges_display_order`), which decides the two a listing card
+  /// shows. Null = no order given; those follow the tree's order.
+  sortOrder      Int?
   hubProduct     HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
 
   @@unique([hubProductId, dudaCategoryId])
