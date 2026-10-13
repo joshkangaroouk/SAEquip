@@ -672,6 +672,12 @@ Portuguese (Brazil) and Spanish. The full plan, measurements included, is
     breadcrumb, then `<title>`). Product-page breadcrumbs only fill a gap. Measured on French: a
     product page's breadcrumbs still said "Products" in English while the category page said
     "Produits".
+  - ⚠️ **A refresh REFUSES a language that comes back in English** (`harvestRefusal()`,
+    2026-10-13). It refuses when every product and category name is English, or when it would
+    remove more than a quarter of the stored names (and more than 10). A paused, disabled or
+    unpublished language whose pages redirect or fall back to English would otherwise lose its
+    whole copy through the delete rule below. A refused language writes nothing. The page shows
+    "Not copied: …" and the CLI prints `✗ refused`. Checked on the dry run too.
   - ⚠️ **A name identical to the English is NOT stored, and an earlier such row is deleted.**
     Duda publishes the English until it has translated a name. The first live refresh of
     Chinese, run just after the client added it, stored 96 English names as "translations",
@@ -2379,11 +2385,9 @@ The container carries `aria-busy` + `aria-live` + a label; the blocks themselves
     languages last, then using Redo Translations. So every English page changed since
     2026-10-06 needs re-translating in Duda. Re-translating can overwrite hand edits made inside
     a language.
-  - ⚠️ **Don't press "Refresh all languages from Duda" (or run `i18n:sync-duda --confirm`)
-    while a language is paused.** A refresh deletes any stored name that comes back identical
-    to the English (`dudaHarvest.ts`), and `fetch` follows redirects. So a paused language
-    whose pages redirect to, or fall back to, English would lose its copied product and
-    category names. Run it only once the language is published and translated again.
+  - **"Refresh all languages from Duda" is guarded while a language is paused**
+    (`harvestRefusal()`): a language that comes back in English is refused, not wiped. It is
+    still pointless until the language is published and translated again.
 - The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done; **still to do: the Hire/Purchase option** (see the options notes — attaching a two-value option drops existing variation SKUs). `/products/new` remains the path for genuinely new one-off products.
 - **Opening a product makes ~4 Duda reads** (the product, and `/custom` plus both logo lists each `ensureHubProduct`). Correct, just slower than one; worth trimming if Duda rate limits ever bite.
 - **New categories get no SEO title** — `duda:category-seo` was a one-off over the 23 that existed; set one on the category's page.

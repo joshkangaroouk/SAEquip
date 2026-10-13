@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { isPassThrough, normaliseSource, sourceHash } from "../src/services/i18n/normalise.js";
 import { validateTranslation } from "../src/services/i18n/validate.js";
 import { normaliseLocale } from "../src/services/i18n/locales.js";
-import { categoriesFromHtml, categoryNameFromHtml, cleanText, parseJsonLd, productNameFromHtml, productViewFromHtml, titleFromHtml } from "../src/services/i18n/dudaHarvest.js";
+import { categoriesFromHtml, categoryNameFromHtml, cleanText, harvestRefusal, parseJsonLd, productNameFromHtml, productViewFromHtml, titleFromHtml } from "../src/services/i18n/dudaHarvest.js";
 import { parseLang, productName, tr, categoryTitle, clearOverlayCache, overlayCacheControl, tablesFor, type Tables } from "../src/services/i18n/overlay.js";
 import { prisma } from "../src/prisma.js";
 
@@ -183,6 +183,18 @@ check(validateTranslation("SPEC_VALUE", "Zone 1-2", "Zone 1-2").ok, "a range is 
   t.findMany = tf;
   d.findMany = df;
   clearOverlayCache();
+}
+
+// ---- "Refresh all languages from Duda": never wipe a paused language
+{
+  console.log("\n=== refresh refuses a language that comes back in English ===");
+  const r = (o: Partial<Parameters<typeof harvestRefusal>[0]>) => harvestRefusal({ found: 119, translated: 115, stored: 119, wouldDelete: 0, ...o });
+  check(r({}) === null, "a translated language refreshes");
+  check(/came back in English/.test(r({ translated: 0, wouldDelete: 119 }) ?? ""), "every name in English (a paused language) → refused");
+  check(/came back in English/.test(r({ translated: 0, stored: 0, wouldDelete: 0 }) ?? ""), "…even with nothing stored yet (a language not translated yet)");
+  check(/would remove 60 of the 119/.test(r({ translated: 59, wouldDelete: 60 }) ?? ""), "half the stored names about to go (a partial fallback) → refused");
+  check(r({ translated: 110, wouldDelete: 3 }) === null, "a few names reverted in Duda → allowed, and removed");
+  check(r({ found: 1, translated: 0, stored: 1, wouldDelete: 1 }) === null, "a one-product refresh (--only) is not judged as a whole language");
 }
 
 console.log(`\n${fail === 0 ? "✓" : "✗"} ${pass} passed, ${fail} failed\n`);

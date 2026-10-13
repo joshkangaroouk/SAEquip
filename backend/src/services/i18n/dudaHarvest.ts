@@ -203,6 +203,31 @@ export interface HarvestReport {
   options: { found: number; translated: number; error?: string };
   samples: string[];
   written: number;
+  /** Why nothing was written for this language, when harvestRefusal() said no. */
+  refused: string | null;
+}
+
+/**
+ * Refuse a language's write when the refresh would WIPE names rather than
+ * refresh them (Josh, 2026-10-13).
+ *
+ * A name that comes back identical to the English is not stored, and a row
+ * stored earlier is deleted (see `differs` below) — right for a name Duda has
+ * genuinely reverted, ruinous for a language that is paused: a disabled or
+ * unpublished language whose pages redirect to, or fall back to, English
+ * (`fetch` follows redirects) returns English for EVERY name, and the refresh
+ * would delete that language's whole copy. So:
+ *   - every product name and category title in English → refused;
+ *   - more than a quarter of the stored names (and more than 10) about to be
+ *     removed → refused, which catches a partial fallback too.
+ * A refused language writes nothing at all; the others carry on.
+ */
+export function harvestRefusal(r: { found: number; translated: number; stored: number; wouldDelete: number }): string | null {
+  if (r.found >= 10 && r.translated === 0)
+    return `all ${r.found} names came back in English, so the language looks paused, unpublished or not yet translated in Duda. Nothing was changed.`;
+  if (r.wouldDelete > 10 && r.wouldDelete > r.stored / 4)
+    return `it would remove ${r.wouldDelete} of the ${r.stored} names already copied, because they came back in English. Nothing was changed; check the language in Duda first.`;
+  return null;
 }
 
 /**
@@ -229,6 +254,7 @@ export async function harvestDuda(
     options: { found: 0, translated: 0 },
     samples: [],
     written: 0,
+    refused: null,
   };
   const productNames = new Map<string, { text: string; en: string }>();
   const catNames = new Map<string, { text: string; en: string }>();
@@ -301,13 +327,23 @@ export async function harvestDuda(
   report.options.found = optionNames.size + choiceNames.size;
   report.options.translated = [...optionNames.values(), ...choiceNames.values()].filter(differs).length;
 
-  if (opts.confirm) {
-    const rows = [
-      ...[...productNames].map(([dudaId, v]) => ({ entity: "PRODUCT", dudaId, ...v })),
-      ...[...catNames].map(([dudaId, v]) => ({ entity: "CATEGORY", dudaId, ...v })),
-      ...[...optionNames].map(([dudaId, v]) => ({ entity: "OPTION", dudaId, ...v })),
-      ...[...choiceNames].map(([dudaId, v]) => ({ entity: "CHOICE", dudaId, ...v })),
-    ];
+  const rows = [
+    ...[...productNames].map(([dudaId, v]) => ({ entity: "PRODUCT", dudaId, ...v })),
+    ...[...catNames].map(([dudaId, v]) => ({ entity: "CATEGORY", dudaId, ...v })),
+    ...[...optionNames].map(([dudaId, v]) => ({ entity: "OPTION", dudaId, ...v })),
+    ...[...choiceNames].map(([dudaId, v]) => ({ entity: "CHOICE", dudaId, ...v })),
+  ];
+  // Checked on the dry run too, so the preview says what the write would refuse.
+  const stored = await prisma.dudaTranslation.findMany({ where: { locale: lang.locale }, select: { entity: true, dudaId: true } });
+  const storedKeys = new Set(stored.map((s) => `${s.entity}|${s.dudaId}`));
+  report.refused = harvestRefusal({
+    found: report.products.found + report.categories.found,
+    translated: report.products.translated + report.categories.translated,
+    stored: stored.length,
+    wouldDelete: rows.filter((r) => !differs(r) && storedKeys.has(`${r.entity}|${r.dudaId}`)).length,
+  });
+
+  if (opts.confirm && !report.refused) {
     // ⚠️ The ENGLISH option names, stored under locale "en". The basket page
     // is not a product page, so it has no productView to read them from, and
     // an item added on /fr/ must still read "Hire" on the English site — and

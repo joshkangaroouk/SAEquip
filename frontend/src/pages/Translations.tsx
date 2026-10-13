@@ -235,7 +235,13 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
    * language, and the first live use refreshed Chinese while expecting French.
    */
   async function refreshAll() {
-    type Report = { locale: string; products: { total: number; translated: number }; categories: { total: number; translated: number } };
+    type Report = {
+      locale: string;
+      products: { total: number; translated: number };
+      categories: { total: number; translated: number };
+      /** Set when the server refused to write this language (it came back in English). */
+      refused?: string | null;
+    };
     const done: Report[] = [];
     try {
       setRefreshing("…");
@@ -252,12 +258,23 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
         if (first) next = r.remaining;
         first = false;
       }
-      toast.success(`Copied names from Duda for ${done.length} ${done.length === 1 ? "language" : "languages"}`, {
-        description: done
-          .map((r) => `${targetLabel(r.locale)}: ${r.products.translated}/${r.products.total} products, ${r.categories.translated}/${r.categories.total} categories`)
-          .join(" · "),
-        duration: 12_000,
-      });
+      // ⚠️ A refused language wrote nothing: say so, or it reads as copied.
+      const refused = done.filter((r) => r.refused);
+      const copied = done.filter((r) => !r.refused);
+      if (copied.length) {
+        toast.success(`Copied names from Duda for ${copied.length} ${copied.length === 1 ? "language" : "languages"}`, {
+          description: copied
+            .map((r) => `${targetLabel(r.locale)}: ${r.products.translated}/${r.products.total} products, ${r.categories.translated}/${r.categories.total} categories`)
+            .join(" · "),
+          duration: 12_000,
+        });
+      }
+      if (refused.length) {
+        toast.error(`Not copied: ${refused.map((r) => targetLabel(r.locale)).join(", ")}`, {
+          description: refused.map((r) => `${targetLabel(r.locale)}: ${r.refused}`).join(" · "),
+          duration: 20_000,
+        });
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Refresh failed", {
         description: done.length ? `Finished before it stopped: ${done.map((r) => targetLabel(r.locale)).join(", ")}.` : undefined,

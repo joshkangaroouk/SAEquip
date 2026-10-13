@@ -38,6 +38,11 @@ async function main() {
     console.log(`  options:    ${r.options.found} option and choice names found, ${r.options.translated} translated in Duda${r.options.error ? ` — ✗ ${r.options.error}` : ""}`);
     for (const s of r.samples) console.log(`    e.g. ${s}`);
     for (const f of [...r.products.failed, ...r.categories.failed].slice(0, 10)) console.log(`  ✗ ${f}`);
+    if (r.refused) {
+      console.log(`  ✗ refused: ${r.refused}`);
+      process.exitCode = 1;
+      continue;
+    }
     console.log(confirm ? `  wrote ${r.written} translation(s)` : "  dry run — re-run with --confirm to write");
     if (r.products.failed.length || r.categories.failed.length) process.exitCode = 1;
   }
