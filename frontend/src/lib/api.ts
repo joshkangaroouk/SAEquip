@@ -63,16 +63,19 @@ export class ApiError extends Error {
   readonly status: number;
   readonly fieldErrors?: Record<string, string[]>;
   readonly upstreamStatus?: number;
+  /** The parsed response body, for a caller that needs more than the message. */
+  readonly body?: Record<string, unknown>;
 
   constructor(
     message: string,
-    opts: { status: number; fieldErrors?: Record<string, string[]>; upstreamStatus?: number },
+    opts: { status: number; fieldErrors?: Record<string, string[]>; upstreamStatus?: number; body?: Record<string, unknown> },
   ) {
     super(message);
     this.name = "ApiError";
     this.status = opts.status;
     this.fieldErrors = opts.fieldErrors;
     this.upstreamStatus = opts.upstreamStatus;
+    this.body = opts.body;
   }
 }
 
@@ -120,6 +123,7 @@ export async function apiJson<T = unknown>(path: string, init: RequestInit = {})
       status: res.status,
       fieldErrors,
       upstreamStatus: json.upstream_status as number | undefined,
+      body: json,
     });
   }
 

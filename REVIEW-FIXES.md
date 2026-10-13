@@ -271,7 +271,13 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Fix: on failure only the category tree is re-read, which puts the order back; the form is
     untouched.
   - Verified: typechecked. The change is a single fetch-and-set in the error branch.
-- [ ] A partial variations failure shows a raw error code.
+- [x] A partial variations failure showed a raw error code.
+  - Fix: `ApiError` carries the body. The saved rows become the baseline, the failed rows keep
+    the user's edit, and the message names the failed combinations.
+  - Verified in the editor harness:
+    - the message reads "1 variation(s) did not save: Mode=Buy…";
+    - the draft keeps the failed SKU;
+    - a retry sends only V2 and succeeds.
 - [ ] The products list loads every thumbnail eagerly.
 
 **Quote widgets**

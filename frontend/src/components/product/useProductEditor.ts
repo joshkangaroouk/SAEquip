@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { apiJson } from "../../lib/api";
+import { ApiError, apiJson } from "../../lib/api";
 import { useTranslateOnSave } from "./useTranslateOnSave";
 import { toast } from "../ui";
 import type {
@@ -395,6 +395,38 @@ export function useProductEditor(
     });
 
     /*
+     * Some variation PATCHes failed and the rest saved: the route answers 500
+     * `partial_variation_save` with the failed ids and the product as Duda now
+     * holds it. ⚠️ That used to surface as the bare code, the failed ids were
+     * dropped, and the rows that DID save stayed marked unsaved (fixed
+     * 2026-10-12). Now the baseline takes Duda's state — saved rows go clean,
+     * failed rows keep the user's edit and stay dirty — and the message names
+     * the combinations that failed.
+     */
+    const variationsTaskWithPartial = (): SaveTask => {
+      const task = variationsTask();
+      return {
+        ...task,
+        run: async () => {
+          try {
+            return await task.run();
+          } catch (e) {
+            const body = e instanceof ApiError ? e.body : undefined;
+            const product = body?.product as ProductDetail | undefined;
+            if (body?.error !== "partial_variation_save" || !product) throw e;
+            setContext((c) => (c ? { ...c, product } : c));
+            setBaseline((b) => (b ? { ...b, variations: variationsFrom(product.variations) } : b));
+            const failedIds = ((body.failed as { id: string }[] | undefined) ?? []).map((f) => f.id);
+            const names = failedIds.map((fid) => draft.variations.find((v) => v.id === fid)?.signature || fid);
+            throw new Error(
+              `${failedIds.length} variation(s) did not save: ${names.slice(0, 3).join("; ")}${names.length > 3 ? "…" : ""}. The others did. Save again to retry them.`,
+            );
+          }
+        },
+      };
+    };
+
+    /*
      * Variations BEFORE options, when both changed. Duda regenerates every
      * variation (with new ids) on an option change, so a variation edit has to
      * reach Duda while its id is still alive: the UI locks the variations table
@@ -407,7 +439,7 @@ export function useProductEditor(
      * toast said "Saved". And if the variations fail, the option change must
      * not run — it would discard exactly the edits that just failed.
      */
-    if (dirty.variations) tasks.push(variationsTask());
+    if (dirty.variations) tasks.push(variationsTaskWithPartial());
     if (dirty.options) {
       tasks.push({
         keys: ["options", "variations"],
