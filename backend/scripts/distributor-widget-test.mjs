@@ -200,6 +200,22 @@ async function page({ lang = "en", config = {}, templateRows = [], rows = ROWS }
   check(p.$(".sae-dist__country").textContent === "Royaume-Uni", "…translated the same way");
 }
 
+// ── The region menu, and the head office's fallbacks ─────────────────────────
+{
+  const p = await page({ lang: "en", config: { collection_name: "Distributors", hq_phone: "+1 555 0100", hq_website: "https://example.org/" } });
+  const trig = p.$("[data-sae-select-trigger]");
+  trig.focus();
+  trig.dispatchEvent(new p.window.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+  const opts = p.$$("[data-sae-select-list] .sae-dist__option");
+  check(opts.length > 1 && p.window.document.activeElement === opts[0], "one ArrowDown on the region menu lands on the first option, not the second",
+    p.window.document.activeElement?.textContent);
+  const tel = p.$$("a[href^='tel:']").map((a) => a.getAttribute("href"));
+  check(tel.includes("tel:+1 555 0100"), "a head-office phone with no dial number dials the number SHOWN, not the built-in one", tel.join(" "));
+  const web = p.$$("a[href='https://example.org/']");
+  check(web.length === 1 && web[0].textContent === "https://example.org/", "a head-office website with no label shows its own address, not saequip.com",
+    web[0]?.textContent);
+}
+
 // ── Links from the collection and the Content fields never run script ─────────
 {
   const evil = { ...ROWS[0], name: "Evil Ltd", website: "javascript:alert(1)", website_label: "evil.example", map_link: " JaVaScRiPt:alert(2)" };

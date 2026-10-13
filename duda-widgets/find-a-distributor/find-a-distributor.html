@@ -106,11 +106,11 @@
           </li>
           <li class="sae-dist__meta-row">
             <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-phone"></use></svg></span>
-            <a class="sae-dist__meta-link" href="tel:{{#if hq_phone_link}}{{hq_phone_link}}{{else}}+443332571851{{/if}}">{{#if hq_phone}}{{hq_phone}}{{else}}+44 (0)333 257 1851{{/if}}</a>
+            <a class="sae-dist__meta-link" href="tel:{{#if hq_phone_link}}{{hq_phone_link}}{{else}}{{#if hq_phone}}{{hq_phone}}{{else}}+443332571851{{/if}}{{/if}}">{{#if hq_phone}}{{hq_phone}}{{else}}+44 (0)333 257 1851{{/if}}</a>
           </li>
           <li class="sae-dist__meta-row">
             <span class="sae-dist__icon"><svg aria-hidden="true" focusable="false"><use href="#sae-i-globe"></use></svg></span>
-            <a class="sae-dist__meta-link" href="{{#if hq_website}}{{hq_website}}{{else}}https://saequip.com/{{/if}}" target="_blank" rel="noopener">{{#if hq_website_label}}{{hq_website_label}}{{else}}saequip.com{{/if}}</a>
+            <a class="sae-dist__meta-link" href="{{#if hq_website}}{{hq_website}}{{else}}https://saequip.com/{{/if}}" target="_blank" rel="noopener">{{#if hq_website_label}}{{hq_website_label}}{{else}}{{#if hq_website}}{{hq_website}}{{else}}saequip.com{{/if}}{{/if}}</a>
           </li>
         </ul>
       </div>

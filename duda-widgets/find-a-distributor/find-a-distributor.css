@@ -584,6 +584,9 @@
   min-width: 0;
 }
 
+/* Letter-spacing breaks the joining of Arabic script. */
+.sae-dist:lang(ar) * { letter-spacing: 0; }
+
 .sae-dist__country {
   display: inline-flex;
   align-items: center;

@@ -290,6 +290,7 @@
   /* The real name of the Duda collection. Used when the Content field's value
      finds nothing, which on a translated page is always (see above). */
   var DEFAULT_COLLECTION = 'Distributors';
+  var LOAD_TIMEOUT_MS = 8000;
 
   var PREFERRED_ORDER = [
     'Europe',
@@ -521,13 +522,16 @@
     return COUNTRY_ALIAS[key] || countryCodes[key] || countryCodes[key.replace(/^the /, '')] || null;
   }
 
+  /* One DisplayNames for the page's language, not one per card. */
+  var regionNames = null;
   /** "Germany" → "Allemagne" on a French page; anything unknown as entered. */
   function translateCountry(english) {
     if (lang === 'en' || !english) return english;
     var code = codeForCountry(english);
     if (!code) return english;
     try {
-      var name = new Intl.DisplayNames([LANG_TAG[lang]], { type: 'region' }).of(code);
+      regionNames = regionNames || new Intl.DisplayNames([LANG_TAG[lang]], { type: 'region' });
+      var name = regionNames.of(code);
       return name && name !== code ? name : english;
     } catch (e) {
       return english;
@@ -553,7 +557,9 @@
   function normalise(value) {
     var text = String(value == null ? '' : value).toLowerCase();
     if (typeof text.normalize === 'function') {
-      text = text.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      // Combining marks, written as escapes: the literal characters are
+      // invisible in review and silently break if retyped.
+      text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
     return text.replace(/\s+/g, ' ').trim();
   }
@@ -569,7 +575,7 @@
     return regions.sort(function (a, b) {
       var ai = PREFERRED_ORDER.indexOf(a);
       var bi = PREFERRED_ORDER.indexOf(b);
-      if (ai === -1 && bi === -1) { return regionLabel(a).localeCompare(regionLabel(b)); }
+      if (ai === -1 && bi === -1) { return regionLabel(a).localeCompare(regionLabel(b), LANG_TAG[lang] || 'en'); }
       if (ai === -1) { return 1; }
       if (bi === -1) { return -1; }
       return ai - bi;
@@ -642,7 +648,19 @@
       '</div></article>';
   }
 
-  function loadCollection(root, collectionName, done) {
+  function loadCollection(root, collectionName, doneOnce) {
+    /* ⚠️ Called exactly once, and within LOAD_TIMEOUT_MS (fixed 2026-10-12).
+       A Duda API that never answered left the grid empty for good, and a
+       throw inside the success path reached the .catch and called done a
+       SECOND time — init() resets its guard in done, so the cards were
+       initialised twice. */
+    var finished = false;
+    function done(values) {
+      if (finished) { return; }
+      finished = true;
+      doneOnce(values);
+    }
+    setTimeout(function () { done(null); }, LOAD_TIMEOUT_MS);
     if (!collectionName || typeof window.dmAPI === 'undefined' || typeof window.dmAPI.loadCollectionsAPI !== 'function') {
       done(null);
       return;
@@ -867,6 +885,10 @@
       selectTrigger.addEventListener('keydown', function (event) {
         if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
+          /* ⚠️ Stopped here: the trigger sits INSIDE selectWrap, whose own
+             keydown listener sees the list open by now and moved the
+             highlight on again — one ArrowDown skipped the first option. */
+          event.stopPropagation();
           openSelect();
           highlight(activeIndex, true);
         } else if (event.key === 'Escape') {

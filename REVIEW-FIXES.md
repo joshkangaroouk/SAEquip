@@ -337,4 +337,26 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     role still reads.
 - [x] Two stale comments: `storage.ts` (models are now MIME-limited) and `public.ts` (the root
   `vercel.json`).
-- [ ] The remaining 17 distributor-widget code-review points.
+- [x] The distributor widget's code-review points. Each was fixed or accepted:
+  - **Fixed:**
+    - one ArrowDown skipped the first option;
+    - a hung collections API left the grid empty for good, and `done` could run twice;
+    - a head-office phone with no dial number dialled the built-in number;
+    - a website with no label read "saequip.com";
+    - letter-spacing on Arabic;
+    - literal combining marks in a regex;
+    - `localeCompare` without the page's locale;
+    - a new `DisplayNames` per card;
+    - and earlier: the storage crash, via the shared store, and `javascript:` links.
+  - Verified with 3 new `distributor-widget:test` checks (31 total); the old widget fails all 3.
+  - **Accepted:**
+    - the `DEFAULT_COLLECTION` fallback is deliberate, because Duda translates the name;
+    - `element`/`data` are read lazily, but they are per-instance closure variables, not the
+      shared shim globals the CLAUDE.md rule is about;
+    - no paging on `get()`: 15 rows, and Duda's maximum page size is unknown, so asking for a
+      large page could empty the grid;
+    - the option animation is indexed per menu of 5;
+    - the inlined store code is needed for `SAEquipQuoteI18n`;
+    - card markup duplicated between JS and template, and the duplicated `T`/`LANG_TAG`
+      helpers, are structural refactors with no user-visible defect;
+    - an empty grid already shows the empty message.
