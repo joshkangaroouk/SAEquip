@@ -60,7 +60,7 @@ export default function ProductDetail() {
 
   // Arm the navigate-away guard only while there's something to lose, and never
   // mid-save or during a deliberate exit.
-  const blocker = useUnsavedChangesWarning({ when: isDirty && !guardSuppressed() });
+  const blocker = useUnsavedChangesWarning({ when: isDirty && !guardSuppressed(), suppress: guardSuppressed });
 
   const product = context?.product;
 

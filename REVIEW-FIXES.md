@@ -247,7 +247,11 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     - opens with parent `C1`;
     - an unknown parent is ignored;
     - the parameter is removed either way.
-- [ ] Deleting a product with unsaved edits shows the unsaved-changes dialog.
+- [x] Deleting a product with unsaved edits showed the unsaved-changes dialog.
+  - Fix: the guard takes `suppress()`, which it reads at navigation time.
+  - Verified with a jsdom data-router harness:
+    - disarm then navigate → leaves, unblocked;
+    - a dirty navigate → blocked.
 - [ ] A category deleted in Duda makes a product's categories unsaveable.
 - [ ] Switching language quickly on Translations can save text into the wrong language.
   `Logos` has the same race when switching tabs.
