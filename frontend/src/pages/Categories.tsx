@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronDown, ChevronRight, ImageOff } from "lucide-react";
 import {
   Button,
@@ -114,6 +114,25 @@ export default function Categories() {
     setForm({ ...blankForm, parent_id: parentId });
     setFormOpen(true);
   }
+
+  /*
+   * `/categories?create=<parentId>` opens the create form under that parent —
+   * what a category page's "+ Create a subcategory" links to. ⚠️ Nothing read
+   * it until 2026-10-12, so that button just landed on this list. Applied once
+   * the tree has loaded (an unknown parent is ignored), then removed from the
+   * URL so a refresh or Back does not reopen the form.
+   */
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const parent = params.get("create");
+    if (!parent || !nodes) return;
+    if (parent === ROOT || nodes.some((n) => n.id === parent)) openCreate(parent);
+    setParams((p) => {
+      p.delete("create");
+      return p;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, nodes]);
 
 
   /** Create only — everything else is edited on /categories/:id. */

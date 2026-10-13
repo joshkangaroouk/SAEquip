@@ -240,7 +240,13 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified: a `duda-ids:test` check on the real app passes; the old handler gives 500.
 
 **Dashboard**
-- [ ] "+ Create a subcategory" does nothing.
+- [x] "+ Create a subcategory" did nothing.
+  - Fix: Categories reads `?create=<parent>`, opens the form under that parent and removes the
+    parameter.
+  - Verified in a jsdom harness on the real page:
+    - opens with parent `C1`;
+    - an unknown parent is ignored;
+    - the parameter is removed either way.
 - [ ] Deleting a product with unsaved edits shows the unsaved-changes dialog.
 - [ ] A category deleted in Duda makes a product's categories unsaveable.
 - [ ] Switching language quickly on Translations can save text into the wrong language.
