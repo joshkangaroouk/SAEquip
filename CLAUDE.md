@@ -2011,7 +2011,17 @@ compliance claims (Josh, 2026-10-13).
 
 Every Duda value it changes must still hold what the plan expects, or the run stops. ⚠️ Product
 creation is not idempotent, so E checks for an existing name or SKU and records each created id in
-`<out>/phase4-created.json` before doing anything else. **Back up before any taxonomy or assignment write** with
+`<out>/phase4-created.json` before doing anything else.
+
+**Applied 2026-10-13:**
+- the duplicate EX Vapour Extraction System is HIDDEN with no category links (delete it later);
+- SKUs set: Portable Trolley `SAAF/TR01`, EX 400VA Transformer `SPTR400`;
+- 56 links for the five held products;
+- SA ENDURE LED Max Light (`01M4TY4A22QTVEW98CWRF8P3SH`) and SA ENDURE LEV Accessories
+  (`01M4TY4D9Y9BCGRZMJWHB0DDN0`) created HIDDEN.
+
+All 30 category counts match on the site and in Duda. Everything left is waiting on SA Equip:
+see `docs/sa-equip-phase0/PHASE4_REPORT.md`. **Back up before any taxonomy or assignment write** with
 `npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
 it exports every product–category link, the mirror, the order, the logos and logo toggles, the
 logo and category translations, and Duda's full category and product state, with a manifest of
