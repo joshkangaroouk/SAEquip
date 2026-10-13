@@ -2359,6 +2359,31 @@ repeating rows has no shape to stand in for, so a skeleton there would be invent
 The container carries `aria-busy` + `aria-live` + a label; the blocks themselves are
 `aria-hidden`, so the state is announced once rather than as a dozen grey rectangles.
 
+## Launch checklist (staging → saequip.com)
+
+While the English site is finished, the staging site is kept out of search engines and the
+six non-English languages are paused (Josh, 2026-10-13). In this order at launch:
+
+1. **Turn "No index for the entire site" OFF**, then republish. It is `site_seo.no_index` on
+   the Duda site (Optimization Center → Additional Settings). It was set ON through the API on
+   2026-10-13 and goes out with the next publish. ⚠️ It does NOT switch itself off when the
+   custom domain is connected. Left on, the launched site stays invisible to search and its
+   sitemap stays empty.
+2. **Re-enable the six languages**: the language menu → Manage Languages → switch each
+   language's toggle OFF (on = disabled) → Save. Measured on a throwaway copy: disabling keeps
+   every translated page, Duda's API keeps listing the language, and re-enabling restores it
+   with nothing lost.
+3. **Run the pre-launch translation pass** (see the backlog item of that name). ⚠️ Redo
+   Translations overwrites edits made only inside a language. So afterwards, re-check the
+   per-language `/aviation` H1, page titles and SEO titles that were set by hand on
+   2026-10-13, and any other in-language edit.
+
+Also before launch (each detailed elsewhere in this file):
+- `/privacy-policy` must exist (the File Requests consent link);
+- the custom domain means editing every widget shim and the basket's `ENDPOINT`;
+- Supabase's Site URL and redirect list;
+- the post-launch "Refresh all languages from Duda", once the languages are live again.
+
 ## Known gaps / backlog (reviewed 2026-10-02)
 
 - Resource Requests has **no delete** — a visitor asking for their data to be removed is a database job for now.
