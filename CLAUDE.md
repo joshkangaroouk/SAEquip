@@ -926,6 +926,7 @@ SAEquip has **no native pricing/checkout** for these products — instead there'
 
 ### The quote widgets in every language (2026-10-07)
 
+- ⚠️ **Blocked site data must not take the widgets down** (fixed 2026-10-12). Reading `window.localStorage` throws when site data is blocked, and the store read it bare, so all three widgets died at load and the basket form, left without its handler, submitted natively with the visitor's details in the URL. The store now probes it and falls back to an in-memory basket for the page view, `write()` cannot throw, and the form is `method="post"` and hidden (`.qp-form-section{display:none}`) until `render()` shows it.
 - **The basket lives in `localStorage`, which every language of the site shares.** That is
   right: a visitor who switches to French keeps their basket. Session storage was never involved.
 - ⚠️ **The bug was what each line stored.** Lines stored the name and options as SHOWN

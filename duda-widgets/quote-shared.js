@@ -19,14 +19,37 @@
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
-  var store = window.localStorage;
+  /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
+     some in-app browsers. Reading `window.localStorage` then THROWS, and it
+     used to be read bare here — so every quote widget died at load, and the
+     basket form, left without its submit handler, posted natively with the
+     visitor's details in the URL (fixed 2026-10-12). Without it the basket
+     lives for this page view only. */
+  var store = (function () {
+    try {
+      var s = window.localStorage, probe = '__saequip_probe';
+      s.setItem(probe, '1');
+      s.removeItem(probe);
+      return s;
+    } catch (e) {
+      var mem = {};
+      return {
+        getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+        setItem: function (k, v) { mem[k] = String(v); },
+        removeItem: function (k) { delete mem[k]; }
+      };
+    }
+  })();
 
   function read() {
     try { var b = JSON.parse(store.getItem(KEY) || '[]'); return Array.isArray(b) ? b : []; }
     catch (e) { return []; }
   }
   function write(basket) {
-    store.setItem(KEY, JSON.stringify(basket));
+    /* A full quota must not throw out of Quote.clear() after a quote has been
+       sent: the basket page would report "could not reach the server" and
+       invite a duplicate. */
+    try { store.setItem(KEY, JSON.stringify(basket)); } catch (e) {}
     document.dispatchEvent(new CustomEvent(EVENT, { detail: { basket: basket } }));
     return basket;
   }

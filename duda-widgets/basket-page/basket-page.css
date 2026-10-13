@@ -93,7 +93,9 @@ img.qp-thumb { cursor: pointer; }
 .qp-remove:hover { color: #c0392b; }
 
 /* ── form ─────────────────────────────────────────────────────────────── */
-.qp-form-section { margin-top: 34px; }
+/* Hidden until the script shows it (render() sets display): a form whose
+   script failed must not be submittable, or the browser would send it. */
+.qp-form-section { display: none; margin-top: 34px; }
 .qp-form-box {
   background: #ffffff;
   border: 1px solid var(--qp-line);

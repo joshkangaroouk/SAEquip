@@ -89,7 +89,7 @@ const LABELS = {
  * One page. `widgets` run in order, each through Duda's wrapper. `basket`
  * seeds localStorage (it is one origin, so every language shares it).
  */
-async function page({ path: urlPath, lang, widgets, pv, checked = 0, basket, labels = "ok", quoteStatus = 201 }) {
+async function page({ path: urlPath, lang, widgets, pv, checked = 0, basket, labels = "ok", quoteStatus = 201, blockStorage = false }) {
   const fetches = [];
   const posts = [];
   const body = [
@@ -103,6 +103,8 @@ async function page({ path: urlPath, lang, widgets, pv, checked = 0, basket, lab
   });
   const { window } = dom;
   if (basket) window.localStorage.setItem("saequip_quote_basket", JSON.stringify(basket));
+  // Site data blocked: reading localStorage throws, as browsers do.
+  if (blockStorage) Object.defineProperty(window, "localStorage", { get() { throw new window.DOMException("blocked", "SecurityError"); } });
   window.matchMedia = () => ({ matches: false });
   window.dmAPI = { runOnReady: (_n, cb) => cb() };
   window.fetch = async (url, init) => {
@@ -254,6 +256,22 @@ const oldLine = {
   check(p.stored().length === 3 && p.stored()[2].quantity === 2 && p.stored()[0].quantity === 2,
     "with ids on both, the language of the text does not matter, and an id match wins over a text match",
     JSON.stringify(p.stored().map((l) => [l.options, l.quantity])));
+}
+
+// ── 4c. Site data blocked: the widgets still work, and the form never posts natively ─
+{
+  const p = await page({ path: "/product/ex-heater", lang: "en", widgets: ["quote-header", "add-to-quote"], pv: productView("en"), blockStorage: true });
+  check(p.window.SAEquipQuote?.v === 2, "storage blocked: the store still loads (it used to throw at load)");
+  p.$("#atq-btn").click();
+  await p.settle();
+  check(p.window.SAEquipQuote.get().length === 1, "…and Add to Quote still adds, for this page view",
+    `error="${p.$("#atq-error")?.textContent ?? ""}"`);
+  const b = await page({ path: "/basket", lang: "en", widgets: ["basket-page"], blockStorage: true });
+  const ev = new b.window.Event("submit", { cancelable: true });
+  b.$("#qp-form").dispatchEvent(ev);
+  check(ev.defaultPrevented, "…and the basket form's submit is handled, never sent natively");
+  check(/method="post"/.test(W("basket-page", "html")) && /\.qp-form-section \{ display: none;/.test(W("basket-page", "css")),
+    "the form is POST and hidden until the script shows it, if the script ever fails");
 }
 
 // ── 5. Older widgets, failures ───────────────────────────────────────────────

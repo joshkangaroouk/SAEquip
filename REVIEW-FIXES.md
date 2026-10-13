@@ -283,8 +283,14 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Also an empty `alt`, since the name beside each image is the link.
 
 **Quote widgets**
-- [ ] With site data blocked, all three crash and the form submits as a GET with personal details
-  in the URL.
+- [x] With site data blocked, all three crashed and the form submitted as a GET with personal
+  details in the URL.
+  - Fix:
+    - the store probes `localStorage` and falls back to memory, and `write()` cannot throw;
+    - the form is `method="post"` and hidden until the script shows it.
+  - Verified with 4 new `quote-widgets:test` checks (46 total). With storage blocked the store
+    loads, Add to Quote adds, and the submit is handled; the old widgets throw at load.
+  - **Re-paste needed.**
 - [ ] Focus is lost in the header popup and on basket re-renders.
 - [ ] Quantity and line limits are not enforced before the server rejects the whole quote.
 

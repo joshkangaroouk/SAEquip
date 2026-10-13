@@ -5,8 +5,10 @@ duda-widgets/. Edit those, then re-run it; never edit this file directly.
 
 UPDATED 2026-10-12 — the basket keeps two lines for one product apart when
 their options differ, even where the page's option ids could not be read
-(they used to merge, and the second choice vanished from the quote). Paste
-all three again; nothing else changed.
+(they used to merge, and the second choice vanished from the quote). And
+the widgets keep working when a browser blocks site data (they used to fail
+at load, and the basket form could then post the visitor's details in the
+URL). Paste all three again, HTML, CSS and JS.
 
 UPDATED 2026-10-07 — languages. Each widget's own text now follows the page's
 language (French on /fr/, Arabic on /ar/…), and the basket keeps Duda's
@@ -43,7 +45,7 @@ HTML:
     <div class="qp-form-box">
       <h3 class="qp-form-title" data-qi18n="formTitle">Request your quote</h3>
 
-      <form class="qp-form" id="qp-form" novalidate>
+      <form class="qp-form" id="qp-form" method="post" novalidate>
       <!-- honeypot: hidden from people, bots tend to fill it -->
       <div class="qp-hp" aria-hidden="true">
         <label>Leave this field empty
@@ -235,7 +237,9 @@ img.qp-thumb { cursor: pointer; }
 .qp-remove:hover { color: #c0392b; }
 
 /* ── form ─────────────────────────────────────────────────────────────── */
-.qp-form-section { margin-top: 34px; }
+/* Hidden until the script shows it (render() sets display): a form whose
+   script failed must not be submittable, or the browser would send it. */
+.qp-form-section { display: none; margin-top: 34px; }
 .qp-form-box {
   background: #ffffff;
   border: 1px solid var(--qp-line);
@@ -372,14 +376,37 @@ JS:
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
-  var store = window.localStorage;
+  /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
+     some in-app browsers. Reading `window.localStorage` then THROWS, and it
+     used to be read bare here — so every quote widget died at load, and the
+     basket form, left without its submit handler, posted natively with the
+     visitor's details in the URL (fixed 2026-10-12). Without it the basket
+     lives for this page view only. */
+  var store = (function () {
+    try {
+      var s = window.localStorage, probe = '__saequip_probe';
+      s.setItem(probe, '1');
+      s.removeItem(probe);
+      return s;
+    } catch (e) {
+      var mem = {};
+      return {
+        getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+        setItem: function (k, v) { mem[k] = String(v); },
+        removeItem: function (k) { delete mem[k]; }
+      };
+    }
+  })();
 
   function read() {
     try { var b = JSON.parse(store.getItem(KEY) || '[]'); return Array.isArray(b) ? b : []; }
     catch (e) { return []; }
   }
   function write(basket) {
-    store.setItem(KEY, JSON.stringify(basket));
+    /* A full quota must not throw out of Quote.clear() after a quote has been
+       sent: the basket page would report "could not reach the server" and
+       invite a duplicate. */
+    try { store.setItem(KEY, JSON.stringify(basket)); } catch (e) {}
     document.dispatchEvent(new CustomEvent(EVENT, { detail: { basket: basket } }));
     return basket;
   }
@@ -1594,14 +1621,37 @@ JS:
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
-  var store = window.localStorage;
+  /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
+     some in-app browsers. Reading `window.localStorage` then THROWS, and it
+     used to be read bare here — so every quote widget died at load, and the
+     basket form, left without its submit handler, posted natively with the
+     visitor's details in the URL (fixed 2026-10-12). Without it the basket
+     lives for this page view only. */
+  var store = (function () {
+    try {
+      var s = window.localStorage, probe = '__saequip_probe';
+      s.setItem(probe, '1');
+      s.removeItem(probe);
+      return s;
+    } catch (e) {
+      var mem = {};
+      return {
+        getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+        setItem: function (k, v) { mem[k] = String(v); },
+        removeItem: function (k) { delete mem[k]; }
+      };
+    }
+  })();
 
   function read() {
     try { var b = JSON.parse(store.getItem(KEY) || '[]'); return Array.isArray(b) ? b : []; }
     catch (e) { return []; }
   }
   function write(basket) {
-    store.setItem(KEY, JSON.stringify(basket));
+    /* A full quota must not throw out of Quote.clear() after a quote has been
+       sent: the basket page would report "could not reach the server" and
+       invite a duplicate. */
+    try { store.setItem(KEY, JSON.stringify(basket)); } catch (e) {}
     document.dispatchEvent(new CustomEvent(EVENT, { detail: { basket: basket } }));
     return basket;
   }
@@ -2095,14 +2145,37 @@ JS:
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
-  var store = window.localStorage;
+  /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
+     some in-app browsers. Reading `window.localStorage` then THROWS, and it
+     used to be read bare here — so every quote widget died at load, and the
+     basket form, left without its submit handler, posted natively with the
+     visitor's details in the URL (fixed 2026-10-12). Without it the basket
+     lives for this page view only. */
+  var store = (function () {
+    try {
+      var s = window.localStorage, probe = '__saequip_probe';
+      s.setItem(probe, '1');
+      s.removeItem(probe);
+      return s;
+    } catch (e) {
+      var mem = {};
+      return {
+        getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+        setItem: function (k, v) { mem[k] = String(v); },
+        removeItem: function (k) { delete mem[k]; }
+      };
+    }
+  })();
 
   function read() {
     try { var b = JSON.parse(store.getItem(KEY) || '[]'); return Array.isArray(b) ? b : []; }
     catch (e) { return []; }
   }
   function write(basket) {
-    store.setItem(KEY, JSON.stringify(basket));
+    /* A full quota must not throw out of Quote.clear() after a quote has been
+       sent: the basket page would report "could not reach the server" and
+       invite a duplicate. */
+    try { store.setItem(KEY, JSON.stringify(basket)); } catch (e) {}
     document.dispatchEvent(new CustomEvent(EVENT, { detail: { basket: basket } }));
     return basket;
   }
