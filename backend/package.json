@@ -47,6 +47,7 @@
     "catalogue:backup": "tsx src/scripts/catalogueBackup.ts",
     "taxonomy:setup": "tsx src/scripts/taxonomySetup.ts",
     "taxonomy:assign": "tsx src/scripts/taxonomyAssign.ts",
+    "logos:assign": "tsx src/scripts/logosAssign.ts",
     "quote-widgets:test": "node scripts/quote-widgets-test.mjs",
     "distributor-widget:test": "node scripts/distributor-widget-test.mjs"
   },

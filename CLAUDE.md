@@ -1987,7 +1987,18 @@ that lacks it (the cards would otherwise fall back to the tree's order). The rul
 
 The script checks the result against the brief's expected counts and refuses `--confirm` if any
 differ. ⚠️ **`--confirm` is live at once**: the listing pages, filters and carousels read the Hub,
-so no Duda publish is involved. Duda's copy follows only when `duda:sync-categories` runs. **Back up before any taxonomy or assignment write** with
+so no Duda publish is involved. Duda's copy follows only when `duda:sync-categories` runs. Applied
+2026-10-13: 1,337 links, all 30 counts matching the brief live and in Duda.
+
+`npm run logos:assign --workspace=backend -- --master <json> --report <md> --out <dir>` is the
+sheet's logo toggles (Phase 3), dry run by default. ⚠️ **ON ONLY**: `planLogos()`
+(`scripts/lib/logoPlan.ts`) has no removal path at all, because certification logos are
+compliance claims (Josh, 2026-10-13).
+- A sheet `false` on a logo that is currently ON is listed for SA Equip and left on.
+- `null` (UKCA, Made in Britain, SA Rental) is never touched.
+- Keys resolve to catalogue logos by FILE, as the import does.
+- It refuses `--confirm` unless the counts reconcile with the brief: the sheet's ON count must equal
+  the brief's, and "after" must equal that plus the logos held on. **Back up before any taxonomy or assignment write** with
 `npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
 it exports every product–category link, the mirror, the order, the logos and logo toggles, the
 logo and category translations, and Duda's full category and product state, with a manifest of
@@ -2375,8 +2386,24 @@ six non-English languages are paused (Josh, 2026-10-13). In this order at launch
    with nothing lost.
 3. **Run the pre-launch translation pass** (see the backlog item of that name). ⚠️ Redo
    Translations overwrites edits made only inside a language. So afterwards, re-check the
-   per-language `/aviation` H1, page titles and SEO titles that were set by hand on
-   2026-10-13, and any other in-language edit.
+   per-language H1, page titles and SEO titles of the aviation page, set by hand on
+   2026-10-13, and any other in-language edit. The page moved from `/aviation` to
+   `/aviation-and-aerospace` when the 12 industry pages were built; `/aviation` now 404s.
+
+**Measured after the publish of 2026-10-13** (languages disabled, noindex on):
+- **Disabling a language HIDES it but does not take it offline.**
+  - The switcher no longer offers it: English pages offer no other language, and a German page
+    offers only English.
+  - Every `hreflang` tag is gone, and so are its URLs from the sitemap.
+  - But `/de`, `/de/product/ex-heater` and the rest are still served in full, in German, with
+    200 and no redirect.
+- **"No index for the entire site" puts `<meta name="robots" content="noindex">` on every page**,
+  English and translated.
+  - ⚠️ **It does NOT empty the sitemap**, whatever Duda's docs say: 213 English URLs are still
+    listed.
+  - robots.txt is unchanged: it allows everything and points at the sitemap. That is harmless,
+    because crawlers must be allowed in to see the noindex.
+  - No `X-Robots-Tag` header is sent.
 
 Also before launch (each detailed elsewhere in this file):
 - `/privacy-policy` must exist (the File Requests consent link);

@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { syncRefusal } from "../src/scripts/lib/syncGuard.js";
 import { keepEditedDescription, planDownloadSet, planTypeLinks } from "../src/scripts/lib/importGuards.js";
 import { applyPlan, planAssignments } from "../src/scripts/lib/taxonomyPlan.js";
+import { planLogos } from "../src/scripts/lib/logoPlan.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -127,6 +128,24 @@ check("error" in planDownloadSet([], [{ mediaAssetId: "x", title: "constructor" 
   const done = applyPlan(links, run(ow, ["Db"]));
   const twice = run(ow, ["Db"], done);
   check(!twice.adds.length && !twice.removals.length && !twice.reorders.length, "assign: with an order, applying the plan still converges");
+}
+
+// ---- logos:assign (Phase 3: ON only, certification logos are compliance claims)
+{
+  const ids = new Map([["inmetro", "INM"], ["zone_0", "Z0"], ["rental", "REN"], ["cyclone", "CYC"]]);
+  const LL = (p: string, l: string) => ({ hubProductId: p, logoId: l });
+  const links = [LL("a", "INM"), LL("a", "REN"), LL("b", "CYC")];
+  const W = (p: string, toggles: Record<string, boolean | null>) => ({ hubProductId: p, dudaProductId: `D${p}`, name: p, toggles });
+  const lp = planLogos({ wanted: [W("a", { inmetro: false, zone_0: true, rental: null, cyclone: false }), W("b", { cyclone: true, inmetro: true })], links, logoIdFor: ids });
+  check(lp.adds.some((x) => x.hubProductId === "a" && x.key === "zone_0") && lp.adds.some((x) => x.hubProductId === "b" && x.key === "inmetro"), "logos: true on an OFF toggle → switched ON");
+  check(!lp.adds.some((x) => x.hubProductId === "b" && x.key === "cyclone"), "logos: true on an ON toggle → nothing to do");
+  check(lp.heldOn.length === 1 && lp.heldOn[0].key === "inmetro" && lp.heldOn[0].hubProductId === "a", "logos: false on an ON logo → held on and listed, never switched off");
+  check(!lp.adds.concat(lp.heldOn).some((x) => x.key === "rental"), "logos: null is never touched");
+  check(!lp.heldOn.some((x) => x.key === "cyclone" && x.hubProductId === "a"), "logos: false on an OFF logo → nothing to list");
+  check(!("removals" in lp), "logos: the plan has no way to switch anything off");
+  const throws = (f: () => unknown) => { try { f(); return false; } catch { return true; } };
+  check(throws(() => planLogos({ wanted: [W("a", { atex: true })], links, logoIdFor: ids })), "logos: a sheet key with no catalogue logo stops the plan");
+  check(throws(() => planLogos({ wanted: [W("a", {}), W("a", {})], links, logoIdFor: ids })), "logos: a product given twice stops the plan");
 }
 
 // ---- .claude/hooks/block-destructive-db.sh (the harness's PreToolUse guard)
