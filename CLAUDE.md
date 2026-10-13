@@ -2412,6 +2412,17 @@ Also before launch (each detailed elsewhere in this file):
     languages last, then using Redo Translations. So every English page changed since
     2026-10-06 needs re-translating in Duda. Re-translating can overwrite hand edits made inside
     a language.
+  - **Decide HOW to re-translate, after testing both on a site copy first** (Josh, 2026-10-13):
+    - the two options are removing and re-adding each language, or Duda's "Redo Translations";
+    - the copy is a duplicate site, as for the Disable test: `POST /sites/multiscreen/duplicate/{site}`,
+      deleted afterwards;
+    - the question to answer: does Redo pick up LAYOUT changes made in English since translation
+      (new sections, the mega menus, the hamburger menu), or only text?
+    - **take a Duda backup before either one** on the live site.
+  - **After Duda finishes translating**, re-check the Hub's copied names: "Refresh all languages
+    from Duda", then the Names tab for each language. Then **redo any language-only edits**, e.g.
+    the `/aviation-and-aerospace` titles that were set per language on 2026-10-13, since either
+    method can overwrite them.
   - **"Refresh all languages from Duda" is guarded while a language is paused**
     (`harvestRefusal()`): a language that comes back in English is refused, not wiped. It is
     still pointless until the language is published and translated again.
