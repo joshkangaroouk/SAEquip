@@ -2352,7 +2352,34 @@ The container carries `aria-busy` + `aria-live` + a label; the blocks themselves
 ## Known gaps / backlog (reviewed 2026-10-02)
 
 - Resource Requests has **no delete** — a visitor asking for their data to be removed is a database job for now.
-- ⚠️ **The mobile (hamburger) menu and footer links don't keep the language prefix** (accepted by Josh 2026-10-13, for now). They are `NATIVE_STORE_DYNAMIC_PAGE` links (`category/<slug>`, `product/<slug>`) in navigation elements, which Duda does not prefix, so on `/fr/`, `/ar/` and the rest they open the ENGLISH page. The desktop mega menu panels do prefix their store links. Fixing it would mean a separate mobile menu and footer per language in Duda's editor.
+- ⚠️ **Pre-launch translation pass** (Josh, 2026-10-13). The six non-English languages are to
+  be paused until the English site is finished, then translated in ONE pass before launch. That
+  replaces the post-publish translation check that was planned. The pass must cover:
+  - **The 10 new Site Challenges** (created 2026-10-13). Duda translates store category names
+    in the background after a publish. Then copy them with "Refresh all languages from Duda".
+  - **The mobile menu.** It has three new column headings, the 14 challenge links and the
+    accordion renamed "Site Challenges". These edits were made to the English header.
+    Each language's header probably keeps its own copy, still showing "Solutions" and the
+    placeholders; check this.
+  - **`/aviation`.** Its H1, page title and SEO title were set per language on 2026-10-13
+    (drafts). Check them after any re-translation, which may overwrite them.
+  - **Logo labels.** "Made in Britain" and "Ex logo" carried their six translations across. Run
+    "Translate missing" for any logo text changed since.
+  - ⚠️ **Mobile (hamburger) menu and footer links don't keep the language prefix** (accepted
+    for now). They are `NATIVE_STORE_DYNAMIC_PAGE` links (`category/<slug>`, `product/<slug>`)
+    in navigation elements, which Duda does not prefix. So on `/fr/`, `/ar/` and the rest they
+    open the ENGLISH page. The desktop mega menu panels do prefix their store links. Fixing it
+    means a separate mobile menu and footer per language in Duda's editor.
+  - ⚠️ **Duda does not carry English edits into a language translated earlier.** Its docs say
+    content added later "will not sync with other language versions" and recommend adding
+    languages last, then using Redo Translations. So every English page changed since
+    2026-10-06 needs re-translating in Duda. Re-translating can overwrite hand edits made inside
+    a language.
+  - ⚠️ **Don't press "Refresh all languages from Duda" (or run `i18n:sync-duda --confirm`)
+    while a language is paused.** A refresh deletes any stored name that comes back identical
+    to the English (`dudaHarvest.ts`), and `fetch` follows redirects. So a paused language
+    whose pages redirect to, or fall back to, English would lose its copied product and
+    category names. Run it only once the language is published and translated again.
 - The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done; **still to do: the Hire/Purchase option** (see the options notes — attaching a two-value option drops existing variation SKUs). `/products/new` remains the path for genuinely new one-off products.
 - **Opening a product makes ~4 Duda reads** (the product, and `/custom` plus both logo lists each `ensureHubProduct`). Correct, just slower than one; worth trimming if Duda rate limits ever bite.
 - **New categories get no SEO title** — `duda:category-seo` was a one-off over the 23 that existed; set one on the category's page.
