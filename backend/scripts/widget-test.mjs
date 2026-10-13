@@ -1119,6 +1119,30 @@ async function main() {
     check(carousel.mode === "category" && carousel.categoryFrom === undefined, "and not on the carousel's", JSON.stringify(carousel));
   }
 
+  console.log("\n=== category mode leaves the section attribute alone ===");
+  {
+    const dom = new JSDOM(`<!doctype html><html><body><div id="b"></div></body></html>`, {
+      url: "https://saequip.multiscreensite.com/aviation", runScripts: "dangerously", pretendToBeVisual: true,
+    });
+    const w = dom.window, d = w.document;
+    w.fetch = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [{ name: "X", url: "/product/x" }] }) });
+    const tag = d.createElement("script"); tag.src = "https://sa-equip-backend.vercel.app/public/widget.js"; d.body.appendChild(tag);
+    const run = d.createElement("script"); run.textContent = SRC; d.body.appendChild(run);
+    await new Promise((r) => setTimeout(r, 20));
+    const host = d.getElementById("b");
+    const props = { section: "compatible", singlePage: true, productCategory: "aviation" };
+    w.SAEquipHubWidget.init({ container: host, props });
+    await new Promise((r) => setTimeout(r, 30));
+    check(host.getAttribute("data-saeh-section") === "compatible" && host.getAttribute("data-saeh-category") === "aviation",
+      "the category is its own attribute; the section stays exactly \"compatible\"");
+    // A re-init that does NOT re-stamp the attribute (AMD path, a manual init).
+    w.SAEquipHubWidget.init({ container: host, props });
+    await new Promise((r) => setTimeout(r, 30));
+    const last = w.__saequipHub.lastInit;
+    check(!last.sectionMismatch && last.mode === "category" && !!host.querySelector(".saeh-cp"),
+      "so a re-init still renders the carousel, with no false sectionMismatch", JSON.stringify(last.sectionMismatch));
+  }
+
   console.log("\n=== 3D viewer: a real dialog, one at a time ===");
   {
     const { d, w } = await boot({

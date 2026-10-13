@@ -2914,7 +2914,13 @@
   function renderCategoryInto(container, category, heading, onEmpty) {
     var t = ticket(container);
     try {
-      container.setAttribute("data-saeh-section", "compatible:category=" + category);
+      // ⚠️ The category goes in its OWN attribute, like the resources type:
+      // init() trusts `data-saeh-section` first on a re-init, so it must stay
+      // exactly "compatible". It was set to "compatible:category=<slug>",
+      // which a re-init that did not re-stamp it (the AMD path, a manual
+      // init) read as an unknown section (fixed 2026-10-12).
+      container.setAttribute("data-saeh-section", "compatible");
+      container.setAttribute("data-saeh-category", category || "");
     } catch (e) {
       /* never break the host page */
     }

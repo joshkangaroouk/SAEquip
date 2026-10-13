@@ -313,7 +313,10 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Fix: the async writes go to the init's own `record`, which is threaded into the listing.
   - Verified with 2 new `widget:test` checks (529 total). The old code fails both: the listing's
     category was recorded on the carousel's record.
-- [ ] Category mode rewrites `data-saeh-section`.
+- [x] Category mode rewrote `data-saeh-section`.
+  - Fix: the category goes in `data-saeh-category`, and the section stays `compatible`.
+  - Verified with 2 new `widget:test` checks (531 total). The old code fails both, with a false
+    `sectionMismatch`.
 - [ ] A human submit under 1.5s gets the generic error.
 - [ ] Focus can escape the request form via the backdrop.
 

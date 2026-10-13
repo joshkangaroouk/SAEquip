@@ -856,6 +856,7 @@ empty.
   not an error.
 - ⚠️ **Matched on the MIRRORED slug, never derived.** Duda does not slugify titles the way
   you would guess — before the URLs were tidied it rendered "Oil & Gas" as `oil---gas`.
+- ⚠️ **The category goes in `data-saeh-category`, never into `data-saeh-section`** (fixed 2026-10-12), exactly like the resources type. `init()` trusts the section attribute first on a re-init; it used to read `compatible:category=<slug>`, which a re-init that did not re-stamp it took for an unknown section (a false `sectionMismatch`).
 - ⚠️ **`singlePage` is the switch, NOT the presence of a category.** One left selected from
   earlier experimentation must not quietly take over a product page. Covered by `widget:test`.
 - `POST /public/categories/options?parent=<slug>` feeds Duda's dynamic dropdown, so an
