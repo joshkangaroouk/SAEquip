@@ -4173,7 +4173,13 @@
       if (!f.length) return;
       var first = f[0];
       var last = f[f.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
+      // ⚠️ A click on the backdrop (which deliberately does not close the form)
+      // moves focus to <body>, and Tab then walked the page BEHIND the dialog
+      // (fixed 2026-10-12). From outside, Tab comes back in.
+      if (!sheet.contains(document.activeElement)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {

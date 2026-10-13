@@ -322,7 +322,9 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     click.
   - Verified with 3 new `widget:test` checks (534 total): a fast submit waits, then succeeds with
     `elapsedMs` 1602.
-- [ ] Focus can escape the request form via the backdrop.
+- [x] Focus could escape the request form via the backdrop.
+  - Fix: Tab from outside the form returns to its first control (or its last, with Shift).
+  - Verified with a new `widget:test` check (535 total).
 
 **Housekeeping**
 - [ ] Add the missing indexes: `SpecRow.hubProductId`, `ProductTextItem.hubProductId`,

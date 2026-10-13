@@ -1847,6 +1847,11 @@ async function main() {
         all[all.length - 1].focus();
         d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
         check(d.activeElement === all[0], "Tab from the last control wraps to the first");
+        // A backdrop click leaves focus on <body>; Tab must come back inside.
+        d.activeElement.blur();
+        const fromOutside = new w.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+        d.dispatchEvent(fromOutside);
+        check(fromOutside.defaultPrevented && d.activeElement === all[0], "with focus outside the form (a backdrop click), Tab returns to its first control");
         all[0].focus();
         d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true }));
         check(d.activeElement === all[all.length - 1], "Shift+Tab from the first wraps to the last");
