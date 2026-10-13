@@ -327,8 +327,14 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified with a new `widget:test` check (535 total).
 
 **Housekeeping**
-- [ ] Add the missing indexes: `SpecRow.hubProductId`, `ProductTextItem.hubProductId`,
-  `QuoteRequestItem.quoteRequestId`, `QuoteRequest.createdAt`.
+- [x] Added the missing indexes: `SpecRow (hubProductId, sortOrder)`, `ProductTextItem
+  (hubProductId, kind, sortOrder)`, `QuoteRequestItem (quoteRequestId)` and
+  `QuoteRequest (createdAt)`.
+  - Migration `20261013090000_review_indexes`.
+  - The SQL came from the read-only `migrate diff --from-schema-datasource`; it held exactly the
+    four `CREATE INDEX` statements and no drift.
+  - Applied with `migrate deploy` (29 → 30 recorded). The four indexes are present, and the app
+    role still reads.
 - [x] Two stale comments: `storage.ts` (models are now MIME-limited) and `public.ts` (the root
   `vercel.json`).
 - [ ] The remaining 17 distributor-widget code-review points.

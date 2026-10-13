@@ -181,6 +181,9 @@ model SpecRow {
   value        String
   sortOrder    Int        @default(0)
   hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+
+  /// Read on every product page (ordered) and cleared on every save.
+  @@index([hubProductId, sortOrder])
 }
 
 model ProductTextItem {
@@ -190,6 +193,9 @@ model ProductTextItem {
   text         String
   sortOrder    Int          @default(0)
   hubProduct   HubProduct   @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+
+  /// Read per product and kind, ordered, on every product page and save.
+  @@index([hubProductId, kind, sortOrder])
 }
 
 model Download {
@@ -383,6 +389,9 @@ model QuoteRequest {
   createdAt DateTime           @default(now())
   emailSent Boolean            @default(false)
   items     QuoteRequestItem[]
+
+  /// /api/quotes lists newest first.
+  @@index([createdAt])
 }
 
 model QuoteRequestItem {
@@ -400,6 +409,8 @@ model QuoteRequestItem {
   dudaProductId  String?
   imageUrl       String?
   quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+
+  @@index([quoteRequestId])
 }
 
 /// Maps a Hub staff member (Supabase identity) to their own Duda CLIENT
