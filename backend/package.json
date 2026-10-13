@@ -49,6 +49,7 @@
     "taxonomy:assign": "tsx src/scripts/taxonomyAssign.ts",
     "logos:assign": "tsx src/scripts/logosAssign.ts",
     "catalogue:phase4": "tsx src/scripts/cataloguePhase4.ts",
+    "catalogue:phase5a": "tsx src/scripts/cataloguePhase5a.ts",
     "quote-widgets:test": "node scripts/quote-widgets-test.mjs",
     "distributor-widget:test": "node scripts/distributor-widget-test.mjs"
   },

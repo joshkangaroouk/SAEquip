@@ -2021,7 +2021,16 @@ creation is not idempotent, so E checks for an existing name or SKU and records 
   (`01M4TY4D9Y9BCGRZMJWHB0DDN0`) created HIDDEN.
 
 All 30 category counts match on the site and in Duda. Everything left is waiting on SA Equip:
-see `docs/sa-equip-phase0/PHASE4_REPORT.md`. **Back up before any taxonomy or assignment write** with
+see `docs/sa-equip-phase0/PHASE4_REPORT.md`.
+
+`npm run catalogue:phase5a` (`PHASE5A_INSTRUCTIONS.md`, Josh's own calls) gave challenges and
+industries to the 17 products still without them, and hid the 3 duplicate SAFU/RF filter products,
+keeping Filters (SAFU/). **Applied 2026-10-13:** every visible product (92) has at least one Site
+Challenge and one Industry, and all the file's expected counts match.
+- ⚠️ Duda's category counts include HIDDEN products (the two new drafts), so they can read higher
+  than what visitors see. Compare the site's counts with `/public/catalogue`.
+- ⚠️ The sitemap's translated product entries are stale (dated 2026-10-06) and still list hidden
+  products. They 404 and carry noindex. The English part is current. **Back up before any taxonomy or assignment write** with
 `npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
 it exports every product–category link, the mirror, the order, the logos and logo toggles, the
 logo and category translations, and Duda's full category and product state, with a manifest of
