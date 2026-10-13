@@ -305,7 +305,10 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Fix: render tickets per container in all four render paths and `clean()`.
   - Verified with a new `widget:test` race check (526 total): the fixed widget shows the manuals,
     and the old one showed DATASHEET-ROW.
-- [ ] The media-query listener leaks on every re-init.
+- [x] The media-query listener leaked on every re-init.
+  - Fix: it removes itself once its accordion is detached, like the resize listener.
+  - Verified with a new `widget:test` check: after 5 re-inits and a breakpoint change, 5 were
+    added and 4 removed. The old code removes none.
 - [ ] Async diagnostics land on the wrong `lastInit` record.
 - [ ] Category mode rewrites `data-saeh-section`.
 - [ ] A human submit under 1.5s gets the generic error.

@@ -2047,6 +2047,15 @@
       if (window.matchMedia) {
         var mq = window.matchMedia("(min-width:721px)");
         var onLayoutChange = function () {
+          // ⚠️ Self-removing, like onResize below: clean() keeps no listener
+          // registry, so every re-init (each content-panel edit in Duda's
+          // editor) used to leave one more of these holding a detached
+          // accordion alive (fixed 2026-10-12).
+          if (!wrap.isConnected) {
+            if (mq.removeEventListener) mq.removeEventListener("change", onLayoutChange);
+            else if (mq.removeListener) mq.removeListener(onLayoutChange);
+            return;
+          }
           if (mq.matches && current === -1) select(0);
           // Crossing the breakpoint changes the header widths and whether the
           // bar applies at all, so it always needs re-placing.

@@ -1073,6 +1073,31 @@ async function main() {
       "the late reply from the earlier init does not replace the newer render", d.querySelector(".saeh-rs-name")?.textContent);
   }
 
+  console.log("\n=== the accordion's layout listener does not outlive it ===");
+  {
+    const dom = new JSDOM(`<!doctype html><html><body><div id="host"></div></body></html>`, {
+      url: "https://saequip.multiscreensite.com/product/ex-heater", runScripts: "dangerously", pretendToBeVisual: true,
+    });
+    const w = dom.window, d = w.document;
+    let added = 0, removed = 0;
+    const listeners = [];
+    w.matchMedia = (q) => ({ media: q, matches: true,
+      addEventListener(t, f) { if (t === "change") { added++; listeners.push(f); } },
+      removeEventListener(t) { if (t === "change") removed++; }, addListener() {}, removeListener() {} });
+    w.fetch = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ logos: { sa: [], cert: [] }, descriptionHtml: "<p>x</p>", specs: [], benefits: ["a"], applications: [], downloads: [], compatible: [] }) });
+    const tag = d.createElement("script"); tag.src = "https://sa-equip-backend.vercel.app/public/widget.js"; d.body.appendChild(tag);
+    const run = d.createElement("script"); run.textContent = SRC; d.body.appendChild(run);
+    await new Promise((r) => setTimeout(r, 20));
+    const host = d.getElementById("host");
+    for (let i = 0; i < 5; i++) { // Duda's editor: clean() then init() on every content-panel edit
+      w.SAEquipHubWidget.clean({ container: host });
+      w.SAEquipHubWidget.init({ container: host, props: { section: "tabs" } });
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    for (const f of [...listeners]) f(); // the breakpoint is crossed
+    check(added === 5 && removed === 4, "detached accordions drop their layout listener; the live one keeps it", `added ${added}, removed ${removed}`);
+  }
+
   console.log("\n=== 3D viewer: a real dialog, one at a time ===");
   {
     const { d, w } = await boot({
