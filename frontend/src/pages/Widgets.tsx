@@ -192,6 +192,7 @@ const WIDGET_CSS = `
 .saeh-pl-body{display:flex;flex-direction:column;flex:1;gap:8px;padding:14px 16px 16px;background:#f4f4f4}
 .saeh-pl-chips{display:flex;flex-wrap:wrap;gap:6px}
 .saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#fff;color:#444;padding:4px 8px}
+.saeh-pl-chip-more{background:transparent;color:#666;box-shadow:inset 0 0 0 1px #d6d6d6}
 .saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}
 .saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}
 .saeh-pl-certs span{white-space:nowrap}

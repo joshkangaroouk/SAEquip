@@ -318,6 +318,14 @@ category template, or the page shows two listings.
   a bare text node so the only break is BETWEEN items and a comma never starts a line.
 - ⚠️ **Chips are WHITE.** They were `#f1f1f1` on the body's `#f4f4f4` — three values apart,
   so the Site Challenge label was effectively invisible.
+- **At most two chips per card, then "+N more"** (`CARD_CHIP_LIMIT`, Josh 2026-10-13). A
+  product can carry six challenges. The two shown are the first in the TREE's order (the
+  master list's, via the catalogue's category order), never the product's link order, so they
+  are the same two wherever the card appears. "+N more" is outlined rather than filled, so it
+  reads as a count rather than another challenge, and its tooltip lists the hidden ones. It is
+  plural-aware in all seven languages (`pl.moreChips`). Filtering and search read the product's
+  categories, not the chips, so a hidden challenge still finds the product. Product pages show
+  no challenges at all; only listing cards do.
 - ⚠️ **Certification text reads `Logo.alt || Logo.label`.** Every logo now has an `alt`, so
   cards say "EX", "UKCA" and "Made in Britain" rather than ATEX/UKEX. The first two are
   deliberate (see the logo mapping note); editing `alt` on the Logos page changes the display

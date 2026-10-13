@@ -497,6 +497,40 @@ async function main() {
     check(names(d).join(",") === "Solo", "…and the grid still renders");
   }
 
+  console.log("\n=== product listing: at most two challenge labels per card ===");
+  {
+    // Six challenges, linked in an order unlike the tree's: the card shows the
+    // TREE's first two (the master list's order), then "+4 more".
+    const six = ["c1", "c2", "c3", "c4", "c5", "c6"].map((id, i) => CAT(id, `Challenge ${i + 1}`, `challenge-${i + 1}`, "sc"));
+    const cat = {
+      categories: [...CATALOGUE.categories, ...six],
+      products: [
+        { name: "Six", slug: "six", url: "/product/six", imageUrl: null, categoryIds: ["lp", "c6", "c3", "c1", "c5", "c2", "c4"], certs: [] },
+        { name: "Two", slug: "two", url: "/product/two", imageUrl: null, categoryIds: ["lp", "c2", "c1"], certs: [] },
+        { name: "Three", slug: "three", url: "/product/three", imageUrl: null, categoryIds: ["lp", "c3", "c2", "c1"], certs: [] },
+      ],
+    };
+    const chipsOf = (d, name) => {
+      const card = [...d.querySelectorAll(".saeh-pl-card")].find((c) => c.querySelector(".saeh-pl-name").textContent === name);
+      return [...card.querySelectorAll(".saeh-pl-chip")];
+    };
+    const { d } = await boot({ props: PL, cataloguePayload: cat, url: AT });
+    const s = chipsOf(d, "Six");
+    check(s.map((c) => c.textContent).join("|") === "Challenge 1|Challenge 2|+4 more",
+      "six challenges → the tree's first two, then +4 more", s.map((c) => c.textContent).join("|"));
+    check(s[2].classList.contains("saeh-pl-chip-more") && s[2].getAttribute("title") === "Challenge 3, Challenge 4, Challenge 5, Challenge 6",
+      "…and the hidden four are in the +N label's tooltip, in order", s[2].getAttribute("title"));
+    check(chipsOf(d, "Two").map((c) => c.textContent).join("|") === "Challenge 1|Challenge 2", "exactly two → no +N label");
+    check(chipsOf(d, "Three").map((c) => c.textContent).join("|") === "Challenge 1|Challenge 2|+1 more", "three → +1 more");
+    tick(d, "c5");
+    check(names(d).join(",") === "Six", "filtering still finds a product by a challenge its card does not show", names(d).join(","));
+    const { d: fr } = await boot({ props: PL, cataloguePayload: cat, url: AT, htmlLang: "fr" });
+    check(chipsOf(fr, "Three").at(-1).textContent === "+1 autre" && chipsOf(fr, "Six").at(-1).textContent === "+4 autres",
+      "the +N label follows the language's plural rules (fr)", chipsOf(fr, "Three").at(-1).textContent);
+    const css = d.getElementById("saeh-styles").textContent;
+    check(/\.saeh-pl-chip-more\{[^}]*background:transparent/.test(css), "+N is outlined, not filled like a challenge");
+  }
+
   console.log("\n=== product listing: cards and layout ===");
   {
     const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });

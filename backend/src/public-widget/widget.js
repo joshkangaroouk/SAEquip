@@ -329,6 +329,7 @@
       "pl.loadMore": "Load more products",
       "pl.count": { one: "{n} product of {total}", other: "{n} products of {total}" },
       "pl.empty": "No products match those filters. Try removing one.",
+      "pl.moreChips": { other: "+{n} more" },
       "pl.filter": "Filter Products",
       "pl.searchLabel": "Search within category",
       "pl.searchPh": "Search products...",
@@ -406,6 +407,7 @@
       "pl.loadMore": "عرض المزيد من المنتجات",
       "pl.count": { other: "المنتجات: {n} من أصل {total}" },
       "pl.empty": "لا توجد منتجات تطابق عوامل التصفية هذه. جرّب إزالة أحدها.",
+      "pl.moreChips": { other: "+{n} أخرى" },
       "pl.filter": "تصفية المنتجات",
       "pl.searchLabel": "البحث ضمن الفئة",
       "pl.searchPh": "ابحث عن المنتجات...",
@@ -490,6 +492,7 @@
       "pl.loadMore": "加载更多产品",
       "pl.count": { other: "{n} / {total} 个产品" },
       "pl.empty": "没有符合这些筛选条件的产品。请尝试移除一个筛选条件。",
+      "pl.moreChips": { other: "+{n} 项" },
       "pl.filter": "筛选产品",
       "pl.searchLabel": "在此类别中搜索",
       "pl.searchPh": "搜索产品...",
@@ -567,6 +570,7 @@
       "pl.loadMore": "Afficher plus de produits",
       "pl.count": { one: "{n} produit sur {total}", other: "{n} produits sur {total}" },
       "pl.empty": "Aucun produit ne correspond à ces filtres. Essayez d'en retirer un.",
+      "pl.moreChips": { one: "+{n} autre", other: "+{n} autres" },
       "pl.filter": "Filtrer les produits",
       "pl.searchLabel": "Rechercher dans la catégorie",
       "pl.searchPh": "Rechercher des produits...",
@@ -644,6 +648,7 @@
       "pl.loadMore": "Weitere Produkte laden",
       "pl.count": { one: "{n} Produkt von {total}", other: "{n} Produkte von {total}" },
       "pl.empty": "Keine Produkte entsprechen diesen Filtern. Entfernen Sie einen Filter.",
+      "pl.moreChips": { other: "+{n} weitere" },
       "pl.filter": "Produkte filtern",
       "pl.searchLabel": "In dieser Kategorie suchen",
       "pl.searchPh": "Produkte suchen...",
@@ -721,6 +726,7 @@
       "pl.loadMore": "Carregar mais produtos",
       "pl.count": { one: "{n} produto de {total}", other: "{n} produtos de {total}" },
       "pl.empty": "Nenhum produto corresponde a esses filtros. Tente remover um.",
+      "pl.moreChips": { one: "+{n} outro", other: "+{n} outros" },
       "pl.filter": "Filtrar produtos",
       "pl.searchLabel": "Pesquisar na categoria",
       "pl.searchPh": "Pesquisar produtos...",
@@ -798,6 +804,7 @@
       "pl.loadMore": "Cargar más productos",
       "pl.count": { one: "{n} producto de {total}", other: "{n} productos de {total}" },
       "pl.empty": "Ningún producto coincide con esos filtros. Pruebe a quitar uno.",
+      "pl.moreChips": { other: "+{n} más" },
       "pl.filter": "Filtrar productos",
       "pl.searchLabel": "Buscar en la categoría",
       "pl.searchPh": "Buscar productos...",
@@ -1453,6 +1460,9 @@
       // ⚠️ WHITE, not a light grey. #f1f1f1 on the body's #f4f4f4 is three
       // values apart — the chip was effectively invisible against it.
       ".saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#fff;color:#444;padding:4px 8px}",
+      // "+N more" is a count, not another challenge, so it is outlined rather
+      // than filled. #666 on the body's #f4f4f4 is ~5.3:1.
+      ".saeh-pl-chip-more{background:transparent;color:#666;box-shadow:inset 0 0 0 1px #d6d6d6}",
       ".saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}",
       ".saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}",
       // ⚠️ Each certification is one unbreakable unit. See the markup.
@@ -3023,6 +3033,8 @@
     return { cat: null, from: "none" };
   }
 
+  var CARD_CHIP_LIMIT = 2;
+
   function productCard(p, chipTitles) {
     var a = document.createElement("a");
     a.className = "saeh-pl-card";
@@ -3042,10 +3054,24 @@
 
     var body = el("div", "saeh-pl-body");
     if (chipTitles.length) {
+      /*
+       * At most CARD_CHIP_LIMIT labels, then "+N more" (Josh, 2026-10-13): a
+       * product can carry six challenges, and six shouted labels push the
+       * name down the card. The caller passes them in the master list's order,
+       * so the first ones shown are the same on every card. The hidden ones
+       * are in the "+N more" label's tooltip; nothing is lost from filtering
+       * or search, which read the product's categories, not these labels.
+       */
       var chips = el("div", "saeh-pl-chips");
-      chipTitles.forEach(function (t) {
+      chipTitles.slice(0, CARD_CHIP_LIMIT).forEach(function (t) {
         chips.appendChild(el("span", "saeh-pl-chip", t));
       });
+      var rest = chipTitles.slice(CARD_CHIP_LIMIT);
+      if (rest.length) {
+        var more = el("span", "saeh-pl-chip saeh-pl-chip-more", TP("pl.moreChips", rest.length));
+        more.setAttribute("title", rest.join(", "));
+        chips.appendChild(more);
+      }
       body.appendChild(chips);
     }
     body.appendChild(el("h4", "saeh-pl-name", p.name || ""));
@@ -3134,8 +3160,11 @@
     if (!cats.length) return null;
 
     var byId = {};
-    cats.forEach(function (c) {
+    // The catalogue sends categories in the dashboard's order (categorySortKey).
+    var rank = {};
+    cats.forEach(function (c, i) {
       byId[c.id] = c;
+      rank[c.id] = i;
     });
 
     var resolved = resolveCategory(cats, props);
@@ -3315,6 +3344,8 @@
       }
 
       shown.slice(rendered, shownCount).forEach(function (p) {
+        // In the tree's order (the master list's), not the product's link
+        // order, so "the first two" are the same two wherever they appear.
         var chipTitles = filterParent
           ? (p.categoryIds || [])
               .map(function (id) {
@@ -3322,6 +3353,9 @@
               })
               .filter(function (c) {
                 return c && c.parentId === filterParent.id;
+              })
+              .sort(function (a, b) {
+                return rank[a.id] - rank[b.id];
               })
               .map(function (c) {
                 return c.title;
