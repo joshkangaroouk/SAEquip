@@ -278,7 +278,9 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     - the message reads "1 variation(s) did not save: Mode=Buy…";
     - the draft keeps the failed SKU;
     - a retry sends only V2 and succeeds.
-- [ ] The products list loads every thumbnail eagerly.
+- [x] The products list loaded every thumbnail eagerly.
+  - Fix: `loading="lazy"` and `decoding="async"`.
+  - Also an empty `alt`, since the name beside each image is the link.
 
 **Quote widgets**
 - [ ] With site data blocked, all three crash and the form submits as a GET with personal details

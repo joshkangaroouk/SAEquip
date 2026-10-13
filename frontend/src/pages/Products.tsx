@@ -413,7 +413,13 @@ export default function Products() {
                         {p.thumbnail ? (
                           <img
                             src={p.thumbnail}
-                            alt={p.name}
+                            // Decorative: the name beside it is the link, so
+                            // announcing it twice per row only adds noise.
+                            alt=""
+                            // 96 full-size Duda images on the landing page:
+                            // only the rows in view should load.
+                            loading="lazy"
+                            decoding="async"
                             className="h-[100px] w-[100px] shrink-0 rounded border border-border object-cover"
                           />
                         ) : (
