@@ -30,6 +30,11 @@
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
+  /* What POST /public/quotes accepts. ⚠️ Beyond either, the server refuses
+     the WHOLE quote, so they are enforced here, where the visitor can still
+     change the basket (fixed 2026-10-12). */
+  var MAX_QTY = 100000, MAX_LINES = 100;
+  function clampQty(q) { q = parseInt(q, 10); return isNaN(q) || q < 1 ? 1 : Math.min(q, MAX_QTY); }
   /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
      some in-app browsers. Reading `window.localStorage` then THROWS, and it
      used to be read bare here — so every quote widget died at load, and the
@@ -93,13 +98,14 @@
       var existing = basket.find(function (e) { return hasIds(e) && hasIds(item) && sameLine(e, item); }) ||
         basket.find(function (e) { return sameLine(e, item); });
       if (existing) {
-        existing.quantity = (parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1);
+        existing.quantity = clampQty((parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1));
         existing.addedAt  = new Date().toISOString();
       } else {
+        if (basket.length >= MAX_LINES) throw new Error('basket_full');
         var line = {
           name:  item.name || '', sku: item.sku || '', options: item.options || {},
           price: item.price || '', image: item.image || '', url: item.url || '',
-          quantity: parseInt(item.quantity, 10) || 1, addedAt: new Date().toISOString()
+          quantity: clampQty(item.quantity), addedAt: new Date().toISOString()
         };
         if (item.dudaId) line.dudaId = item.dudaId;
         if (item.slug) line.slug = item.slug;
@@ -111,8 +117,7 @@
     setQuantity: function (index, qty) {
       var basket = read();
       if (!basket[index]) return basket;
-      qty = parseInt(qty, 10);
-      basket[index].quantity = (isNaN(qty) || qty < 1) ? 1 : qty;
+      basket[index].quantity = clampQty(qty);
       return write(basket);
     },
     remove: function (index) {
@@ -352,8 +357,9 @@
   Quote.onChange(renderCount);
 
   /* ── quantity stepper ─────────────────────────────────────────────────── */
-  function setQty(v) { v = parseInt(v, 10); if (isNaN(v) || v < 1) v = 1; if (qtyInput) qtyInput.value = v; }
-  function getQty() { var v = qtyInput ? parseInt(qtyInput.value, 10) : 1; return (isNaN(v) || v < 1) ? 1 : v; }
+  /* Capped at the server's 100,000 per line, like the basket. */
+  function setQty(v) { v = parseInt(v, 10); if (isNaN(v) || v < 1) v = 1; if (v > 100000) v = 100000; if (qtyInput) qtyInput.value = v; }
+  function getQty() { var v = qtyInput ? parseInt(qtyInput.value, 10) : 1; return (isNaN(v) || v < 1) ? 1 : Math.min(v, 100000); }
   if (qtyDec)   qtyDec.addEventListener('click', function () { setQty(getQty() - 1); });
   if (qtyInc)   qtyInc.addEventListener('click', function () { setQty(getQty() + 1); });
   if (qtyInput) qtyInput.addEventListener('change', function () { setQty(qtyInput.value); });

@@ -8,7 +8,9 @@ their options differ, even where the page's option ids could not be read
 (they used to merge, and the second choice vanished from the quote). And
 the widgets keep working when a browser blocks site data (they used to fail
 at load, and the basket form could then post the visitor's details in the
-URL). Paste all three again, HTML, CSS and JS.
+URL). Keyboard focus now stays put in the basket and moves into the header's
+popup, and quantities stay within what the server accepts. Paste all three
+again, HTML, CSS and JS.
 
 UPDATED 2026-10-07 — languages. Each widget's own text now follows the page's
 language (French on /fr/, Arabic on /ar/…), and the basket keeps Duda's
@@ -376,6 +378,11 @@ JS:
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
+  /* What POST /public/quotes accepts. ⚠️ Beyond either, the server refuses
+     the WHOLE quote, so they are enforced here, where the visitor can still
+     change the basket (fixed 2026-10-12). */
+  var MAX_QTY = 100000, MAX_LINES = 100;
+  function clampQty(q) { q = parseInt(q, 10); return isNaN(q) || q < 1 ? 1 : Math.min(q, MAX_QTY); }
   /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
      some in-app browsers. Reading `window.localStorage` then THROWS, and it
      used to be read bare here — so every quote widget died at load, and the
@@ -439,13 +446,14 @@ JS:
       var existing = basket.find(function (e) { return hasIds(e) && hasIds(item) && sameLine(e, item); }) ||
         basket.find(function (e) { return sameLine(e, item); });
       if (existing) {
-        existing.quantity = (parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1);
+        existing.quantity = clampQty((parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1));
         existing.addedAt  = new Date().toISOString();
       } else {
+        if (basket.length >= MAX_LINES) throw new Error('basket_full');
         var line = {
           name:  item.name || '', sku: item.sku || '', options: item.options || {},
           price: item.price || '', image: item.image || '', url: item.url || '',
-          quantity: parseInt(item.quantity, 10) || 1, addedAt: new Date().toISOString()
+          quantity: clampQty(item.quantity), addedAt: new Date().toISOString()
         };
         if (item.dudaId) line.dudaId = item.dudaId;
         if (item.slug) line.slug = item.slug;
@@ -457,8 +465,7 @@ JS:
     setQuantity: function (index, qty) {
       var basket = read();
       if (!basket[index]) return basket;
-      qty = parseInt(qty, 10);
-      basket[index].quantity = (isNaN(qty) || qty < 1) ? 1 : qty;
+      basket[index].quantity = clampQty(qty);
       return write(basket);
     },
     remove: function (index) {
@@ -1164,7 +1171,7 @@ JS:
           '<div class="qp-item-side">' +
             '<div class="qp-qty">' +
               '<button type="button" class="qp-qty-dec" data-index="' + index + '" aria-label="' + esc(T('dec')) + '">&minus;</button>' +
-              '<input class="qp-qty-input" type="number" min="1" value="' + qty + '" data-index="' + index + '" aria-label="' + esc(T('qty')) + '">' +
+              '<input class="qp-qty-input" type="number" min="1" max="100000" value="' + qty + '" data-index="' + index + '" aria-label="' + esc(T('qty')) + '">' +
               '<button type="button" class="qp-qty-inc" data-index="' + index + '" aria-label="' + esc(T('inc')) + '">+</button>' +
             '</div>' +
             '<button type="button" class="qp-remove" data-index="' + index + '">' + esc(T('remove')) + '</button>' +
@@ -1189,8 +1196,25 @@ JS:
       itemsEl.style.display  = has ? 'flex' : 'none';
       formSec.style.display  = has ? 'block' : 'none';
 
+      /* ⚠️ Rebuilding the rows destroys the focused control, so every +, − or
+         Remove from the keyboard dropped focus to <body> (fixed 2026-10-12).
+         Put it back on the same control of the same row — after a Remove,
+         that is the next row's, or the last one's. */
+      var active = document.activeElement;
+      var kind = null, at = -1;
+      if (active && itemsEl.contains(active)) {
+        kind = ['qp-qty-dec', 'qp-qty-inc', 'qp-qty-input', 'qp-remove'].filter(function (c) { return active.classList.contains(c); })[0] || null;
+        at = parseInt(active.getAttribute('data-index'), 10);
+      }
+
       if (!has) { itemsEl.innerHTML = ''; return; }
       itemsEl.innerHTML = basket.map(itemRow).join('');
+
+      if (kind && !isNaN(at)) {
+        var row = Math.min(at, basket.length - 1);
+        var again = itemsEl.querySelector('.' + kind + '[data-index="' + row + '"]');
+        if (again) again.focus();
+      }
     }
 
     /* qty + remove via delegation; data-index is fresh on each render */
@@ -1621,6 +1645,11 @@ JS:
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
+  /* What POST /public/quotes accepts. ⚠️ Beyond either, the server refuses
+     the WHOLE quote, so they are enforced here, where the visitor can still
+     change the basket (fixed 2026-10-12). */
+  var MAX_QTY = 100000, MAX_LINES = 100;
+  function clampQty(q) { q = parseInt(q, 10); return isNaN(q) || q < 1 ? 1 : Math.min(q, MAX_QTY); }
   /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
      some in-app browsers. Reading `window.localStorage` then THROWS, and it
      used to be read bare here — so every quote widget died at load, and the
@@ -1684,13 +1713,14 @@ JS:
       var existing = basket.find(function (e) { return hasIds(e) && hasIds(item) && sameLine(e, item); }) ||
         basket.find(function (e) { return sameLine(e, item); });
       if (existing) {
-        existing.quantity = (parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1);
+        existing.quantity = clampQty((parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1));
         existing.addedAt  = new Date().toISOString();
       } else {
+        if (basket.length >= MAX_LINES) throw new Error('basket_full');
         var line = {
           name:  item.name || '', sku: item.sku || '', options: item.options || {},
           price: item.price || '', image: item.image || '', url: item.url || '',
-          quantity: parseInt(item.quantity, 10) || 1, addedAt: new Date().toISOString()
+          quantity: clampQty(item.quantity), addedAt: new Date().toISOString()
         };
         if (item.dudaId) line.dudaId = item.dudaId;
         if (item.slug) line.slug = item.slug;
@@ -1702,8 +1732,7 @@ JS:
     setQuantity: function (index, qty) {
       var basket = read();
       if (!basket[index]) return basket;
-      qty = parseInt(qty, 10);
-      basket[index].quantity = (isNaN(qty) || qty < 1) ? 1 : qty;
+      basket[index].quantity = clampQty(qty);
       return write(basket);
     },
     remove: function (index) {
@@ -1913,15 +1942,36 @@ window.dmAPI.runOnReady('quote-basket-widget', function () {
   function isDesktop() { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; }
 
   /* ── open / close ─────────────────────────────────────────────────────── */
+  /* ⚠️ The popup is a modal dialog (role=dialog, aria-modal), so focus has to
+     move into it, stay there and come back. It did none of that, and it
+     auto-opens after an Add to Quote, leaving keyboard focus on a control
+     hidden behind the overlay (fixed 2026-10-12). */
+  var opener = null;
   function openModal() {
+    if (root.classList.contains('qc-open')) return;
+    opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : toggle;
     root.classList.add('qc-open');
     toggle.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';   /* lock background scroll */
+    if (closeBtn) closeBtn.focus();
   }
   function closeModal() {
+    if (!root.classList.contains('qc-open')) return;
     root.classList.remove('qc-open');
     toggle.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
+    try { if (opener && opener.isConnected) opener.focus(); } catch (e) {}
+    opener = null;
+  }
+  function trapTab(e) {
+    if (e.key !== 'Tab' || !modal || !root.classList.contains('qc-open')) return;
+    var f = [].slice.call(modal.querySelectorAll('a[href],button:not([disabled]),input:not([disabled])'))
+      .filter(function (x) { return x.offsetParent !== null || x === document.activeElement; });
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1], a = document.activeElement;
+    if (!modal.contains(a)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
   }
 
   toggle.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
@@ -1930,6 +1980,7 @@ window.dmAPI.runOnReady('quote-basket-widget', function () {
   if (overlay)  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
   document.addEventListener('keydown', function (e) {
     if ((e.key === 'Escape' || e.key === 'Esc') && root.classList.contains('qc-open')) closeModal();
+    else trapTab(e);
   });
 
   /* auto-open when something is added on a product page (desktop only) */
@@ -2010,7 +2061,7 @@ HTML:
   <div class="atq-row">
     <div class="atq-qty">
       <button type="button" class="atq-qty-dec" aria-label="Decrease quantity" data-qi18n-aria="dec">&minus;</button>
-      <input type="number" class="atq-qty-input" id="atq-qty" min="1" value="1" aria-label="Quantity" data-qi18n-aria="qty">
+      <input type="number" class="atq-qty-input" id="atq-qty" min="1" max="100000" value="1" aria-label="Quantity" data-qi18n-aria="qty">
       <button type="button" class="atq-qty-inc" aria-label="Increase quantity" data-qi18n-aria="inc">+</button>
     </div>
 
@@ -2145,6 +2196,11 @@ JS:
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
+  /* What POST /public/quotes accepts. ⚠️ Beyond either, the server refuses
+     the WHOLE quote, so they are enforced here, where the visitor can still
+     change the basket (fixed 2026-10-12). */
+  var MAX_QTY = 100000, MAX_LINES = 100;
+  function clampQty(q) { q = parseInt(q, 10); return isNaN(q) || q < 1 ? 1 : Math.min(q, MAX_QTY); }
   /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
      some in-app browsers. Reading `window.localStorage` then THROWS, and it
      used to be read bare here — so every quote widget died at load, and the
@@ -2208,13 +2264,14 @@ JS:
       var existing = basket.find(function (e) { return hasIds(e) && hasIds(item) && sameLine(e, item); }) ||
         basket.find(function (e) { return sameLine(e, item); });
       if (existing) {
-        existing.quantity = (parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1);
+        existing.quantity = clampQty((parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1));
         existing.addedAt  = new Date().toISOString();
       } else {
+        if (basket.length >= MAX_LINES) throw new Error('basket_full');
         var line = {
           name:  item.name || '', sku: item.sku || '', options: item.options || {},
           price: item.price || '', image: item.image || '', url: item.url || '',
-          quantity: parseInt(item.quantity, 10) || 1, addedAt: new Date().toISOString()
+          quantity: clampQty(item.quantity), addedAt: new Date().toISOString()
         };
         if (item.dudaId) line.dudaId = item.dudaId;
         if (item.slug) line.slug = item.slug;
@@ -2226,8 +2283,7 @@ JS:
     setQuantity: function (index, qty) {
       var basket = read();
       if (!basket[index]) return basket;
-      qty = parseInt(qty, 10);
-      basket[index].quantity = (isNaN(qty) || qty < 1) ? 1 : qty;
+      basket[index].quantity = clampQty(qty);
       return write(basket);
     },
     remove: function (index) {
@@ -2467,8 +2523,9 @@ JS:
   Quote.onChange(renderCount);
 
   /* ── quantity stepper ─────────────────────────────────────────────────── */
-  function setQty(v) { v = parseInt(v, 10); if (isNaN(v) || v < 1) v = 1; if (qtyInput) qtyInput.value = v; }
-  function getQty() { var v = qtyInput ? parseInt(qtyInput.value, 10) : 1; return (isNaN(v) || v < 1) ? 1 : v; }
+  /* Capped at the server's 100,000 per line, like the basket. */
+  function setQty(v) { v = parseInt(v, 10); if (isNaN(v) || v < 1) v = 1; if (v > 100000) v = 100000; if (qtyInput) qtyInput.value = v; }
+  function getQty() { var v = qtyInput ? parseInt(qtyInput.value, 10) : 1; return (isNaN(v) || v < 1) ? 1 : Math.min(v, 100000); }
   if (qtyDec)   qtyDec.addEventListener('click', function () { setQty(getQty() - 1); });
   if (qtyInc)   qtyInc.addEventListener('click', function () { setQty(getQty() + 1); });
   if (qtyInput) qtyInput.addEventListener('change', function () { setQty(qtyInput.value); });

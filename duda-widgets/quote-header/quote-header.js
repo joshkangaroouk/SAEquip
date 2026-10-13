@@ -25,6 +25,11 @@
 
   var KEY   = 'saequip_quote_basket';
   var EVENT = 'saequip:quote-updated';
+  /* What POST /public/quotes accepts. ⚠️ Beyond either, the server refuses
+     the WHOLE quote, so they are enforced here, where the visitor can still
+     change the basket (fixed 2026-10-12). */
+  var MAX_QTY = 100000, MAX_LINES = 100;
+  function clampQty(q) { q = parseInt(q, 10); return isNaN(q) || q < 1 ? 1 : Math.min(q, MAX_QTY); }
   /* ⚠️ localStorage can be unavailable: blocked site data, a privacy mode,
      some in-app browsers. Reading `window.localStorage` then THROWS, and it
      used to be read bare here — so every quote widget died at load, and the
@@ -88,13 +93,14 @@
       var existing = basket.find(function (e) { return hasIds(e) && hasIds(item) && sameLine(e, item); }) ||
         basket.find(function (e) { return sameLine(e, item); });
       if (existing) {
-        existing.quantity = (parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1);
+        existing.quantity = clampQty((parseInt(existing.quantity, 10) || 1) + (parseInt(item.quantity, 10) || 1));
         existing.addedAt  = new Date().toISOString();
       } else {
+        if (basket.length >= MAX_LINES) throw new Error('basket_full');
         var line = {
           name:  item.name || '', sku: item.sku || '', options: item.options || {},
           price: item.price || '', image: item.image || '', url: item.url || '',
-          quantity: parseInt(item.quantity, 10) || 1, addedAt: new Date().toISOString()
+          quantity: clampQty(item.quantity), addedAt: new Date().toISOString()
         };
         if (item.dudaId) line.dudaId = item.dudaId;
         if (item.slug) line.slug = item.slug;
@@ -106,8 +112,7 @@
     setQuantity: function (index, qty) {
       var basket = read();
       if (!basket[index]) return basket;
-      qty = parseInt(qty, 10);
-      basket[index].quantity = (isNaN(qty) || qty < 1) ? 1 : qty;
+      basket[index].quantity = clampQty(qty);
       return write(basket);
     },
     remove: function (index) {
@@ -317,15 +322,36 @@ window.dmAPI.runOnReady('quote-basket-widget', function () {
   function isDesktop() { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; }
 
   /* ── open / close ─────────────────────────────────────────────────────── */
+  /* ⚠️ The popup is a modal dialog (role=dialog, aria-modal), so focus has to
+     move into it, stay there and come back. It did none of that, and it
+     auto-opens after an Add to Quote, leaving keyboard focus on a control
+     hidden behind the overlay (fixed 2026-10-12). */
+  var opener = null;
   function openModal() {
+    if (root.classList.contains('qc-open')) return;
+    opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : toggle;
     root.classList.add('qc-open');
     toggle.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';   /* lock background scroll */
+    if (closeBtn) closeBtn.focus();
   }
   function closeModal() {
+    if (!root.classList.contains('qc-open')) return;
     root.classList.remove('qc-open');
     toggle.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
+    try { if (opener && opener.isConnected) opener.focus(); } catch (e) {}
+    opener = null;
+  }
+  function trapTab(e) {
+    if (e.key !== 'Tab' || !modal || !root.classList.contains('qc-open')) return;
+    var f = [].slice.call(modal.querySelectorAll('a[href],button:not([disabled]),input:not([disabled])'))
+      .filter(function (x) { return x.offsetParent !== null || x === document.activeElement; });
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1], a = document.activeElement;
+    if (!modal.contains(a)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
   }
 
   toggle.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
@@ -334,6 +360,7 @@ window.dmAPI.runOnReady('quote-basket-widget', function () {
   if (overlay)  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
   document.addEventListener('keydown', function (e) {
     if ((e.key === 'Escape' || e.key === 'Esc') && root.classList.contains('qc-open')) closeModal();
+    else trapTab(e);
   });
 
   /* auto-open when something is added on a product page (desktop only) */

@@ -274,6 +274,40 @@ const oldLine = {
     "the form is POST and hidden until the script shows it, if the script ever fails");
 }
 
+// ── 4d. Keyboard focus survives re-renders; quantities stay within what the server takes ─
+{
+  const two = [{ ...englishLine }, { ...englishLine, name: "Second", dudaId: "Y", choices: undefined, options: {} }];
+  const p = await page({ path: "/basket", lang: "en", widgets: ["basket-page"], basket: two });
+  p.$('.qp-qty-inc[data-index="0"]').focus();
+  p.$('.qp-qty-inc[data-index="0"]').click();
+  await p.settle();
+  const a = p.window.document.activeElement;
+  check(a?.classList.contains("qp-qty-inc") && a.getAttribute("data-index") === "0" && p.stored()[0].quantity === 2,
+    "after +, focus is back on the same row's + (the row was rebuilt)");
+  p.$('.qp-remove[data-index="0"]').focus();
+  p.$('.qp-remove[data-index="0"]').click();
+  await p.settle();
+  const b = p.window.document.activeElement;
+  check(b?.classList.contains("qp-remove") && b.getAttribute("data-index") === "0" && p.stored().length === 1,
+    "after Remove, focus moves to the next row's Remove");
+  p.window.SAEquipQuote.setQuantity(0, 999999);
+  check(p.stored()[0].quantity === 100000, "a quantity is capped at the server's 100,000");
+  const Q = p.window.SAEquipQuote;
+  for (let i = 0; i < 99; i++) Q.add({ dudaId: "Z" + i, name: "N" + i, sku: "", options: {}, quantity: 1 });
+  let full = false;
+  try { Q.add({ dudaId: "ZZ", name: "One too many", sku: "", options: {} }); } catch (e) { full = /basket_full/.test(String(e)); }
+  check(p.stored().length === 100 && full, "a 101st line is refused rather than sinking the whole quote at the server");
+}
+{
+  const p = await page({ path: "/product/ex-heater", lang: "en", widgets: ["quote-header"], pv: productView("en") });
+  p.$(".qc-btn").focus();
+  p.$(".qc-btn").click();
+  check(p.window.document.activeElement === p.$(".qc-close"), "the header popup moves focus into itself");
+  p.window.document.dispatchEvent(new p.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check(p.window.document.activeElement === p.$(".qc-btn") && p.$(".qc-btn").getAttribute("aria-expanded") === "false",
+    "Escape closes it and focus returns to the basket button");
+}
+
 // ── 5. Older widgets, failures ───────────────────────────────────────────────
 {
   // A v1 store already on the page (an older widget ran first) is replaced.

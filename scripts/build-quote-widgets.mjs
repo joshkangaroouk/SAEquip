@@ -85,7 +85,9 @@ their options differ, even where the page's option ids could not be read
 (they used to merge, and the second choice vanished from the quote). And
 the widgets keep working when a browser blocks site data (they used to fail
 at load, and the basket form could then post the visitor's details in the
-URL). Paste all three again, HTML, CSS and JS.
+URL). Keyboard focus now stays put in the basket and moves into the header's
+popup, and quantities stay within what the server accepts. Paste all three
+again, HTML, CSS and JS.
 
 UPDATED 2026-10-07 — languages. Each widget's own text now follows the page's
 language (French on /fr/, Arabic on /ar/…), and the basket keeps Duda's

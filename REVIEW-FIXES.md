@@ -291,8 +291,14 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Verified with 4 new `quote-widgets:test` checks (46 total). With storage blocked the store
     loads, Add to Quote adds, and the submit is handled; the old widgets throw at load.
   - **Re-paste needed.**
-- [ ] Focus is lost in the header popup and on basket re-renders.
-- [ ] Quantity and line limits are not enforced before the server rejects the whole quote.
+- [x] Focus was lost in the header popup and on basket re-renders.
+  - Fix:
+    - the popup moves focus in, traps Tab and returns focus;
+    - the basket restores focus to the same control after re-rendering.
+  - Verified with 4 new `quote-widgets:test` checks.
+- [x] Quantity and line limits were not enforced before the server rejected the whole quote.
+  - Fix: quantities are clamped to 100,000, and a 101st line is refused; inputs have `max`.
+  - Verified with 2 new `quote-widgets:test` checks (52 total). **Re-paste needed.**
 
 **widget.js**
 - [ ] A late response can overwrite a newer render after re-init.
