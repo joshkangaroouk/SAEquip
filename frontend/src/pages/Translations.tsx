@@ -216,12 +216,15 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const rtl = isRtl(locale);
 
+  // Only the latest request may land — see the sources loader below.
+  const latest = useRef(0);
   const load = useCallback(() => {
+    const req = ++latest.current;
     setItems(null);
     setError(null);
     apiJson<{ items: DudaName[] }>(`/api/translations/duda?locale=${locale}`)
-      .then((r) => setItems(r.items))
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"));
+      .then((r) => req === latest.current && setItems(r.items))
+      .catch((e) => req === latest.current && setError(e instanceof Error ? e.message : "Failed to load"));
   }, [locale]);
   useEffect(load, [load]);
 
@@ -363,11 +366,20 @@ export default function Translations() {
   const translators = useRef<TranslatorSet | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  /*
+   * ⚠️ Only the LATEST request may land. Switching language fired a second
+   * fetch, and a slower reply for the previous language could arrive last and
+   * replace the new one — the edit dialog then prefilled the OTHER language's
+   * text, and saving stored it as a STAFF translation in this one, which no
+   * machine run ever overwrites (fixed 2026-10-12).
+   */
+  const latest = useRef(0);
   const load = useCallback(() => {
+    const req = ++latest.current;
     setError(null);
     fetchSources(locale)
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load translations"));
+      .then((d) => req === latest.current && setData(d))
+      .catch((e) => req === latest.current && setError(e instanceof Error ? e.message : "Failed to load translations"));
   }, [locale]);
   useEffect(() => {
     setData(null);

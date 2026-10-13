@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rectSortingStrategy } from "@dnd-kit/sortable";
 import { MediaPicker } from "../components/MediaPicker";
 import { UsagePill } from "../components/UsagePill";
@@ -100,15 +100,20 @@ export default function Logos() {
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // Only the latest request may land: a slow reply for the tab just left
+  // would otherwise show SA logos under the Certification tab (and vice versa).
+  const latest = useRef(0);
   async function load(kind: Kind) {
+    const req = ++latest.current;
     setLoading(true);
     setError(null);
     try {
-      setEntries(await apiJson<LogoCatalogEntry[]>(`/api/logos?kind=${kind}`));
+      const rows = await apiJson<LogoCatalogEntry[]>(`/api/logos?kind=${kind}`);
+      if (req === latest.current) setEntries(rows);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load logos");
+      if (req === latest.current) setError(e instanceof Error ? e.message : "Failed to load logos");
     } finally {
-      setLoading(false);
+      if (req === latest.current) setLoading(false);
     }
   }
 

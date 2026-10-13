@@ -259,8 +259,14 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     - the notice shows;
     - Remove drops only the missing id;
     - no notice before the list loads, nor when every id is known.
-- [ ] Switching language quickly on Translations can save text into the wrong language.
-  `Logos` has the same race when switching tabs.
+- [x] Switching language quickly on Translations could save text into the wrong language.
+  `Logos` had the same race when switching tabs.
+  - Fix: a request counter, so only the latest response lands. Applied to the sources list, the
+    Duda names tab and Logos.
+  - Verified in a jsdom harness on the real page, with a slow French reply and a fast German
+    one:
+    - the old page showed the French text on the German tab;
+    - the fixed page shows German.
 - [ ] A failed category drag discards unsaved form edits.
 - [ ] A partial variations failure shows a raw error code.
 - [ ] The products list loads every thumbnail eagerly.
