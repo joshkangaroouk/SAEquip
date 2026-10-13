@@ -1998,7 +1998,20 @@ compliance claims (Josh, 2026-10-13).
 - `null` (UKCA, Made in Britain, SA Rental) is never touched.
 - Keys resolve to catalogue logos by FILE, as the import does.
 - It refuses `--confirm` unless the counts reconcile with the brief: the sheet's ON count must equal
-  the brief's, and "after" must equal that plus the logos held on. **Back up before any taxonomy or assignment write** with
+  the brief's, and "after" must equal that plus the logos held on.
+- Applied 2026-10-13: 58 switched on and none switched off. 72/72 READY cards show exactly the
+  planned certifications live.
+
+`npm run catalogue:phase4 --workspace=backend -- --master <json> --report <md> --out <dir>` is
+`PHASE4_INSTRUCTIONS.md` steps B to E, dry run by default:
+- B hides the confirmed duplicate in Duda and removes its category links;
+- C makes two SKU updates;
+- D gives partial assignments to five HOLD products, reusing `planAssignments()` and `planLogos()`;
+- E creates two products HIDDEN.
+
+Every Duda value it changes must still hold what the plan expects, or the run stops. ⚠️ Product
+creation is not idempotent, so E checks for an existing name or SKU and records each created id in
+`<out>/phase4-created.json` before doing anything else. **Back up before any taxonomy or assignment write** with
 `npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
 it exports every product–category link, the mirror, the order, the logos and logo toggles, the
 logo and category translations, and Duda's full category and product state, with a manifest of
@@ -2397,6 +2410,8 @@ six non-English languages are paused (Josh, 2026-10-13). In this order at launch
   - Every `hreflang` tag is gone, and so are its URLs from the sitemap.
   - But `/de`, `/de/product/ex-heater` and the rest are still served in full, in German, with
     200 and no redirect.
+  - **Accepted (Josh, 2026-10-13): direct-link access is fine for now, no redirects.** The pages
+    carry noindex and nothing on the site links to them.
 - **"No index for the entire site" puts `<meta name="robots" content="noindex">` on every page**,
   English and translated.
   - ⚠️ **It does NOT empty the sitemap**, whatever Duda's docs say: 213 English URLs are still
