@@ -329,5 +329,6 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
 **Housekeeping**
 - [ ] Add the missing indexes: `SpecRow.hubProductId`, `ProductTextItem.hubProductId`,
   `QuoteRequestItem.quoteRequestId`, `QuoteRequest.createdAt`.
-- [ ] Two stale comments: `storage.ts:74-77` and `public.ts:586`.
+- [x] Two stale comments: `storage.ts` (models are now MIME-limited) and `public.ts` (the root
+  `vercel.json`).
 - [ ] The remaining 17 distributor-widget code-review points.

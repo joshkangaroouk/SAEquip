@@ -71,10 +71,11 @@ export const ALLOWED_MODEL_MIME = ["model/gltf-binary", "application/octet-strea
  * created with no limits at all, and a "create only what's missing" pass would
  * leave them that way forever.
  *
- * Models deliberately allow any mimetype: browsers report `.glb` inconsistently
- * (usually `application/octet-stream`), so a mimetype allowlist would reject
- * legitimate models. The size ceiling plus the server-issued `.glb`-derived
- * path is the guard there.
+ * Models are limited to ALLOWED_MODEL_MIME (above) — the two labels browsers
+ * actually give a `.glb`. ⚠️ This comment used to say models allow ANY
+ * mimetype; that was the state before 2026-10-02, when a public bucket with no
+ * allowlist could serve an HTML page uploaded as `x.glb`. Acting on the old
+ * comment would reopen that hole.
  */
 export async function ensureBuckets(): Promise<void> {
   const { data: existing, error } = await supabase.storage.listBuckets();

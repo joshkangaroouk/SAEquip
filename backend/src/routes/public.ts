@@ -583,7 +583,7 @@ function resolveWidgetDir(): string | null {
   if (!found) {
     console.error(
       `[public] widget.js not found. Looked in:\n  ${candidates.join("\n  ")}\n` +
-        `  On Vercel this means includeFiles in backend/vercel.json is not shipping src/public-widget.`,
+        `  On Vercel this means includeFiles in the root vercel.json is not shipping backend/src/public-widget.`,
     );
   }
   return found ?? null;
