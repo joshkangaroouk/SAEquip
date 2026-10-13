@@ -1955,7 +1955,21 @@ tree).
 (dry run by default, `--confirm`) reuses every category that already exists by its EXACT title
 under its parent, creates only what is missing (clean slug, SEO title = its name), never deletes
 an extra, and sets the Hub's order (`CategoryOrder`) to the master order. It added the 10
-missing Site Challenges on 2026-10-13. **Back up before any taxonomy or assignment write** with
+missing Site Challenges on 2026-10-13. `npm run taxonomy:assign --workspace=backend -- --master
+<json> --report <md> --out <dir>` assigns the sheet's challenges, industries and product type to
+its READY products (dry run by default, `--confirm` writes the HUB). The rules are
+`planAssignments()` in `scripts/lib/taxonomyPlan.ts`, tested by `script-guards:test`:
+- the sheet's list REPLACES a product's children of that parent;
+- the parent link is held exactly when a child is;
+- a type change happens only for the ids in `APPROVED_CATEGORY_CHANGE`, and any other difference
+  is flagged;
+- `null` is left alone, and links outside the three branches and non-READY products are never
+  touched;
+- an unknown title stops the plan.
+
+The script checks the result against the brief's expected counts and refuses `--confirm` if any
+differ. ⚠️ **`--confirm` is live at once**: the listing pages, filters and carousels read the Hub,
+so no Duda publish is involved. Duda's copy follows only when `duda:sync-categories` runs. **Back up before any taxonomy or assignment write** with
 `npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
 it exports every product–category link, the mirror, the order, the logos and logo toggles, the
 logo and category translations, and Duda's full category and product state, with a manifest of
@@ -2330,6 +2344,7 @@ The container carries `aria-busy` + `aria-live` + a label; the blocks themselves
 ## Known gaps / backlog (reviewed 2026-10-02)
 
 - Resource Requests has **no delete** — a visitor asking for their data to be removed is a database job for now.
+- ⚠️ **The mobile (hamburger) menu and footer links don't keep the language prefix** (accepted by Josh 2026-10-13, for now). They are `NATIVE_STORE_DYNAMIC_PAGE` links (`category/<slug>`, `product/<slug>`) in navigation elements, which Duda does not prefix, so on `/fr/`, `/ar/` and the rest they open the ENGLISH page. The desktop mega menu panels do prefix their store links. Fixing it would mean a separate mobile menu and footer per language in Duda's editor.
 - The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done; **still to do: the Hire/Purchase option** (see the options notes — attaching a two-value option drops existing variation SKUs). `/products/new` remains the path for genuinely new one-off products.
 - **Opening a product makes ~4 Duda reads** (the product, and `/custom` plus both logo lists each `ensureHubProduct`). Correct, just slower than one; worth trimming if Duda rate limits ever bite.
 - **New categories get no SEO title** — `duda:category-seo` was a one-off over the 23 that existed; set one on the category's page.

@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { syncRefusal } from "../src/scripts/lib/syncGuard.js";
 import { keepEditedDescription, planDownloadSet, planTypeLinks } from "../src/scripts/lib/importGuards.js";
+import { applyPlan, planAssignments } from "../src/scripts/lib/taxonomyPlan.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -69,6 +70,48 @@ check("error" in planDownloadSet([], [{ mediaAssetId: "x", title: "constructor" 
   check(JSON.stringify(tp.removals) === JSON.stringify([L("csv2", "FUME")]), "types: only a CSV product's changed type is removed");
   check(JSON.stringify(tp.adds) === JSON.stringify([L("csv2", "CLIMATE")]), "types: only the missing link is added");
   check(planTypeLinks(writes, writes).adds.length === 0 && planTypeLinks(writes, writes).removals.length === 0, "types: in step → nothing to do");
+}
+
+// ---- taxonomy:assign (SA Equip's master sheet, READY products only)
+{
+  const C = (id: string, title: string, parentId = "ROOT") => ({ id, title, parentId });
+  const cats = [
+    C("SC", "Site Challenges"), C("IND", "Industries"), C("PROD", "Products"), C("OTHER", "Other"),
+    C("weld", "Welding", "SC"), C("dust", "Dust", "SC"), C("tank", "Tank", "SC"),
+    C("oil", "Oil & Gas", "IND"), C("nuc", "Nuclear", "IND"),
+    C("light", "Lighting", "PROD"), C("climate", "Climate", "PROD"),
+  ];
+  const L = (p: string, c: string) => ({ hubProductId: p, dudaCategoryId: c });
+  const W = (p: string, o: Partial<Parameters<typeof planAssignments>[0]["wanted"][number]> = {}) =>
+    ({ hubProductId: p, dudaProductId: `D${p}`, name: p, category: "Lighting", siteChallenges: ["Dust"], industries: ["Oil & Gas"], ...o });
+  const links = [
+    L("a", "PROD"), L("a", "light"), L("a", "SC"), L("a", "weld"), L("a", "OTHER"),
+    L("b", "PROD"), L("b", "climate"),
+    L("hold", "SC"), L("hold", "weld"), L("hold", "PROD"), L("hold", "climate"),
+  ];
+  const run = (wanted: ReturnType<typeof W>[], approved: string[] = [], l = links) =>
+    planAssignments({ wanted, links: l, cats, approvedCategoryChange: new Set(approved) });
+  const has = (xs: { hubProductId: string; dudaCategoryId: string }[], p: string, c: string) => xs.some((x) => x.hubProductId === p && x.dudaCategoryId === c);
+
+  const p = run([W("a"), W("b")]);
+  check(has(p.removals, "a", "weld") && has(p.adds, "a", "dust"), "assign: the sheet's challenges REPLACE the current ones");
+  check(!has(p.removals, "a", "SC") && !has(p.adds, "a", "SC"), "assign: a parent already held is kept, not re-added");
+  check(has(p.adds, "a", "IND") && has(p.adds, "a", "oil"), "assign: a new branch adds its parent link too");
+  check(!p.removals.some((r) => r.dudaCategoryId === "OTHER"), "assign: a category outside the three branches is never touched");
+  check(!p.adds.concat(p.removals).some((x) => x.hubProductId === "hold"), "assign: a product not given (HOLD) is never touched");
+  check(p.flags.length === 1 && p.flags[0].name === "b" && !has(p.removals, "b", "climate"), "assign: an unapproved type difference is flagged, not changed");
+  const ok = run([W("b")], ["Db"]);
+  check(has(ok.removals, "b", "climate") && has(ok.adds, "b", "light") && !ok.flags.length, "assign: an approved type change moves the product");
+  check(run([W("a", { siteChallenges: null, industries: null, category: null })]).adds.length === 0 &&
+    run([W("a", { siteChallenges: null, industries: null, category: null })]).removals.length === 0, "assign: null fields are left exactly as they are");
+  const empty = run([W("a", { siteChallenges: [] })]);
+  check(has(empty.removals, "a", "weld") && has(empty.removals, "a", "SC"), "assign: an empty list clears the branch AND its parent link");
+  const again = run([W("a"), W("b")], ["Db"], applyPlan(links, run([W("a"), W("b")], ["Db"])));
+  check(!again.changes.length && !again.adds.length && !again.removals.length, "assign: applying the plan converges (a re-run finds nothing)");
+  const throws = (f: () => unknown) => { try { f(); return false; } catch { return true; } };
+  check(throws(() => run([W("a", { industries: ["Oil and Gas"] })])), "assign: a title not in the tree (spelling) stops the plan");
+  check(throws(() => run([W("a", { siteChallenges: ["Oil & Gas"] })])), "assign: a title from the wrong branch stops the plan");
+  check(throws(() => run([W("a"), W("a")])), "assign: a product given twice stops the plan");
 }
 
 // ---- .claude/hooks/block-destructive-db.sh (the harness's PreToolUse guard)
