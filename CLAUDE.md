@@ -2313,11 +2313,15 @@ dropped (2026-09-30): both live on the product page, and neither is what you sca
   needs for the filter dropdown. That keeps names fresh without a second Duda call inside
   the products route, and the categories fetch is a *soft* dependency — if it fails the
   table still renders and the column goes quiet.
-- ⚠️ **A category that is the PARENT of another selected one is not shown.** Every product
-  carries "Products" as well as its type, and printing both says nothing the child does
-  not. A top-level category selected alone still shows.
+- **The Categories column shows only a count, "X categories"** (Josh, 2026-10-13). After
+  the master-sheet assignments a product carries up to ~20 categories, and listing them all
+  swamped the table. The names are in the count's tooltip.
+- ⚠️ **A category that is the PARENT of another selected one is not counted.** Every product
+  carries "Products" as well as its type, and counting both says nothing the child does not.
+  A top-level category selected alone still counts.
 - `ProductCategory.dudaCategoryId` has no foreign key, so a category deleted in Duda leaves
-  rows pointing at nothing. Those collapse into one red "N no longer in Duda" chip.
+  rows pointing at nothing. Those collapse into one red "N no longer in Duda" chip, which
+  still shows beside the count, because it is an error to fix rather than a list.
 - The filter's **parent matches everything beneath it**, so picking "Site Challenges" is not
   an empty result just because products sit on the leaves.
 - ⚠️ **The categories tree's Products column is the HUB's count, not Duda's

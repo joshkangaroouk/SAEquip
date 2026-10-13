@@ -95,7 +95,8 @@ export default function Products() {
   const catById = useMemo(() => new Map(cats.map((c) => [c.id, c])), [cats]);
 
   /**
-   * Which categories to show on a row.
+   * Which categories a row COUNTS. The column shows only "X categories" (Josh,
+   * 2026-10-13), with the names in its tooltip.
    *
    * ⚠️ A category that is the PARENT of another selected one is dropped —
    * every product carries "Products" as well as its type, and printing both
@@ -359,7 +360,7 @@ export default function Products() {
                       <Skeleton className="h-5 w-16" />
                     </TD>
                     <TD>
-                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="h-4 w-24" />
                     </TD>
                   </TR>
                 ))}
@@ -406,6 +407,8 @@ export default function Products() {
               <TBody>
                 {filtered.map((p) => {
                   const chips = chipsFor(p);
+                  const named = chips.filter((c) => !c.stale);
+                  const stale = chips.find((c) => c.stale);
                   return (
                   <TR key={p.id} hover onClick={() => navigate(`/products/${p.id}`)}>
                     <TD>
@@ -443,19 +446,18 @@ export default function Products() {
                       {chips.length === 0 ? (
                         <span className="text-subtle">—</span>
                       ) : (
-                        <div className="flex max-w-xs flex-wrap gap-1">
-                          {chips.map((c) => (
-                            <span
-                              key={c.key}
-                              className={`rounded-md border px-1.5 py-0.5 text-xs ${
-                                c.stale
-                                  ? "border-danger/30 bg-danger/10 text-danger"
-                                  : "border-border bg-surface-2 text-muted"
-                              }`}
-                            >
-                              {c.label}
+                        <div className="flex flex-col items-start gap-1">
+                          {named.length > 0 && (
+                            <span className="whitespace-nowrap text-muted" title={named.map((c) => c.label).join(", ")}>
+                              {named.length} {named.length === 1 ? "category" : "categories"}
                             </span>
-                          ))}
+                          )}
+                          {/* Still shown: it is an error to fix, not a list. */}
+                          {stale && (
+                            <span className="rounded-md border border-danger/30 bg-danger/10 px-1.5 py-0.5 text-xs text-danger">
+                              {stale.label}
+                            </span>
+                          )}
                         </div>
                       )}
                     </TD>
