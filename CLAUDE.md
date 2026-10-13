@@ -551,6 +551,7 @@ marketing checkbox, and "Submit & Download".
 - ⚠️ **The consent wording is stored as the SERVER holds it** (`CONSENT_TEXT` in
   `services/downloadKinds.ts`), so a request records what was actually agreed to. The widget's
   copy must match word for word — `widget:test` reads both and fails on drift.
+- ⚠️ **The request is not sent until the form has been open 1.6s** (fixed 2026-10-12). The server answers a fill under 1.5s as a bot (`{ok:true}`, no file), so a quick human with autofill got "Sorry, something went wrong". The tab is still opened inside the click, so the wait costs the popup nothing; `hub.minFillMs` lets the tests skip it.
 - ⚠️ **The new tab is opened INSIDE the click**, then pointed at the file when the server
   answers: a `window.open` after the request returns is outside a user gesture and every popup
   blocker stops it. A blocked tab falls back to an "Open your file" link, which is a real click.

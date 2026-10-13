@@ -317,7 +317,11 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
   - Fix: the category goes in `data-saeh-category`, and the section stays `compatible`.
   - Verified with 2 new `widget:test` checks (531 total). The old code fails both, with a false
     `sectionMismatch`.
-- [ ] A human submit under 1.5s gets the generic error.
+- [x] A human submit under 1.5s got the generic error.
+  - Fix: the request isn't sent until the form has been open 1.6s; the tab still opens inside the
+    click.
+  - Verified with 3 new `widget:test` checks (534 total): a fast submit waits, then succeeds with
+    `elapsedMs` 1602.
 - [ ] Focus can escape the request form via the backdrop.
 
 **Housekeeping**

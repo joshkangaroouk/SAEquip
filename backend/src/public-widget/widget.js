@@ -4076,73 +4076,85 @@
 
       submit.disabled = true;
       submit.textContent = T("rq.sending");
-      var payload = {
-        firstName: fields.firstName.input.value.trim(),
-        lastName: fields.lastName.input.value.trim(),
-        company: fields.company.input.value.trim(),
-        email: asciiForm(fields.email.input.value.trim()),
-        phone: asciiForm(fields.phone.input.value.trim()),
-        mobile: asciiForm(fields.mobile.input.value.trim()),
-        privacyConsent: privacy.input.checked,
-        marketingConsent: marketing.input.checked,
-        website: hpIn.value,
-        elapsedMs: Date.now() - openedAt,
-        // The language the form was shown in: the server records the consent
-        // wording in this language, as what the visitor agreed to.
-        locale: currentLocale(),
-      };
-      fetch(hub.api + "/public/downloads/" + encodeURIComponent(opts.id) + "/lead", {
-        method: "POST",
-        credentials: "omit",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload),
-      })
-        .then(function (r) {
-          hub.lastRequestStatus = r.status; // console diagnostics; no personal data
-          return r.json().then(
-            function (j) { return { status: r.status, body: j || {} }; },
-            function () { return { status: r.status, body: {} }; }
-          );
+      /*
+       * ⚠️ Never sent before the form has been open MIN_FILL_MS. The server
+       * treats a fill under 1.5s as a bot and answers {ok:true} with no file,
+       * so a quick human — browser autofill, a tick and a click — got "Sorry,
+       * something went wrong" (fixed 2026-10-12). The tab above is already
+       * open, inside the click, so waiting here costs the popup nothing.
+       * `hub.minFillMs` lets the tests skip the wait.
+       */
+      var minFill = typeof hub.minFillMs === "number" ? hub.minFillMs : 1600;
+      setTimeout(send, Math.max(0, minFill - (Date.now() - openedAt)));
+      function send() {
+        var payload = {
+          firstName: fields.firstName.input.value.trim(),
+          lastName: fields.lastName.input.value.trim(),
+          company: fields.company.input.value.trim(),
+          email: asciiForm(fields.email.input.value.trim()),
+          phone: asciiForm(fields.phone.input.value.trim()),
+          mobile: asciiForm(fields.mobile.input.value.trim()),
+          privacyConsent: privacy.input.checked,
+          marketingConsent: marketing.input.checked,
+          website: hpIn.value,
+          elapsedMs: Date.now() - openedAt,
+          // The language the form was shown in: the server records the consent
+          // wording in this language, as what the visitor agreed to.
+          locale: currentLocale(),
+        };
+        fetch(hub.api + "/public/downloads/" + encodeURIComponent(opts.id) + "/lead", {
+          method: "POST",
+          credentials: "omit",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(payload),
         })
-        .then(function (res) {
-          var b = res.body;
-          if (res.status === 201 && b.ok && typeof b.fileUrl === "string" && /^https:\/\//.test(b.fileUrl)) {
-            var opened = false;
-            if (tab) {
-              try {
-                tab.location.replace(b.fileUrl);
-                opened = true;
-              } catch (err) {
-                closeTab();
+          .then(function (r) {
+            hub.lastRequestStatus = r.status; // console diagnostics; no personal data
+            return r.json().then(
+              function (j) { return { status: r.status, body: j || {} }; },
+              function () { return { status: r.status, body: {} }; }
+            );
+          })
+          .then(function (res) {
+            var b = res.body;
+            if (res.status === 201 && b.ok && typeof b.fileUrl === "string" && /^https:\/\//.test(b.fileUrl)) {
+              var opened = false;
+              if (tab) {
+                try {
+                  tab.location.replace(b.fileUrl);
+                  opened = true;
+                } catch (err) {
+                  closeTab();
+                }
               }
+              showDone(b.fileUrl, opened);
+              return;
             }
-            showDone(b.fileUrl, opened);
-            return;
-          }
-          closeTab();
-          if (res.status === 400 && b.fields) {
-            Object.keys(b.fields).forEach(function (k) {
-              if (fields[k]) setErr(fields[k], T("rq.checkField"));
-              if (k === "privacyConsent") setPrivacyErr(T("rq.needPrivacy"));
-            });
-          }
-          // ⚠️ By STATUS, never the server's own text: that is English, and a
-          // limiter answers with a code ("rate_limited") no visitor should see.
-          msg.textContent =
-            res.status === 400 ? T("rq.err.400")
-            : res.status === 404 ? T("rq.err.404")
-            : res.status === 429 ? T("rq.err.429")
-            : res.status === 502 ? T("rq.err.502")
-            : T("rq.err.generic");
-        })
-        .catch(function () {
-          closeTab();
-          msg.textContent = T("rq.err.network");
-        })
-        .then(function () {
-          submit.disabled = false;
-          submit.textContent = T("rq.submit");
-        });
+            closeTab();
+            if (res.status === 400 && b.fields) {
+              Object.keys(b.fields).forEach(function (k) {
+                if (fields[k]) setErr(fields[k], T("rq.checkField"));
+                if (k === "privacyConsent") setPrivacyErr(T("rq.needPrivacy"));
+              });
+            }
+            // ⚠️ By STATUS, never the server's own text: that is English, and a
+            // limiter answers with a code ("rate_limited") no visitor should see.
+            msg.textContent =
+              res.status === 400 ? T("rq.err.400")
+              : res.status === 404 ? T("rq.err.404")
+              : res.status === 429 ? T("rq.err.429")
+              : res.status === 502 ? T("rq.err.502")
+              : T("rq.err.generic");
+          })
+          .catch(function () {
+            closeTab();
+            msg.textContent = T("rq.err.network");
+          })
+          .then(function () {
+            submit.disabled = false;
+            submit.textContent = T("rq.submit");
+          });
+      }
     });
 
     // ---- open / close, focus, scroll lock

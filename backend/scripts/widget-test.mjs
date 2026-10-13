@@ -124,6 +124,9 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
   run.textContent = SRC;
   w.document.body.appendChild(run);
   await new Promise((r) => setTimeout(r, 30));
+  // The request form waits 1.6s before sending (a bot threshold, tested on
+  // its own); every other test skips the wait.
+  if (w.__saequipHub) w.__saequipHub.minFillMs = 0;
 
   if (viaInit) {
     w.SAEquipHubWidget.init({ container: w.document.getElementById("host"), props });
@@ -1690,6 +1693,9 @@ async function main() {
       ] };
       const setup = async (leadResponse = { status: 201, body: { ok: true, fileUrl: FILE_URL } }) => {
         const b = await boot({ props: RS("certificate"), resourcesPayload: GATED, url: PAGE, leadResponse });
+        // The form waits until it has been open 1.6s before sending (see the
+        // test below); the other cases skip that wait.
+        b.w.__saequipHub.minFillMs = 0;
         const tab = { closed: false, replaced: null, opener: "x", document: { title: "", body: { textContent: "" } },
           location: { replace(u) { tab.replaced = u; } }, close() { tab.closed = true; } };
         // One object, read by the stub AND set by the test (`ctx.blocked`).
@@ -1790,6 +1796,21 @@ async function main() {
         const link = d.querySelector(".saeh-rq-link");
         check(done && /opening in a new tab/.test(done.textContent) && link && link.href === FILE_URL && link.target === "_blank", "a thank-you, with a link in case it did not open");
         check(!d.querySelector(".saeh-rq-overlay form"), "the form is gone once sent");
+      }
+      {
+        // A quick human: autofill, a tick, a click. It must not be sent before
+        // the server's 1.5s bot threshold, or it gets the bot answer.
+        const { d, w, opened } = await setup();
+        delete w.__saequipHub.minFillMs;
+        d.querySelector(".saeh-rs-dl").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        fill(d);
+        d.querySelector(".saeh-rq-overlay form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+        check(opened.length === 1, "a fast submit still opens the tab inside the click");
+        await new Promise((r) => setTimeout(r, 300));
+        check(!w.__leadBodies.length, "…but is not sent before the form has been open 1.6s");
+        await new Promise((r) => setTimeout(r, 1500));
+        const sent = w.__leadBodies[0];
+        check(sent && sent.elapsedMs >= 1500 && !!d.querySelector(".saeh-rq-done"), "…then is sent past the bot threshold and succeeds", sent && String(sent.elapsedMs));
       }
       {
         // The browser blocks the tab.
