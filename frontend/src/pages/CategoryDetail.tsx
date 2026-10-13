@@ -203,7 +203,15 @@ export default function CategoryDetail() {
       setCats(res.categories);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save the new order");
-      await load();
+      // ⚠️ Only the tree, to put the order back. A full load() also resets the
+      // form, so a failed drag used to throw away unsaved edits to the
+      // category itself (fixed 2026-10-12).
+      try {
+        const tree = await apiJson<{ categories: CategoryNode[] }>("/api/categories");
+        setCats(tree.categories);
+      } catch {
+        // The toast above already says the order did not save.
+      }
     }
   }
 

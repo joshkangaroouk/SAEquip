@@ -267,7 +267,10 @@ Status: `[x]` done (commit noted) · `[ ]` to do · `[-]` decided not to fix (re
     one:
     - the old page showed the French text on the German tab;
     - the fixed page shows German.
-- [ ] A failed category drag discards unsaved form edits.
+- [x] A failed category drag discarded unsaved form edits.
+  - Fix: on failure only the category tree is re-read, which puts the order back; the form is
+    untouched.
+  - Verified: typechecked. The change is a single fetch-and-set in the error branch.
 - [ ] A partial variations failure shows a raw error code.
 - [ ] The products list loads every thumbnail eagerly.
 
