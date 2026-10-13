@@ -44,6 +44,8 @@
     "i18n:test": "tsx scripts/i18n-test.ts",
     "duda-ids:test": "tsx scripts/duda-ids-test.ts",
     "script-guards:test": "tsx scripts/script-guards-test.ts",
+    "catalogue:backup": "tsx src/scripts/catalogueBackup.ts",
+    "taxonomy:setup": "tsx src/scripts/taxonomySetup.ts",
     "quote-widgets:test": "node scripts/quote-widgets-test.mjs",
     "distributor-widget:test": "node scripts/distributor-widget-test.mjs"
   },

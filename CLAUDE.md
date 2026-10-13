@@ -318,10 +318,13 @@ category template, or the page shows two listings.
   a bare text node so the only break is BETWEEN items and a comma never starts a line.
 - ⚠️ **Chips are WHITE.** They were `#f1f1f1` on the body's `#f4f4f4` — three values apart,
   so the Site Challenge label was effectively invisible.
-- ⚠️ **Certification text reads `Logo.alt || Logo.label`.** Every `alt` is empty today, so
-  labels render — which means cards say "EX logo", "UKCA" and "Made in Britan" rather than
-  ATEX/UKEX. The first two are deliberate (see the logo mapping note); filling `alt` on the
-  Logos page changes the display without a code change.
+- ⚠️ **Certification text reads `Logo.alt || Logo.label`.** Every logo now has an `alt`, so
+  cards say "EX", "UKCA" and "Made in Britain" rather than ATEX/UKEX. The first two are
+  deliberate (see the logo mapping note); editing `alt` on the Logos page changes the display
+  without a code change. (The labels "Made in Britan" and "EX logo" were corrected to "Made in
+  Britain" and "Ex logo" on 2026-10-13, with their six translations carried across to the new
+  text; the logo FILE is still `made-in-britan.jpg`, which the import and rebuild scripts match
+  on.)
 - **The panel is headed by an `h6` "Filter Products" with an inset divider**, then a labelled
   search. ⚠️ **That heading and the mobile toggle carry the same words, so exactly one is
   visible at a time** — the heading is `display:none` by default and the desktop block swaps
@@ -1942,8 +1945,29 @@ runs the two can differ, which is why the dashboard shows the Hub's own counts.
 
 Three top-level parents — **Products**, **Industries**, **Site Challenges** — with the
 product taxonomy adopted under Products and one child per former tag beneath the other two.
-23 categories in total. Built by `npm run duda:seed-category-tree --workspace=backend`
-(dry run by default, `--confirm` to write, `--verify` to print the live tree).
+33 categories since 2026-10-13: 15 Site Challenges, 12 Industries and 3 product types under
+their three parents. The first 23 were built by `npm run duda:seed-category-tree
+--workspace=backend` (dry run by default, `--confirm` to write, `--verify` to print the live
+tree).
+
+**The master lists drive the tree now** (SA Equip product assignment, see
+`docs/sa-equip-phase0/`). `npm run taxonomy:setup --workspace=backend -- --master <json>`
+(dry run by default, `--confirm`) reuses every category that already exists by its EXACT title
+under its parent, creates only what is missing (clean slug, SEO title = its name), never deletes
+an extra, and sets the Hub's order (`CategoryOrder`) to the master order. It added the 10
+missing Site Challenges on 2026-10-13. **Back up before any taxonomy or assignment write** with
+`npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
+it exports every product–category link, the mirror, the order, the logos and logo toggles, the
+logo and category translations, and Duda's full category and product state, with a manifest of
+counts.
+
+⚠️ **The desktop mega menu panels (Site Challenges, Products, Industries) cannot be edited
+through Duda's API.** The header's navigation items are `MULTI_MEGA_MENU` links, read-only
+through the API, and the panels' contents are not exposed at all: they are edited by hand in
+Duda's editor. The mobile (hamburger) menu IS editable through the API. ⚠️ A
+`NATIVE_STORE_DYNAMIC_PAGE` link in a navigation element (value `category/<slug>` or
+`product/<slug>`) is NOT given the language prefix on `/fr/` etc. (measured on the footer's EX
+Heater link), whereas a store link inside a mega menu panel is.
 
 **Why categories rather than tags for the megamenu**: Duda's navigation widget picks
 categories natively, so the client builds menus from a list instead of hand-typing URLs to
