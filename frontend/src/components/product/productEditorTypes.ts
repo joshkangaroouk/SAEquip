@@ -14,6 +14,7 @@ export type SectionKey =
   | "model3d"
   | "compatible"
   | "categories"
+  | "accessory"
   | "downloads";
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
@@ -28,6 +29,7 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   model3d: "3D Model",
   compatible: "Compatible Products",
   categories: "Categories",
+  accessory: "Accessory",
   downloads: "Downloads",
 };
 
@@ -191,6 +193,8 @@ export interface EditorSnapshot {
   compatible: CompatibleDraft[];
   /** Duda category ids. Order is not meaningful — compared as a sorted set. */
   categoryIds: string[];
+  /** Hub-only: listing pages can hide accessories. */
+  isAccessory: boolean;
   benefits: TextItemDraft[];
   applications: TextItemDraft[];
   logos: LogosDraft;

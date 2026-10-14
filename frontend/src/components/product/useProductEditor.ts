@@ -50,6 +50,7 @@ const SECTION_KEYS: SectionKey[] = [
   "specs",
   "compatible",
   "categories",
+  "accessory",
   "benefits",
   "applications",
   "logos",
@@ -65,6 +66,7 @@ const emptyDirty: DirtyMap = {
   specs: false,
   compatible: false,
   categories: false,
+  accessory: false,
   benefits: false,
   applications: false,
   logos: false,
@@ -141,6 +143,7 @@ export function useProductEditor(
         specs: specsFrom(custom.specs),
         compatible: compatibleFrom(custom.compatible),
         categoryIds: custom.categoryIds ?? [],
+        isAccessory: custom.isAccessory ?? false,
         benefits: itemsFrom(custom.benefits),
         applications: itemsFrom(custom.applications),
         logos: { SA_LOGO: activeLogoIds(sa), CERT_LOGO: activeLogoIds(cert) },
@@ -486,6 +489,20 @@ export function useProductEditor(
             options: optionsFrom(res.product.options),
             variations: variationsFrom(res.product.variations),
           };
+        },
+      });
+    }
+
+    if (dirty.accessory) {
+      tasks.push({
+        keys: ["accessory"],
+        label: "accessory",
+        run: async () => {
+          const res = await apiJson<{ isAccessory: boolean }>(`/api/products/${productId}/accessory`, {
+            method: "PUT",
+            body: JSON.stringify({ isAccessory: draft.isAccessory }),
+          });
+          return { isAccessory: res.isAccessory };
         },
       });
     }

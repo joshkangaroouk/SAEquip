@@ -37,6 +37,7 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 - `ProductTextItem` — ordered text items, `kind` `BENEFIT` or `APPLICATION`.
 - `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` withholds the file until a visitor submits the "File Requests" form, and each submission is a `Lead` row — listed on the dashboard's **Resource Requests** page. ⚠️ **Every file is gated** (2026-10-05); new ones are written gated — see "Gating" under the resources widget. Each download also has a **`kind`** (`DATASHEET`/`MANUAL`/`CERTIFICATE`) and, for a certificate only, a **`certScheme`** (`INMETRO`/`UKEX`/`IECEX`/`EX`/`COMPLIANCE`) — these decide which resources page lists it; see "The resources widget".
 - `MediaAsset` — the shared "media centre" library backing `Logo`, `Download`, and a product's 3D model. `kind` is `"image" | "file" | "model"`.
+- `HubProduct.isAccessory` — an accessory (bracket, film, charger, trolley…) rather than a main unit; drives the listing's "Hide accessories" switch. Set from SA Equip's sheet (`npm run catalogue:accessories`, 32 on 2026-10-14) and switched in the product editor's Accessory panel (`PUT /api/products/:id/accessory`).
 - `HubProduct.glbAssetId` — a product's **interactive 3D model** (`.glb`), one per product (not a shared catalog like Logos). See "3D Model Viewer" below.
 - `CompatibleLink` — product→product "Compatible Products & Accessories", ordered, keyed on Hub ids with both sides cascading. Edited in the product editor's Compatible Products section and rendered by the `compatible` carousel; 286 links imported (Stage 3d).
 - `ProductCategory` — product↔category assignment, **Hub-owned** (no FK; categories live in Duda), pushed to Duda by `duda:sync-categories`. Its nullable `sortOrder` is the product's own order for its categories (SA Equip's Site Challenge priority); ⚠️ the product editor's category save is therefore a DIFF that keeps surviving links, not delete-all-then-recreate, which would reset it. `CategoryMirror` is the local copy of Duda's tree the public endpoints read; `CategoryOrder` is the Hub-owned drag order. See "Categories" below.
@@ -286,7 +287,31 @@ category template, or the page shows two listings.
   for. A **parent** page (`/category/industries`) scopes to itself plus its children, since a
   product sits on the leaves. No category resolves (an unknown slug, a non-category page) ⇒
   the whole catalogue.
-- ⚠️ **One axis in the sidebar: Site Challenges.** Industries and product types are *how you
+- **More filters since 2026-10-14** (Josh), below the challenges, each worked out on the
+  server by `productFacets()` in `services/facets.ts` from the product's LOGOS (media file
+  first, label fallback, so a renamed logo still counts):
+  - **Use**: "ATEX range (hazardous areas)" or "Industrial range (non-hazardous)". ⚠️ SA ENDURE
+    is the Industrial range, every other range is ATEX. "ATEX range" deliberately does not
+    claim the product itself is certified: a bracket is not, and the zone logos say what is.
+    Each Use option shows its OWN count, because the two exclude each other.
+  - **Range**: the SA range logo (Rental ignored).
+  - **ATEX zone**: the zone logos, with a Gas/Dust key under the heading. It is hidden, and its
+    ticks cleared, while ONLY "Industrial range" is ticked, because the ticks would otherwise
+    keep filtering invisibly to nothing.
+  - **"Hide accessories"**: a `role="switch"` at the top of the panel, from `HubProduct.isAccessory`.
+  - Groups AND together and ticks OR within a group, as the challenges do. A group appears only
+    if it can narrow THAT page: a page of nothing but SA ENDURE shows no Use or Range. The switch
+    appears only when the page has both accessories and main units. "Clear filters" resets them all.
+  - `/public/catalogue` sends `use`, `range`, `zones` and `accessory` per product; the carousels'
+    payloads and `/public/products/content` send `use`.
+- ⚠️ **SA ENDURE notices** (`use === "industrial"`):
+  - every card drawn by `productCard()` (listing and carousels alike) gets a dark strip under the
+    picture: "Industrial use only – not for hazardous areas";
+  - the product page's `sa-logos` section gets a `role="note"` callout under the range logos.
+
+  The crossed-out "Ex" icon is drawn inline, never fetched. Text without a translation renders
+  in English with `lang="en"` (`tNode()`).
+- ⚠️ **One axis among the CATEGORY filters: Site Challenges.** Industries and product types are *how you
   arrived*, not how you refine, so offering them back as checkboxes only lets a visitor
   contradict the page they are on. `filterGroup` names the parent, so a rename costs a
   content-panel edit rather than a deploy.
@@ -2515,6 +2540,11 @@ Also before launch (each detailed elsewhere in this file):
     (drafts). Check them after any re-translation, which may overwrite them.
   - **Logo labels.** "Made in Britain" and "Ex logo" carried their six translations across. Run
     "Translate missing" for any logo text changed since.
+  - **The listing filters and the SA ENDURE notices** (added 2026-10-14, English only). Translate
+    the `I18N` keys `pl.hideAcc`, `pl.useTitle`, `pl.useAtex`, `pl.useIndustrial`,
+    `pl.rangeTitle`, `pl.zoneTitle`, `pl.zoneSub`, `ind.card`, `ind.title` and `ind.body` into
+    the six languages. ⚠️ SA Equip must approve the English wording first. The `ind.*` text is a
+    safety statement, so its translations need native review, like the consent text.
   - ⚠️ **Mobile (hamburger) menu and footer links don't keep the language prefix** (accepted
     for now). They are `NATIVE_STORE_DYNAMIC_PAGE` links (`category/<slug>`, `product/<slug>`)
     in navigation elements, which Duda does not prefix. So on `/fr/`, `/ar/` and the rest they

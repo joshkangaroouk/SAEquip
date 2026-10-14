@@ -6,6 +6,7 @@ import { TextItemListEditor } from "../components/TextItemListEditor";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import { TranslationProgressModal } from "../components/TranslationProgressModal";
 import { CategoriesSection } from "../components/product/CategoriesSection";
+import { AccessorySection } from "../components/product/AccessorySection";
 import { CompatibleProductsSection } from "../components/product/CompatibleProductsSection";
 import { DangerZoneSection } from "../components/product/DangerZoneSection";
 import { DescriptionSection } from "../components/product/DescriptionSection";
@@ -365,6 +366,12 @@ export default function ProductDetail() {
                   onChange={(next) => setSection("categoryIds", next)}
                   dirty={dirty.categories}
                   error={saveErrors.categories ?? validationErrors.categories}
+                />
+                <AccessorySection
+                  checked={draft.isAccessory}
+                  onChange={(next) => setSection("isAccessory", next)}
+                  dirty={dirty.accessory}
+                  error={saveErrors.accessory ?? validationErrors.accessory}
                 />
               </div>
             </div>

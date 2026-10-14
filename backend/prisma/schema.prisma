@@ -121,6 +121,10 @@ model HubProduct {
   /// ungated: the live widget's <model-viewer> loads it directly by URL.
   glbAssetId String?
   glbAsset   MediaAsset? @relation("HubProductGlbAsset", fields: [glbAssetId], references: [id])
+  /// An accessory (bracket, film, charger, trolley…) rather than a main unit.
+  /// Drives the listing's "Hide accessories" switch. Set from SA Equip's sheet
+  /// (its Accessory column) and switched in the product editor.
+  isAccessory Boolean @default(false)
 }
 
 /// An uploaded asset stored in the Supabase Storage bucket.

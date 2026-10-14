@@ -209,6 +209,7 @@ const itemsBody = z.object({ items: z.array(textItemSchema).max(100, "max 100 it
 
 /** Attach/replace/clear the product's 3D model. Null clears it. */
 const model3dBody = z.object({ mediaAssetId: z.string().min(1).nullable() }).strict();
+const accessoryBody = z.object({ isAccessory: z.boolean() }).strict();
 
 export const dudaRouter = Router();
 
@@ -916,6 +917,8 @@ dudaRouter.get("/products/:id/custom", async (req, res, next) => {
       applications: full.textItems.filter((t) => t.kind === TextItemKind.APPLICATION),
       downloads,
       model3d,
+      // Drives the listing's "Hide accessories" switch.
+      isAccessory: full.isAccessory,
       // The editor needs the related product's identity to render a row; the
       // widget resolves its own image from Duda, so none is carried here.
       // Ids only — the editor already loads the full category tree to render
@@ -1090,6 +1093,26 @@ dudaRouter.put("/products/:id/categories", async (req, res, next) => {
   }
 });
 
+
+/**
+ * PUT /api/products/:id/accessory {isAccessory}
+ * Whether the product is an accessory: listing pages offer "Hide
+ * accessories". Hub-only; Duda has no such field. Idempotent.
+ */
+dudaRouter.put("/products/:id/accessory", async (req, res, next) => {
+  const parsed = accessoryBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  try {
+    const hub = await ensureHubProduct(req.params.id);
+    const updated = await prisma.hubProduct.update({ where: { id: hub.id }, data: { isAccessory: parsed.data.isAccessory } });
+    res.json({ isAccessory: updated.isAccessory });
+  } catch (err) {
+    next(err);
+  }
+});
 
 /**
  * PUT /api/products/:id/model3d

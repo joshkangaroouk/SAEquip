@@ -532,6 +532,112 @@ async function main() {
     check(/\.saeh-pl-chip-more\{[^}]*background:transparent/.test(css), "+N is outlined, not filled like a challenge");
   }
 
+  console.log("\n=== product listing: Use, Range, ATEX zone and Hide accessories ===");
+  {
+    const F = (name, categoryIds, use, range, zones, accessory = false) =>
+      ({ name, slug: name.toLowerCase(), url: `/product/${name.toLowerCase()}`, imageUrl: null, categoryIds, certs: [], use, range, zones, accessory });
+    const FC = {
+      categories: CATALOGUE.categories,
+      products: [
+        F("Alight", ["lp", "dark"], "atex", "lumin", ["zone-1-2", "zone-21-22"]),
+        F("Bracket", ["lp"], "atex", "lumin", [], true),
+        F("Cpower", ["lp"], "atex", "powernet", ["zone-1-2"]),
+        F("Dendure", ["lp", "dark"], "industrial", "endure", []),
+        F("Eendure", ["lp"], "industrial", "endure", []),
+        F("Fzero", ["lp"], "atex", "lumin", ["zone-0", "zone-1-2"]),
+        F("Gendure", ["fume"], "industrial", "endure", []),
+        F("Hendure", ["fume"], "industrial", "endure", []),
+      ],
+    };
+    const LP = CATEGORY("lighting-and-power");
+    const group = (d, title) => [...d.querySelectorAll(".saeh-pl-group")].find((g) => g.querySelector(".saeh-pl-glabel")?.textContent === title);
+    const countOf = (d, gkey, value) => d.querySelector(`.saeh-pl-n[data-group="${gkey}"][data-value="${value}"]`)?.textContent;
+    const tickF = (d, gkey, value) => {
+      const i = d.querySelector(`input[data-group="${gkey}"][value="${value}"]`);
+      i.checked = !i.checked;
+      i.dispatchEvent(new d.defaultView.Event("change"));
+    };
+    const sw = (d) => d.querySelector(".saeh-pl-acc input");
+    const flip = (d) => { const s = sw(d); s.checked = !s.checked; s.dispatchEvent(new d.defaultView.Event("change")); };
+
+    const { d } = await boot({ props: PL, cataloguePayload: FC, url: LP });
+    check(names(d).length === 6, "the category's six products show");
+    check(!!group(d, "Use") && !!group(d, "Range") && !!group(d, "ATEX zone"), "Use, Range and ATEX zone groups are built");
+    check(group(d, "Use").textContent.includes("ATEX range (hazardous areas)") && group(d, "Use").textContent.includes("Industrial range (non-hazardous)"),
+      "Use options carry Josh's wording");
+    check(!!sw(d) && sw(d).getAttribute("role") === "switch", '"Hide accessories" is a real switch (role="switch")');
+    check(d.querySelector(".saeh-pl-inner").firstChild.className === "saeh-pl-acc", "…at the top of the panel");
+    check(countOf(d, "use", "atex") === "4" && countOf(d, "use", "industrial") === "2", "Use: own counts, 4 ATEX range and 2 Industrial range");
+
+    tickF(d, "use", "industrial");
+    check(names(d).join(",") === "Dendure,Eendure", "ticking Industrial range shows only the SA ENDURE products", names(d).join(","));
+    check(countOf(d, "use", "atex") === "4", "…and ATEX range still shows its OWN count (4), not 4 + 2", countOf(d, "use", "atex"));
+    check(group(d, "ATEX zone").style.display === "none", "only Industrial ticked → the ATEX zone group is hidden");
+    tickF(d, "use", "atex");
+    check(group(d, "ATEX zone").style.display === "", "ATEX range ticked as well → the zone group is back");
+    check(names(d).length === 6, "both Use options ticked → OR within the group, all six");
+    tickF(d, "use", "atex");
+    tickF(d, "use", "industrial");
+
+    tickF(d, "zones", "zone-1-2");
+    check(names(d).join(",") === "Alight,Cpower,Fzero", "a zone keeps only products carrying that zone logo", names(d).join(","));
+    tickF(d, "use", "industrial");
+    check(d.querySelector('input[data-group="zones"][value="zone-1-2"]').checked === false, "…ticking only Industrial clears the hidden zone ticks");
+    check(names(d).join(",") === "Dendure,Eendure", "…so they do not keep filtering, invisibly, to nothing", names(d).join(","));
+    tickF(d, "use", "industrial");
+
+    tickF(d, "range", "lumin");
+    tickF(d, "zones", "zone-0");
+    check(names(d).join(",") === "Fzero", "AND across groups: SA LUMIN and Zone 0 → only the Zone 0 light", names(d).join(","));
+    tickF(d, "zones", "zone-0");
+    check(countOf(d, "range", "powernet") === "4", "Range counts how many would show if added (LUMIN 3 + POWERNET 1)", countOf(d, "range", "powernet"));
+    tickF(d, "range", "powernet");
+    check(names(d).join(",") === "Alight,Bracket,Cpower,Fzero", "OR within a group: LUMIN or POWERNET", names(d).join(","));
+
+    flip(d);
+    check(!names(d).includes("Bracket"), '"Hide accessories" removes the accessory');
+    check(countOf(d, "range", "lumin") !== undefined && names(d).join(",") === "Alight,Cpower,Fzero", "…and the rest stay", names(d).join(","));
+    d.querySelector(".saeh-pl-clear").dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(names(d).length === 6 && sw(d).checked === false && !d.querySelector('input[data-group]:checked'), "Clear filters resets every group AND the switch");
+
+    // A page of nothing but SA ENDURE: no group could narrow it, so none is shown.
+    const { d: f } = await boot({ props: PL, cataloguePayload: FC, url: CATEGORY("fume-dust-lev-and-vapour-control") });
+    check(names(f).join(",") === "Gendure,Hendure", "a page of only SA ENDURE products", names(f).join(","));
+    check(!group(f, "Use") && !group(f, "Range") && !group(f, "ATEX zone") && !sw(f), "…shows no Use, Range, zone group or switch: none could narrow it");
+    // Older payloads (no facet fields) render as before.
+    const { d: old } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    check(!old.querySelector("[data-group]") && !old.querySelector(".saeh-pl-acc"), "a catalogue without the new fields renders no new controls");
+  }
+
+  console.log("\n=== SA ENDURE: industrial use only (card strip and product page) ===");
+  {
+    const F = (name, use) => ({ name, slug: name.toLowerCase(), url: `/product/${name.toLowerCase()}`, imageUrl: null, categoryIds: ["lp"], certs: [], use, range: use === "industrial" ? "endure" : "lumin", zones: [], accessory: false });
+    const cat = { categories: CATALOGUE.categories, products: [F("Endure1", "industrial"), F("Lumin1", "atex"), F("Endure2", "industrial"), F("Nothing", null)] };
+    const { d } = await boot({ props: PL, cataloguePayload: cat, url: CATEGORY("lighting-and-power") });
+    const strips = [...d.querySelectorAll(".saeh-pl-card")].filter((c) => c.querySelector(".saeh-ind")).map((c) => c.querySelector(".saeh-pl-name").textContent);
+    check(strips.join(",") === "Endure1,Endure2", "the strip is on every SA ENDURE card and on no other", strips.join(","));
+    check(d.querySelector(".saeh-ind span").textContent === "Industrial use only – not for hazardous areas", "…reading the approved wording");
+    check(d.querySelector(".saeh-ind svg")?.getAttribute("aria-hidden") === "true", "…with its icon drawn inline and hidden from screen readers");
+    const card = [...d.querySelectorAll(".saeh-pl-card")].find((c) => c.querySelector(".saeh-ind"));
+    check(card.children[0].className === "saeh-pl-shot" && card.children[1].className === "saeh-ind", "…between the picture and the card body");
+    const { d: fr } = await boot({ props: PL, cataloguePayload: cat, url: "https://saequip.multiscreensite.com/fr/category/lighting-and-power", htmlLang: "fr" });
+    check(fr.querySelector(".saeh-ind span")?.getAttribute("lang") === "en", "on a translated page the English notice says lang=\"en\" (translations come in the pre-launch pass)");
+
+    // Carousels use the same card, so the strip follows SA ENDURE there too.
+    const comp = { ...FULL, compatible: [{ name: "Endure1", slug: "endure1", url: "/product/endure1", imageUrl: null, use: "industrial" }, { name: "Lumin1", slug: "lumin1", url: "/product/lumin1", imageUrl: null, use: "atex" }] };
+    const { d: c } = await boot({ props: { section: "compatible" }, payload: comp });
+    check(c.querySelectorAll(".saeh-cp-card .saeh-ind").length === 1, "the compatible carousel marks its SA ENDURE card too");
+
+    // Product page: a callout under the SA range logos, on SA ENDURE only.
+    const sa = { sa: [{ url: "https://x/endure.jpg", alt: "SA Endure", label: "SA Endure Logo" }], cert: [] };
+    const { d: p1 } = await boot({ props: { section: "sa-logos" }, payload: { ...FULL, logos: sa, use: "industrial" } });
+    const call = p1.querySelector(".saeh-ind-page");
+    check(!!call && call.getAttribute("role") === "note", "the product page shows the industrial-only callout (role=note)");
+    check(call.querySelector("b").textContent === "Industrial use only" && /never use it in a refinery, offshore or any explosive atmosphere/.test(call.textContent), "…with its title and explanation");
+    const { d: p2 } = await boot({ props: { section: "sa-logos" }, payload: { ...FULL, logos: { sa: [{ url: "https://x/lumin.jpg", alt: "SA Lumin", label: "SA Lumin Logo" }], cert: [] }, use: "atex" } });
+    check(!p2.querySelector(".saeh-ind-page"), "…and no callout on an ATEX-range product");
+  }
+
   console.log("\n=== product listing: cards and layout ===");
   {
     const { d } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });

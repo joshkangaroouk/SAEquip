@@ -231,6 +231,8 @@ export interface HubCustomPayload {
   compatible: HubCompatible[];
   /** Duda category ids assigned to this product (stored Hub-side). */
   categoryIds: string[];
+  /** An accessory: listing pages offer "Hide accessories". */
+  isAccessory?: boolean;
   /**
    * The description as authored — what the live Overview tab renders. Null
    * for a product the Hub has never written one for; Duda's copy is then the

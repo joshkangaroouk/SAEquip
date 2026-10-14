@@ -266,6 +266,8 @@ export function project(snapshot: EditorSnapshot, key: SectionKey): unknown {
     // against a baseline that happened to load B then A.
     case "categories":
       return [...snapshot.categoryIds].sort();
+    case "accessory":
+      return snapshot.isAccessory;
     case "downloads":
       // ORDER is meaningful (it is the display order), so compared as-is.
       // filename/size/url are display only; a re-signed url after a save must

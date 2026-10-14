@@ -10,6 +10,7 @@ import { syncRefusal } from "../src/scripts/lib/syncGuard.js";
 import { keepEditedDescription, planDownloadSet, planTypeLinks } from "../src/scripts/lib/importGuards.js";
 import { applyPlan, planAssignments } from "../src/scripts/lib/taxonomyPlan.js";
 import { planLogos, planLogoToggles } from "../src/scripts/lib/logoPlan.js";
+import { productFacets } from "../src/services/facets.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -162,6 +163,20 @@ check("error" in planDownloadSet([], [{ mediaAssetId: "x", title: "constructor" 
   const throws = (f: () => unknown) => { try { f(); return false; } catch { return true; } };
   check(throws(() => planLogoToggles({ wanted: [W(["ex_logo"], ["ex_logo"])], links, logoIdFor: ids })), "toggles: a logo both ON and OFF stops the plan");
   check(throws(() => planLogoToggles({ wanted: [W([], ["atex"])], links, logoIdFor: ids })), "toggles: an unknown logo key stops the plan");
+}
+
+// ---- catalogue facets: Use / Range / ATEX zone from a product's logos (services/facets.ts)
+{
+  const SA = (filename: string | null, label = "") => ({ kind: "SA_LOGO", filename, label, alt: "" });
+  const CERT = (filename: string | null, label = "") => ({ kind: "CERT_LOGO", filename, label, alt: "" });
+  const f = (...l: ReturnType<typeof SA>[]) => productFacets(l);
+  check(f(SA("endure.jpg"), SA("rental.jpg")).use === "industrial" && f(SA("endure.jpg")).range === "endure", "facets: SA ENDURE → Industrial range; Rental ignored");
+  check(f(SA("cyclone.jpg")).use === "atex" && f(SA("lumin.jpg")).use === "atex" && f(SA("powernet.jpg")).use === "atex" && f(SA("flexiheat.jpg")).use === "atex", "facets: every other range → ATEX range");
+  check(f(SA("rental.jpg")).use === null && f().range === null, "facets: no range logo → no Use (nothing invented)");
+  check(f(SA("cyclone.jpg"), SA("endure.jpg")).use === "industrial", "facets: two ranges → ENDURE wins (the safe reading)");
+  check(f(SA("endure-new.png", "SA Endure Logo")).range === "endure", "facets: a replaced logo file still matches on its label");
+  check(f(CERT("zone-21-22.png"), CERT("zone-1-2.png"), CERT("ex-logo.png")).zones.join() === "zone-1-2,zone-21-22", "facets: zones from the zone logos, in order; Ex is not a zone");
+  check(f(CERT(null, "Zone 20")).zones.join() === "zone-20" && f(CERT(null, "Zone 21-22")).zones.join() === "zone-21-22", "facets: label fallback tells Zone 20 from Zone 21-22");
 }
 
 // ---- .claude/hooks/block-destructive-db.sh (the harness's PreToolUse guard)

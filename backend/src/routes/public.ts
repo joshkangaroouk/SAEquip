@@ -10,6 +10,7 @@ import { prisma } from "../prisma.js";
 import { env } from "../env.js";
 import { publicImageUrl, publicModelUrl, signedFileUrl } from "../services/storage.js";
 import { sendQuoteNotification } from "../services/email.js";
+import { productFacets } from "../services/facets.js";
 import { LISTABLE, LISTED_DOWNLOAD, PUBLIC_DOWNLOAD } from "../services/hubProduct.js";
 import { categorySortKey, compareKeys } from "../services/categoryTree.js";
 import { quoteProductMatcher } from "../services/quoteProducts.js";
@@ -149,6 +150,10 @@ async function orderedCategories() {
   return rows.sort((a, b) => compareKeys(key(a), key(b)));
 }
 
+/** A card's "use" (SA ENDURE → "industrial"), so the card shows the industrial-only strip. */
+const facetUse = (ls: { logo: { kind: string; label: string | null; alt: string | null; mediaAsset: { filename: string } | null } }[]) =>
+  productFacets(ls.map((l) => ({ kind: l.logo.kind, label: l.logo.label, alt: l.logo.alt, filename: l.logo.mediaAsset?.filename }))).use;
+
 /* -------------------------------------------- products by category -- */
 
 /**
@@ -182,7 +187,7 @@ publicRouter.get("/products/by-category", contentLimiter, async (req, res, next)
       prisma.productCategory.findMany({
         // HIDDEN products are not listed: their page is not public.
         where: { dudaCategoryId: cat.dudaCategoryId, hubProduct: LISTABLE },
-        select: { hubProduct: { select: { name: true, slug: true, thumbnailUrl: true, dudaProductId: true } } },
+        select: { hubProduct: { select: { name: true, slug: true, thumbnailUrl: true, dudaProductId: true, logos: { select: { logo: { select: { kind: true, label: true, alt: true, mediaAsset: { select: { filename: true } } } } } } } } },
       }),
       tablesFor(parseLang(req.query.lang)),
     ]);
@@ -198,6 +203,7 @@ publicRouter.get("/products/by-category", contentLimiter, async (req, res, next)
         slug: l.hubProduct.slug!,
         url: `/product/${l.hubProduct.slug!}`,
         imageUrl: l.hubProduct.thumbnailUrl ?? null,
+        use: facetUse(l.hubProduct.logos),
       }))
       // ProductCategory carries no sortOrder, so order by name — in the page's
       // language — for a stable, predictable carousel.
@@ -317,10 +323,10 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
            * reading "ATEX" instead of "EX logo" then becomes a data edit on
            * the Logos page rather than a code change.
            */
-          logos: {
-            where: { logo: { kind: "CERT_LOGO" } },
-            select: { logo: { select: { label: true, alt: true, sortOrder: true } } },
-          },
+          // Every logo: certifications for the card's text, and the SA range
+          // and zone logos for the listing's Use / Range / ATEX zone filters.
+          logos: { select: { logo: { select: { kind: true, label: true, alt: true, sortOrder: true, mediaAsset: { select: { filename: true } } } } } },
+          isAccessory: true,
         },
         orderBy: { name: "asc" },
       }),
@@ -375,8 +381,13 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
           url: `/product/${p.slug!}`,
           imageUrl: p.thumbnailUrl ?? null,
           categoryIds: ownOrder(p.categories),
+          ...(() => {
+            const f = productFacets(p.logos.map((l) => ({ kind: l.logo.kind, label: l.logo.label, alt: l.logo.alt, filename: l.logo.mediaAsset?.filename })));
+            return { use: f.use, range: f.range, zones: f.zones, accessory: p.isAccessory };
+          })(),
           certs: p.logos
             .map((l) => l.logo)
+            .filter((l) => l.kind === "CERT_LOGO")
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((l) => tr(tables, "LOGO_TEXT", (l.alt || l.label || "").trim()))
             .filter(Boolean),
@@ -734,7 +745,7 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
           // A hidden product is not offered as compatible: its card would
           // link to a page visitors cannot open.
           where: { related: LISTABLE },
-          include: { related: { select: { name: true, slug: true, thumbnailUrl: true, dudaProductId: true } } },
+          include: { related: { select: { name: true, slug: true, thumbnailUrl: true, dudaProductId: true, logos: { select: { logo: { select: { kind: true, label: true, alt: true, mediaAsset: { select: { filename: true } } } } } } } } },
         },
       },
       }),
@@ -790,6 +801,9 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
       // neither was.)
       descriptionHtml: full.descriptionHtml ? tr(tables, "DESCRIPTION", full.descriptionHtml) : null,
       logos: { sa, cert },
+      // "industrial" for SA ENDURE: the product page shows the industrial-only
+      // callout under its range logos (see services/facets.ts).
+      use: productFacets(activeLogos.map((l) => ({ kind: l.kind, label: l.label, alt: l.alt, filename: l.mediaAsset.filename }))).use,
       specs: full.specRows.map((s) => ({ label: tr(tables, "SPEC_LABEL", s.label), value: tr(tables, "SPEC_VALUE", s.value) })),
       benefits: full.textItems.filter((t) => t.kind === "BENEFIT").map((t) => tr(tables, "LIST_ITEM", t.text)),
       applications: full.textItems.filter((t) => t.kind === "APPLICATION").map((t) => tr(tables, "LIST_ITEM", t.text)),
@@ -818,6 +832,7 @@ publicRouter.get("/products/content", contentLimiter, async (req, res, next) => 
           slug: c.related.slug!,
           url: `/product/${c.related.slug!}`,
           imageUrl: c.related.thumbnailUrl ?? null,
+          use: facetUse(c.related.logos),
         })),
     });
     // The value is caller-supplied, so it is length-capped before it is logged.

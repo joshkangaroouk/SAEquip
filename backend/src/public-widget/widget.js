@@ -330,6 +330,18 @@
       "pl.count": { one: "{n} product of {total}", other: "{n} products of {total}" },
       "pl.empty": "No products match those filters. Try removing one.",
       "pl.moreChips": { other: "+{n} more" },
+      // ⚠️ English only for now (Josh, 2026-10-14): the six translations are in
+      // the pre-launch translation pass. SA Equip approve this wording first.
+      "pl.hideAcc": "Hide accessories",
+      "pl.useTitle": "Use",
+      "pl.useAtex": "ATEX range (hazardous areas)",
+      "pl.useIndustrial": "Industrial range (non-hazardous)",
+      "pl.rangeTitle": "Range",
+      "pl.zoneTitle": "ATEX zone",
+      "pl.zoneSub": "Gas: Zone 0, Zone 1-2 · Dust: Zone 20, Zone 21-22",
+      "ind.card": "Industrial use only – not for hazardous areas",
+      "ind.title": "Industrial use only",
+      "ind.body": "SA ENDURE equipment is for industrial sites such as construction. It is not certified for hazardous areas (ATEX/IECEx zones): never use it in a refinery, offshore or any explosive atmosphere.",
       "pl.filter": "Filter Products",
       "pl.searchLabel": "Search within category",
       "pl.searchPh": "Search products...",
@@ -1424,6 +1436,25 @@
       ".saeh-pl-clip{overflow:hidden;min-height:0}",
       ".saeh-pl-inner{padding:4px 16px 16px}",
       ".saeh-pl-group{margin-top:16px}",
+      // "Hide accessories": a switch, not a checkbox, because it is on/off for
+      // the whole page rather than one option among many. The input stays in the
+      // tab order (visually hidden, never display:none) with role="switch".
+      ".saeh-pl-acc{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 0 12px;font-size:14px;font-weight:600;color:#111;border-bottom:1px solid #ececec;cursor:pointer}",
+      ".saeh-pl-acc input{position:absolute;opacity:0;width:1px;height:1px;margin:0}",
+      ".saeh-pl-sw{position:relative;flex:0 0 auto;width:38px;height:22px;border-radius:22px;background:#d9d9d9;transition:background .15s}",
+      ".saeh-pl-sw:after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}",
+      ".saeh-pl-acc input:checked + .saeh-pl-sw{background:#fed217}",
+      ".saeh-pl-acc input:checked + .saeh-pl-sw:after{transform:translateX(16px)}",
+      ".saeh-pl-acc input:focus-visible + .saeh-pl-sw{outline:2px solid #111;outline-offset:2px}",
+      ".saeh-pl-sub{font-size:12px;color:#8a8a8a;margin:-2px 0 4px;line-height:1.4}",
+      // ⚠️ The SA ENDURE notices. Dark, like the ENDURE range's own grey/black,
+      // with the brand yellow only on the icon: a safety notice, not a promotion.
+      ".saeh-ind{display:flex;align-items:center;gap:8px;background:#2b2b2b;color:#fff;font-family:var(--saeh-head);font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;line-height:1.25;padding:7px 10px}",
+      ".saeh-ind svg{flex:0 0 auto}",
+      ".saeh-ind-page{display:flex;align-items:flex-start;gap:12px;background:#2b2b2b;color:#fff;padding:14px 16px;margin-top:14px;max-width:560px}",
+      ".saeh-ind-page svg{flex:0 0 auto;margin-top:2px}",
+      ".saeh-ind-page b{display:block;font-family:var(--saeh-head);font-size:15px;letter-spacing:.02em;text-transform:uppercase;margin-bottom:3px}",
+      ".saeh-ind-page span{display:block;font-size:14px;line-height:1.45;color:#ddd}",
       ".saeh-pl-group:first-child{margin-top:4px}",
       ".saeh-pl-glabel{font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}",
       ".saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:14px;color:#555;line-height:1.35}",
@@ -2623,7 +2654,21 @@
   function buildSection(name, data) {
     var logos = data.logos || { sa: [], cert: [] };
     if (name === "cert-logos") return logos.cert && logos.cert.length ? logoSection("", logos.cert) : null;
-    if (name === "sa-logos") return logos.sa && logos.sa.length ? logoSection("", logos.sa) : null;
+    if (name === "sa-logos") {
+      var sec = logos.sa && logos.sa.length ? logoSection("", logos.sa) : null;
+      // ⚠️ SA ENDURE: industrial use only, never hazardous areas (SA Equip).
+      if (sec && data.use === "industrial") {
+        var call = el("div", "saeh-ind-page");
+        call.setAttribute("role", "note");
+        call.appendChild(industrialIcon(28));
+        var words = el("div");
+        words.appendChild(tNode("b", null, "ind.title"));
+        words.appendChild(tNode("span", null, "ind.body"));
+        call.appendChild(words);
+        sec.appendChild(call);
+      }
+      return sec;
+    }
     if (name === "3d-viewer") return data.model3dUrl ? model3dSection(data.model3dUrl) : null;
     if (name === "tabs") return tabsSection(data);
     if (name === "specs") return data.specs && data.specs.length ? specsSection(data.specs) : null;
@@ -3033,6 +3078,44 @@
     return { cat: null, from: "none" };
   }
 
+  /**
+   * Text in the page's language, or English with `lang="en"` on the element
+   * when that language has no copy yet, so a screen reader on an Arabic page
+   * reads the English as English instead of in an Arabic voice.
+   */
+  function tNode(tag, cls, key) {
+    var node = el(tag, cls, T(key));
+    var d = I18N[currentLocale()];
+    if (!d || typeof d[key] !== "string") node.setAttribute("lang", "en");
+    return node;
+  }
+
+  /**
+   * A crossed-out "Ex" mark for the SA ENDURE industrial-only notices. Drawn
+   * inline, never fetched: a network icon would be missing for exactly as long
+   * as it takes to load, on a safety notice.
+   */
+  function industrialIcon(size) {
+    var NS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("width", String(size));
+    svg.setAttribute("height", String(size));
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    var ring = document.createElementNS(NS, "circle");
+    ring.setAttribute("cx", "12"); ring.setAttribute("cy", "12"); ring.setAttribute("r", "10");
+    ring.setAttribute("fill", "none"); ring.setAttribute("stroke", "#fed217"); ring.setAttribute("stroke-width", "2.2");
+    var ex = document.createElementNS(NS, "text");
+    ex.setAttribute("x", "12"); ex.setAttribute("y", "15.5"); ex.setAttribute("text-anchor", "middle");
+    ex.setAttribute("font-size", "9"); ex.setAttribute("font-weight", "700"); ex.setAttribute("fill", "#fff");
+    ex.textContent = "Ex";
+    var bar = document.createElementNS(NS, "path");
+    bar.setAttribute("d", "M5 5l14 14"); bar.setAttribute("stroke", "#fed217"); bar.setAttribute("stroke-width", "2.2");
+    svg.appendChild(ring); svg.appendChild(ex); svg.appendChild(bar);
+    return svg;
+  }
+
   var CARD_CHIP_LIMIT = 2;
 
   function productCard(p, chipTitles) {
@@ -3051,6 +3134,14 @@
       shot.appendChild(img);
     }
     a.appendChild(shot);
+    // ⚠️ SA ENDURE is industrial only, NEVER for hazardous areas (SA Equip):
+    // said on every card of it, wherever cards are drawn (listing and carousels).
+    if (p.use === "industrial") {
+      var ind = el("div", "saeh-ind");
+      ind.appendChild(industrialIcon(16));
+      ind.appendChild(tNode("span", null, "ind.card"));
+      a.appendChild(ind);
+    }
 
     var body = el("div", "saeh-pl-body");
     if (chipTitles.length) {
@@ -3230,6 +3321,25 @@
     var rendered = 0;
     var query = "";
     var chosen = {};
+    /*
+     * The other filters (Josh, 2026-10-14), each worked out on the server from
+     * data the Hub already holds (services/facets.ts): Use and Range from the
+     * SA range logo (SA ENDURE = Industrial range), ATEX zone from the zone
+     * logos, and accessories from HubProduct.isAccessory.
+     * ⚠️ Groups AND together; ticks within a group OR (widen), like the
+     * challenges. Range and brand names are names, not words: untranslated.
+     */
+    var FACETS = [
+      { key: "use", title: T("pl.useTitle"), ownCount: true, values: [["atex", "pl.useAtex"], ["industrial", "pl.useIndustrial"]] },
+      { key: "range", title: T("pl.rangeTitle"), values: [["cyclone", "SA CYCLONE"], ["endure", "SA ENDURE"], ["lumin", "SA LUMIN"], ["powernet", "SA POWERNET"], ["flexiheat", "SA FLEXIHEAT"]] },
+      { key: "zones", title: T("pl.zoneTitle"), sub: "pl.zoneSub", values: [["zone-0", "Zone 0"], ["zone-1-2", "Zone 1-2"], ["zone-20", "Zone 20"], ["zone-21-22", "Zone 21-22"]] },
+    ];
+    var facetChosen = { use: {}, range: {}, zones: {} };
+    var hideAccessories = false;
+    function facetValues(p, key) {
+      var v = p[key];
+      return Array.isArray(v) ? v : v ? [v] : [];
+    }
 
     var root = el("div", "saeh-pl");
     var side = el("div", "saeh-pl-side");
@@ -3295,16 +3405,36 @@
     }
 
     function matches(p) {
+      return passes(p, null);
+    }
+    /** Every active filter but `skip` (a group key), for that group's own counts. */
+    function passes(p, skip) {
       if (query && haystack(p).indexOf(query) === -1) return false;
+      if (hideAccessories && p.accessory) return false;
       var picked = options.filter(function (c) {
         return chosen[c.id];
       });
-      if (!picked.length) return true;
       // OR within the group: ticking a second challenge widens.
-      var ids = p.categoryIds || [];
-      return picked.some(function (c) {
-        return ids.indexOf(c.id) !== -1;
-      });
+      if (picked.length) {
+        var ids = p.categoryIds || [];
+        var any = picked.some(function (c) {
+          return ids.indexOf(c.id) !== -1;
+        });
+        if (!any) return false;
+      }
+      // AND across groups, OR within each.
+      for (var i = 0; i < FACETS.length; i++) {
+        var key = FACETS[i].key;
+        if (key === skip) continue;
+        var want = Object.keys(facetChosen[key]);
+        if (!want.length) continue;
+        var have = facetValues(p, key);
+        var hit = want.some(function (v) {
+          return have.indexOf(v) !== -1;
+        });
+        if (!hit) return false;
+      }
+      return true;
     }
 
     /**
@@ -3467,10 +3597,116 @@
       inner.appendChild(group);
     }
 
+    // "Hide accessories": only on a page that has accessories AND main units —
+    // on a page of nothing but brackets it could only empty the grid.
+    var accessoryCount = base.filter(function (p) {
+      return p.accessory;
+    }).length;
+    var accSwitch = null;
+    if (accessoryCount && accessoryCount < base.length) {
+      var accLabel = el("label", "saeh-pl-acc");
+      accLabel.appendChild(tNode("span", null, "pl.hideAcc"));
+      accSwitch = document.createElement("input");
+      accSwitch.type = "checkbox";
+      accSwitch.setAttribute("role", "switch");
+      accSwitch.addEventListener("change", function () {
+        hideAccessories = accSwitch.checked;
+        shownCount = PAGE;
+        paint();
+        updateCounts();
+      });
+      accLabel.appendChild(accSwitch);
+      accLabel.appendChild(el("span", "saeh-pl-sw"));
+      inner.insertBefore(accLabel, inner.firstChild);
+    }
+
+    var facetGroups = {};
+    FACETS.forEach(function (f) {
+      var tally = {};
+      base.forEach(function (p) {
+        facetValues(p, f.key).forEach(function (v) {
+          tally[v] = (tally[v] || 0) + 1;
+        });
+      });
+      var vals = f.values.filter(function (v) {
+        return tally[v[0]];
+      });
+      // Only a group that can narrow THIS page: one option every product here
+      // shares (a page of nothing but SA ENDURE) cannot, so it is noise.
+      var narrows = vals.some(function (v) {
+        return tally[v[0]] < base.length;
+      });
+      if (!narrows) return;
+      var g = el("div", "saeh-pl-group");
+      g.appendChild(el("div", "saeh-pl-glabel", f.title));
+      if (f.sub) g.appendChild(tNode("div", "saeh-pl-sub", f.sub));
+      vals.forEach(function (v) {
+        var label = el("label", "saeh-pl-opt");
+        var box = document.createElement("input");
+        box.type = "checkbox";
+        box.value = v[0];
+        box.setAttribute("data-group", f.key);
+        box.addEventListener("change", function () {
+          if (box.checked) facetChosen[f.key][v[0]] = true;
+          else delete facetChosen[f.key][v[0]];
+          if (f.key === "use") syncZones();
+          shownCount = PAGE;
+          paint();
+          updateCounts();
+        });
+        label.appendChild(box);
+        label.appendChild(el("span", "saeh-pl-box"));
+        label.appendChild(f.key === "use" ? tNode("span", "saeh-pl-t", v[1]) : el("span", "saeh-pl-t", v[1]));
+        var n = el("span", "saeh-pl-n", "");
+        n.setAttribute("data-group", f.key);
+        n.setAttribute("data-value", v[0]);
+        label.appendChild(n);
+        g.appendChild(label);
+      });
+      facetGroups[f.key] = g;
+      inner.appendChild(g);
+    });
+
+    /**
+     * The ATEX zone group means nothing for the Industrial range, so it is
+     * hidden while ONLY Industrial is ticked, and its ticks are cleared (they
+     * would otherwise keep filtering, invisibly, to nothing).
+     */
+    function syncZones() {
+      var zg = facetGroups.zones;
+      if (!zg) return;
+      var only = facetChosen.use.industrial && !facetChosen.use.atex;
+      zg.style.display = only ? "none" : "";
+      if (only) {
+        facetChosen.zones = {};
+        var boxes = zg.querySelectorAll("input[type=checkbox]");
+        for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
+      }
+    }
+
     /** How many would show if this option were added — never a static total. */
     function updateCounts() {
       var nodes = inner.querySelectorAll(".saeh-pl-n");
       for (var i = 0; i < nodes.length; i++) {
+        var group = nodes[i].getAttribute("data-group");
+        if (group) {
+          var value = nodes[i].getAttribute("data-value");
+          var n2;
+          if (group === "use") {
+            // Use: each option's OWN count. The two exclude each other, so "how
+            // many if added" read 46 for one option with the other ticked.
+            n2 = base.filter(function (p) {
+              return passes(p, "use") && p.use === value;
+            }).length;
+          } else {
+            var had = !!facetChosen[group][value];
+            facetChosen[group][value] = true;
+            n2 = base.filter(matches).length;
+            if (!had) delete facetChosen[group][value];
+          }
+          nodes[i].textContent = String(n2);
+          continue;
+        }
         var id = nodes[i].getAttribute("data-for");
         var was = !!chosen[id];
         chosen[id] = true;
@@ -3483,15 +3719,18 @@
     // Only when there is something to clear. A category with no challenges in
     // scope renders no options, and the button then sat alone in an empty panel
     // offering to undo nothing.
-    if (options.length) {
+    if (options.length || accSwitch || Object.keys(facetGroups).length) {
       var clear = document.createElement("button");
       clear.type = "button";
       clear.className = "saeh-pl-clear";
       clear.textContent = T("pl.clear");
       clear.addEventListener("click", function () {
         chosen = {};
+        facetChosen = { use: {}, range: {}, zones: {} };
+        hideAccessories = false;
         var boxes = inner.querySelectorAll("input[type=checkbox]");
         for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
+        syncZones();
         shownCount = PAGE;
         paint();
         updateCounts();
