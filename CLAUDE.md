@@ -2046,7 +2046,27 @@ The script re-checks the rule on the STORED data after writing, and fails if any
 **Anything that later gives an SA ENDURE product a logo, industry or challenge must keep to this
 rule.** It also used the first logo switch-OFFs (`planLogoToggles()`, explicit ON and OFF lists);
 `planLogos()` stays ON-only. It hid the Tasklight Floor Stand, Filters (SAFU/), the 3 weekly rentals
-and LEV Accessories, and set the Tasklight Base Unit SKU to SATL/BU. **Back up before any taxonomy or assignment write** with
+and LEV Accessories, and set the Tasklight Base Unit SKU to SATL/BU.
+
+`npm run catalogue:phase5c` (2026-10-14) put SA ENDURE LED Max Light in Lighting and Power (still
+no challenges). It also added a **"Filter Type" product option**:
+- Filtration Unit (SAFU): Dust, Breathable Dust, Vapour;
+- Compact Filtration Unit (SACFU, CYCLONE): Dust, Breathable Dust;
+- Lightweight Filtration Unit (SAELFU): Dust, Breathable Dust.
+
+It is the store's second option, after Hire/Purchase. ⚠️ Duda renders it as radio chips and
+pre-selects the first choice, so an untouched visitor is quoted for Dust. Tested live: Add to Quote
+stores "Filter Type: Breathable Dust" with Duda's option and choice ids.
+
+It then **permanently deleted** 7 hidden products, writing a full snapshot (Duda record and Hub rows)
+to `migration/backups/2026-10-14-phase5c/` first, and only after confirming each was HIDDEN:
+- the Tasklight Floor Stand;
+- the 4 filter products;
+- LEV Accessories;
+- the EX Vapour Extraction System duplicate.
+
+The 3 weekly rentals stay HIDDEN until the rental discussion. Duda now holds 91 products: 88
+visible, plus the 3 rentals. **Back up before any taxonomy or assignment write** with
 `npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
 it exports every product–category link, the mirror, the order, the logos and logo toggles, the
 logo and category translations, and Duda's full category and product state, with a manifest of
