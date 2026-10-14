@@ -2055,8 +2055,13 @@ no challenges). It also added a **"Filter Type" product option**:
 - Lightweight Filtration Unit (SAELFU): Dust, Breathable Dust.
 
 It is the store's second option, after Hire/Purchase. ⚠️ Duda renders it as radio chips and
-pre-selects the first choice, so an untouched visitor is quoted for Dust. Tested live: Add to Quote
-stores "Filter Type: Breathable Dust" with Duda's option and choice ids.
+**pre-selects the product's FIRST choice**. So "Not sure – please advise" was added as the first
+choice on all three (`npm run catalogue:filter-default`, 2026-10-14); before that, a visitor who
+never picked was quoted for Dust without knowing.
+- Tested live on all three pages: Add to Quote with no pick stores "Filter Type: Not sure – please
+  advise", and picking Breathable Dust stores that, each with Duda's option and choice ids.
+- The theme displays chip text in title case ("Not Sure – Please Advise"); the stored value and the
+  quote keep the sentence case.
 
 It then **permanently deleted** 7 hidden products, writing a full snapshot (Duda record and Hub rows)
 to `migration/backups/2026-10-14-phase5c/` first, and only after confirming each was HIDDEN:
