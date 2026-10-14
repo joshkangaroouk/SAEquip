@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { syncRefusal } from "../src/scripts/lib/syncGuard.js";
 import { keepEditedDescription, planDownloadSet, planTypeLinks } from "../src/scripts/lib/importGuards.js";
 import { applyPlan, planAssignments } from "../src/scripts/lib/taxonomyPlan.js";
-import { planLogos } from "../src/scripts/lib/logoPlan.js";
+import { planLogos, planLogoToggles } from "../src/scripts/lib/logoPlan.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -146,6 +146,22 @@ check("error" in planDownloadSet([], [{ mediaAssetId: "x", title: "constructor" 
   const throws = (f: () => unknown) => { try { f(); return false; } catch { return true; } };
   check(throws(() => planLogos({ wanted: [W("a", { atex: true })], links, logoIdFor: ids })), "logos: a sheet key with no catalogue logo stops the plan");
   check(throws(() => planLogos({ wanted: [W("a", {}), W("a", {})], links, logoIdFor: ids })), "logos: a product given twice stops the plan");
+}
+
+// ---- Phase 5b: explicit ON and OFF (SA Equip's answers); planLogos stays ON-only
+{
+  const ids = new Map([["endure", "END"], ["cyclone", "CYC"], ["ex_logo", "EX"], ["ukca", "UK"]]);
+  const LL = (p: string, l: string) => ({ hubProductId: p, logoId: l });
+  const links = [LL("e", "CYC"), LL("e", "EX"), LL("e", "UK")];
+  const W = (on: string[], off: string[], p = "e") => ({ hubProductId: p, dudaProductId: `D${p}`, name: p, on, off });
+  const t = planLogoToggles({ wanted: [W(["endure"], ["cyclone", "ex_logo"])], links, logoIdFor: ids });
+  check(t.adds.map((x) => x.key).join() === "endure" && t.removes.map((x) => x.key).sort().join() === "cyclone,ex_logo", "toggles: ON adds, OFF removes, and each is listed");
+  check(!t.removes.some((x) => x.key === "ukca"), "toggles: a logo in neither list is left alone (UKCA)");
+  check(planLogoToggles({ wanted: [W(["cyclone"], ["endure"])], links, logoIdFor: ids }).adds.length === 0 &&
+    planLogoToggles({ wanted: [W(["cyclone"], ["endure"])], links, logoIdFor: ids }).removes.length === 0, "toggles: already in the wanted state → nothing to do");
+  const throws = (f: () => unknown) => { try { f(); return false; } catch { return true; } };
+  check(throws(() => planLogoToggles({ wanted: [W(["ex_logo"], ["ex_logo"])], links, logoIdFor: ids })), "toggles: a logo both ON and OFF stops the plan");
+  check(throws(() => planLogoToggles({ wanted: [W([], ["atex"])], links, logoIdFor: ids })), "toggles: an unknown logo key stops the plan");
 }
 
 // ---- .claude/hooks/block-destructive-db.sh (the harness's PreToolUse guard)

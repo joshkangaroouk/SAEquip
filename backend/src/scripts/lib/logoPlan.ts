@@ -44,3 +44,38 @@ export function planLogos(input: { wanted: LogoWanted[]; links: LogoLink[]; logo
   }
   return plan;
 }
+
+/**
+ * EXPLICIT logo changes: each product names the logos to switch ON and the
+ * logos to switch OFF (Phase 5b, SA Equip's answers). Separate from
+ * planLogos(), which stays ON-only by construction. A logo listed both ON and
+ * OFF for one product, an unknown key, or a product given twice throws before
+ * anything is planned. Only real changes are returned: ON for a logo already
+ * on, or OFF for one already off, is nothing to do.
+ */
+export function planLogoToggles(input: {
+  wanted: { hubProductId: string; dudaProductId: string; name: string; on: string[]; off: string[] }[];
+  links: LogoLink[];
+  logoIdFor: Map<string, string>;
+}): { adds: LogoChange[]; removes: LogoChange[] } {
+  const isOn = new Set(input.links.map((l) => `${l.hubProductId}|${l.logoId}`));
+  const seen = new Set<string>();
+  const out = { adds: [] as LogoChange[], removes: [] as LogoChange[] };
+  for (const w of input.wanted) {
+    if (seen.has(w.hubProductId)) throw new Error(`${w.name} (${w.dudaProductId}) is given twice`);
+    seen.add(w.hubProductId);
+    const both = w.on.filter((k) => w.off.includes(k));
+    if (both.length) throw new Error(`${w.name}: ${both.join(", ")} is listed both ON and OFF`);
+    for (const [keys, target] of [[w.on, out.adds], [w.off, out.removes]] as const) {
+      for (const key of keys) {
+        const logoId = input.logoIdFor.get(key);
+        if (!logoId) throw new Error(`${w.name}: no catalogue logo for "${key}"`);
+        const on = isOn.has(`${w.hubProductId}|${logoId}`);
+        const change = { hubProductId: w.hubProductId, dudaProductId: w.dudaProductId, name: w.name, key, logoId };
+        if (target === out.adds && !on) target.push(change);
+        if (target === out.removes && on) target.push(change);
+      }
+    }
+  }
+  return out;
+}

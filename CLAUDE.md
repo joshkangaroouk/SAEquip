@@ -2030,7 +2030,23 @@ Challenge and one Industry, and all the file's expected counts match.
 - ⚠️ Duda's category counts include HIDDEN products (the two new drafts), so they can read higher
   than what visitors see. Compare the site's counts with `/public/catalogue`.
 - ⚠️ The sitemap's translated product entries are stale (dated 2026-10-06) and still list hidden
-  products. They 404 and carry noindex. The English part is current. **Back up before any taxonomy or assignment write** with
+  products. They 404 and carry noindex. The English part is current.
+
+⚠️ **SA ENDURE is industrial only, NEVER for hazardous areas** (Gill, SA Equip, 2026-10-14:
+"the site may go boom"). SA CYCLONE is the ATEX range. `npm run catalogue:phase5b` (Phase 5b)
+applied this to all 17 SA ENDURE products:
+- SA Endure on and SA Cyclone off;
+- no Ex, IECEx, Inmetro or Zone logos; UKCA and Made in Britain untouched;
+- only the 7 industrial industries (never Oil & Gas, Petrochemical, Nuclear, Utilities or
+  Renewables);
+- no hazardous challenge (never Hydrogen, Paint and Coating Drying, Tank and Vessel Entry,
+  Shutdown, Hazardous-Area Lighting or Hazardous-Area Cooling).
+
+The script re-checks the rule on the STORED data after writing, and fails if any product breaks it.
+**Anything that later gives an SA ENDURE product a logo, industry or challenge must keep to this
+rule.** It also used the first logo switch-OFFs (`planLogoToggles()`, explicit ON and OFF lists);
+`planLogos()` stays ON-only. It hid the Tasklight Floor Stand, Filters (SAFU/), the 3 weekly rentals
+and LEV Accessories, and set the Tasklight Base Unit SKU to SATL/BU. **Back up before any taxonomy or assignment write** with
 `npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
 it exports every product–category link, the mirror, the order, the logos and logo toggles, the
 logo and category translations, and Duda's full category and product state, with a manifest of
