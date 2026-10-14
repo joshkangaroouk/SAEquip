@@ -53,6 +53,7 @@
     "catalogue:phase5b": "tsx src/scripts/cataloguePhase5b.ts",
     "catalogue:phase5c": "tsx src/scripts/cataloguePhase5c.ts",
     "catalogue:filter-default": "tsx src/scripts/filterTypeDefault.ts",
+    "catalogue:add-challenge": "tsx src/scripts/addSiteChallenge.ts",
     "quote-widgets:test": "node scripts/quote-widgets-test.mjs",
     "distributor-widget:test": "node scripts/distributor-widget-test.mjs"
   },

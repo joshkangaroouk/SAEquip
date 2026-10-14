@@ -1961,8 +1961,15 @@ runs the two can differ, which is why the dashboard shows the Hub's own counts.
 
 Three top-level parents — **Products**, **Industries**, **Site Challenges** — with the
 product taxonomy adopted under Products and one child per former tag beneath the other two.
-33 categories since 2026-10-13: 15 Site Challenges, 12 Industries and 3 product types under
-their three parents. The first 23 were built by `npm run duda:seed-category-tree
+34 categories since 2026-10-14: 16 Site Challenges, 12 Industries and 3 product types under
+their three parents. The 16th, **Temporary Lighting** (`/category/temporary-lighting`), was added
+after Shutdown and Turnaround Packages for the 4 SA ENDURE lights only, by
+`npm run catalogue:add-challenge --workspace=backend -- --title "…" --after "…" --products <dudaIds> [--confirm]`.
+That script reuses an existing title or creates the category with a clean slug and SEO title, places
+it in `CategoryOrder` (moving the ones below down one) and ADDS the link to each named product.
+It touches nothing else. The desktop menu is edited by hand in Duda. The slug helper `slugFor()`
+lives in `scripts/lib/slug.ts`, so scripts never import each other (importing a script runs its
+`main()`). The first 23 were built by `npm run duda:seed-category-tree
 --workspace=backend` (dry run by default, `--confirm` to write, `--verify` to print the live
 tree).
 

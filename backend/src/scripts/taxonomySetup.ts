@@ -25,6 +25,7 @@ import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { prisma } from "../prisma.js";
 import { duda } from "../services/duda.js";
+import { slugFor } from "./lib/slug.js";
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -34,15 +35,6 @@ const confirm = process.argv.includes("--confirm");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ROOT = "ROOT";
 
-/** "Confined-Space Ventilation" → "confined-space-ventilation"; "&" is dropped, like the existing slugs. */
-export function slugFor(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/&/g, " ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 async function main() {
   const masterPath = arg("master");
