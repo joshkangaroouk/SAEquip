@@ -46,6 +46,7 @@
     "script-guards:test": "tsx scripts/script-guards-test.ts",
     "catalogue:backup": "tsx src/scripts/catalogueBackup.ts",
     "catalogue:hire-purchase": "tsx src/scripts/catalogueHirePurchase.ts",
+    "catalogue:old-site-options": "tsx src/scripts/catalogueOldSiteOptions.ts",
     "taxonomy:setup": "tsx src/scripts/taxonomySetup.ts",
     "taxonomy:assign": "tsx src/scripts/taxonomyAssign.ts",
     "logos:assign": "tsx src/scripts/logosAssign.ts",
