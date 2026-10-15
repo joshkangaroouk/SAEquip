@@ -3,6 +3,7 @@ import { duda } from "../services/duda.js";
 import { syncHubProduct } from "../services/hubProduct.js";
 import { sanitisePlainText } from "../services/descriptionHtml.js";
 import { prisma } from "../prisma.js";
+import { productFacets } from "../services/facets.js";
 
 /**
  * Write `seo.title` and `seo.description` for every product.
@@ -20,7 +21,11 @@ import { prisma } from "../prisma.js";
  * to be careful, but a bulk write does not need to be.
  *
  * ⚠️ Existing values are never overwritten without `--force`. Anything a human
- * has written by hand beats anything generated from a template.
+ * has written by hand beats anything generated from a template. The one
+ * exception is this script's OWN sentence "Certified equipment for hazardous
+ * areas from SA Equip." where it is not true (fixed 2026-10-15): it used to be
+ * added to every short description, so 21 brackets, films and bags with no
+ * certification logo claimed to be certified. Such a description is rewritten.
  */
 
 const args = process.argv.slice(2);
@@ -88,12 +93,27 @@ function keyWords(name: string): string[] {
  * applications, then bare name plus SKU, so the two products with no content
  * at all still get something unique rather than nothing.
  */
+export const CERTIFIED_TAIL = "Certified equipment for hazardous areas from SA Equip.";
+/**
+ * The closing sentence a short description gets, true for THIS product:
+ * certified only when it carries a hazardous-area certification logo (EX,
+ * IECEx, Inmetro, a Zone; not UKCA or Made in Britain), never for SA ENDURE.
+ */
+export function contextSentence(p: { certified: boolean; industrial: boolean; accessory: boolean }): string {
+  if (p.industrial) return "Industrial equipment from SA Equip.";
+  if (p.certified) return CERTIFIED_TAIL;
+  if (p.accessory) return "An accessory for SA Equip's hazardous-area equipment.";
+  return "From SA Equip.";
+}
+
 export function seoDescription(input: {
   name: string;
   descriptionHtml?: string | null;
   benefits: string[];
   applications: string[];
   sku?: string | null;
+  /** The closing sentence for short copy, from contextSentence(). */
+  context: string;
 }): string {
   const body = sanitisePlainText(input.descriptionHtml ?? "");
 
@@ -150,7 +170,7 @@ export function seoDescription(input: {
 
   // Short accessory copy — give it context rather than shipping a fragment.
   if (out.length < DESC_MIN) {
-    const tail = "Certified equipment for hazardous areas from SA Equip.";
+    const tail = input.context;
     if (`${out} ${tail}`.length <= DESC_TARGET + 5) out = `${out} ${tail}`;
     else if (input.sku) out = `${out} SKU ${input.sku}.`;
   }
@@ -173,7 +193,9 @@ async function main() {
       dudaProductId: true,
       descriptionHtml: true,
       sku: true,
+      isAccessory: true,
       textItems: { select: { kind: true, text: true }, orderBy: { sortOrder: "asc" } },
+      logos: { select: { logo: { select: { kind: true, label: true, alt: true, mediaAsset: { select: { filename: true } } } } } },
     },
   });
   const byId = new Map(hub.map((h) => [h.dudaProductId, h]));
@@ -182,11 +204,20 @@ async function main() {
     const h = byId.get(p.id);
     const benefits = (h?.textItems ?? []).filter((t) => t.kind === "BENEFIT").map((t) => t.text);
     const applications = (h?.textItems ?? []).filter((t) => t.kind === "APPLICATION").map((t) => t.text);
+    const logos = (h?.logos ?? []).map((l) => ({ kind: l.logo.kind, label: l.logo.label, alt: l.logo.alt, filename: l.logo.mediaAsset.filename }));
+    const context = contextSentence({
+      certified: logos.some((l) => l.kind === "CERT_LOGO" && !/ukca|made.?in.?brit/i.test(`${l.label} ${l.alt} ${l.filename}`)),
+      industrial: productFacets(logos).use === "industrial",
+      accessory: !!h?.isAccessory,
+    });
+    const existingDesc = (p.seo?.description ?? "").trim();
     return {
       id: p.id,
       name: p.name ?? "",
       existingTitle: (p.seo?.title ?? "").trim(),
-      existingDesc: (p.seo?.description ?? "").trim(),
+      existingDesc,
+      // Our own certification sentence on a product it is not true of.
+      falseClaim: existingDesc.includes(CERTIFIED_TAIL) && context !== CERTIFIED_TAIL,
       title: seoTitle(p.name ?? ""),
       description: seoDescription({
         name: p.name ?? "",
@@ -194,6 +225,7 @@ async function main() {
         benefits,
         applications,
         sku: h?.sku,
+        context,
       }),
     };
   });
@@ -217,11 +249,11 @@ async function main() {
     }
   }
 
-  const work = plan.filter((p) => force || !p.existingTitle || !p.existingDesc);
+  const work = plan.filter((p) => force || !p.existingTitle || !p.existingDesc || p.falseClaim);
 
-  console.log(`\n${live.length} products, ${work.length} to write\n`);
+  console.log(`\n${live.length} products, ${work.length} to write (${work.filter((p) => p.falseClaim).length} correcting a certification claim that is not true)\n`);
   for (const p of work) {
-    console.log(`  ${p.name}`);
+    console.log(`  ${p.name}${p.falseClaim ? `  (was: ${p.existingDesc})` : ""}`);
     console.log(`    title (${String(p.title.length).padStart(2)}) ${p.title}`);
     console.log(`    desc  (${String(p.description.length).padStart(3)}) ${p.description}\n`);
   }
@@ -246,8 +278,9 @@ async function main() {
     try {
       // title + description only. product_url is preserved (probed), and not
       // sending it means this can never change a live URL by accident.
+      // A correction rewrites only the description: the title may be a human's.
       const updated = await duda.updateProduct(p.id, {
-        seo: { title: p.title, description: p.description },
+        seo: p.existingTitle && !force ? { description: p.description } : { title: p.title, description: p.description },
       });
       await syncHubProduct(updated);
       ok++;

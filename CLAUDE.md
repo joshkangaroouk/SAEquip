@@ -2444,6 +2444,16 @@ Rules the generator follows, each of which came from a bad first draft:
 - **The product name must appear in the description**, matched on ≥70% of its significant words rather than as an exact substring. Exact matching produced "Trolley for EX Heater. Trolley for SA FLEXIHEAT EX Heater." — the name was there, just with the range name inserted mid-phrase.
 - **Boilerplate sentences are skipped** ("Disclaimer:", "Please note", "Sales Team will confirm…") unless they are the entire description. Five products led their meta description with a caveat otherwise.
 - **Short accessory copy gets a context sentence** rather than shipping an 40-char fragment.
+- **Short copy gets a closing sentence that is TRUE for the product** (`contextSentence()`, fixed
+  2026-10-15). It used to add "Certified equipment for hazardous areas from SA Equip." to every
+  short description, so 21 brackets, films, bags and stands with no certification logo claimed to
+  be certified. Now: a hazardous-area certification logo (EX, IECEx, Inmetro, a Zone; not UKCA or
+  Made in Britain) → that sentence; SA ENDURE → "Industrial equipment from SA Equip."; an
+  uncertified accessory → "An accessory for SA Equip's hazardous-area equipment."; anything else
+  → "From SA Equip.". A run rewrites any description still carrying the old sentence where it is
+  untrue, the one thing it overwrites without `--force`, and leaves the title alone when doing so.
+  Applied 2026-10-15: 21 corrected, and SA ENDURE LED Max Light (created after the first run)
+  filled, so all 88 visible products have both fields. Live within about a minute; no publish.
 - **A final de-duplication pass** disambiguates by SKU. Before the name rule, five products shared a description verbatim — several "Purchase Only" items with identical disclaimer text — which search engines treat as duplicate content.
 
 ### The products listing (`/products`)
