@@ -309,6 +309,8 @@
    */
   var I18N = {
     en: {
+      "back.back": "Back",
+      "back.all": "Back to all products",
       "tab.overview": "Overview",
       "tab.specs": "Technical Specs",
       "tab.benefits": "Key Benefits",
@@ -399,6 +401,8 @@
       "rq.err.network": "Sorry, we couldn't reach the server. Please check your connection and try again.",
     },
     ar: {
+      "back.back": "رجوع",
+      "back.all": "العودة إلى جميع المنتجات",
       "tab.overview": "نظرة عامة",
       "tab.specs": "المواصفات الفنية",
       "tab.benefits": "المزايا الرئيسية",
@@ -484,6 +488,8 @@
       "rq.err.network": "عذرًا، تعذّر الوصول إلى الخادم. يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
     },
     zh: {
+      "back.back": "返回",
+      "back.all": "返回所有产品",
       "tab.overview": "概述",
       "tab.specs": "技术规格",
       "tab.benefits": "主要优势",
@@ -562,6 +568,8 @@
       "rq.err.network": "抱歉，无法连接服务器。请检查网络连接后重试。",
     },
     fr: {
+      "back.back": "Retour",
+      "back.all": "Retour à tous les produits",
       "tab.overview": "Présentation",
       "tab.specs": "Caractéristiques techniques",
       "tab.benefits": "Principaux avantages",
@@ -640,6 +648,8 @@
       "rq.err.network": "Désolé, impossible de joindre le serveur. Vérifiez votre connexion et réessayez.",
     },
     de: {
+      "back.back": "Zurück",
+      "back.all": "Zurück zu allen Produkten",
       "tab.overview": "Übersicht",
       "tab.specs": "Technische Daten",
       "tab.benefits": "Hauptvorteile",
@@ -718,6 +728,8 @@
       "rq.err.network": "Der Server ist leider nicht erreichbar. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     },
     "pt-br": {
+      "back.back": "Voltar",
+      "back.all": "Voltar para todos os produtos",
       "tab.overview": "Visão geral",
       "tab.specs": "Especificações técnicas",
       "tab.benefits": "Principais benefícios",
@@ -796,6 +808,8 @@
       "rq.err.network": "Desculpe, não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.",
     },
     es: {
+      "back.back": "Volver",
+      "back.all": "Volver a todos los productos",
       "tab.overview": "Descripción general",
       "tab.specs": "Especificaciones técnicas",
       "tab.benefits": "Ventajas principales",
@@ -1451,6 +1465,11 @@
       // with the brand yellow only on the icon: a safety notice, not a promotion.
       ".saeh-ind{display:flex;align-items:center;gap:8px;background:#2b2b2b;color:#fff;font-family:var(--saeh-head);font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;line-height:1.25;padding:7px 10px}",
       ".saeh-ind svg{flex:0 0 auto}",
+      // The product page's back link: small and quiet, darker on hover.
+      ".saeh-root a.saeh-back{display:inline-flex;align-items:center;gap:4px;margin:0 0 12px;font-family:var(--saeh-body);font-size:14px;line-height:1.4;color:#6b6b6b;text-decoration:none;transition:color .15s}",
+      ".saeh-root a.saeh-back:hover{color:#111;text-decoration:underline;text-underline-offset:3px}",
+      ".saeh-root a.saeh-back:focus-visible{outline:2px solid #111;outline-offset:2px;color:#111}",
+      ".saeh-back svg{flex:0 0 auto}",
       ".saeh-ind-page{display:flex;align-items:flex-start;gap:12px;background:#2b2b2b;color:#fff;padding:14px 16px;margin-top:14px;max-width:560px}",
       ".saeh-ind-page svg{flex:0 0 auto;margin-top:2px}",
       ".saeh-ind-page b{display:block;font-family:var(--saeh-head);font-size:15px;letter-spacing:.02em;text-transform:uppercase;margin-bottom:3px}",
@@ -2660,6 +2679,10 @@
     if (name === "cert-logos") return logos.cert && logos.cert.length ? logoSection("", logos.cert) : null;
     if (name === "sa-logos") {
       var sec = logos.sa && logos.sa.length ? logoSection("", logos.sa) : null;
+      // The back link sits above the range logos, on every product page: a
+      // product with no range logo still gets a section holding just the link.
+      if (!sec) sec = el("div", "saeh-section");
+      sec.insertBefore(backLink(), sec.firstChild);
       // ⚠️ SA ENDURE: industrial use only, never hazardous areas (SA Equip).
       if (sec && data.use === "industrial") {
         var call = el("div", "saeh-ind-page");
@@ -3121,6 +3144,61 @@
   }
 
   var CARD_CHIP_LIMIT = 2;
+
+  /*
+   * "Back", above the range logos on a product page (Josh, 2026-10-15).
+   * Arrived from another page of this site: it goes BACK in history, so the
+   * listing returns with its filters and scroll (measured: the browser
+   * restores the page whole). Arrived from anywhere else, or opened in a new
+   * tab with nothing to go back to: "Back to all products", a plain link to
+   * the Products category in the page's language. Either way it is a real
+   * link: the href is the page it goes to, so open-in-new-tab works and only
+   * a plain click is turned into history.back().
+   */
+  var ALL_PRODUCTS = "/category/products";
+  function sameSiteReferrer() {
+    try {
+      if (!document.referrer) return null;
+      var r = new URL(document.referrer);
+      if (r.origin !== location.origin || r.pathname === location.pathname) return null;
+      return r.href;
+    } catch (e) {
+      return null;
+    }
+  }
+  function backLink() {
+    var a = document.createElement("a");
+    a.className = "saeh-back";
+    var from = sameSiteReferrer();
+    var goesBack = !!from && window.history && history.length > 1;
+    a.href = from || localHref(ALL_PRODUCTS);
+    var NS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "15");
+    svg.setAttribute("height", "15");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    var path = document.createElementNS(NS, "path");
+    path.setAttribute("d", "M15 5l-7 7 7 7");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "2.2");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(path);
+    a.appendChild(svg);
+    a.appendChild(el("span", null, T(from ? "back.back" : "back.all")));
+    if (goesBack) {
+      a.addEventListener("click", function (e) {
+        // A modified or middle click opens the href, as any link would.
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        history.back();
+      });
+    }
+    return a;
+  }
 
   /*
    * Site Challenges show 5 options, and the rest scroll inside their own box

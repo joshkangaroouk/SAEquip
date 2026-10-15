@@ -42,10 +42,11 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, leadResponse = undefined, url = undefined, htmlLang = undefined, parameters = undefined, setup = undefined } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, leadResponse = undefined, url = undefined, htmlLang = undefined, parameters = undefined, setup = undefined, referrer = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><html${htmlLang ? ` lang="${htmlLang}"` : ""}><body>${body}<div id="host"></div></body></html>`, {
     url: url ?? "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
+    ...(referrer ? { referrer } : {}),
   });
   const w = dom.window;
   let fetchedUrl = null;
@@ -701,6 +702,52 @@ async function main() {
     check(call.querySelector("b").textContent === "Industrial use only" && /never use it in a refinery, offshore or any explosive atmosphere/.test(call.textContent), "…with its title and explanation");
     const { d: p2 } = await boot({ props: { section: "sa-logos" }, payload: { ...FULL, logos: { sa: [{ url: "https://x/lumin.jpg", alt: "SA Lumin", label: "SA Lumin Logo" }], cert: [] }, use: "atex" } });
     check(!p2.querySelector(".saeh-ind-page"), "…and no callout on an ATEX-range product");
+  }
+
+  console.log("\n=== product page: the back link above the range logos ===");
+  {
+    const SA = { props: { section: "sa-logos" }, payload: { ...FULL, logos: { sa: [{ url: "https://x/lumin.jpg", alt: "SA Lumin" }], cert: [] } } };
+    const LISTING = "https://saequip.multiscreensite.com/category/lighting-and-power";
+    // jsdom starts every window with one history entry; a visitor who clicked
+    // through from the listing has two.
+    const twoEntries = (w) => {
+      Object.defineProperty(w.history, "length", { value: 2, configurable: true });
+      w.history.back = () => { w.__wentBack = (w.__wentBack || 0) + 1; };
+    };
+    const back = (d) => d.querySelector("a.saeh-back");
+
+    const { d: direct } = await boot(SA);
+    check(!!back(direct) && back(direct).textContent === "Back to all products" && back(direct).getAttribute("href") === "/category/products",
+      "opened directly: \"Back to all products\", linking to the Products category", back(direct)?.outerHTML.slice(0, 160));
+    const sec = direct.querySelector(".saeh-section");
+    check(sec.firstChild === back(direct) && !!sec.querySelector(".saeh-logos"), "…above the SA range logos");
+    check(back(direct).querySelector("svg")?.getAttribute("aria-hidden") === "true", "…with its chevron drawn inline and hidden from screen readers");
+
+    const { d: fromList, w: wl } = await boot({ ...SA, referrer: LISTING, setup: twoEntries });
+    const b = back(fromList);
+    check(b.textContent === "Back" && b.getAttribute("href") === LISTING, "from a page of this site: \"Back\", its href the page they came from", b.getAttribute("href"));
+    const click = new wl.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    b.dispatchEvent(click);
+    check(click.defaultPrevented && wl.__wentBack === 1, "…and a plain click goes BACK in history, so the listing keeps its filters");
+    const ctrl = new wl.MouseEvent("click", { bubbles: true, cancelable: true, button: 0, ctrlKey: true });
+    b.dispatchEvent(ctrl);
+    check(!ctrl.defaultPrevented && wl.__wentBack === 1, "…while a modified click opens the href, as any link would");
+
+    const { d: google } = await boot({ ...SA, referrer: "https://www.google.com/", setup: twoEntries });
+    check(back(google).textContent === "Back to all products" && back(google).getAttribute("href") === "/category/products",
+      "from another website: back to all products, never back to Google");
+    const { d: newTab, w: wt } = await boot({ ...SA, referrer: LISTING });
+    const c2 = new wt.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    back(newTab).dispatchEvent(c2);
+    check(back(newTab).textContent === "Back" && !c2.defaultPrevented, "opened in a new tab from the listing: a plain link to it, nothing to go back through");
+
+    const { d: fr } = await boot({ ...SA, url: "https://saequip.multiscreensite.com/fr/product/ex-heater", htmlLang: "fr" });
+    check(back(fr).textContent === "Retour à tous les produits" && back(fr).getAttribute("href") === "/fr/category/products",
+      "in French: translated, and the link keeps the language", back(fr).getAttribute("href"));
+    const { d: none } = await boot({ props: { section: "sa-logos" }, payload: { ...FULL, logos: { sa: [], cert: [] } } });
+    check(!!back(none), "a product with no range logo still gets the link");
+    const css = direct.getElementById("saeh-styles").textContent;
+    check(/a\.saeh-back:focus-visible\{outline:2px solid #111/.test(css), "…with a visible keyboard focus");
   }
 
   console.log("\n=== product listing: cards and layout ===");

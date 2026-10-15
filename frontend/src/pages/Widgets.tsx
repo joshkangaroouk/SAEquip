@@ -177,6 +177,10 @@ const WIDGET_CSS = `
 .saeh-pl-sub{font-size:12px;color:#8a8a8a;margin:-2px 0 4px;line-height:1.4}
 .saeh-ind{display:flex;align-items:center;gap:8px;background:#2b2b2b;color:#fff;font-family:var(--saeh-head);font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;line-height:1.25;padding:7px 10px}
 .saeh-ind svg{flex:0 0 auto}
+.saeh-root a.saeh-back{display:inline-flex;align-items:center;gap:4px;margin:0 0 12px;font-family:var(--saeh-body);font-size:14px;line-height:1.4;color:#6b6b6b;text-decoration:none;transition:color .15s}
+.saeh-root a.saeh-back:hover{color:#111;text-decoration:underline;text-underline-offset:3px}
+.saeh-root a.saeh-back:focus-visible{outline:2px solid #111;outline-offset:2px;color:#111}
+.saeh-back svg{flex:0 0 auto}
 .saeh-ind-page{display:flex;align-items:flex-start;gap:12px;background:#2b2b2b;color:#fff;padding:14px 16px;margin-top:14px;max-width:560px}
 .saeh-ind-page svg{flex:0 0 auto;margin-top:2px}
 .saeh-ind-page b{display:block;font-family:var(--saeh-head);font-size:15px;letter-spacing:.02em;text-transform:uppercase;margin-bottom:3px}

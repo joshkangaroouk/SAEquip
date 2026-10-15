@@ -940,6 +940,24 @@ one job, two pickers in the editor and two places to look.
 category: the dropdown's Fetch URL becomes `/public/categories/options?parent=<slug>` and the
 content-panel variable becomes `productCategory`.
 
+## The product page's back link (in `sa-logos`, 2026-10-15)
+
+`backLink()` puts a small "Back" link (an inline chevron, never fetched) above the SA range logos,
+on every product page; a product with no range logo gets a section holding just the link.
+- **Arrived from another page of this site** (a same-origin `document.referrer` that is not this
+  page) and there is history to go back through: "Back". A plain click runs `history.back()`.
+  ⚠️ **That is what keeps the listing's filters and scroll**: measured in Chrome, the category page
+  comes back from the browser's back/forward cache whole (ticks, cards and scroll). Re-navigating
+  to the referrer URL would reload it with no filters.
+- **Anything else** (typed, bookmarked, Google, an email): "Back to all products", a plain link to
+  `/category/products` in the page's language.
+- It is always a real `<a>` whose href is where it goes, so open-in-new-tab and a modified click
+  behave as on any link; only a plain left click becomes `history.back()`. A page opened in a new
+  tab from the listing has a referrer but nothing to go back through, so it gets a plain link to
+  the referrer.
+- Text through `T()` (`back.back`, `back.all`) in all seven languages, machine-drafted like the
+  rest.
+
 ## The tabbed accordion (`section: "tabs"`)
 
 The product page's main widget: Overview / Technical Specs / Key Benefits / Applications.
