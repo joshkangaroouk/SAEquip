@@ -1458,7 +1458,8 @@
       ".saeh-pl-group:first-child{margin-top:4px}",
       ".saeh-pl-optlist{position:relative}",
       ".saeh-pl-capped{overflow-y:auto;scrollbar-width:thin}",
-      ".saeh-pl-more{box-shadow:inset 0 -14px 12px -12px rgba(0,0,0,.14)}",
+      // ⚠️ Not `.saeh-pl-more`: that is the "Load more" button, a flex row.
+      ".saeh-pl-fade{box-shadow:inset 0 -14px 12px -12px rgba(0,0,0,.14)}",
       ".saeh-pl-glabel{font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}",
       ".saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:14px;color:#555;line-height:1.35}",
       ".saeh-pl-opt:hover{color:#111}",
@@ -3137,8 +3138,8 @@
     list.className += " saeh-pl-capped";
     function more() {
       var atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 2;
-      if (atEnd) list.classList.remove("saeh-pl-more");
-      else list.classList.add("saeh-pl-more");
+      if (atEnd) list.classList.remove("saeh-pl-fade");
+      else list.classList.add("saeh-pl-fade");
     }
     function fit() {
       var last = list.children[n - 1];

@@ -560,11 +560,16 @@ async function main() {
     Object.defineProperty(mbox, "scrollHeight", { value: want + 30, configurable: true });
     observed();
     await new Promise((r) => setTimeout(r, 40));
-    check(mbox.classList.contains("saeh-pl-more"), "a shadow says there is more below");
+    check(mbox.classList.contains("saeh-pl-fade"), "a shadow says there is more below");
+    // ⚠️ Its own class: it once reused .saeh-pl-more, the Load more button's
+    // flex row, and live the options lined up side by side.
+    const mcss = m.getElementById("saeh-styles").textContent;
+    check((mcss.match(/\.saeh-pl-fade\{/g) || []).length === 1 && !/\.saeh-pl-more\{[^}]*box-shadow/.test(mcss) && !mbox.classList.contains("saeh-pl-more"),
+      "…using a class of its own, not the Load more button's");
     mbox.scrollTop = 30;
     Object.defineProperty(mbox, "scrollTop", { value: 30, configurable: true });
     mbox.dispatchEvent(new m.defaultView.Event("scroll"));
-    check(!mbox.classList.contains("saeh-pl-more"), "…and goes once the list is scrolled to the end");
+    check(!mbox.classList.contains("saeh-pl-fade"), "…and goes once the list is scrolled to the end");
   }
 
   console.log("\n=== product listing: Use, Range, ATEX zone and Hide accessories ===");
