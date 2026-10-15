@@ -21,6 +21,7 @@ import {
   useConfirm,
 } from "../components/ui";
 import { apiJson } from "../lib/api";
+import { UsageDialog } from "../components/UsagePill";
 import type { CatalogOption, OptionCatalog } from "../components/product/productEditorTypes";
 
 /**
@@ -338,9 +339,7 @@ export default function ProductOptions() {
                       </div>
                     </TD>
                     <TD>
-                      <Badge tone={o.usage > 0 ? "neutral" : "danger"}>
-                        {o.usage} {o.usage === 1 ? "product" : "products"}
-                      </Badge>
+                      <IncludedIn option={o} />
                     </TD>
                     <TD>
                       <DropdownMenu
@@ -431,6 +430,49 @@ export default function ProductOptions() {
           )}
         </div>
       </Modal>
+    </>
+  );
+}
+
+/**
+ * "Included in N products", which opens the list of them: name and SKU, each
+ * linking to that product's editor. The catalogue response already carries
+ * the list, so nothing is fetched. At 0 it stays a plain (red) badge, since a
+ * popup listing nothing is a click wasted.
+ */
+function IncludedIn({ option }: { option: CatalogOption }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const label = `${option.usage} ${option.usage === 1 ? "product" : "products"}`;
+  if (option.usage === 0 || option.products.length === 0) {
+    return <Badge tone={option.usage > 0 ? "neutral" : "danger"}>{label}</Badge>;
+  }
+  const products = [...option.products]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((p) => ({ dudaProductId: p.id, name: p.name, sku: p.sku, thumbnailUrl: null, via: [] }));
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        title="See which products use this option"
+        className="group rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        <Badge tone="neutral" className="cursor-pointer transition-colors group-hover:border-text group-hover:text-text">
+          {label}
+        </Badge>
+      </button>
+      {open && (
+        <UsageDialog
+          count={option.usage}
+          subject={`Option: ${option.name}`}
+          verb="Included in"
+          thumbnails={false}
+          load={() => Promise.resolve({ products })}
+          onClose={close}
+        />
+      )}
     </>
   );
 }

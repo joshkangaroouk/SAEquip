@@ -505,6 +505,15 @@ export const duda = {
     return dudaRequest<DudaOption>("POST", PATHS.optionChoices(site(), optionId), { value });
   },
 
+  /**
+   * Renames a choice IN PLACE: its id is kept, so every product exposing it
+   * keeps it and no variation is regenerated (probed 2026-10-15; PATCH is
+   * refused, PUT works).
+   */
+  async updateOptionChoice(optionId: string, choiceId: string, value: string): Promise<void> {
+    await dudaRequest<unknown>("PUT", PATHS.optionChoice(site(), optionId, choiceId), { value });
+  },
+
   /** Removing a choice DOES affect every product currently exposing it. */
   async deleteOptionChoice(optionId: string, choiceId: string): Promise<void> {
     await dudaRequest<unknown>("DELETE", PATHS.optionChoice(site(), optionId, choiceId));

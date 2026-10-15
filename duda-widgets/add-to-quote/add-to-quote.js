@@ -552,6 +552,32 @@
     }
     return out;
   }
+  /* A replacement filter is sold, never hired (Josh, 2026-10-15). When "What
+     do you need?" is anything but the unit itself (the option's FIRST choice
+     on the product, which is how the store lists them), the line is recorded
+     as Purchase whatever Hire/Purchase shows. The page itself is left as it is.
+     Both options are found by Duda's ids, which are the same in every
+     language, and what is written is the page's own label for Purchase. */
+  var NEED_OPTION = '01M4ZM082NQ5J5WDWDTJM1BKC4';
+  var HIRE_PURCHASE = '01KW9TRW04JDNAQXD6P8QKX15T', PURCHASE = '01KW9TRW04JDNAQXD6P8QKX15W';
+  function purchaseForFilters(selected, choices, pageOptions) {
+    var byId = function (id) {
+      for (var i = 0; i < (pageOptions || []).length; i++) if (pageOptions[i] && pageOptions[i].id === id) return pageOptions[i];
+      return null;
+    };
+    var same = function (a, b) { return clean(a).toLowerCase() === clean(b).toLowerCase(); };
+    var keyOf = function (o) { return Object.keys(selected).filter(function (l) { return same(l, o.name); })[0]; };
+    var need = byId(NEED_OPTION), hp = byId(HIRE_PURCHASE);
+    if (!need || !hp || !need.opt_choices || !need.opt_choices.length) return;
+    var unit = need.opt_choices[0];
+    var picked = choices && choices[NEED_OPTION];
+    var isUnit = picked ? picked === unit.id : (keyOf(need) === undefined || same(selected[keyOf(need)], unit.value));
+    if (isUnit) return;
+    var buy = (hp.opt_choices || []).filter(function (c) { return c.id === PURCHASE; })[0];
+    if (!buy) return;
+    selected[keyOf(hp) || clean(hp.name)] = clean(buy.value);
+    if (choices) choices[HIRE_PURCHASE] = PURCHASE;
+  }
   /* =============================== END DUDA ADAPTER ======================= */
 
   /* options expected? (see earlier notes — supports optionless products) */
@@ -607,6 +633,8 @@
     }
 
     var product = readProduct();
+    var choices = choiceIds(opts.selected, product.options);
+    purchaseForFilters(opts.selected, choices, product.options);
     try {
       Quote.add({
         name:     product.name,
@@ -618,7 +646,7 @@
         quantity: getQty(),
         dudaId:   product.dudaId || '',
         slug:     product.slug || '',
-        choices:  choiceIds(opts.selected, product.options)
+        choices:  choices
       });
       /* tell the header widget to auto-open its dropdown (desktop only) */
       document.dispatchEvent(new CustomEvent('saequip:quote-added'));

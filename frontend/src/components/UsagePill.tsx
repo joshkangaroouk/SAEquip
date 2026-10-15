@@ -49,16 +49,26 @@ export function UsagePill({
   );
 }
 
-function UsageDialog({
+/**
+ * The list of products behind a usage count, each opening its editor. Also
+ * used on its own, by the Product Options page's "Included in" badge.
+ */
+export function UsageDialog({
   count,
   subject,
   load,
   onClose,
+  verb = "Used on",
+  thumbnails = true,
 }: {
   count: number;
   subject: string;
   load: () => Promise<AssetUsage>;
   onClose: () => void;
+  /** The heading's verb: "Used on 3 products", "Included in 3 products". */
+  verb?: string;
+  /** Off where the caller has no pictures: a column of placeholders says nothing. */
+  thumbnails?: boolean;
 }) {
   const [data, setData] = useState<AssetUsage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +100,7 @@ function UsageDialog({
     <Modal
       open
       onClose={onClose}
-      title={`Used on ${n} product${n === 1 ? "" : "s"}`}
+      title={`${verb} ${n} product${n === 1 ? "" : "s"}`}
       description={
         <span className="[overflow-wrap:anywhere]">
           {subject}
@@ -128,7 +138,7 @@ function UsageDialog({
           {!data &&
             Array.from({ length: Math.min(count, 6) }, (_, i) => (
               <li key={i} className="flex items-center gap-3 px-2 py-2">
-                <Skeleton className="h-10 w-10 shrink-0" />
+                {thumbnails && <Skeleton className="h-10 w-10 shrink-0" />}
                 <span className="flex-1">
                   <Skeleton className="h-4 w-3/5" />
                   <Skeleton className="mt-1.5 h-3 w-1/4" />
@@ -140,7 +150,7 @@ function UsageDialog({
           )}
           {products.map((p) => (
             <li key={p.dudaProductId}>
-              <ProductRow product={p} showVia={!sharedVia} />
+              <ProductRow product={p} showVia={!sharedVia} thumbnail={thumbnails} />
             </li>
           ))}
         </ul>
@@ -149,14 +159,14 @@ function UsageDialog({
   );
 }
 
-function ProductRow({ product: p, showVia }: { product: UsageProduct; showVia: boolean }) {
+function ProductRow({ product: p, showVia, thumbnail }: { product: UsageProduct; showVia: boolean; thumbnail: boolean }) {
   const [broken, setBroken] = useState(false);
   return (
     <Link
       to={`/products/${p.dudaProductId}`}
       className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-white">
+      {thumbnail && <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-white">
         {p.thumbnailUrl && !broken ? (
           <img
             src={p.thumbnailUrl}
@@ -168,7 +178,7 @@ function ProductRow({ product: p, showVia }: { product: UsageProduct; showVia: b
         ) : (
           <ImageOff className="h-4 w-4 text-subtle" aria-hidden="true" />
         )}
-      </span>
+      </span>}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-body font-semibold text-text">{p.name || "Untitled product"}</span>
         <span className="block truncate text-xs text-muted">
