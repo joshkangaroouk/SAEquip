@@ -1,6 +1,5 @@
 /**
- * Hire/Purchase as the OLD site offered it, and "What do you need?" on the
- * filtration units (Josh, 15 Oct 2026).
+ * Hire/Purchase as the OLD site offered it (Josh, 15 Oct 2026).
  *
  *   npm run catalogue:old-site-options --workspace=backend -- --plan <hire-purchase-plan.json> [--confirm]
  *
@@ -11,12 +10,10 @@
  *     first; [] removes it.
  *   - The SA Rental logo is ON exactly when Hire is offered (null: untouched).
  *   - The Filtration Unit (SAFU) is not an accessory (its main-product flag).
- *   - "What do you need?" goes FIRST on the units in FILTERS: the unit, then
- *     the replacement filters the old site listed for it. Existing options
- *     (Filter Type) are kept. A filter is sold, never hired: the Add to Quote
- *     widget records Purchase for any choice but the unit (the FIRST one).
- *     Choices named with the earlier " (purchase only)" suffix are renamed in
- *     place (same id), so a re-run never brings the suffix back.
+ *   - RETIRED options are taken off every product and deleted from the store.
+ *     "What do you need?" (the unit or a replacement filter, on SAECFU and the
+ *     Filtration Unit) was added and then retired the same day (Josh), so a
+ *     re-run can never bring it back. Other options (Filter Type) are kept.
  *
  * Options go through updateOptionsPreservingVariations(); a product whose
  * variations carry data that would be lost stops the run first. Dry run by default.
@@ -25,7 +22,7 @@ import "dotenv/config";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { prisma } from "../prisma.js";
-import { duda, type DudaOption, type DudaOptionRef } from "../services/duda.js";
+import { duda, type DudaOptionRef } from "../services/duda.js";
 import { updateOptionsPreservingVariations } from "../services/productOptions.js";
 
 const confirm = process.argv.includes("--confirm");
@@ -36,26 +33,8 @@ function arg(name: string): string | undefined {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const HP_NAME = "Hire/Purchase";
-const WDYN = "What do you need?";
-const P = "";
-/** The suffix the filter choices carried until 2026-10-15 (Josh asked for it to go). */
-const OLD_SUFFIX = " (purchase only)";
-const G4 = `G4 Filter (Stage 1)${P}`, F7 = `F7 Bag Filter (Stage 2)${P}`, HEPA = `HEPA H14 Filter (Stage 2)${P}`;
-/** Unit first, then the filters as the old site listed them for that unit. */
-const FILTERS: { sku: string; name: string; choices: string[]; from: string }[] = [
-  {
-    sku: "SAECFU", name: "Compact Filtration Unit (SAECFU)", from: "its own page's Filters choice",
-    choices: ["Compact Filtration Unit", G4, F7, HEPA, `Dust Filter Bundle (12 panel filters & 24 compact bag filters)${P}`],
-  },
-  {
-    sku: "SAFU", name: "Filtration Unit", from: "its replacement-filter products (SAFU/RF)",
-    choices: [
-      "Filtration Unit", G4, F7, HEPA,
-      `Activated Carbon Cartridge – Set of 9 (Stage 3)${P}`, `Activated Carbon Cartridge – Single (Stage 3)${P}`,
-      `Vapour Filter Set${P}`, `2 Stage Standard Dust Filter Set${P}`, `2 Stage Breathable Dust Filter Set${P}`, `3 Stage Breathable Dust Filter Set${P}`,
-    ],
-  },
-];
+/** Taken off every product and deleted from the store (Josh, 2026-10-15). */
+const RETIRED = ["What do you need?"];
 const UNFLAG_ACCESSORY = { sku: "SAFU", name: "Filtration Unit" };
 
 type PlanItem = { dudaId: string; name: string; hp: ("Hire" | "Purchase")[] | null; source: string };
@@ -70,17 +49,8 @@ async function main() {
   const hp = options.find((o) => o.name === HP_NAME);
   if (!hp) throw new Error(`no "${HP_NAME}" option`);
   const hpChoice = (v: string) => hp.choices.find((c) => c.value === v)!.id;
-  let wdyn: DudaOption | undefined = options.find((o) => o.name === WDYN);
-  const wanted = [...new Set(FILTERS.flatMap((f) => f.choices))];
-  // An old-suffixed choice whose plain name is wanted (and not already there) is renamed in place.
-  const renames = (wdyn?.choices ?? [])
-    .filter((c) => c.value.endsWith(OLD_SUFFIX))
-    .map((c) => ({ id: c.id, from: c.value, to: c.value.slice(0, -OLD_SUFFIX.length) }))
-    .filter((r) => wanted.includes(r.to) && !wdyn!.choices.some((c) => c.value === r.to));
-  const renamed = (v: string) => renames.find((r) => r.from === v)?.to ?? v;
-  // Every comparison below sees the names as they will be once renamed.
-  if (wdyn) wdyn = { ...wdyn, choices: wdyn.choices.map((c) => ({ ...c, value: renamed(c.value) })) };
-  const missingChoices = wanted.filter((v) => !wdyn?.choices.some((c) => c.value === v));
+  const retired = options.filter((o) => RETIRED.includes(o.name));
+  const retiredIds = new Set(retired.map((o) => o.id));
 
   const rental = (await prisma.logo.findMany({ where: { kind: "SA_LOGO" }, include: { mediaAsset: { select: { filename: true } } } }))
     .filter((l) => /rental/i.test(`${l.label} ${l.alt} ${l.mediaAsset.filename}`));
@@ -93,28 +63,25 @@ async function main() {
   const hubBy = new Map(hub.map((h) => [h.dudaProductId, h]));
   const missingPlan = visible.filter((p) => !planBy.has(p.id));
   if (missingPlan.length) throw new Error(`not in the plan: ${missingPlan.map((p) => p.name).join(", ")}`);
-  for (const f of [...FILTERS, UNFLAG_ACCESSORY]) {
+  for (const f of [UNFLAG_ACCESSORY]) {
     const p = visible.find((x) => x.sku === f.sku);
     if (!p || p.name !== f.name) throw new Error(`SKU ${f.sku} is "${p?.name}", not "${f.name}"`);
   }
   const unflag = visible.find((p) => p.sku === UNFLAG_ACCESSORY.sku)!;
 
-  console.log(`\n${confirm ? "Applying" : "Dry run —"} Hire/Purchase from the old site, and "${WDYN}"`);
+  console.log(`\n${confirm ? "Applying" : "Dry run —"} Hire/Purchase from the old site`);
   console.log(`  ${UNFLAG_ACCESSORY.name}: accessory ${hubBy.get(unflag.id)!.isAccessory ? "→ main product" : "already a main product"}`);
-  console.log(`  "${WDYN}": ${wdyn ? "in the store" : `to create (${options.length} of 20 options used)`}${missingChoices.length ? `; ${missingChoices.length} choice(s) to add` : ""}${renames.length ? `; ${renames.length} choice(s) to rename in place` : ""}`);
-  for (const r of renames) console.log(`    "${r.from}" → "${r.to}"`);
+  console.log(`  retired options to delete from the store: ${retired.map((o) => `"${o.name}"`).join(", ") || "none"}`);
 
-  // Desired refs per product: What do you need? first, others kept, Hire/Purchase last.
+  // Desired refs per product: retired options dropped, others kept, Hire/Purchase last.
   type Change = { p: (typeof visible)[number]; refs: (DudaOptionRef & { name: string; values: string[] })[]; hpLine: string; filterLine: string };
   const changes: Change[] = [];
   const rentalOn: string[] = [], rentalOff: string[] = [];
   for (const p of visible) {
     const item = planBy.get(p.id)!;
-    const cur = (p.options ?? []).map((o) => ({ id: o.id, name: o.name, choiceIds: (o.choices ?? []).map((c) => c.id), values: (o.choices ?? []).map((c) => (o.name === WDYN ? renamed : String)((c as { value: string }).value)) }));
-    const f = FILTERS.find((x) => x.sku === p.sku && x.name === p.name);
+    const cur = (p.options ?? []).map((o) => ({ id: o.id, name: o.name, choiceIds: (o.choices ?? []).map((c) => c.id), values: (o.choices ?? []).map((c) => (c as { value: string }).value) }));
     const refs: Change["refs"] = [];
-    if (f) refs.push({ id: wdyn?.id ?? "(new)", name: WDYN, choiceIds: f.choices.map((v) => wdyn?.choices.find((c) => c.value === v)?.id ?? `(new:${v})`), values: f.choices });
-    for (const o of cur) if (o.id !== hp.id && o.name !== WDYN) refs.push(o);
+    for (const o of cur) if (o.id !== hp.id && !retiredIds.has(o.id)) refs.push(o);
     const curHp = cur.find((o) => o.id === hp.id);
     const hpWant = item.hp === null ? (curHp ? curHp.values : []) : item.hp;
     if (hpWant.length) refs.push({ id: hp.id, name: HP_NAME, choiceIds: hpWant.map(hpChoice), values: hpWant });
@@ -123,7 +90,7 @@ async function main() {
       changes.push({
         p, refs,
         hpLine: `${curHp ? curHp.values.join("/") : "none"} → ${hpWant.length ? hpWant.join("/") : "none"}`,
-        filterLine: f ? `${WDYN} ${f.choices.length - 1} filters (from ${f.from})` : "",
+        filterLine: cur.filter((o) => retiredIds.has(o.id)).map((o) => `"${o.name}" removed`).join(", "),
       });
     }
     if (item.hp !== null) {
@@ -146,13 +113,9 @@ async function main() {
   if (!confirm) { console.log("\nNothing written.\n"); return; }
 
   await prisma.hubProduct.update({ where: { dudaProductId: unflag.id }, data: { isAccessory: false } });
-  for (const r of renames) await duda.updateOptionChoice(wdyn!.id, r.id, r.to);
-  if (!wdyn) wdyn = await duda.createOption({ name: WDYN, type: "TEXT", choices: wanted });
-  else for (const v of missingChoices) wdyn = await duda.addOptionChoice(wdyn.id, v);
-  const w = wdyn;
   const failed: string[] = [];
   for (const c of changes) {
-    const refs = c.refs.map((r) => (r.name === WDYN ? { id: w.id, choiceIds: r.values.map((v) => w.choices.find((x) => x.value === v)!.id) } : { id: r.id, choiceIds: r.choiceIds }));
+    const refs = c.refs.map((r) => ({ id: r.id, choiceIds: r.choiceIds }));
     try {
       const rep = await updateOptionsPreservingVariations(c.p.id, refs);
       if (rep.dropped.length || rep.failed.length) failed.push(`${c.p.name}: dropped ${rep.dropped.length}, failed ${rep.failed.length}`);
@@ -175,6 +138,14 @@ async function main() {
     const want = c.refs.map((r) => `${r.name}:${r.values.join("|")}`).join(" + ");
     if (got !== want) wrong.push(`${c.p.name}: ${got}`);
   }
+  // A retired option is deleted only once no product at all (hidden ones too) still uses it.
+  for (const o of retired) {
+    const users = after.filter((p) => (p.options ?? []).some((x) => x.id === o.id)).map((p) => p.name);
+    if (users.length) wrong.push(`"${o.name}" not deleted: still on ${users.join(", ")}`);
+    else await duda.deleteOption(o.id);
+  }
+  const left = ((await duda.listOptions()).results ?? []).filter((o) => RETIRED.includes(o.name));
+  if (left.length) wrong.push(`still in the store: ${left.map((o) => o.name).join(", ")}`);
   for (const n of rentalOn) if (!hubAfter.get(visible.find((p) => p.name === n)!.id)!.logos.some((l) => l.logoId === rentalId)) wrong.push(`${n}: Rental still off`);
   for (const n of rentalOff) if (hubAfter.get(visible.find((p) => p.name === n)!.id)!.logos.some((l) => l.logoId === rentalId)) wrong.push(`${n}: Rental still on`);
   console.log(`  ✓ written. Check: ${wrong.length ? "✗ " + wrong.join("; ") : `all ${changes.length} products and the Rental logo as planned`}${failed.length ? `\n  ✗ ${failed.join("; ")}` : ""}\n`);

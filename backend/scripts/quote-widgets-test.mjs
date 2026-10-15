@@ -156,37 +156,6 @@ async function page({ path: urlPath, lang, widgets, pv, checked = 0, basket, lab
   check(p.$(".qc-view a").getAttribute("href") === "/basket", "English: Duda's basket link is left alone");
 }
 
-// ── 1b. A filter is quoted as Purchase, whatever Hire/Purchase shows ─────────
-{
-  const NEED = "01M4ZM082NQ5J5WDWDTJM1BKC4", UNIT = "01M4ZM082NQ5J5WDWDTJM1BKCA", G4 = "01M4ZM082NQ5J5WDWDTJM1BKC6";
-  const unitPv = (lang) => ({
-    identifier: "01M1XPSRCSAQY814CBE2FDTGS9", name: lang === "fr" ? "Unité de filtration" : "Filtration Unit", sku: "SAFU", seo_url: "filtration-unit",
-    image: "x.webp", displayed_price: 0,
-    options: [
-      { id: NEED, name: lang === "fr" ? "De quoi avez-vous besoin ?" : "What do you need?", opt_choices: [
-        { id: UNIT, value: lang === "fr" ? "Unité de filtration" : "Filtration Unit" },
-        { id: G4, value: lang === "fr" ? "Filtre G4 (étape 1)" : "G4 Filter (Stage 1)" },
-      ] },
-      productView(lang).options[0],
-    ],
-  });
-  const add = async (lang, checked) => {
-    const p = await page({ path: `${lang === "fr" ? "/fr" : ""}/product/filtration-unit`, lang, widgets: ["add-to-quote"], pv: unitPv(lang), checked });
-    p.$("#atq-btn").click();
-    await p.settle();
-    return p.stored()[0];
-  };
-  const unit = await add("en", [0, 0]);
-  check(JSON.stringify(unit?.options) === '{"What do you need?":"Filtration Unit","Hire/Purchase":"Hire"}' && unit.choices[OPT] === HIRE,
-    "the unit itself keeps the Hire/Purchase choice shown", JSON.stringify(unit?.options));
-  const filter = await add("en", [1, 0]);
-  check(JSON.stringify(filter?.options) === '{"What do you need?":"G4 Filter (Stage 1)","Hire/Purchase":"Purchase"}',
-    "a filter with Hire showing is recorded as Purchase", JSON.stringify(filter?.options));
-  check(filter?.choices[NEED] === G4 && filter.choices[OPT] === BUY, "…in Duda's ids too", JSON.stringify(filter?.choices));
-  const fr = await add("fr", [1, 0]);
-  check(fr?.options["Location-vente"] === "Acheter" && fr.choices[OPT] === BUY, "…and in the page's own words on a French page", JSON.stringify(fr?.options));
-}
-
 // ── 2. The same basket on the FRENCH basket page ─────────────────────────────
 const englishLine = {
   name: "EX Heater", sku: "SAPH18440", options: { "Hire/Purchase": "Hire" }, price: "", image: "x.webp",

@@ -1164,7 +1164,7 @@ Run `npm run duda:spike-options -- --confirm` to re-derive any of this; `npm run
 - `GET /products?category_id=…` appears to **ignore the filter** (it returned a product whose `categories` array is empty). Don't rely on it for category membership.
 - `quantity` is **write-only** — accepted on PATCH, never returned on read.
 - **`GET /products` clamps `limit` to 200** regardless of what you ask for, so paging is required now `max_products` is 1000 (`duda.listAllProducts()`).
-- Store limits live at `GET /ecommerce/store` → currently `max_products:1000, max_variations_per_product:300, max_options:20, max_choices_per_option:50`. **`max_options:20` is per-CATALOG and did NOT rise with the plan upgrade — it will be the binding constraint once options roll out across the catalogue** (3 of 20 used: Hire/Purchase, Filter Type and "What do you need?", 2026-10-15).
+- Store limits live at `GET /ecommerce/store` → currently `max_products:1000, max_variations_per_product:300, max_options:20, max_choices_per_option:50`. **`max_options:20` is per-CATALOG and did NOT rise with the plan upgrade — it will be the binding constraint once options roll out across the catalogue** (2 of 20 used: Hire/Purchase and Filter Type, 2026-10-15).
 
 ## Website Editor — Duda editor SSO (security-sensitive)
 
@@ -2157,24 +2157,12 @@ page's Hire/Purchase choice; the plan and the scrape are in
 - It replaced the same morning's `catalogue:hire-purchase` rule ("every non-accessory").
 - The Filtration Unit (SAFU) is a main product, not an accessory (Josh).
 
-**"What do you need?"** (the third store option) goes FIRST on a filtration unit: the unit, then
-the replacement filters the old site listed for it, with "SA Cyclone" and "ATEX" left out of the
-names (Josh). Filter Type and Hire/Purchase are kept. The filters were first named "… (purchase
-only)"; that was dropped the same day, renamed in place so every id stayed.
-- SAECFU: from its own page's Filters choice. G4 (Stage 1), F7 Bag (Stage 2), HEPA H14 (Stage 2),
-  Dust Filter Bundle.
-- Filtration Unit (SAFU): from its replacement-filter products (SAFU/RF, deleted in Phase 5c).
-  G4, F7 Bag, HEPA H14, Activated Carbon Cartridge (set of 9, and single; Stage 3), and four filter
-  sets: Vapour, 2 Stage Standard Dust, 2 Stage Breathable Dust, 3 Stage Breathable Dust. That
-  makes 80 variations.
-- ⚠️ Compact (SACFU) and Lightweight (SAELFU) Filtration Unit have none yet: the old site listed
-  no filters for either, anywhere.
-
-⚠️ **A filter is quoted as Purchase by the Add to Quote widget** (`purchaseForFilters()`), not by
-Duda. Whatever Hire/Purchase shows, a "What do you need?" choice other than the unit itself (the
-option's FIRST choice on the product) is recorded as Purchase, in Duda's ids and the page's own
-label. Duda cannot do it (see the variation-status note below). It lives in the PASTED widget, so it
-takes effect only once "SAEquip - Add to Quote" is re-pasted from `3-widgets-in-duda.md`.
+**"What do you need?" was added and removed on 2026-10-15** (Josh). It put the unit or a
+replacement filter (from the old site's lists) first on SAECFU and the Filtration Unit. It was
+taken off both and deleted from the store; Filter Type and Hire/Purchase stayed as they were. It is
+in `RETIRED` in `catalogue:old-site-options`, so a re-run removes rather than re-adds it. The Add to
+Quote rule that quoted a filter as Purchase went with it, before it was ever pasted into Duda, so
+the paste file again matches the live widget.
 
 ⚠️ **A variation's `status` cannot make a combination unavailable.** Probed 2026-10-15 on a
 throwaway product: `PATCH …/variations/{id}` with `status: "HIDDEN"` is accepted and read back,
@@ -2616,9 +2604,6 @@ Also before launch (each detailed elsewhere in this file):
     placeholders; check this.
   - **`/aviation`.** Its H1, page title and SEO title were set per language on 2026-10-13
     (drafts). Check them after any re-translation, which may overwrite them.
-  - **The product options** (2026-10-15): "What do you need?" and its filter choices are English
-    only. Duda translates store options itself; check them, then "Refresh all languages from Duda"
-    so the basket's labels follow.
   - **Logo labels.** "Made in Britain" and "Ex logo" carried their six translations across. Run
     "Translate missing" for any logo text changed since.
   - **The listing filters and the SA ENDURE notices** (added 2026-10-14, English only). Translate
