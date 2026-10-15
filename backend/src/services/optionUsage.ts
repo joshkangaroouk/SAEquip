@@ -13,8 +13,9 @@ import { duda, type DudaProduct } from "./duda.js";
  */
 export interface OptionUsage {
   productCount: number;
-  /** `sku` is null for products that don't have one — render a fallback. */
-  products: { id: string; name: string; sku: string | null }[];
+  /** `sku` is null for products that don't have one — render a fallback.
+   *  `thumbnailUrl` is Duda's images[0], the product's own thumbnail. */
+  products: { id: string; name: string; sku: string | null; thumbnailUrl: string | null }[];
   /** Per-choice usage, so deleting one choice can warn separately. */
   choiceUsage: Record<string, number>;
 }
@@ -37,7 +38,7 @@ function build(products: DudaProduct[]): Map<string, OptionUsage> {
         index.set(opt.id, entry);
       }
       entry.productCount++;
-      entry.products.push({ id: p.id, name: p.name, sku: p.sku });
+      entry.products.push({ id: p.id, name: p.name, sku: p.sku, thumbnailUrl: p.images?.[0]?.url ?? null });
       // A product may expose only a subset of the option's choices, so count
       // choices independently of the option itself.
       for (const c of opt.choices ?? []) {

@@ -435,8 +435,8 @@ export default function ProductOptions() {
 }
 
 /**
- * "Included in N products", which opens the list of them: name and SKU, each
- * linking to that product's editor. The catalogue response already carries
+ * "Included in N products", which opens the list of them: picture, name and
+ * SKU, each linking to that product's editor, as the Media Centre's "Used N×". The catalogue response already carries
  * the list, so nothing is fetched. At 0 it stays a plain (red) badge, since a
  * popup listing nothing is a click wasted.
  */
@@ -449,7 +449,7 @@ function IncludedIn({ option }: { option: CatalogOption }) {
   }
   const products = [...option.products]
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((p) => ({ dudaProductId: p.id, name: p.name, sku: p.sku, thumbnailUrl: null, via: [] }));
+    .map((p) => ({ dudaProductId: p.id, name: p.name, sku: p.sku, thumbnailUrl: p.thumbnailUrl ?? null, via: [] }));
   return (
     <>
       <button
@@ -459,7 +459,9 @@ function IncludedIn({ option }: { option: CatalogOption }) {
         title="See which products use this option"
         className="group rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
-        <Badge tone="neutral" className="cursor-pointer transition-colors group-hover:border-text group-hover:text-text">
+        {/* Darker as a whole on hover, like the Media Centre's pill: the fill
+            takes the border's own colour, so the badge reads as one shape. */}
+        <Badge tone="neutral" className="cursor-pointer transition-colors group-hover:bg-border group-hover:text-text">
           {label}
         </Badge>
       </button>
@@ -468,7 +470,6 @@ function IncludedIn({ option }: { option: CatalogOption }) {
           count={option.usage}
           subject={`Option: ${option.name}`}
           verb="Included in"
-          thumbnails={false}
           load={() => Promise.resolve({ products })}
           onClose={close}
         />
