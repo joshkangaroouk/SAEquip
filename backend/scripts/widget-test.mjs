@@ -572,6 +572,30 @@ async function main() {
     check(!mbox.classList.contains("saeh-pl-fade"), "…and goes once the list is scrolled to the end");
   }
 
+  console.log("\n=== product listing: challenges with no results sort to the bottom ===");
+  {
+    const six = ["c1", "c2", "c3", "c4", "c5", "c6"].map((id, i) => CAT(id, `Challenge ${i + 1}`, `challenge-${i + 1}`, "sc"));
+    const P = (name, c, use) => ({ name, slug: name.toLowerCase(), url: `/product/${name.toLowerCase()}`, imageUrl: null, categoryIds: ["lp", c], certLogos: [], use, range: use === "industrial" ? "endure" : "lumin", zones: [], accessory: false });
+    const cat = {
+      categories: [...CATALOGUE.categories, ...six],
+      products: [P("A", "c1", "atex"), P("B", "c2", "atex"), P("C", "c3", "industrial"), P("D", "c4", "atex"), P("E", "c5", "atex"), P("G", "c6", "industrial")],
+    };
+    const order = (d) => [...d.querySelectorAll(".saeh-pl-optlist .saeh-pl-t")].map((t) => t.textContent.replace("Challenge ", "")).join("");
+    const tickUse = (d, v) => { const i = d.querySelector(`input[data-group="use"][value="${v}"]`); i.checked = !i.checked; i.dispatchEvent(new d.defaultView.Event("change")); };
+    const { d } = await boot({ props: PL, cataloguePayload: cat, url: CATEGORY("lighting-and-power") });
+    check(order(d) === "123456", "no filter on: the master-list order", order(d));
+    const c6 = d.querySelector('.saeh-pl-optlist input[value="c6"]');
+    c6.focus();
+    tickUse(d, "industrial");
+    check(order(d) === "361245", "Industrial ticked: the two with results first, then the four at 0, master order within each", order(d));
+    check(d.activeElement === c6, "…and a focused option keeps its focus through the move");
+    check(d.querySelector(".saeh-pl-optlist").scrollTop === 0, "…with the box scrolled back to the top");
+    tick(d, "c2");
+    check(order(d) === "2361" + "45", "a ticked option stays with the first lot even at 0, so it can be unticked", order(d));
+    d.querySelector(".saeh-pl-clear").dispatchEvent(new d.defaultView.MouseEvent("click"));
+    check(order(d) === "123456", "Clear filters puts the master order back", order(d));
+  }
+
   console.log("\n=== product listing: Use, Range, ATEX zone and Hide accessories ===");
   {
     const F = (name, categoryIds, use, range, zones, accessory = false) =>

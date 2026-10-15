@@ -416,6 +416,11 @@ category template, or the page shows two listings.
   height, because some challenge names wrap onto two lines; a `ResizeObserver` re-measures
   when the sidebar's width changes. A faint inner shadow along the bottom says there is more,
   since a Mac hides scrollbars until you scroll. The other groups are short and are not capped.
+  **Options with results come first** (`sortChallenges()`, after every count update): the ones
+  at 0 move below them, master-list order within each, so a challenge that would show
+  something is never hidden down the box. A ticked option stays in the first lot even at 0,
+  so it can be unticked; focus survives the move and the box scrolls back to the top. With
+  no filter on every option has results, so the order is the master order.
 - **Cards fade up as they arrive** — first paint, every filter change, every loaded page —
   with an `nth-child` stagger capped at ~0.1s so a 40-card page is not a slow cascade.
   Silenced entirely under `prefers-reduced-motion`.

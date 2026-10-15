@@ -3134,7 +3134,7 @@
   var CHALLENGES_VISIBLE = 5;
 
   function capOptions(list, n) {
-    if (list.children.length <= n) return;
+    if (list.children.length <= n) return null;
     list.className += " saeh-pl-capped";
     function more() {
       var atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 2;
@@ -3157,6 +3157,7 @@
     } else {
       later(fit);
     }
+    return fit;
   }
 
   function productCard(p, chipTitles) {
@@ -3613,11 +3614,15 @@
     var clip = el("div", "saeh-pl-clip");
     var inner = el("div", "saeh-pl-inner");
 
+    // The challenge rows in master-list order, for sortChallenges().
+    var optRows = [];
+    var optList = null;
+    var refitOptions = null;
     if (options.length) {
       var group = el("div", "saeh-pl-group");
       group.appendChild(el("div", "saeh-pl-glabel", filterParent.title));
       // The options sit in their own box, so a long list can scroll inside it.
-      var optList = el("div", "saeh-pl-optlist");
+      optList = el("div", "saeh-pl-optlist");
       options.forEach(function (c) {
         var label = el("label", "saeh-pl-opt");
         var box = document.createElement("input");
@@ -3637,9 +3642,10 @@
         n.setAttribute("data-for", c.id);
         label.appendChild(n);
         optList.appendChild(label);
+        optRows.push({ label: label, box: box, n: n });
       });
       group.appendChild(optList);
-      capOptions(optList, CHALLENGES_VISIBLE);
+      refitOptions = capOptions(optList, CHALLENGES_VISIBLE);
       inner.appendChild(group);
     }
 
@@ -3760,6 +3766,43 @@
         if (!was) delete chosen[id];
         nodes[i].textContent = String(n);
       }
+      sortChallenges();
+    }
+
+    /*
+     * Challenges with results first, those with none after them, master-list
+     * order within each (Josh, 2026-10-15), so a challenge that would show
+     * something is never hidden down the scroll box. A ticked challenge stays
+     * with the first lot even at 0, so it can always be unticked. With no
+     * filter on, every option has results, so this is the master order.
+     */
+    function sortChallenges() {
+      if (!optList) return;
+      var first = [], rest = [];
+      optRows.forEach(function (o) {
+        (o.box.checked || o.n.textContent !== "0" ? first : rest).push(o.label);
+      });
+      var order = first.concat(rest);
+      var same = order.every(function (l, i) {
+        return optList.children[i] === l;
+      });
+      if (same) return;
+      // Moving a node takes focus off it, so a keyboard user would lose their place.
+      var active = document.activeElement;
+      var focusIn = !!active && optList.contains(active);
+      order.forEach(function (l) {
+        optList.appendChild(l);
+      });
+      optList.scrollTop = 0;
+      if (focusIn) {
+        try {
+          active.focus({ preventScroll: true });
+        } catch (e) {}
+        var row = active.closest ? active.closest(".saeh-pl-opt") : null;
+        if (row && row.offsetTop + row.offsetHeight > optList.clientHeight) optList.scrollTop = row.offsetTop;
+      }
+      // The 5th row is a different option now, so the box is measured again.
+      if (refitOptions) refitOptions();
     }
 
     // Only when there is something to clear. A category with no challenges in
