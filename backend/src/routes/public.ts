@@ -317,15 +317,9 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
           slug: true,
           thumbnailUrl: true,
           categories: { select: { dudaCategoryId: true, sortOrder: true } },
-          /*
-           * Certification text for the card. `alt` first, then `label`:
-           * every alt is empty today, so labels are what render — but a card
-           * reading "ATEX" instead of "EX logo" then becomes a data edit on
-           * the Logos page rather than a code change.
-           */
-          // Every logo: certifications for the card's text, and the SA range
-          // and zone logos for the listing's Use / Range / ATEX zone filters.
-          logos: { select: { logo: { select: { kind: true, label: true, alt: true, sortOrder: true, mediaAsset: { select: { filename: true } } } } } },
+          // Every logo: the certification marks shown on the card, and the SA
+          // range and zone logos for the listing's Use / Range / ATEX zone filters.
+          logos: { select: { logo: { select: { kind: true, label: true, alt: true, sortOrder: true, mediaAsset: { select: { filename: true, storagePath: true } } } } } },
           isAccessory: true,
         },
         orderBy: { name: "asc" },
@@ -385,12 +379,17 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
             const f = productFacets(p.logos.map((l) => ({ kind: l.logo.kind, label: l.logo.label, alt: l.logo.alt, filename: l.logo.mediaAsset?.filename })));
             return { use: f.use, range: f.range, zones: f.zones, accessory: p.isAccessory };
           })(),
-          certs: p.logos
+          /*
+           * The certification marks, as the images the product page shows
+           * (Josh, 2026-10-15), in the Logos page's order. The alt text is the
+           * logo's alt, then its label, in the page's language, exactly as the
+           * product page's own logo row has it.
+           */
+          certLogos: p.logos
             .map((l) => l.logo)
             .filter((l) => l.kind === "CERT_LOGO")
             .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((l) => tr(tables, "LOGO_TEXT", (l.alt || l.label || "").trim()))
-            .filter(Boolean),
+            .map((l) => ({ url: publicImageUrl(l.mediaAsset.storagePath), alt: tr(tables, "LOGO_TEXT", (l.alt || l.label || "").trim()) })),
         }))
         // In the page's language: a translated list in English order reads as random.
         .sort((a, b) => (tables ? sorter.compare(a.name, b.name) : 0)),

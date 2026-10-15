@@ -306,7 +306,7 @@ category template, or the page shows two listings.
     payloads and `/public/products/content` send `use`.
 - ⚠️ **SA ENDURE notices** (`use === "industrial"`):
   - every card drawn by `productCard()` (listing and carousels alike) gets a dark strip under the
-    picture: "Industrial use only – not for hazardous areas";
+    picture: "Not for hazardous areas" (shortened 2026-10-15 so it fits one line, with a 22px icon);
   - the product page's `sa-logos` section gets a `role="note"` callout under the range logos.
 
   The crossed-out "Ex" icon is drawn inline, never fetched. Text without a translation renders
@@ -334,13 +334,13 @@ category template, or the page shows two listings.
   page and has no product, so the legacy `data-section="all"` embed must never build it.
 - Cards: white, **square 1:1 image using `object-fit:contain`** (cropping industrial kit to
   fill a square cuts the product out of frame) sitting flush with no padding and a small
-  scale on card hover, chips from the filter group, an **h4** title, certification text, and
-  **one** "View Product" button.
-- ⚠️ **Each certification is its own `nowrap` span, not one joined string.** A single text
-  node lets the browser break anywhere, and "Zone 1-2" wrapped as "Zone" / "1-2" — which
-  reads as two separate marks on hazardous-area equipment. `nowrap` also covers the hyphen,
-  which is its own break opportunity; a non-breaking space would not have. The separator is
-  a bare text node so the only break is BETWEEN items and a comma never starts a line.
+  scale on card hover, chips from the filter group, an **h4** title, the certification logos,
+  and **one** "View Product" button.
+- **Certifications are the product page's own logo IMAGES, smaller** (Josh, 2026-10-15; they
+  were a text line). `/public/catalogue` sends `certLogos: [{url, alt}]` in the Logos page's
+  order. They are 26px high (35px on the product page), on one row when they fit; a product
+  carries up to 7, roughly square, which fits a desktop card. ⚠️ On a narrow card they WRAP
+  rather than shrink: a mark too small to read is no use on hazardous-area kit.
 - ⚠️ **Chips are WHITE.** They were `#f1f1f1` on the body's `#f4f4f4` — three values apart,
   so the Site Challenge label was effectively invisible.
 - **At most two chips per card, then "+N more"** (`CARD_CHIP_LIMIT`, Josh 2026-10-13). A
@@ -353,8 +353,9 @@ category template, or the page shows two listings.
   plural-aware in all seven languages (`pl.moreChips`). Filtering and search read the product's
   categories, not the chips, so a hidden challenge still finds the product. Product pages show
   no challenges at all; only listing cards do.
-- ⚠️ **Certification text reads `Logo.alt || Logo.label`.** Every logo now has an `alt`, so
-  cards say "EX", "UKCA" and "Made in Britain" rather than ATEX/UKEX. The first two are
+- ⚠️ **Each logo's alt text reads `Logo.alt || Logo.label`**, translated, exactly as the product
+  page's logo row has it. Every logo now has an `alt`, so a screen reader hears "EX", "UKCA" and
+  "Made in Britain" rather than ATEX/UKEX. The first two are
   deliberate (see the logo mapping note); editing `alt` on the Logos page changes the display
   without a code change. (The labels "Made in Britan" and "EX logo" were corrected to "Made in
   Britain" and "Ex logo" on 2026-10-13, with their six translations carried across to the new
@@ -406,12 +407,15 @@ category template, or the page shows two listings.
   rebuild, because those are different products. `paint(append)` carries the distinction and
   `rendered` tracks where to resume; both cases are covered by `widget:test`, which asserts
   the existing cards are the same DOM nodes afterwards.
-- Mobile-first: **stacked with a collapsible filter panel**, becoming a sticky sidebar only
-  at 881px. Grid is 1 / 2 / 3 up at the house 561 / 881 breakpoints. The sidebar is
-  `position:sticky` with `max-height:calc(100vh - 40px)` and its own scroll — ⚠️ sticky only
-  works there because `.saeh-pl` sets `align-items:flex-start`; a stretched flex item fills
-  the row and has no room to move. A 5px rule in `var(--color_7)` (Duda's theme colour, brand
-  yellow only as the editor-preview fallback) tops the filter bar.
+- Mobile-first: **stacked with a collapsible filter panel**, becoming a sidebar only at 881px.
+  Grid is 1 / 2 / 3 up at the house 561 / 881 breakpoints. ⚠️ **The sidebar is NOT sticky**
+  (Josh, 2026-10-15): it scrolls with the page. A 5px rule in `var(--color_7)` (Duda's theme
+  colour, brand yellow only as the editor-preview fallback) tops the filter bar.
+- **Site Challenges show 5 options; the rest scroll inside their own box** (`capOptions()`,
+  2026-10-15). ⚠️ The height is MEASURED to the bottom of the 5th option, not 5 × a row
+  height, because some challenge names wrap onto two lines; a `ResizeObserver` re-measures
+  when the sidebar's width changes. A faint inner shadow along the bottom says there is more,
+  since a Mac hides scrollbars until you scroll. The other groups are short and are not capped.
 - **Cards fade up as they arrive** — first paint, every filter change, every loaded page —
   with an `nth-child` stagger capped at ~0.1s so a 40-card page is not a slow cascade.
   Silenced entirely under `prefers-reduced-motion`.

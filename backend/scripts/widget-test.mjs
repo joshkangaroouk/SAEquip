@@ -42,7 +42,7 @@ const FULL = {
 };
 
 /** Boot the widget, optionally providing a fake dmAPI, then call init(). */
-async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, leadResponse = undefined, url = undefined, htmlLang = undefined, parameters = undefined } = {}) {
+async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaInit = true, body = "", dmHangs = false, settleMs = 40, amdLoader = false, tabsLayout = undefined, catPayload = undefined, cataloguePayload = undefined, resourcesPayload = undefined, leadResponse = undefined, url = undefined, htmlLang = undefined, parameters = undefined, setup = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><html${htmlLang ? ` lang="${htmlLang}"` : ""}><body>${body}<div id="host"></div></body></html>`, {
     url: url ?? "https://saequip.multiscreensite.com/product/ex-heater",
     runScripts: "dangerously", pretendToBeVisual: true,
@@ -87,6 +87,8 @@ async function boot({ payload = FULL, props = {}, dmPageData = undefined, viaIni
   };
   // Duda's own page settings object, as the live pages carry it.
   if (parameters) w.Parameters = parameters;
+  // Lets a test stub browser APIs jsdom lacks (layout, ResizeObserver) before the widget runs.
+  if (setup) setup(w);
   if (dmPageData !== undefined || dmHangs) {
     w.dmAPI = {
       dynamicPageApi: () => ({
@@ -406,11 +408,11 @@ async function main() {
       CAT("dark", "Working in the Dark", "working-in-the-dark", "sc"),
     ],
     products: [
-      { name: "P1", slug: "p1", url: "/product/p1", imageUrl: "https://x/1.jpg", categoryIds: ["lp", "avi", "dark"], certs: ["EX logo", "IECEx"] },
-      { name: "P2", slug: "p2", url: "/product/p2", imageUrl: null, categoryIds: ["lp", "oil"], certs: [] },
-      { name: "P3", slug: "p3", url: "/product/p3", imageUrl: "https://x/3.jpg", categoryIds: ["fume", "oil", "weld"], certs: ["UKCA"] },
-      { name: "P4", slug: "p4", url: "/product/p4", imageUrl: null, categoryIds: ["fume", "avi", "dust"], certs: [] },
-      { name: "P5", slug: "p5", url: "/product/p5", imageUrl: null, categoryIds: [], certs: [] },
+      { name: "P1", slug: "p1", url: "/product/p1", imageUrl: "https://x/1.jpg", categoryIds: ["lp", "avi", "dark"], certLogos: [{ url: "https://x/ex.png", alt: "EX logo" }, { url: "https://x/iecex.png", alt: "IECEx" }] },
+      { name: "P2", slug: "p2", url: "/product/p2", imageUrl: null, categoryIds: ["lp", "oil"], certLogos: [] },
+      { name: "P3", slug: "p3", url: "/product/p3", imageUrl: "https://x/3.jpg", categoryIds: ["fume", "oil", "weld"], certLogos: [{ url: "https://x/ukca.png", alt: "UKCA" }] },
+      { name: "P4", slug: "p4", url: "/product/p4", imageUrl: null, categoryIds: ["fume", "avi", "dust"], certLogos: [] },
+      { name: "P5", slug: "p5", url: "/product/p5", imageUrl: null, categoryIds: [], certLogos: [] },
     ],
   };
   const PL = { section: "product-list" };
@@ -489,7 +491,7 @@ async function main() {
   {
     const only = {
       categories: CATALOGUE.categories,
-      products: [{ name: "Solo", slug: "s", url: "/product/s", imageUrl: null, categoryIds: ["lp"], certs: [] }],
+      products: [{ name: "Solo", slug: "s", url: "/product/s", imageUrl: null, categoryIds: ["lp"], certLogos: [] }],
     };
     const { d } = await boot({ props: PL, cataloguePayload: only, url: CATEGORY("lighting-and-power") });
     check(d.querySelectorAll(".saeh-pl-opt").length === 0, "no challenges in scope means no options at all");
@@ -506,9 +508,9 @@ async function main() {
     const cat = {
       categories: [...CATALOGUE.categories, ...six],
       products: [
-        { name: "Six", slug: "six", url: "/product/six", imageUrl: null, categoryIds: ["lp", "c6", "c3", "c1", "c5", "c2", "c4"], certs: [] },
-        { name: "Two", slug: "two", url: "/product/two", imageUrl: null, categoryIds: ["lp", "c2", "c1"], certs: [] },
-        { name: "Three", slug: "three", url: "/product/three", imageUrl: null, categoryIds: ["lp", "c3", "c2", "c1"], certs: [] },
+        { name: "Six", slug: "six", url: "/product/six", imageUrl: null, categoryIds: ["lp", "c6", "c3", "c1", "c5", "c2", "c4"], certLogos: [] },
+        { name: "Two", slug: "two", url: "/product/two", imageUrl: null, categoryIds: ["lp", "c2", "c1"], certLogos: [] },
+        { name: "Three", slug: "three", url: "/product/three", imageUrl: null, categoryIds: ["lp", "c3", "c2", "c1"], certLogos: [] },
       ],
     };
     const chipsOf = (d, name) => {
@@ -530,12 +532,45 @@ async function main() {
       "the +N label follows the language's plural rules (fr)", chipsOf(fr, "Three").at(-1).textContent);
     const css = d.getElementById("saeh-styles").textContent;
     check(/\.saeh-pl-chip-more\{[^}]*background:transparent/.test(css), "+N is outlined, not filled like a challenge");
+
+    // Site Challenges: 5 visible, the rest scroll inside their own box.
+    const box = d.querySelector(".saeh-pl-optlist");
+    check(box.classList.contains("saeh-pl-capped") && box.querySelectorAll(".saeh-pl-opt").length === 6, "six challenges sit in a capped box of their own");
+    check(/\.saeh-pl-capped\{overflow-y:auto/.test(css) && /\.saeh-pl-optlist\{position:relative\}/.test(css), "…which scrolls");
+    const { d: few } = await boot({ props: PL, cataloguePayload: CATALOGUE, url: AT });
+    check(!few.querySelector(".saeh-pl-capped"), "five or fewer: no box to scroll");
+    // Layout, as a browser would report it: each option 30px tall, the second
+    // one wrapping to 46px. The box is cut at the bottom of the 5th, measured.
+    let observed = null;
+    const setup = (w) => {
+      w.ResizeObserver = class { constructor(cb) { this.cb = cb; } observe() { observed = this.cb; } };
+      const top = (el) => [...el.parentNode.children].slice(0, [...el.parentNode.children].indexOf(el)).reduce((t, o) => t + (o.querySelector(".saeh-pl-t").textContent === "Challenge 2" ? 46 : 30), 0);
+      Object.defineProperty(w.HTMLElement.prototype, "offsetTop", { get() { return this.classList.contains("saeh-pl-opt") ? top(this) : 0; } });
+      Object.defineProperty(w.HTMLElement.prototype, "offsetHeight", { get() { return this.classList.contains("saeh-pl-opt") ? (this.querySelector(".saeh-pl-t").textContent === "Challenge 2" ? 46 : 30) : 0; } });
+    };
+    const { d: m } = await boot({ props: PL, cataloguePayload: cat, url: AT, setup });
+    const mbox = m.querySelector(".saeh-pl-optlist");
+    const order = [...mbox.querySelectorAll(".saeh-pl-t")].map((t) => t.textContent);
+    const want = order.slice(0, 5).reduce((t, n) => t + (n === "Challenge 2" ? 46 : 30), 0);
+    check(typeof observed === "function", "the box is watched for size changes");
+    observed();
+    await new Promise((r) => setTimeout(r, 40));
+    check(mbox.style.maxHeight === want + "px", "the box is cut exactly at the bottom of the 5th option, wrapped names included", mbox.style.maxHeight + " vs " + want);
+    Object.defineProperty(mbox, "clientHeight", { value: want, configurable: true });
+    Object.defineProperty(mbox, "scrollHeight", { value: want + 30, configurable: true });
+    observed();
+    await new Promise((r) => setTimeout(r, 40));
+    check(mbox.classList.contains("saeh-pl-more"), "a shadow says there is more below");
+    mbox.scrollTop = 30;
+    Object.defineProperty(mbox, "scrollTop", { value: 30, configurable: true });
+    mbox.dispatchEvent(new m.defaultView.Event("scroll"));
+    check(!mbox.classList.contains("saeh-pl-more"), "…and goes once the list is scrolled to the end");
   }
 
   console.log("\n=== product listing: Use, Range, ATEX zone and Hide accessories ===");
   {
     const F = (name, categoryIds, use, range, zones, accessory = false) =>
-      ({ name, slug: name.toLowerCase(), url: `/product/${name.toLowerCase()}`, imageUrl: null, categoryIds, certs: [], use, range, zones, accessory });
+      ({ name, slug: name.toLowerCase(), url: `/product/${name.toLowerCase()}`, imageUrl: null, categoryIds, certLogos: [], use, range, zones, accessory });
     const FC = {
       categories: CATALOGUE.categories,
       products: [
@@ -611,12 +646,13 @@ async function main() {
 
   console.log("\n=== SA ENDURE: industrial use only (card strip and product page) ===");
   {
-    const F = (name, use) => ({ name, slug: name.toLowerCase(), url: `/product/${name.toLowerCase()}`, imageUrl: null, categoryIds: ["lp"], certs: [], use, range: use === "industrial" ? "endure" : "lumin", zones: [], accessory: false });
+    const F = (name, use) => ({ name, slug: name.toLowerCase(), url: `/product/${name.toLowerCase()}`, imageUrl: null, categoryIds: ["lp"], certLogos: [], use, range: use === "industrial" ? "endure" : "lumin", zones: [], accessory: false });
     const cat = { categories: CATALOGUE.categories, products: [F("Endure1", "industrial"), F("Lumin1", "atex"), F("Endure2", "industrial"), F("Nothing", null)] };
     const { d } = await boot({ props: PL, cataloguePayload: cat, url: CATEGORY("lighting-and-power") });
     const strips = [...d.querySelectorAll(".saeh-pl-card")].filter((c) => c.querySelector(".saeh-ind")).map((c) => c.querySelector(".saeh-pl-name").textContent);
     check(strips.join(",") === "Endure1,Endure2", "the strip is on every SA ENDURE card and on no other", strips.join(","));
-    check(d.querySelector(".saeh-ind span").textContent === "Industrial use only – not for hazardous areas", "…reading the approved wording");
+    check(d.querySelector(".saeh-ind span").textContent === "Not for hazardous areas", "…reading \"Not for hazardous areas\", short enough for one line");
+    check(d.querySelector(".saeh-ind svg").getAttribute("width") === "22", "…with the crossed-out Ex icon at 22px");
     check(d.querySelector(".saeh-ind svg")?.getAttribute("aria-hidden") === "true", "…with its icon drawn inline and hidden from screen readers");
     const card = [...d.querySelectorAll(".saeh-pl-card")].find((c) => c.querySelector(".saeh-ind"));
     check(card.children[0].className === "saeh-pl-shot" && card.children[1].className === "saeh-ind", "…between the picture and the card body");
@@ -650,17 +686,13 @@ async function main() {
       [...card.querySelectorAll(".saeh-pl-chip")].map((c) => c.textContent).join(",") === "Working in the Dark",
       "chips come from the filter group only, not every category",
     );
-    check(card.querySelector(".saeh-pl-certs").textContent === "EX logo, IECEx", "certs render as text");
-    /*
-     * ⚠️ One span per certification, each nowrap. A single joined string lets
-     * the browser break anywhere — "Zone 1-2" wrapped as "Zone" / "1-2", which
-     * reads as two separate marks. The separator is its own text node, so the
-     * break opportunity is BETWEEN items and a comma never starts a line.
-     */
-    const certSpans = [...card.querySelectorAll(".saeh-pl-certs span")];
-    check(certSpans.length === 2, "one span per certification, not one joined string", String(certSpans.length));
-    check(certSpans.map((n) => n.textContent).join("|") === "EX logo|IECEx", "each carries only its own mark");
-    check(/\.saeh-pl-certs span\{white-space:nowrap\}/.test(css), "…and each is unbreakable");
+    // The certification marks are the product page's logo images, smaller, each with its alt text.
+    const marks = [...card.querySelectorAll(".saeh-pl-certs img")];
+    check(marks.map((m) => m.getAttribute("src")).join("|") === "https://x/ex.png|https://x/iecex.png", "certifications render as the logo images, in order");
+    check(marks.map((m) => m.alt).join("|") === "EX logo|IECEx", "…each with its alt text");
+    check(card.querySelector(".saeh-pl-certs").textContent === "", "…and no text line any more");
+    check(/\.saeh-pl-certs img\{height:26px;width:auto;flex:0 0 auto/.test(css), "…26px high (35px on the product page), every mark the same height");
+    check(/\.saeh-pl-certs\{display:flex;flex-wrap:wrap/.test(css), "…on one row, wrapping only when the card is too narrow");
     check(/\.saeh-pl-chip\{[^}]*background:#fff/.test(css),
       "chips are white — #f1f1f1 was invisible on the body's #f4f4f4");
     // h4: the card title sits under the page's own heading levels, not beside them.
@@ -730,7 +762,7 @@ async function main() {
       products: Array.from({ length: 40 }, (_, i) => ({
         name: i === 7 ? "Welding Torch" : `Item ${String(i).padStart(2, "0")}`,
         slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
-        categoryIds: i % 2 ? ["weld"] : ["dust"], certs: [],
+        categoryIds: i % 2 ? ["weld"] : ["dust"], certLogos: [],
       })),
     };
     const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
@@ -781,7 +813,7 @@ async function main() {
       products: Array.from({ length: 40 }, (_, i) => ({
         name: i === 7 ? "Welding Torch" : `Item ${String(i).padStart(2, "0")}`,
         slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
-        categoryIds: i % 2 ? ["weld"] : ["dust"], certs: [],
+        categoryIds: i % 2 ? ["weld"] : ["dust"], certLogos: [],
       })),
     };
     const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
@@ -834,7 +866,7 @@ async function main() {
       categories: CATALOGUE.categories,
       products: Array.from({ length: 40 }, (_, i) => ({
         name: `Item ${i}`, slug: `i${i}`, url: `/product/i${i}`, imageUrl: null,
-        categoryIds: i < 20 ? ["weld"] : ["dust"], certs: [],
+        categoryIds: i < 20 ? ["weld"] : ["dust"], certLogos: [],
       })),
     };
     const { d } = await boot({ props: PL, cataloguePayload: many, url: AT });
@@ -872,9 +904,7 @@ async function main() {
     check(/\.saeh-pl-filter\{border-top:5px solid var\(--color_7,#fed217\)\}/.test(css),
       "a 5px theme-coloured rule tops the filter bar on desktop");
     check(/\.saeh-pl-side\{flex:0 0 300px;max-width:300px/.test(css), "the sidebar is 300px on desktop");
-    check(/\.saeh-pl-side\{[^}]*position:sticky;top:20px/.test(css), "…and sticky");
-    check(/\.saeh-pl-side\{[^}]*max-height:calc\(100vh - 40px\);overflow-y:auto/.test(css),
-      "…and scrolls internally, so a long filter list cannot outrun the viewport");
+    check(!/\.saeh-pl-side\{[^}]*(sticky|max-height)/.test(css), "…and NOT sticky: it scrolls with the page");
     check(/@keyframes saeh-pl-in\{from\{opacity:0;transform:translateY\(12px\)\}/.test(css),
       "cards fade up as they arrive");
     check(/@media\(prefers-reduced-motion:reduce\)\{[^@]*\.saeh-pl-card\{animation:none\}/.test(css),

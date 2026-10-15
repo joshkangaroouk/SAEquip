@@ -339,7 +339,7 @@
       "pl.rangeTitle": "Range",
       "pl.zoneTitle": "ATEX zone",
       "pl.zoneSub": "Gas: Zone 0, Zone 1-2 · Dust: Zone 20, Zone 21-22",
-      "ind.card": "Industrial use only – not for hazardous areas",
+      "ind.card": "Not for hazardous areas",
       "ind.title": "Industrial use only",
       "ind.body": "SA ENDURE equipment is for industrial sites such as construction. It is not certified for hazardous areas (ATEX/IECEx zones): never use it in a refinery, offshore or any explosive atmosphere.",
       "pl.filter": "Filter Products",
@@ -1456,6 +1456,9 @@
       ".saeh-ind-page b{display:block;font-family:var(--saeh-head);font-size:15px;letter-spacing:.02em;text-transform:uppercase;margin-bottom:3px}",
       ".saeh-ind-page span{display:block;font-size:14px;line-height:1.45;color:#ddd}",
       ".saeh-pl-group:first-child{margin-top:4px}",
+      ".saeh-pl-optlist{position:relative}",
+      ".saeh-pl-capped{overflow-y:auto;scrollbar-width:thin}",
+      ".saeh-pl-more{box-shadow:inset 0 -14px 12px -12px rgba(0,0,0,.14)}",
       ".saeh-pl-glabel{font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}",
       ".saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:14px;color:#555;line-height:1.35}",
       ".saeh-pl-opt:hover{color:#111}",
@@ -1495,9 +1498,10 @@
       // than filled. #666 on the body's #f4f4f4 is ~5.3:1.
       ".saeh-pl-chip-more{background:transparent;color:#666;box-shadow:inset 0 0 0 1px #d6d6d6}",
       ".saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}",
-      ".saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}",
-      // ⚠️ Each certification is one unbreakable unit. See the markup.
-      ".saeh-pl-certs span{white-space:nowrap}",
+      // Fixed height, auto width: every mark the same height, as on the product
+      // page (35px there). flex:0 0 auto stops a pinned-height image squashing.
+      ".saeh-pl-certs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}",
+      ".saeh-pl-certs img{height:26px;width:auto;flex:0 0 auto;display:block}",
       ".saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;text-transform:none;letter-spacing:normal;padding:13px}",
       /*
        * The chevron grows from zero width rather than just fading, so the
@@ -1538,9 +1542,8 @@
         // min-width:0 on the main column is load-bearing: a grid inside a flex
         // item otherwise refuses to shrink below its content and shoves the
         // sidebar off the row.
-        // max-height + overflow is what makes sticky useful rather than nominal: a
-        // filter list taller than the viewport would scroll the page past it.
-        ".saeh-pl-side{flex:0 0 300px;max-width:300px;position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}" +
+        // NOT sticky (Josh, 2026-10-15): the panel scrolls with the page.
+        ".saeh-pl-side{flex:0 0 300px;max-width:300px}" +
         // Duda's theme colour 7, with the brand yellow as the fallback for
         // when the widget renders outside a themed page (the editor preview).
         ".saeh-pl-filter{border-top:5px solid var(--color_7,#fed217)}" +
@@ -3118,6 +3121,43 @@
 
   var CARD_CHIP_LIMIT = 2;
 
+  /*
+   * Site Challenges show 5 options, and the rest scroll inside their own box
+   * (Josh, 2026-10-15). The height is MEASURED, the bottom of the 5th option,
+   * rather than 5 × a row height: some challenge names wrap onto two lines,
+   * and a fixed height would show four and a half. It is re-measured whenever
+   * the box changes size (a narrower sidebar wraps more names). A faint shadow
+   * along the bottom says there is more below, since a Mac hides scrollbars
+   * until you scroll; it goes once the list is scrolled to the end.
+   */
+  var CHALLENGES_VISIBLE = 5;
+
+  function capOptions(list, n) {
+    if (list.children.length <= n) return;
+    list.className += " saeh-pl-capped";
+    function more() {
+      var atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 2;
+      if (atEnd) list.classList.remove("saeh-pl-more");
+      else list.classList.add("saeh-pl-more");
+    }
+    function fit() {
+      var last = list.children[n - 1];
+      // The box is position:relative, so it is the option's offsetParent.
+      var h = last.offsetTop + last.offsetHeight;
+      if (h > 0 && list.style.maxHeight !== h + "px") list.style.maxHeight = h + "px";
+      more();
+    }
+    list.addEventListener("scroll", more, { passive: true });
+    var later = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (f) { setTimeout(f, 0); };
+    // Measured in the next frame: setting a height inside the observer's own
+    // callback is what makes browsers report a "ResizeObserver loop" error.
+    if (typeof window.ResizeObserver === "function") {
+      new window.ResizeObserver(function () { later(fit); }).observe(list);
+    } else {
+      later(fit);
+    }
+  }
+
   function productCard(p, chipTitles) {
     var a = document.createElement("a");
     a.className = "saeh-pl-card";
@@ -3138,7 +3178,7 @@
     // said on every card of it, wherever cards are drawn (listing and carousels).
     if (p.use === "industrial") {
       var ind = el("div", "saeh-ind");
-      ind.appendChild(industrialIcon(16));
+      ind.appendChild(industrialIcon(22));
       ind.appendChild(tNode("span", null, "ind.card"));
       a.appendChild(ind);
     }
@@ -3167,23 +3207,24 @@
       body.appendChild(chips);
     }
     body.appendChild(el("h4", "saeh-pl-name", p.name || ""));
-    if (p.certs && p.certs.length) {
+    if (p.certLogos && p.certLogos.length) {
       /*
-       * ⚠️ One span per certification, each `white-space:nowrap`, rather than
-       * one joined string. A single text node lets the browser break wherever
-       * it likes: "Zone 1-2" wrapped as "Zone" / "1-2", which reads as two
-       * separate marks. Nowrap also covers the hyphen, which is its own break
-       * opportunity — a non-breaking space would not have.
-       *
-       * The separator is its own text node, so the only break opportunity is
-       * the space BETWEEN items and a comma never starts a line.
+       * The certification marks as the product page's own logo images,
+       * smaller (Josh, 2026-10-15). Each keeps its alt text (the logo's alt,
+       * then its label), so a screen reader still hears "EX, IECEx, Zone 1-2".
+       * One row when they fit; on a narrow card they wrap rather than shrink,
+       * because a mark too small to read is no use on hazardous-area kit.
        */
       var certs = el("div", "saeh-pl-certs");
-      p.certs.forEach(function (c, i) {
-        if (i) certs.appendChild(document.createTextNode(", "));
-        certs.appendChild(el("span", null, c));
+      p.certLogos.forEach(function (c) {
+        if (!c || !c.url) return;
+        var logo = document.createElement("img");
+        logo.src = c.url;
+        logo.alt = c.alt || "";
+        logo.setAttribute("loading", "lazy");
+        certs.appendChild(logo);
       });
-      body.appendChild(certs);
+      if (certs.firstChild) body.appendChild(certs);
     }
     a.appendChild(body);
     var cta = el("span", "saeh-pl-btn");
@@ -3574,6 +3615,8 @@
     if (options.length) {
       var group = el("div", "saeh-pl-group");
       group.appendChild(el("div", "saeh-pl-glabel", filterParent.title));
+      // The options sit in their own box, so a long list can scroll inside it.
+      var optList = el("div", "saeh-pl-optlist");
       options.forEach(function (c) {
         var label = el("label", "saeh-pl-opt");
         var box = document.createElement("input");
@@ -3592,8 +3635,10 @@
         var n = el("span", "saeh-pl-n", "");
         n.setAttribute("data-for", c.id);
         label.appendChild(n);
-        group.appendChild(label);
+        optList.appendChild(label);
       });
+      group.appendChild(optList);
+      capOptions(optList, CHALLENGES_VISIBLE);
       inner.appendChild(group);
     }
 

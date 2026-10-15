@@ -182,6 +182,9 @@ const WIDGET_CSS = `
 .saeh-ind-page b{display:block;font-family:var(--saeh-head);font-size:15px;letter-spacing:.02em;text-transform:uppercase;margin-bottom:3px}
 .saeh-ind-page span{display:block;font-size:14px;line-height:1.45;color:#ddd}
 .saeh-pl-group:first-child{margin-top:4px}
+.saeh-pl-optlist{position:relative}
+.saeh-pl-capped{overflow-y:auto;scrollbar-width:thin}
+.saeh-pl-more{box-shadow:inset 0 -14px 12px -12px rgba(0,0,0,.14)}
 .saeh-pl-glabel{font-family:var(--saeh-body);font-size:14px;font-weight:600;color:#111;padding-bottom:6px;border-bottom:1px solid #ececec;margin-bottom:6px}
 .saeh-pl-opt{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer;font-size:14px;color:#555;line-height:1.35}
 .saeh-pl-opt:hover{color:#111}
@@ -208,8 +211,8 @@ const WIDGET_CSS = `
 .saeh-pl-chip{font-family:var(--saeh-head);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#fff;color:#444;padding:4px 8px}
 .saeh-pl-chip-more{background:transparent;color:#666;box-shadow:inset 0 0 0 1px #d6d6d6}
 .saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}
-.saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}
-.saeh-pl-certs span{white-space:nowrap}
+.saeh-pl-certs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.saeh-pl-certs img{height:26px;width:auto;flex:0 0 auto;display:block}
 .saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;text-transform:none;letter-spacing:normal;padding:13px}
 .saeh-pl-chevwrap{display:inline-flex;align-items:center;flex:0 0 auto;width:0;overflow:hidden;opacity:0;transition:width .18s cubic-bezier(.4,0,.2,1),opacity .12s ease,margin-left .18s cubic-bezier(.4,0,.2,1)}
 .saeh-pl-btn svg{width:19px;height:19px;flex:0 0 auto;display:block}
@@ -225,7 +228,7 @@ to{opacity:1;transform:none}
 @media(min-width:561px){.saeh-pl-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:881px){.saeh-pl{flex-direction:row;align-items:flex-start;gap:28px}
-.saeh-pl-side{flex:0 0 300px;max-width:300px;position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
+.saeh-pl-side{flex:0 0 300px;max-width:300px}
 .saeh-pl-filter{border-top:5px solid var(--color_7,#fed217)}
 .saeh-pl-grid{grid-template-columns:repeat(3,1fr)}
 .saeh-pl-toggle{display:none}
