@@ -15,12 +15,14 @@
  *   hub-category-order       CategoryOrder (the Hub's drag order)
  *   hub-logos                the Logo catalogue (label, alt, kind, file)
  *   hub-product-logos        every ProductLogo row (the logo toggles)
- *   hub-products             each HubProduct's ids, name, SKU, slug, status
+ *   hub-products             each HubProduct's ids, name, SKU, slug, status, accessory flag
  *   hub-translations-logo    Translation rows of kind LOGO_TEXT
  *   hub-duda-translations    DudaTranslation rows for categories
  *   duda-categories          every Duda category, from its single-category GET
  *                            (title, parent, seo, image and its product list)
- *   duda-products            every Duda product (name, SKU, status, categories)
+ *   duda-products            every Duda product (name, SKU, status, categories,
+ *                            and its attached options and variations)
+ *   duda-options             the store's option catalogue (options are store-level)
  *   manifest                 counts and when
  */
 import "dotenv/config";
@@ -51,7 +53,7 @@ async function main() {
     prisma.categoryOrder.findMany(),
     prisma.logo.findMany({ include: { mediaAsset: { select: { id: true, filename: true } } }, orderBy: { sortOrder: "asc" } }),
     prisma.productLogo.findMany({ select: { logoId: true, hubProduct: { select: { dudaProductId: true, name: true } } } }),
-    prisma.hubProduct.findMany({ select: { id: true, dudaProductId: true, name: true, sku: true, slug: true, status: true } }),
+    prisma.hubProduct.findMany({ select: { id: true, dudaProductId: true, name: true, sku: true, slug: true, status: true, isAccessory: true } }),
     prisma.translation.findMany({ where: { kind: "LOGO_TEXT" } }),
     prisma.dudaTranslation.findMany({ where: { entity: "CATEGORY" } }),
   ]);
@@ -78,8 +80,13 @@ async function main() {
     sku: p.sku,
     status: p.status,
     categories: (p as unknown as { categories?: unknown[] }).categories ?? [],
+    // Changing a product's options regenerates its variations and blanks their
+    // SKUs and prices, so both are kept for a restore.
+    options: p.options ?? [],
+    variations: p.variations ?? [],
   }));
   save("duda-products", dudaProducts);
+  save("duda-options", (await duda.listOptions()).results ?? []);
 
   const counts = {
     productCategories: links.length,

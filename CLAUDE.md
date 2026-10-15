@@ -1145,7 +1145,7 @@ Run `npm run duda:spike-options -- --confirm` to re-derive any of this; `npm run
 - `GET /products?category_id=…` appears to **ignore the filter** (it returned a product whose `categories` array is empty). Don't rely on it for category membership.
 - `quantity` is **write-only** — accepted on PATCH, never returned on read.
 - **`GET /products` clamps `limit` to 200** regardless of what you ask for, so paging is required now `max_products` is 1000 (`duda.listAllProducts()`).
-- Store limits live at `GET /ecommerce/store` → currently `max_products:1000, max_variations_per_product:300, max_options:20, max_choices_per_option:50`. **`max_options:20` is per-CATALOG and did NOT rise with the plan upgrade — it will be the binding constraint once options roll out across the catalogue** (1 of 20 used today: Hire/Purchase, on EX Heater only).
+- Store limits live at `GET /ecommerce/store` → currently `max_products:1000, max_variations_per_product:300, max_options:20, max_choices_per_option:50`. **`max_options:20` is per-CATALOG and did NOT rise with the plan upgrade — it will be the binding constraint once options roll out across the catalogue** (2 of 20 used: Hire/Purchase, on every visible non-accessory since 2026-10-15, and Filter Type, on two filtration units).
 
 ## Website Editor — Duda editor SSO (security-sensitive)
 
@@ -1549,7 +1549,7 @@ the next run would have overwritten it.)
 
 The ~96-product legacy catalogue is being moved off the WordPress/WooCommerce site in **stages**, driven by a WooCommerce CSV export rather than by hand.
 
-**Every content stage is done** (as of 2026-10-02): 1) title + SKU + images, 2) descriptions, 3a) benefits + applications, 3b) specs, 3c) logos, 3d) compatible products, 3e) downloads — each below. **Still to do: the Hire/Purchase option**, which goes through the options code in "Verified write surface" (attaching a two-value option drops existing variation SKUs, by design — they cannot be split unambiguously).
+**Every content stage is done** (as of 2026-10-02): 1) title + SKU + images, 2) descriptions, 3a) benefits + applications, 3b) specs, 3c) logos, 3d) compatible products, 3e) downloads — each below. The Hire/Purchase option was added on 2026-10-15 (see "Hire/Purchase and the SA Rental logo" under Categories).
 
 - `npm run duda:import-products --workspace=backend` — **dry run by default**: parses, reports data defects, HEAD-checks every image URL, writes nothing. `--confirm` to import, `--verify` for read-only reconciliation, `--retry-failed` to resume, `--rollback` to undo, `--batch N` (default 10), `--limit`/`--only` to scope.
 - ⚠️ **`--rollback` deletes LIVE products, and it used to ignore `--only`/`--limit`** (fixed 2026-10-12): it reloaded the whole ledger, so `--rollback --only <one> --confirm` would have deleted 95 of the 96 live products, EX Heater included. It now lists what is in scope without `--confirm`, deletes only the `--only`/`--limit`/`--retry-failed` selection, refuses an unscoped run unless `--all --expect <exact count>` is given, snapshots every Hub row to `migration/rollback-snapshot-*.json` first, and reports deleted/failed counts.
@@ -2115,8 +2115,28 @@ The 3 weekly rentals stay HIDDEN until the rental discussion. Duda now holds 91 
 visible, plus the 3 rentals. **Back up before any taxonomy or assignment write** with
 `npm run catalogue:backup --workspace=backend -- --out ../migration/backups/<dir>`: read-only,
 it exports every product–category link, the mirror, the order, the logos and logo toggles, the
-logo and category translations, and Duda's full category and product state, with a manifest of
-counts.
+logo and category translations, and Duda's full category and product state (since 2026-10-15
+also every product's options and variations, the option catalogue and the accessory flag), with
+a manifest of counts.
+
+**Hire/Purchase and the SA Rental logo** (Josh, 2026-10-15), `npm run catalogue:hire-purchase`
+(dry run by default, `--confirm`):
+- the store's existing "Hire/Purchase" option (EX Heater's; Hire first, so Duda pre-selects
+  Hire) is on all 56 visible non-accessory products, and on no accessory;
+- the SA Rental logo is ON for every visible non-accessory and OFF for every accessory;
+- the 3 hidden weekly rentals were not touched.
+
+It goes through `updateOptionsPreservingVariations()` and stops before any write if a product's
+variations carry data the change would lose (none did). Compact and Lightweight Filtration Unit
+carry it beside Filter Type: 6 variations each, and Add to Quote records both choices (checked
+live). ⚠️ **"Accessory" decides it** (`HubProduct.isAccessory`), so the Filtration Unit (SAFU),
+flagged an accessory in SA Equip's sheet, has no Hire/Purchase and no Rental logo.
+
+⚠️ **A variation's `status` cannot make a combination unavailable.** Probed 2026-10-15 on a
+throwaway product: `PATCH …/variations/{id}` with `status: "HIDDEN"` is accepted and read back,
+but the product page still offers that combination (no disabled chip, no message) and Add to
+Quote takes it. So "this choice is purchase only" cannot be enforced through Duda's options:
+it needs separate products, wording in the choice, or a rule in the Add to Quote widget.
 
 ⚠️ **The desktop mega menu panels (Site Challenges, Products, Industries) cannot be edited
 through Duda's API.** The header's navigation items are `MULTI_MEGA_MENU` links, read-only
@@ -2578,7 +2598,7 @@ Also before launch (each detailed elsewhere in this file):
   - **"Refresh all languages from Duda" is guarded while a language is paused**
     (`harvestRefusal()`): a language that comes back in English is refused, not wiped. It is
     still pointless until the language is published and translated again.
-- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done; **still to do: the Hire/Purchase option** (see the options notes — attaching a two-value option drops existing variation SKUs). `/products/new` remains the path for genuinely new one-off products.
+- The legacy catalogue is being bulk-migrated from WordPress — see the migration section above. Stages 1 (title/SKU/images), 2 (descriptions), 3a (key benefits + applications), 3b (technical specs), 3c (logos), 3d (compatible) and 3e (downloads) are done, and so is the Hire/Purchase option (2026-10-15). `/products/new` remains the path for genuinely new one-off products.
 - **Opening a product makes ~4 Duda reads** (the product, and `/custom` plus both logo lists each `ensureHubProduct`). Correct, just slower than one; worth trimming if Duda rate limits ever bite.
 - **New categories get no SEO title** — `duda:category-seo` was a one-off over the 23 that existed; set one on the category's page.
 - **The post-deploy GitHub workflow's first run is unconfirmed from here** (no `gh` CLI) — the same commands were run locally against production and passed; check the repo's Actions tab once.
