@@ -336,7 +336,7 @@
       // the pre-launch translation pass. SA Equip approve this wording first.
       "pl.hideAcc": "Hide accessories",
       "pl.useTitle": "Use",
-      "pl.useAtex": "ATEX range (hazardous areas)",
+      "pl.useAtex": "Hazardous areas",
       "pl.useIndustrial": "Industrial range (non-hazardous)",
       "pl.rangeTitle": "Range",
       "pl.zoneTitle": "ATEX zone",

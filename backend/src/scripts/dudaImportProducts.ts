@@ -969,7 +969,7 @@ const CERT_LOGO_FILES: Record<string, { file: string; label: string }> = {
   UKEX: { file: "ukca.png", label: "UKCA" },
   IECEx: { file: "IECEx_Logo.png", label: "IECEx" },
   INMETRO: { file: "Inmetro.png", label: "Inmetro" },
-  madeinuk: { file: "made-in-britan.jpg", label: "Made in Britain" },
+  madeinuk: { file: "made-in-britain-flag.png", label: "Made in Britain" },
   "zone-0": { file: "zone-0.png", label: "Zone 0" },
   "zone-1-2": { file: "zone-1-2.png", label: "Zone 1-2" },
   "zone-20": { file: "zone-20.png", label: "Zone 20" },

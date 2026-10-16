@@ -290,9 +290,10 @@ category template, or the page shows two listings.
 - **More filters since 2026-10-14** (Josh), below the challenges, each worked out on the
   server by `productFacets()` in `services/facets.ts` from the product's LOGOS (media file
   first, label fallback, so a renamed logo still counts):
-  - **Use**: "ATEX range (hazardous areas)" or "Industrial range (non-hazardous)". ⚠️ SA ENDURE
-    is the Industrial range, every other range is ATEX. "ATEX range" deliberately does not
-    claim the product itself is certified: a bracket is not, and the zone logos say what is.
+  - **Use**: "Hazardous areas" (renamed from "ATEX range (hazardous areas)", SA Equip, 2026-10-16)
+    or "Industrial range (non-hazardous)". ⚠️ SA ENDURE is the Industrial range, every other
+    range is ATEX. "Hazardous areas" deliberately does not claim the product itself is certified:
+    a bracket is not, and the zone logos say what is.
     Each Use option shows its OWN count, because the two exclude each other.
   - **Range**: the SA range logo (Rental ignored).
   - **ATEX zone**: the zone logos, with a Gas/Dust key under the heading. It is hidden, and its
@@ -359,8 +360,11 @@ category template, or the page shows two listings.
   deliberate (see the logo mapping note); editing `alt` on the Logos page changes the display
   without a code change. (The labels "Made in Britan" and "EX logo" were corrected to "Made in
   Britain" and "Ex logo" on 2026-10-13, with their six translations carried across to the new
-  text; the logo FILE is still `made-in-britan.jpg`, which the import and rebuild scripts match
-  on.)
+  text.) ⚠️ **Since 2026-10-16 the Made in Britain logo is the Union flag only** (SA Equip),
+  cropped from the old artwork so the colours match, alt text still "Made in Britain". Its FILE is
+  now `made-in-britain-flag.png`; the import, rebuild and assignment scripts find logos by file
+  name and were updated with it. The old `made-in-britan.jpg` stays in the Media Centre.
+  `npm run logos:replace-image` gives any logo a new image the same way (dry run by default).
 - **The panel is headed by an `h6` "Filter Products" with an inset divider**, then a labelled
   search. ⚠️ **That heading and the mobile toggle carry the same words, so exactly one is
   visible at a time** — the heading is `display:none` by default and the desktop block swaps
@@ -2137,6 +2141,10 @@ it exports every product–category link, the mirror, the order, the logos and l
 logo and category translations, and Duda's full category and product state (since 2026-10-15
 also every product's options and variations, the option catalogue and the accessory flag), with
 a manifest of counts.
+
+**UKCA is ON for every visible product** (SA Equip, 2026-10-16), SA ENDURE and accessories
+included: `npm run logos:switch-on -- --file ukca.png` (dry run by default; only adds; refuses a
+hazardous-area mark, since it switches on everywhere). 63 switched on, 25 already were.
 
 **Hire/Purchase follows the OLD site** (Josh, 2026-10-15). `npm run catalogue:old-site-options
 -- --plan <json>` (dry run by default) applies a per-product plan built from each live WordPress

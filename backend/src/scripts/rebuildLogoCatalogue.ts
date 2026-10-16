@@ -44,8 +44,9 @@ const LOGOS: { kind: LogoKind; file: string; label: string }[] = [
   { kind: LogoKind.CERT_LOGO, file: "ukca.png", label: "UKCA" },
   { kind: LogoKind.CERT_LOGO, file: "IECEx_Logo.png", label: "IECEx" },
   { kind: LogoKind.CERT_LOGO, file: "Inmetro.png", label: "Inmetro" },
-  // The FILE keeps its old spelling; the label was corrected 2026-10-13.
-  { kind: LogoKind.CERT_LOGO, file: "made-in-britan.jpg", label: "Made in Britain" },
+  // Flag only since 2026-10-16 (SA Equip); the old artwork with the words was
+  // made-in-britan.jpg, and stays in the bucket.
+  { kind: LogoKind.CERT_LOGO, file: "made-in-britain-flag.png", label: "Made in Britain" },
   { kind: LogoKind.CERT_LOGO, file: "zone-0.png", label: "Zone 0" },
   { kind: LogoKind.CERT_LOGO, file: "zone-1-2.png", label: "Zone 1-2" },
   { kind: LogoKind.CERT_LOGO, file: "zone-20.png", label: "Zone 20" },

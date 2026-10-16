@@ -43,7 +43,7 @@ const KEYS: Record<string, { kind: "SA_LOGO" | "CERT_LOGO"; file: string; label:
   iecex: { kind: "CERT_LOGO", file: "IECEx_Logo.png", label: "IECEx", group: "Certification logos" },
   inmetro: { kind: "CERT_LOGO", file: "Inmetro.png", label: "Inmetro", group: "Certification logos" },
   ukca: { kind: "CERT_LOGO", file: "ukca.png", label: "UKCA", group: "Certification logos" },
-  made_in_britain: { kind: "CERT_LOGO", file: "made-in-britan.jpg", label: "Made in Britain", group: "Certification logos" },
+  made_in_britain: { kind: "CERT_LOGO", file: "made-in-britain-flag.png", label: "Made in Britain", group: "Certification logos" },
   zone_0: { kind: "CERT_LOGO", file: "zone-0.png", label: "Zone 0", group: "Zone logos" },
   zone_1_2: { kind: "CERT_LOGO", file: "zone-1-2.png", label: "Zone 1-2", group: "Zone logos" },
   zone_20: { kind: "CERT_LOGO", file: "zone-20.png", label: "Zone 20", group: "Zone logos" },

@@ -628,7 +628,7 @@ async function main() {
     const { d } = await boot({ props: PL, cataloguePayload: FC, url: LP });
     check(names(d).length === 6, "the category's six products show");
     check(!!group(d, "Use") && !!group(d, "Range") && !!group(d, "ATEX zone"), "Use, Range and ATEX zone groups are built");
-    check(group(d, "Use").textContent.includes("ATEX range (hazardous areas)") && group(d, "Use").textContent.includes("Industrial range (non-hazardous)"),
+    check(group(d, "Use").textContent.includes("Hazardous areas") && group(d, "Use").textContent.includes("Industrial range (non-hazardous)"),
       "Use options carry Josh's wording");
     check(!!sw(d) && sw(d).getAttribute("role") === "switch", '"Hide accessories" is a real switch (role="switch")');
     check(d.querySelector(".saeh-pl-inner").firstChild.className === "saeh-pl-acc", "…at the top of the panel");
