@@ -335,13 +335,17 @@ category template, or the page shows two listings.
   page and has no product, so the legacy `data-section="all"` embed must never build it.
 - Cards: white, **square 1:1 image using `object-fit:contain`** (cropping industrial kit to
   fill a square cuts the product out of frame) sitting flush with no padding and a small
-  scale on card hover, chips from the filter group, an **h4** title, the certification logos,
-  and **one** "View Product" button.
-- **Certifications are the product page's own logo IMAGES, smaller** (Josh, 2026-10-15; they
-  were a text line). `/public/catalogue` sends `certLogos: [{url, alt}]` in the Logos page's
-  order. They are 26px high (35px on the product page), on one row when they fit; a product
-  carries up to 7, roughly square, which fits a desktop card. ⚠️ On a narrow card they WRAP
-  rather than shrink: a mark too small to read is no use on hazardous-area kit.
+  scale on card hover, chips from the filter group, an **h4** title, the certifications as
+  text, and **one** "View Product" button.
+- **Certifications are a comma-separated TEXT line** ("EX, UKCA, IECEx, Zone 1-2"; Josh,
+  2026-10-27). They were logo images from 2026-10-15 to 2026-10-27 and went back to text.
+  `/public/catalogue` still sends `certLogos: [{url, alt}]` in the Logos page's order; the card
+  shows each one's `alt`.
+- ⚠️ **Each certification is its own `nowrap` span, not one joined string.** A single text
+  node lets the browser break anywhere, and "Zone 1-2" wrapped as "Zone" / "1-2", which reads
+  as two separate marks on hazardous-area equipment. `nowrap` also covers the hyphen, which is
+  its own break opportunity; a non-breaking space would not have. The separator is a bare text
+  node, so the only break is BETWEEN items and a comma never starts a line.
 - ⚠️ **Chips are WHITE.** They were `#f1f1f1` on the body's `#f4f4f4` — three values apart,
   so the Site Challenge label was effectively invisible.
 - **At most two chips per card, then "+N more"** (`CARD_CHIP_LIMIT`, Josh 2026-10-13). A
@@ -354,8 +358,8 @@ category template, or the page shows two listings.
   plural-aware in all seven languages (`pl.moreChips`). Filtering and search read the product's
   categories, not the chips, so a hidden challenge still finds the product. Product pages show
   no challenges at all; only listing cards do.
-- ⚠️ **Each logo's alt text reads `Logo.alt || Logo.label`**, translated, exactly as the product
-  page's logo row has it. Every logo now has an `alt`, so a screen reader hears "EX", "UKCA" and
+- ⚠️ **The certification text reads `Logo.alt || Logo.label`**, translated, exactly as the
+  product page's logo row has it. Every logo now has an `alt`, so cards say "EX", "UKCA" and
   "Made in Britain" rather than ATEX/UKEX. The first two are
   deliberate (see the logo mapping note); editing `alt` on the Logos page changes the display
   without a code change. (The labels "Made in Britan" and "EX logo" were corrected to "Made in

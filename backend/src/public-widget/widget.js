@@ -1518,10 +1518,9 @@
       // than filled. #666 on the body's #f4f4f4 is ~5.3:1.
       ".saeh-pl-chip-more{background:transparent;color:#666;box-shadow:inset 0 0 0 1px #d6d6d6}",
       ".saeh-pl-name{font-family:var(--saeh-head);font-size:15px;font-weight:600;line-height:1.3;color:#111;margin:0}",
-      // Fixed height, auto width: every mark the same height, as on the product
-      // page (35px there). flex:0 0 auto stops a pinned-height image squashing.
-      ".saeh-pl-certs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}",
-      ".saeh-pl-certs img{height:26px;width:auto;flex:0 0 auto;display:block}",
+      ".saeh-pl-certs{font-size:13px;color:#878787;line-height:1.4}",
+      // ⚠️ Each certification is one unbreakable unit. See the markup.
+      ".saeh-pl-certs span{white-space:nowrap}",
       ".saeh-pl-btn{margin-top:auto;display:flex;align-items:center;justify-content:center;background:#fed217;color:#000;font-family:var(--saeh-body);font-size:16px;font-weight:400;text-transform:none;letter-spacing:normal;padding:13px}",
       /*
        * The chevron grows from zero width rather than just fading, so the
@@ -3287,24 +3286,32 @@
       body.appendChild(chips);
     }
     body.appendChild(el("h4", "saeh-pl-name", p.name || ""));
-    if (p.certLogos && p.certLogos.length) {
+    var certNames = (p.certLogos || [])
+      .map(function (c) {
+        return c && c.alt ? c.alt : "";
+      })
+      .filter(Boolean);
+    if (certNames.length) {
       /*
-       * The certification marks as the product page's own logo images,
-       * smaller (Josh, 2026-10-15). Each keeps its alt text (the logo's alt,
-       * then its label), so a screen reader still hears "EX, IECEx, Zone 1-2".
-       * One row when they fit; on a narrow card they wrap rather than shrink,
-       * because a mark too small to read is no use on hazardous-area kit.
+       * The certifications as TEXT, comma-separated (Josh, 2026-10-27; they
+       * were logo images for a while). The names are each logo's alt text
+       * (its alt, then its label), in the page's language.
+       *
+       * ⚠️ One span per certification, each `white-space:nowrap`, rather than
+       * one joined string. A single text node lets the browser break wherever
+       * it likes: "Zone 1-2" wrapped as "Zone" / "1-2", which reads as two
+       * separate marks. Nowrap also covers the hyphen, which is its own break
+       * opportunity — a non-breaking space would not have.
+       *
+       * The separator is its own text node, so the only break opportunity is
+       * the space BETWEEN items and a comma never starts a line.
        */
       var certs = el("div", "saeh-pl-certs");
-      p.certLogos.forEach(function (c) {
-        if (!c || !c.url) return;
-        var logo = document.createElement("img");
-        logo.src = c.url;
-        logo.alt = c.alt || "";
-        logo.setAttribute("loading", "lazy");
-        certs.appendChild(logo);
+      certNames.forEach(function (name, i) {
+        if (i) certs.appendChild(document.createTextNode(", "));
+        certs.appendChild(el("span", null, name));
       });
-      if (certs.firstChild) body.appendChild(certs);
+      body.appendChild(certs);
     }
     a.appendChild(body);
     var cta = el("span", "saeh-pl-btn");

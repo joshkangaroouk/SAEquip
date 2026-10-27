@@ -762,13 +762,19 @@ async function main() {
       [...card.querySelectorAll(".saeh-pl-chip")].map((c) => c.textContent).join(",") === "Working in the Dark",
       "chips come from the filter group only, not every category",
     );
-    // The certification marks are the product page's logo images, smaller, each with its alt text.
-    const marks = [...card.querySelectorAll(".saeh-pl-certs img")];
-    check(marks.map((m) => m.getAttribute("src")).join("|") === "https://x/ex.png|https://x/iecex.png", "certifications render as the logo images, in order");
-    check(marks.map((m) => m.alt).join("|") === "EX logo|IECEx", "…each with its alt text");
-    check(card.querySelector(".saeh-pl-certs").textContent === "", "…and no text line any more");
-    check(/\.saeh-pl-certs img\{height:26px;width:auto;flex:0 0 auto/.test(css), "…26px high (35px on the product page), every mark the same height");
-    check(/\.saeh-pl-certs\{display:flex;flex-wrap:wrap/.test(css), "…on one row, wrapping only when the card is too narrow");
+    // Certifications are text again, comma-separated, from each logo's alt text.
+    check(card.querySelector(".saeh-pl-certs").textContent === "EX logo, IECEx", "certifications render as text, comma-separated");
+    check(!card.querySelector(".saeh-pl-certs img"), "…with no logo images");
+    /*
+     * ⚠️ One span per certification, each nowrap. A single joined string lets
+     * the browser break anywhere — "Zone 1-2" wrapped as "Zone" / "1-2", which
+     * reads as two separate marks. The separator is its own text node, so the
+     * break opportunity is BETWEEN items and a comma never starts a line.
+     */
+    const certSpans = [...card.querySelectorAll(".saeh-pl-certs span")];
+    check(certSpans.length === 2, "one span per certification, not one joined string", String(certSpans.length));
+    check(certSpans.map((n) => n.textContent).join("|") === "EX logo|IECEx", "each carries only its own mark");
+    check(/\.saeh-pl-certs span\{white-space:nowrap\}/.test(css), "…and each is unbreakable");
     check(/\.saeh-pl-chip\{[^}]*background:#fff/.test(css),
       "chips are white — #f1f1f1 was invisible on the body's #f4f4f4");
     // h4: the card title sits under the page's own heading levels, not beside them.
