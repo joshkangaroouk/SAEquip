@@ -9,7 +9,8 @@
  * as its own Media Centre asset and the logo points at it; the old asset stays
  * in the Media Centre. ⚠️ The import, rebuild and assignment scripts find
  * logos by FILE NAME, so update their tables to --name in the same change.
- * Dry run by default.
+ * Dry run by default. Staff can do the same from the dashboard: "Replace image"
+ * on the Logos page (PATCH /api/logos/:id with a mediaAssetId).
  */
 import "dotenv/config";
 import { randomUUID } from "node:crypto";

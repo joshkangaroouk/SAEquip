@@ -101,10 +101,19 @@ const patchSchema = z
   .object({
     label: z.string().trim().max(200).nullable().optional(),
     alt: z.string().trim().max(200).nullable().optional(),
+    mediaAssetId: z.string().min(1).optional(),
   })
   .strict();
 
-/** PATCH /api/logos/:id — update label/alt. */
+/**
+ * PATCH /api/logos/:id — update label/alt, and/or replace the IMAGE.
+ *
+ * A new `mediaAssetId` re-points this catalogue entry, so its id, label, alt,
+ * order, translations and every product's toggle stay exactly as they were:
+ * the new image shows on every product carrying the logo. The old image stays
+ * in the Media Centre. The public filters still recognise a replaced range or
+ * zone logo by its label (see services/facets.ts).
+ */
 logosRouter.patch("/logos/:id", async (req, res, next) => {
   const parsed = patchSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -117,9 +126,21 @@ logosRouter.patch("/logos/:id", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    const data: Prisma.LogoUpdateInput = {};
+    const data: Prisma.LogoUncheckedUpdateInput = {};
     if ("label" in parsed.data) data.label = parsed.data.label ?? null;
     if ("alt" in parsed.data) data.alt = parsed.data.alt ?? null;
+    if (parsed.data.mediaAssetId) {
+      const asset = await prisma.mediaAsset.findUnique({ where: { id: parsed.data.mediaAssetId } });
+      if (!asset) {
+        res.status(400).json({ error: "media_not_found", detail: "mediaAssetId does not exist" });
+        return;
+      }
+      if (asset.kind !== "image") {
+        res.status(400).json({ error: "not_an_image", detail: "logo media must be an image" });
+        return;
+      }
+      data.mediaAssetId = asset.id;
+    }
     const logo = await prisma.logo.update({ where: { id: req.params.id }, data, include: logoInclude });
     res.json(await shapeLogo(logo));
   } catch (err) {

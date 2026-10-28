@@ -3,6 +3,7 @@ import { rectSortingStrategy } from "@dnd-kit/sortable";
 import { MediaPicker } from "../components/MediaPicker";
 import { UsagePill } from "../components/UsagePill";
 import {
+  Button,
   DragHandle,
   RemoveButton,
   Skeleton,
@@ -20,11 +21,13 @@ function LogoCard({
   entry,
   handle,
   onDelete,
+  onReplace,
   onSaved,
 }: {
   entry: LogoCatalogEntry;
   handle: DragHandleProps;
   onDelete: (entry: LogoCatalogEntry) => void;
+  onReplace: (entry: LogoCatalogEntry) => void;
   onSaved: (updated: LogoCatalogEntry) => void;
 }) {
   const [label, setLabel] = useState(entry.label ?? "");
@@ -58,6 +61,9 @@ function LogoCard({
       <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
         <img src={entry.url} alt={entry.alt || entry.label || "logo"} className="max-h-24 max-w-full object-contain" />
       </div>
+      <Button variant="secondary" size="xs" className="mt-2" onClick={() => onReplace(entry)}>
+        Replace image
+      </Button>
 
       <div className="mt-2 space-y-2">
         <label className="block text-xs font-semibold text-muted">
@@ -99,6 +105,8 @@ export default function Logos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // The logo whose image is being replaced: the picker is open for it.
+  const [replacing, setReplacing] = useState<LogoCatalogEntry | null>(null);
 
   // Only the latest request may land: a slow reply for the tab just left
   // would otherwise show SA logos under the Certification tab (and vice versa).
@@ -148,6 +156,62 @@ export default function Logos() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save order");
       load(tab); // revert to server state on failure
+    }
+  }
+
+  /*
+   * A new image for an existing logo. The logo keeps its id, so every product
+   * that carries it, its label/alt, order and translations are untouched; only
+   * the picture changes, everywhere at once. Hence the before/after and the
+   * product count before anything is written.
+   */
+  async function onPickReplacement(asset: MediaAsset) {
+    const entry = replacing;
+    setReplacing(null);
+    if (!entry) return;
+    if (asset.id === entry.mediaAssetId) {
+      toast.message("That is already this logo's image");
+      return;
+    }
+    const name = entry.label || entry.alt || "this logo";
+    const ok = await confirm({
+      title: "Replace logo image?",
+      description: (
+        <>
+          {/* Spans, not divs: the dialog renders its description in a <p>. */}
+          <span className="mb-3 flex items-center justify-center gap-3">
+            <span className="flex h-20 w-28 items-center justify-center rounded-lg bg-surface-2 p-2">
+              <img src={entry.url} alt="Current image" className="max-h-full max-w-full object-contain" />
+            </span>
+            <span aria-hidden="true" className="text-muted">→</span>
+            <span className="flex h-20 w-28 items-center justify-center rounded-lg bg-surface-2 p-2">
+              <img src={asset.url ?? ""} alt="New image" className="max-h-full max-w-full object-contain" />
+            </span>
+          </span>
+          {entry.usage > 0 ? (
+            <>
+              The new image replaces <span className="font-semibold">{name}</span> on{" "}
+              <span className="font-semibold">{entry.usage} product{entry.usage === 1 ? "" : "s"}</span>, on the
+              website within about a minute.
+            </>
+          ) : (
+            <>No product carries {name} yet.</>
+          )}{" "}
+          The label, alt text and order stay as they are, and the old image stays in the Media Centre.
+        </>
+      ),
+      confirmLabel: "Replace image",
+    });
+    if (!ok) return;
+    try {
+      const updated = await apiJson<LogoCatalogEntry>(`/api/logos/${entry.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ mediaAssetId: asset.id }),
+      });
+      setEntries((prev) => prev?.map((e) => (e.id === updated.id ? updated : e)) ?? null);
+      toast.success("Logo image replaced");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not replace the image");
     }
   }
 
@@ -238,13 +302,20 @@ export default function Logos() {
             strategy={rectSortingStrategy}
             className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
             renderItem={(entry, handle) => (
-              <LogoCard entry={entry} handle={handle} onDelete={handleDelete} onSaved={onSavedMeta} />
+              <LogoCard
+                entry={entry}
+                handle={handle}
+                onDelete={handleDelete}
+                onReplace={setReplacing}
+                onSaved={onSavedMeta}
+              />
             )}
           />
         )}
       </div>
 
       {pickerOpen && <MediaPicker kind="image" onPick={onPickMedia} onClose={() => setPickerOpen(false)} />}
+      {replacing && <MediaPicker kind="image" onPick={onPickReplacement} onClose={() => setReplacing(null)} />}
     </>
   );
 }

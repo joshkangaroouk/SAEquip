@@ -32,7 +32,7 @@ Two users: Kangaroo (agency, builds/maintains this) and SAEquip staff (day-to-da
 **Duda owns**: native product fields + description only. All Duda custom_fields were deliberately deleted from the store — the Hub DB is the sole source of truth for everything else.
 
 **Supabase (via `HubProduct`, keyed by `dudaProductId`) owns**:
-- `Logo` + `ProductLogo` — SA/Cert logos are a **global shared catalog** (`Logo`, kind `SA_LOGO`/`CERT_LOGO`), not per-product. `ProductLogo` is a join table; a row's existence = that catalog logo is *active* for that product. Adding a logo to the catalog makes it available to every product; deleting one is global (UI warns with a usage count).
+- `Logo` + `ProductLogo` — SA/Cert logos are a **global shared catalog** (`Logo`, kind `SA_LOGO`/`CERT_LOGO`), not per-product. `ProductLogo` is a join table; a row's existence = that catalog logo is *active* for that product. Adding a logo to the catalog makes it available to every product; deleting one is global (UI warns with a usage count). Its image can be replaced on the Logos page without touching any of that (see "Staff can replace a logo's image").
 - `SpecRow` — ordered label/value technical spec rows.
 - `ProductTextItem` — ordered text items, `kind` `BENEFIT` or `APPLICATION`.
 - `Download` + `Lead` — per-product (not shared like logos) file attachments, each referencing a `MediaAsset`. `gated: true` withholds the file until a visitor submits the "File Requests" form, and each submission is a `Lead` row — listed on the dashboard's **Resource Requests** page. ⚠️ **Every file is gated** (2026-10-05); new ones are written gated — see "Gating" under the resources widget. Each download also has a **`kind`** (`DATASHEET`/`MANUAL`/`CERTIFICATE`) and, for a certificate only, a **`certScheme`** (`INMETRO`/`UKEX`/`IECEX`/`EX`/`COMPLIANCE`) — these decide which resources page lists it; see "The resources widget".
@@ -369,6 +369,18 @@ category template, or the page shows two listings.
   now `made-in-britain-flag.png`; the import, rebuild and assignment scripts find logos by file
   name and were updated with it. The old `made-in-britan.jpg` stays in the Media Centre.
   `npm run logos:replace-image` gives any logo a new image the same way (dry run by default).
+- **Staff can replace a logo's image on the Logos page** (2026-10-28): "Replace image" on each
+  card opens the Media Centre picker (upload or choose), shows the current and new image with the
+  product count, then `PATCH /api/logos/:id` with `{mediaAssetId}`. The logo keeps its id, so its
+  label, alt text, order, translations and every product's toggle are untouched; the old image
+  stays in the Media Centre. Only images are accepted (400 `not_an_image`).
+  - ⚠️ **The file name changes, and the scripts find logos by file name.** The public site does
+    not care: `productFacets()` and the Rental check fall back to the label and alt text, and all
+    15 logos were checked to resolve the same way through it. But `logos:assign`, `logos:switch-on`,
+    `catalogue:phase4`/`phase5b` and the import's `--logos` would stop on that logo ("matches 0
+    catalogue logos"), which is loud and writes nothing: update their file tables first.
+    `logos:rebuild` also matches on the label now, so it does not recreate the old file as a
+    second copy of the logo.
 - **The panel is headed by an `h6` "Filter Products" with an inset divider**, then a labelled
   search. ⚠️ **That heading and the mobile toggle carry the same words, so exactly one is
   visible at a time** — the heading is `display:none` by default and the desktop block swaps

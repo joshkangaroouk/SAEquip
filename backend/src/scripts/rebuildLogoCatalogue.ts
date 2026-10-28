@@ -115,8 +115,15 @@ async function main() {
   const problems: string[] = [];
 
   for (const [i, spec] of LOGOS.entries()) {
-    if (logos.some((l) => l.kind === spec.kind && l.mediaAsset?.filename === spec.file)) {
-      console.log(`  = ${spec.label} — already in the catalogue`);
+    // A logo whose image was replaced on the Logos page no longer uses
+    // spec.file, so it is also recognised by its label: otherwise the old
+    // file, still in the bucket, would become a second copy of the logo.
+    const present = logos.find(
+      (l) => l.kind === spec.kind && (l.mediaAsset?.filename === spec.file || l.label === spec.label),
+    );
+    if (present) {
+      const swapped = present.mediaAsset?.filename !== spec.file ? ` (image replaced: ${present.mediaAsset?.filename})` : "";
+      console.log(`  = ${spec.label} — already in the catalogue${swapped}`);
       continue;
     }
     const matches = assets.filter((a) => a.filename === spec.file);
