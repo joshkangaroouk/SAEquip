@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card } from "../components/ui";
+import { Alert, Badge, Card, CardHeader, PageHeader } from "../components/ui";
 import { apiFetch } from "../lib/api";
 
 type Health = "loading" | "ok" | "unreachable";
@@ -35,39 +35,62 @@ export default function Status() {
     };
   }, []);
 
-  const healthColor =
-    health === "loading" ? "text-muted" : health === "ok" ? "text-ok" : "text-danger";
-  const healthDot =
-    health === "loading" ? "bg-muted" : health === "ok" ? "bg-ok" : "bg-danger";
-  const healthLabel =
-    health === "loading"
-      ? "Backend: checking…"
-      : health === "ok"
-        ? "Backend: ok"
-        : "Backend: unreachable";
+  /** The chip for a check: neutral while it runs, ok or danger once it answers (02 status tones). */
+  const chip = (state: "loading" | "ok" | "failed", ok: string, failed: string) =>
+    state === "loading" ? (
+      <Badge tone="neutral">Checking…</Badge>
+    ) : state === "ok" ? (
+      <Badge tone="ok">{ok}</Badge>
+    ) : (
+      <Badge tone="danger">{failed}</Badge>
+    );
+  const meState = me.status === "error" ? "failed" : me.status;
+  const failed = health === "unreachable" || me.status === "error";
 
+  // Reachable by URL only, like /widgets: not in the nav (02a Q16).
   return (
-    <div className="mx-auto max-w-md space-y-4">
-      <h1 className="t-h1 text-text">System status</h1>
+    <>
+      <PageHeader title="System status" description="Whether this dashboard can reach its API, and as whom." />
 
+      {failed && (
+        <Alert tone="danger" className="mb-5">
+          Something isn't answering. The checks below say which.
+        </Alert>
+      )}
+
+      <div className="grid gap-5 md:grid-cols-2">
         <Card>
-          <h2 className="text-body font-semibold text-muted">Backend health</h2>
-          <div className="mt-2 flex items-center gap-2">
-            <span className={`inline-block h-3 w-3 rounded-full ${healthDot}`} />
-            <span className={`font-semibold ${healthColor}`}>{healthLabel}</span>
-          </div>
+          <CardHeader
+            title="Backend health"
+            actions={chip(health === "unreachable" ? "failed" : health, "OK", "Unreachable")}
+          />
+          <p className="text-body text-muted">
+            <span className="t-code-sm">/api/health</span>{" "}
+            {health === "loading" ? "is being checked." : health === "ok" ? "answered ok." : "didn't answer ok."}
+          </p>
         </Card>
 
         <Card>
-          <h2 className="text-body font-semibold text-muted">Authenticated API call</h2>
-          <div className="mt-2 font-semibold">
-            {me.status === "loading" && <span className="text-muted">Checking /api/me…</span>}
-            {me.status === "ok" && (
-              <span className="text-ok">Authenticated as {me.email}</span>
+          <CardHeader title="Authenticated API call" actions={chip(meState, "Signed in", "Failed")} />
+          <p className="text-body text-muted">
+            {me.status === "loading" && (
+              <>
+                Checking <span className="t-code-sm">/api/me</span>…
+              </>
             )}
-            {me.status === "error" && <span className="text-danger">/api/me failed</span>}
-          </div>
+            {me.status === "ok" && (
+              <>
+                Authenticated as <span className="font-medium text-text">{me.email}</span>
+              </>
+            )}
+            {me.status === "error" && (
+              <>
+                <span className="t-code-sm">/api/me</span> failed.
+              </>
+            )}
+          </p>
         </Card>
-    </div>
+      </div>
+    </>
   );
 }
