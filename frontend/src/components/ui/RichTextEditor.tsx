@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { Redo2, Undo2 } from "lucide-react";
 import { cn } from "../../lib/cn";
+import { Button } from "./Button";
+import { Input } from "./Input";
 
 /**
  * WYSIWYG editor for trusted product HTML.
@@ -28,8 +31,14 @@ export interface RichTextEditorProps {
   onNormalisedDiffers?: (differs: boolean) => void;
 }
 
+/*
+ * Toolbar buttons: 34px squares (wider for word labels), Inter 12/600.
+ * Active formats are yellow (an active state). A disabled button is drawn in
+ * --border-input — no opacity (02a "After 3b").
+ */
 const btn =
-  "rounded px-2 py-1 text-label font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+  "inline-flex h-8.5 min-w-8.5 items-center justify-center px-2 text-label font-semibold " +
+  "transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:text-border-input";
 
 function ToolbarButton({
   editor,
@@ -56,7 +65,7 @@ function ToolbarButton({
       // Keep focus in the document so commands apply to the current selection.
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={cn(btn, active ? "bg-accent text-accent-ink" : "text-muted hover:bg-surface-2 hover:text-text")}
+      className={cn(btn, active ? "bg-accent text-accent-ink" : "text-muted enabled:hover:bg-surface-2 enabled:hover:text-text")}
     >
       {children}
     </button>
@@ -169,8 +178,17 @@ export function RichTextEditor({
   }
 
   return (
-    <div className={cn("rounded-md border border-border bg-surface", className)}>
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-1.5 py-1">
+    // The field box. The editing surface draws no outline of its own (tiptap
+    // owns it), so the BOX shows the focus outline while the text is focused —
+    // until 2026-10 there was no visible focus at all.
+    <div
+      className={cn(
+        "border border-border-input bg-field",
+        "has-[.ProseMirror:focus]:outline has-[.ProseMirror:focus]:outline-2 has-[.ProseMirror:focus]:outline-offset-2 has-[.ProseMirror:focus]:outline-focus",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-1 py-1">
         <ToolbarButton
           editor={editor}
           title="Bold"
@@ -258,7 +276,7 @@ export function RichTextEditor({
           disabled={!editor?.can().undo()}
           onClick={() => editor?.chain().focus().undo().run()}
         >
-          ↶
+          <Undo2 size={16} strokeWidth={2} aria-hidden="true" />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
@@ -266,13 +284,15 @@ export function RichTextEditor({
           disabled={!editor?.can().redo()}
           onClick={() => editor?.chain().focus().redo().run()}
         >
-          ↷
+          <Redo2 size={16} strokeWidth={2} aria-hidden="true" />
         </ToolbarButton>
       </div>
 
       {linkOpen && (
         <div className="flex items-center gap-2 border-b border-border bg-surface-2 px-2 py-1.5">
-          <input
+          <Input
+            size="sm"
+            aria-label="Link URL"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
             onKeyDown={(e) => {
@@ -284,18 +304,14 @@ export function RichTextEditor({
             }}
             placeholder="https://…"
             autoFocus
-            className="flex-1 rounded border border-border bg-surface px-2 py-1 text-label focus:border-accent focus:outline-none"
+            className="flex-1"
           />
-          <button type="button" onClick={applyLink} className={cn(btn, "bg-accent text-accent-ink")}>
+          <Button type="button" size="sm" onClick={applyLink}>
             Apply
-          </button>
-          <button
-            type="button"
-            onClick={() => setLinkOpen(false)}
-            className={cn(btn, "text-muted hover:text-text")}
-          >
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setLinkOpen(false)}>
             Cancel
-          </button>
+          </Button>
         </div>
       )}
 
