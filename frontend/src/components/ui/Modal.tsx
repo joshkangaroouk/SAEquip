@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Button } from "./Button";
 
@@ -24,6 +25,8 @@ export interface ModalProps {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
+  /** The dialog's accessible name when it has no visible `title`. One of the two is required. */
+  ariaLabel?: string;
   description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
@@ -44,7 +47,9 @@ const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"]),[contenteditable="true"]';
 
 /**
- * Rounded dialog rendered in a portal with a dimmed backdrop.
+ * Square dialog in a portal over the --backdrop: a 1px --border and the menu
+ * shadow (02a Q10), the title in .t-modal-title, a footer on --surface-2, and
+ * a Close (×) button whenever it is dismissable.
  *
  * ⚠️ The panel is capped at the viewport and its BODY scrolls, between a
  * fixed header and footer. It used to be `overflow-hidden` with no height
@@ -60,12 +65,14 @@ export function Modal({
   open,
   onClose,
   title,
+  ariaLabel,
   description,
   children,
   footer,
   size = "md",
   dismissable = true,
 }: ModalProps) {
+  if (import.meta.env.DEV && open && !title && !ariaLabel) console.warn("Modal: pass a `title` or an `ariaLabel`.");
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -138,23 +145,35 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : ariaLabel}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex w-full flex-col overflow-hidden rounded-xl bg-surface border border-border shadow-menu outline-none",
+          "relative flex w-full flex-col overflow-hidden border border-border bg-surface shadow-menu outline-none",
           "max-h-[calc(100vh-2rem)] supports-[height:100dvh]:max-h-[calc(100dvh-2rem)]",
           sizes[size],
         )}
       >
+        {dismissable && (
+          <Button
+            variant="ghost"
+            icon
+            aria-label="Close"
+            onClick={onClose}
+            className="absolute right-3 top-3 z-10"
+          >
+            <X size={18} strokeWidth={2} />
+          </Button>
+        )}
         {(title || description) && (
-          <div className="shrink-0 border-b border-border px-6 py-5">
+          <div className={cn("shrink-0 border-b border-border px-6 py-5", dismissable && "pr-14")}>
             {title && (
               <h2 id={titleId} className="t-modal-title text-text">
                 {title}
               </h2>
             )}
             {description && (
-              <p id={descriptionId} className="mt-1 text-help text-muted">
+              <p id={descriptionId} className="t-help mt-1">
                 {description}
               </p>
             )}
@@ -164,7 +183,7 @@ export function Modal({
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 text-body text-text">{children}</div>
         )}
         {footer && (
-          <div className="flex shrink-0 justify-end gap-3 border-t border-border px-6 py-4">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-border bg-surface-2 px-6 py-4">
             {footer}
           </div>
         )}

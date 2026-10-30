@@ -273,7 +273,12 @@ export default function Quotes() {
         </div>
       )}
 
-      <Modal open={selected !== null} onClose={() => setSelected(null)} size="lg">
+      <Modal
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        size="lg"
+        ariaLabel={selected ? `Quote request from ${selected.name}` : "Quote request"}
+      >
         {selected && <QuoteDetail quote={selected} />}
       </Modal>
     </>

@@ -240,7 +240,12 @@ export default function ResourceRequests() {
         </div>
       )}
 
-      <Modal open={selected !== null} onClose={() => setSelected(null)} size="lg">
+      <Modal
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        size="lg"
+        ariaLabel={selected ? `Resource request from ${selected.name}` : "Resource request"}
+      >
         {selected && <RequestDetail request={selected} />}
       </Modal>
     </>
