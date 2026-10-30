@@ -126,7 +126,7 @@ export default function WebsiteEditor() {
   return (
     <>
       <PageHeader
-        title="Website Editor"
+        title="Website editor"
         description="Open the SAEquip website in Duda's editor to change pages, content and layout."
       />
 

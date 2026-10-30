@@ -247,7 +247,7 @@ export default function ProductOptions() {
   return (
     <>
       <PageHeader
-        title="Product Options"
+        title="Product options"
         description="View and manage all the product options and values you've set up in your catalog."
         actions={
           <Button

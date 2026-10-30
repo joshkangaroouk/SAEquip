@@ -174,7 +174,7 @@ export default function Media() {
 
   return (
     <>
-      <PageHeader title="Media Centre" description="Reusable library of images and files, stored in Supabase." />
+      <PageHeader title="Media" description="Reusable library of images and files, stored in Supabase." />
 
       {/* Upload */}
       <form

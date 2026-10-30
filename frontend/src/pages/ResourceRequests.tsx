@@ -166,7 +166,7 @@ export default function ResourceRequests() {
   return (
     <>
       <PageHeader
-        title="Resource Requests"
+        title="Resource requests"
         description="Details entered on the Datasheets, User Manuals and Certificates pages before a file is downloaded."
         actions={
           <Button variant="secondary" size="sm" disabled={requests.length === 0} onClick={() => exportRequests(requests)}>
