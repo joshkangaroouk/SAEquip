@@ -45,6 +45,7 @@ export function SelectMenu({
   options,
   ariaLabel,
   placeholder = "Select…",
+  size = "sm",
   className,
 }: {
   value: string;
@@ -52,6 +53,8 @@ export function SelectMenu({
   options: SelectOption[];
   ariaLabel: string;
   placeholder?: string;
+  /** The trigger is the field box: "sm" the 34px dense field (toolbars, the default), "md" 40px. */
+  size?: "sm" | "md";
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -208,17 +211,17 @@ export function SelectMenu({
         onClick={() => (open ? setOpen(false) : openList())}
         onKeyDown={onTriggerKey}
         className={cn(
-          "flex h-8 w-full items-center justify-between gap-2 rounded-md border border-border-input bg-field",
-          "px-2.5 text-body text-text transition-[color,box-shadow] outline-none",
-          "hover:bg-surface-2 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          open && "border-ring",
+          "flex w-full items-center justify-between gap-2 border border-border-input bg-field px-3 text-body text-text",
+          "transition-colors duration-[120ms]",
+          size === "md" ? "h-10" : "h-8.5",
+          open && "border-text",
         )}
       >
         <span className="truncate">{current ? current.label : placeholder}</span>
         <ChevronDown
           size={14}
           strokeWidth={2}
-          className={cn("shrink-0 text-muted transition-transform", open && "rotate-180")}
+          className={cn("shrink-0 text-muted", open && "rotate-180")}
         />
       </button>
 
@@ -242,7 +245,7 @@ export function SelectMenu({
             }}
             className={cn(
               // z-50 clears the sticky table header and the product save bar.
-              "z-50 overflow-y-auto overscroll-contain rounded-md border border-border",
+              "z-50 overflow-y-auto overscroll-contain border border-border",
               "bg-surface py-1 shadow-menu",
             )}
           >
@@ -260,7 +263,7 @@ export function SelectMenu({
                   onClick={() => choose(i)}
                   style={{ paddingLeft: 10 + (o.depth ?? 0) * 14 }}
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-2 py-1.5 pr-2.5 text-left text-body transition-colors",
+                    "flex w-full cursor-pointer items-center gap-2 py-2 pr-3 text-left text-body transition-colors duration-[120ms]",
                     selected ? "font-semibold text-text" : "text-muted",
                     i === active ? "bg-surface-2 text-text" : selected && "bg-surface-2/60",
                   )}
@@ -270,7 +273,8 @@ export function SelectMenu({
                   <Check
                     size={14}
                     strokeWidth={2.5}
-                    className={cn("shrink-0", selected ? "text-accent-ink" : "invisible")}
+                    // --text, not accent-ink: the list is not yellow, and a black tick vanished on the dark list.
+                    className={cn("shrink-0", selected ? "text-text" : "invisible")}
                   />
                   <span className="truncate">{o.label}</span>
                 </div>

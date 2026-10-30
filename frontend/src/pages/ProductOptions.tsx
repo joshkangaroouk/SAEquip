@@ -343,6 +343,7 @@ export default function ProductOptions() {
                     </TD>
                     <TD>
                       <DropdownMenu
+                        label={`Actions for ${o.name}`}
                         actions={[
                           { label: "Add value", onSelect: () => void addValue(o) },
                           { label: "Rename option", onSelect: () => openRename(o) },

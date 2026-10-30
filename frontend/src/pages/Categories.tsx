@@ -450,6 +450,7 @@ function CategoryTree({
           )}
         </span>
         <DropdownMenu
+          label={`Actions for ${n.title}`}
           actions={[
             { label: "Edit", onSelect: () => onEdit(n) },
             { label: "Add subcategory", onSelect: () => onAddChild(n.id) },
