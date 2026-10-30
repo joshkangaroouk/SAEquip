@@ -59,32 +59,32 @@ export function AccordionCard({
      * `hidden` attribute beside a `flex` utility. Declaring the chrome here
      * means there is nothing to override.
      */
-    <div id={id} className="rounded-xl border border-border bg-surface">
+    <div id={id} className="border border-border bg-surface">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={bodyId}
-        className="flex w-full items-center gap-3 px-5 py-4 text-left"
+        className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors duration-[120ms] hover:bg-surface-2"
       >
         <ChevronDown
           size={16}
           strokeWidth={2.5}
           className={cn(
-            "shrink-0 text-muted transition-transform duration-200",
+            "shrink-0 text-muted",
             open ? "rotate-180" : "rotate-0",
           )}
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-body font-semibold text-text">{title}</span>
+          <span className="t-section block text-text">{title}</span>
           {/* Shown here whether open or closed — it used to move into the body
               on open, which put it next to the section's own copy of the same
               sentence. */}
           {description && (
-            <span className="mt-0.5 block truncate text-help text-muted">{description}</span>
+            <span className="t-help mt-0.5 block truncate">{description}</span>
           )}
         </span>
-        {summary != null && <span className="shrink-0 text-label text-muted">{summary}</span>}
+        {summary != null && <span className="t-code-sm shrink-0 text-muted">{summary}</span>}
         {error ? <Badge tone="danger">Error</Badge> : dirty ? <Badge dot="unsaved">Unsaved</Badge> : null}
       </button>
 

@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { CircleAlert } from "lucide-react";
 import { cn } from "../../lib/cn";
 
 /**
@@ -17,15 +18,14 @@ export function AccordionBodyProvider({ children }: { children: React.ReactNode 
   return <InAccordion.Provider value={true}>{children}</InAccordion.Provider>;
 }
 
+/** True inside a padded Card, so a CardHeader can run edge to edge as its own row. */
+const InPaddedCard = createContext(false);
+
 /**
- * Surface panel with a hairline border. Rounded corners, generous padding.
+ * Surface panel: --surface, a 1px --border, square, no shadow (00 "Card").
  *
- * ⚠️ Use `padded={false}` for flush content — NOT `className="p-0"`. `cn()` is
- * a plain string JOIN, not tailwind-merge, so `p-0` lands in the list beside
- * this component's own `p-5` and loses on stylesheet order. That silently left
- * 20px wrapping a table on three pages and read as a box inside a box. The
- * same trap has cost `w-56` on an Input and `p-0` on AccordionCard; a real
- * prop is the only form that cannot lose.
+ * ⚠️ Use `padded={false}` for flush content — not `className="p-0"`. A prop
+ * says what the content is; a class only says what it should look like.
  */
 export function Card({
   className,
@@ -39,20 +39,27 @@ export function Card({
       className={cn(
         // Inside an accordion the chrome belongs to the accordion, so this
         // collapses to a plain wrapper and keeps only a caller's own classes.
-        bare ? "" : "rounded-xl border border-border bg-surface",
-        // overflow-hidden so flush content cannot square off the rounded
-        // corners it now sits against.
+        bare ? "" : "border border-border bg-surface",
         bare ? "" : padded ? "p-5" : "overflow-hidden",
         className,
       )}
       {...rest}
     >
-      {children}
+      <InPaddedCard.Provider value={!bare && padded}>{children}</InPaddedCard.Provider>
     </div>
   );
 }
 
-/** Optional header row for a Card: title (+ description) with right-aligned actions. */
+/**
+ * The card's header row (00): the title as the section heading (Barlow
+ * 14/600 uppercase .09em), an optional muted description, and actions on the
+ * right.
+ *
+ * As the first child of a padded Card it runs edge to edge with padding 16 20
+ * and a bottom border — the design's header row — without every caller
+ * restructuring into header and body. (Checked: every CardHeader in the app
+ * is the first child of a padded Card.)
+ */
 export function CardHeader({
   title,
   description,
@@ -65,6 +72,7 @@ export function CardHeader({
   className?: string;
 }) {
   const bare = useContext(InAccordion);
+  const row = useContext(InPaddedCard);
 
   /*
    * Inside an accordion, only ACTIONS survive.
@@ -85,10 +93,16 @@ export function CardHeader({
   }
 
   return (
-    <div className={cn("mb-4 flex flex-wrap items-start justify-between gap-3", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-start justify-between gap-3",
+        row ? "-mx-5 -mt-5 mb-5 border-b border-border px-5 py-4" : "mb-4",
+        className,
+      )}
+    >
       <div className="space-y-1">
         <h3 className="t-section text-text">{title}</h3>
-        {description && <p className="text-help text-muted">{description}</p>}
+        {description && <p className="t-help">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
@@ -97,6 +111,8 @@ export function CardHeader({
 
 /**
  * A section's error message — the ONE error box every editor section uses.
+ * Drawn as the design's alert (02a Q2): --surface, a 3px --danger bar on the
+ * left, the icon in --danger, the message in --text. Announced (role="alert").
  *
  * ⚠️ Renders nothing inside an accordion body, because the accordion prints the
  * same message itself, at the top of the body. Each section used to carry its
@@ -108,9 +124,21 @@ export function CardHeader({
 export function SectionError({ message }: { message?: string | null }) {
   const bare = useContext(InAccordion);
   if (!message || bare) return null;
+  return <ErrorBox message={message} />;
+}
+
+/** The alert-styled error box, shared by SectionError and AccordionCard. */
+export function ErrorBox({ message, className }: { message: string; className?: string }) {
   return (
-    <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
-      {message}
+    <div
+      role="alert"
+      className={cn(
+        "mb-3 flex items-start gap-2 border border-l-[3px] border-border border-l-danger bg-surface px-3 py-2 text-help text-text",
+        className,
+      )}
+    >
+      <CircleAlert size={16} strokeWidth={2} aria-hidden="true" className="mt-0.5 shrink-0 text-danger" />
+      <span>{message}</span>
     </div>
   );
 }

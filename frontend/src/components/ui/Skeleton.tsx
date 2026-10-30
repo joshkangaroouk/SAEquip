@@ -17,5 +17,5 @@ import { cn } from "../../lib/cn";
  * container, not on every grey rectangle.
  */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-md bg-surface-2", className)} aria-hidden="true" />;
+  return <div className={cn("animate-pulse bg-surface-2 motion-reduce:animate-none", className)} aria-hidden="true" />;
 }
