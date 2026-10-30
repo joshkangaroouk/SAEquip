@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, Globe } from "lucide-react";
 import { Alert, Badge, Button, ButtonLink, Card, EmptyState, Loader, PageHeader, toast } from "../components/ui";
 import { apiJson } from "../lib/api";
+import { languageName } from "../lib/language";
 
 interface EditableSite {
   siteName: string;
@@ -11,6 +12,12 @@ interface EditableSite {
   publishStatus: string | null;
   lastPublished: string | null;
   grantedPermissions: string[];
+  /** Duda's "No index for the entire site"; null when the site read failed. */
+  noIndex: boolean | null;
+  /** The default language ("en-gb"); null when the site read failed. */
+  lang: string | null;
+  /** The other languages set up in Duda ("ar", "fr", …). */
+  additionalLanguages: string[];
 }
 
 interface SitesResponse {
@@ -60,7 +67,7 @@ function HomepagePreview({ src, alt }: { src: string | null; alt: string }) {
   );
 }
 
-/** A value the page cannot show without a new Duda read (02a Q21). */
+/** A value Duda didn't return (the site read failed, or it has no domain). */
 function NotAvailable() {
   return (
     <>
@@ -68,6 +75,23 @@ function NotAvailable() {
         —
       </span>
       <span className="sr-only">Not available</span>
+    </>
+  );
+}
+
+/**
+ * "English only", or "English + 6" with the others named beneath. As set up
+ * in Duda: a language paused there still counts, since Duda's API lists it.
+ */
+function SiteLanguages({ lang, others }: { lang: string | null; others: string[] }) {
+  if (!lang) return <NotAvailable />;
+  // "en-gb" → "English": the site's own language, not its region.
+  const base = languageName(lang.split("-")[0]);
+  if (others.length === 0) return <>{base} only</>;
+  return (
+    <>
+      {base} + {others.length}
+      <span className="t-help mt-0.5 block">{others.map(languageName).join(", ")}</span>
     </>
   );
 }
@@ -194,27 +218,21 @@ export default function WebsiteEditor() {
                   </div>
 
                   {/*
-                    The site status grid (00). Only what the Hub already reads
-                    (02a Q21): /api/website/sites returns the domain, publish
-                    state and dates, nothing about search engines or languages.
+                    The site status grid (00), from the one Duda site read the
+                    sites route already makes (02a Q21).
                   */}
                   <dl className="grid grid-cols-1 border-t border-border sm:grid-cols-3">
                     <div className="px-5 py-4">
                       <dt className="t-label">Search engines</dt>
                       <dd className="mt-1 text-body text-text">
-                        {/* — until the site's no-index setting is read: Duda's site_seo.no_index,
-                            on the same GET /sites/multiscreen/{site} the sites route already makes
-                            but does not pass on. */}
-                        <NotAvailable />
+                        {/* Hidden while "No index for the entire site" is on (CLAUDE.md, launch checklist). */}
+                        {site.noIndex === null ? <NotAvailable /> : site.noIndex ? "Hidden" : "Visible"}
                       </dd>
                     </div>
                     <div className="border-t border-border px-5 py-4 sm:border-l sm:border-t-0">
                       <dt className="t-label">Languages</dt>
                       <dd className="mt-1 text-body text-text">
-                        {/* — until the site's languages are read: Duda's lang and
-                            additionalLanguages (duda.getSiteLanguages()), the same site read,
-                            not returned by /api/website/sites. */}
-                        <NotAvailable />
+                        <SiteLanguages lang={site.lang} others={site.additionalLanguages} />
                       </dd>
                     </div>
                     <div className="border-t border-border px-5 py-4 sm:border-l sm:border-t-0">
