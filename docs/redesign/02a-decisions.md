@@ -86,3 +86,23 @@ These answer the open questions at the end of `02-design-system.md`. Where this 
 26. **Pagination ellipsis:** accept `text-muted` mono "…". Show first, last, current ±1.
 27. **Checkbox:** keep the custom `appearance-none` box: square, 16px, `--border-input` border; checked is a yellow fill with a black tick.
 28. **Editor save:** the bottom save bar stays the single save control (it's tied to the save logic). The header card shows the name, SKU, a status chip and "View on website", but no Save button. Live toggle in the right panel: CONFIRMED, it replaces the Status select (same field, same save key).
+
+## After 3b: answers to the dark-mode breakage list
+- **Solid confirm-delete button (inside modals):** background #B42318 in BOTH themes, white text (6.57:1), with a 1px `--danger` border so its edge shows in dark (#F97066). Hover: #9B1C13. The everyday danger button is the outline style from Q11.
+- **Toggle:**
+  - Off: track `--surface-2`, 1px `--border-input` border, knob `--muted` (6.67:1 on the dark track).
+  - On: yellow track and border, knob #0B0B0B.
+  - Square knob, 16px. LogoActivationPanel's hand-built switch is replaced by `ui/Toggle`.
+- **Disabled buttons (all variants):** no opacity. Background `--surface-2`, text `--muted`, border `--border`, cursor not-allowed. Disabled icon-only controls (e.g. editor toolbar glyphs) use colour `--border-input`. Disabled controls are exempt from contrast rules, but must still look clearly inactive.
+- **Focus:** replace every interim `ring-[3px]` with the global outline (2px `--focus`, 2px offset; `--sidebar-focus` inside the sidebar). No box-shadow rings.
+- **Links:** "underline on hover" belongs on text-link components and inline links only. Not on nav items, row links or links styled as buttons.
+- **CSP hash guard:** YES. Add a check to the pre-push `npm run check` that recomputes the sha256 of the inline script in frontend/index.html and fails if vercel.json doesn't list it.
+
+## After 4a
+- **Selected row, light theme:** stronger marker.
+  - Light: a 3px left bar in `--text` (#0B0B0B), background `--selected-bg` = #FFF7D1 (a pale yellow wash), and the row's primary text at 600 weight.
+  - Dark: unchanged, i.e. a 3px yellow bar, `--surface-2` background and 600 text.
+  - Add `--selected-bg` as a token: light #FFF7D1, dark = the `--surface-2` value.
+  - Applies to Table selected rows, SplitView list items and the Media selected tile (where the tile outline becomes 2px `--text` in light, yellow in dark).
+- **Native "Choose file" buttons:** hide the native input visually and trigger it from a real `Button` (ghost style), so it gets the disabled state and focus outline.
+- **Light-theme yellow edges** (primary button, checked checkbox, toggle on, New chip at about 1.3:1 against the page): accepted. The black text, tick or knob carries the state.
