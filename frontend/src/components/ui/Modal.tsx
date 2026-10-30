@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
@@ -47,35 +48,22 @@ const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"]),[contenteditable="true"]';
 
 /**
- * Square dialog in a portal over the --backdrop: a 1px --border and the menu
- * shadow (02a Q10), the title in .t-modal-title, a footer on --surface-2, and
- * a Close (×) button whenever it is dismissable.
- *
- * ⚠️ The panel is capped at the viewport and its BODY scrolls, between a
- * fixed header and footer. It used to be `overflow-hidden` with no height
- * cap while the page behind was scroll-locked, so a tall dialog — a long
- * translation, a quote with many lines, anything on a phone — was cut off
- * with its Save button out of reach.
- *
- * Focus moves in on open (unless something inside already took it, e.g. an
- * `autoFocus` input), is held inside, and returns to where it was on close;
- * the title and description name the dialog for assistive tech.
+ * The dialog mechanics, shared by Modal and the shell's mobile drawer: on
+ * open, focus moves into the panel (unless something inside already took it,
+ * e.g. an `autoFocus` input) and Tab is held inside it; Escape closes it when
+ * dismissable; the page behind stops scrolling; on close, focus returns to
+ * `returnFocusTo` or else to whatever had it before. Only the TOP open dialog
+ * answers keys (openStack).
  */
-export function Modal({
-  open,
-  onClose,
-  title,
-  ariaLabel,
-  description,
-  children,
-  footer,
-  size = "md",
-  dismissable = true,
-}: ModalProps) {
-  if (import.meta.env.DEV && open && !title && !ariaLabel) console.warn("Modal: pass a `title` or an `ariaLabel`.");
-  const panelRef = useRef<HTMLDivElement>(null);
-  const titleId = useId();
-  const descriptionId = useId();
+export function useDialog(
+  open: boolean,
+  panelRef: RefObject<HTMLElement>,
+  {
+    onClose,
+    dismissable = true,
+    returnFocusTo,
+  }: { onClose: () => void; dismissable?: boolean; returnFocusTo?: RefObject<HTMLElement> },
+) {
   // The latest handler without re-running the open/close effect on each render.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -84,7 +72,7 @@ export function Modal({
 
   useEffect(() => {
     if (!open) return;
-    const me = Symbol("modal");
+    const me = Symbol("dialog");
     openStack.push(me);
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
@@ -128,9 +116,44 @@ export function Modal({
       const at = openStack.indexOf(me);
       if (at !== -1) openStack.splice(at, 1);
       document.body.style.overflow = prevOverflow;
-      if (opener && opener.isConnected) opener.focus();
+      const back = returnFocusTo?.current ?? opener;
+      if (back && back.isConnected) back.focus();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+}
+
+/**
+ * Square dialog in a portal over the --backdrop: a 1px --border and the menu
+ * shadow (02a Q10), the title in .t-modal-title, a footer on --surface-2, and
+ * a Close (×) button whenever it is dismissable.
+ *
+ * ⚠️ The panel is capped at the viewport and its BODY scrolls, between a
+ * fixed header and footer. It used to be `overflow-hidden` with no height
+ * cap while the page behind was scroll-locked, so a tall dialog — a long
+ * translation, a quote with many lines, anything on a phone — was cut off
+ * with its Save button out of reach.
+ *
+ * Focus moves in on open (unless something inside already took it, e.g. an
+ * `autoFocus` input), is held inside, and returns to where it was on close;
+ * the title and description name the dialog for assistive tech.
+ */
+export function Modal({
+  open,
+  onClose,
+  title,
+  ariaLabel,
+  description,
+  children,
+  footer,
+  size = "md",
+  dismissable = true,
+}: ModalProps) {
+  if (import.meta.env.DEV && open && !title && !ariaLabel) console.warn("Modal: pass a `title` or an `ariaLabel`.");
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  useDialog(open, panelRef, { onClose, dismissable });
 
   if (!open) return null;
 

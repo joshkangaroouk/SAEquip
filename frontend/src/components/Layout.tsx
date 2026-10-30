@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, Outlet, useLocation, useMatches, useNavigate } from "react-router-dom";
 import {
   BarChart3,
@@ -21,6 +21,8 @@ import { useThemePreference } from "../hooks/useUserPreference";
 import { cn } from "../lib/cn";
 import { clearProductIndex, useProductIndex } from "../lib/productIndex";
 import { CrumbProvider, TopBar } from "./TopBar";
+import { useDialog } from "./ui";
+import { LG, useMediaQuery } from "../hooks/useMediaQuery";
 
 /**
  * The sidebar (docs/redesign 02a Q6): always dark, on the fixed `--sidebar-*`
@@ -264,6 +266,20 @@ export function Layout({ children }: { children?: ReactNode }) {
   const [pageLabel, setPageLabel] = useState<string | null>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
 
+  /*
+   * The drawer below lg is a dialog: focus moves in and is held there, Escape
+   * and the backdrop close it, the page behind stops scrolling, and focus
+   * returns to the menu button (the same mechanics as Modal). It closes if the
+   * window widens to lg, where the fixed sidebar takes over.
+   */
+  const drawer = useRef<HTMLDivElement>(null);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  useDialog(drawerOpen, drawer, { onClose: closeDrawer, returnFocusTo: menuButton });
+  const wide = useMediaQuery(LG);
+  useEffect(() => {
+    if (wide) setDrawerOpen(false);
+  }, [wide]);
+
   return (
     <div className="min-h-screen bg-bg text-text">
       {/* Desktop sidebar */}
@@ -277,20 +293,30 @@ export function Layout({ children }: { children?: ReactNode }) {
       {/* Mobile drawer */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-backdrop" onClick={() => setDrawerOpen(false)} />
-          <aside
+          <div className="absolute inset-0 bg-backdrop" onClick={closeDrawer} />
+          <div
+            ref={drawer}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            tabIndex={-1}
             data-sidebar
-            className={cn("absolute inset-y-0 left-0 w-sidebar max-w-[85vw] border-r", SIDEBAR, SIDEBAR_BORDER)}
+            className={cn(
+              "absolute inset-y-0 left-0 w-sidebar max-w-[85vw] border-r outline-none",
+              SIDEBAR,
+              SIDEBAR_BORDER,
+            )}
           >
             <button
+              type="button"
               aria-label="Close menu"
-              onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-3.5 p-1.5 text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg"
+              onClick={closeDrawer}
+              className="absolute right-3 top-[15px] z-10 flex h-8.5 w-8.5 items-center justify-center text-sidebar-text transition-colors duration-[120ms] hover:bg-sidebar-hover hover:text-sidebar-fg"
             >
-              <X size={18} strokeWidth={2} />
+              <X size={18} strokeWidth={2} aria-hidden="true" />
             </button>
-            <SidebarBody onNavigate={() => setDrawerOpen(false)} />
-          </aside>
+            <SidebarBody onNavigate={closeDrawer} />
+          </div>
         </div>
       )}
 

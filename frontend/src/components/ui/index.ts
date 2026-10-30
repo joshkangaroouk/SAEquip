@@ -9,7 +9,7 @@ export { Card, CardHeader, AccordionBodyProvider, SectionError } from "./Card";
 export { Alert, type AlertTone } from "./Alert";
 export { AccordionCard } from "./AccordionCard";
 export { Table, THead, TBody, TR, TH, TD } from "./Table";
-export { Modal, ConfirmProvider, useConfirm, type ModalProps } from "./Modal";
+export { Modal, ConfirmProvider, useConfirm, useDialog, type ModalProps } from "./Modal";
 export { Badge, StatusBadge } from "./Badge";
 export { Toaster, toast } from "./Toast";
 export { FileDropzone, type FileDropzoneProps } from "./FileDropzone";
