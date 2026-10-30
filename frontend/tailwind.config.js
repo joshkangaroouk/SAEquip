@@ -56,6 +56,11 @@ export default {
         // `muted` is secondary TEXT, not shadcn's grey fill.
         muted: "rgb(var(--muted) / <alpha-value>)",
         track: "rgb(var(--track) / <alpha-value>)",
+        // The selected state (02a "After 4a"): `bg-selected`, and the 3px bar `selected-bar`.
+        selected: {
+          DEFAULT: "rgb(var(--selected-bg) / <alpha-value>)",
+          bar: "rgb(var(--selected-bar) / <alpha-value>)",
+        },
         chip: "rgb(var(--chip-bg) / <alpha-value>)",
         ok: {
           DEFAULT: "rgb(var(--ok) / <alpha-value>)",

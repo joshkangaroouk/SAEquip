@@ -341,12 +341,16 @@ function Tables() {
         </THead>
         <TBody>
           <TR hover data-kit="row:hover">
-            <TD>Hover row</TD>
+            <TD primary>Hover row</TD>
             <TD className="t-code">SAPH18440</TD>
           </TR>
-          <TR selected data-kit="row:selected">
-            <TD>Selected row</TD>
+          <TR hover selected data-kit="row:selected">
+            <TD primary>Selected row</TD>
             <TD className="t-code">SA4000</TD>
+          </TR>
+          <TR hover>
+            <TD primary>Another row</TD>
+            <TD className="t-code">SA4007</TD>
           </TR>
         </TBody>
       </Table>

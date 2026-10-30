@@ -73,9 +73,12 @@ export function TBody({ className, children, ...rest }: React.HTMLAttributes<HTM
  * 2026-10-12). A click that starts on such a control is left to it, so the
  * action does not run twice — twice is two history entries for a link.
  *
- * `selected` draws the selected row (00): a --surface-2 fill and a 3px yellow
- * bar on the left (an inset shadow on the first cell, so nothing shifts). It
- * is visual only — the caller sets whatever ARIA its list pattern needs.
+ * `selected` draws the selected state (02a "After 4a"): a 3px bar on the left
+ * (an inset shadow on the first cell, so nothing shifts) and the --selected-bg
+ * fill — light: a --text bar on a pale yellow wash; dark: a yellow bar on
+ * --surface-2. Mark the row's main text with `<TD primary>` and it goes to 600
+ * while selected, the second cue. Visual only — the caller sets whatever ARIA
+ * its list pattern needs.
  */
 export function TR({
   hover = false,
@@ -87,10 +90,13 @@ export function TR({
 }: React.HTMLAttributes<HTMLTableRowElement> & { hover?: boolean; selected?: boolean }) {
   return (
     <tr
+      data-selected={selected || undefined}
       className={cn(
-        "border-b border-border last:border-0",
-        hover && "cursor-pointer transition-colors duration-[120ms] hover:bg-surface-2",
-        selected && "bg-surface-2 [&>:first-child]:shadow-[inset_3px_0_0_0_rgb(var(--accent))]",
+        "group/row border-b border-border last:border-0",
+        hover && "cursor-pointer transition-colors duration-[120ms]",
+        // A selected row keeps its fill under the pointer.
+        hover && !selected && "hover:bg-surface-2",
+        selected && "bg-selected [&>:first-child]:shadow-[inset_3px_0_0_0_rgb(var(--selected-bar))]",
         className,
       )}
       onClick={
@@ -115,9 +121,20 @@ export function TH({ className, children, ...rest }: React.ThHTMLAttributes<HTML
   );
 }
 
-export function TD({ className, children, ...rest }: React.TdHTMLAttributes<HTMLTableCellElement>) {
+export function TD({
+  primary = false,
+  className,
+  children,
+  ...rest
+}: React.TdHTMLAttributes<HTMLTableCellElement> & {
+  /** The row's main text: 600 weight while the row is `selected`. */
+  primary?: boolean;
+}) {
   return (
-    <td className={cn("px-5 py-2.5 align-middle text-body", className)} {...rest}>
+    <td
+      className={cn("px-5 py-2.5 align-middle text-body", primary && "group-data-[selected]/row:font-semibold", className)}
+      {...rest}
+    >
       {children}
     </td>
   );
