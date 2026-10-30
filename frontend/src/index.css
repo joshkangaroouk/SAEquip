@@ -1,10 +1,10 @@
 /* ==========================================================================
-   SAEquip Product Hub — design system
-   Styling language follows shadcn/ui: white surfaces separated by hairline
-   borders rather than fills, a restrained neutral scale, 14px UI text, small
-   radii, and soft focus rings instead of hard outlines.
-   Brand yellow (#FED217) stays as the accent — shadcn's own primary is
-   near-black, but the brand takes precedence.
+   SAEquip Product Hub — design system (redesign 2026-10)
+   The look: square corners, 1px borders instead of shadows, black / white /
+   brand yellow (#FED217). Yellow marks only the active or primary thing.
+   The sidebar is always dark; the main panel has a light and a dark theme,
+   switched by `data-theme` on <html>. Source of truth for the values:
+   docs/redesign/00-design-reference.md and 02a-decisions.md.
    Typefaces: Barlow (headings), Inter (body), JetBrains Mono (codes) — from
    Google Fonts via the <link> in index.html. Weights: Barlow and Inter
    400/500/600/700, JetBrains Mono 400/500.
@@ -17,15 +17,8 @@
 /* --- Design tokens -------------------------------------------------------
    Mirrored in tailwind.config.js so the same names exist as utilities.
 
-   NOTE on naming: shadcn calls its light grey fill `--muted` and its secondary
-   text `--muted-foreground`. This codebase already uses `muted` to mean
-   secondary TEXT across ~10 pages, so that name keeps its existing meaning and
-   shadcn's non-colliding names (primary, secondary, input, ring, destructive)
-   are added alongside. Renaming `muted` would silently turn every piece of
-   secondary text near-white.
-
-   Values are the sRGB equivalents of shadcn's OKLCH neutrals, which line up
-   with Tailwind's `neutral` palette.
+   `muted` is secondary TEXT (shadcn would call it muted-foreground). There is
+   no third text grey: the old `--subtle` folded into it.
 
    FORMAT: these are space-separated RGB CHANNELS, not hex, and the Tailwind
    config consumes them as `rgb(var(--x) / <alpha-value>)`. That is what makes
@@ -33,48 +26,86 @@
    alpha channel and silently DROPS the declaration, so `bg-danger/10` and
    friends rendered fully transparent. Any direct CSS use must therefore wrap
    the var: `rgb(var(--accent))`. */
+
+/* Main panel, light — also the default when no theme is set. */
+:root,
+[data-theme="light"] {
+  --bg: 242 242 240; /* #F2F2F0 page */
+  --surface: 255 255 255; /* #FFFFFF cards, header, top bar */
+  --surface-2: 247 247 245; /* #F7F7F5 table heads, footers, wells, row hover */
+  --input-bg: 255 255 255; /* #FFFFFF inputs and selects */
+  --border: 227 227 223; /* #E3E3DF hairlines */
+  --border-strong: 203 203 198; /* #CBCBC6 ghost buttons, other edges */
+  --border-input: 138 138 133; /* #8A8A85 inputs, selects, checkboxes, toggle off — 3:1 (02a Q13) */
+  --text: 11 11 11; /* #0B0B0B */
+  --muted: 92 92 88; /* #5C5C58 secondary text, labels, help */
+  --track: 236 236 234; /* #ECECEA segmented-control background */
+  --chip-bg: 242 242 240; /* #F2F2F0 neutral chip */
+  --ok: 30 122 60; /* #1E7A3C */
+  --ok-bg: 230 242 233; /* #E6F2E9 */
+  --danger: 180 35 24; /* #B42318 */
+  --danger-bg: 253 236 234; /* #FDECEA danger-button hover, failed pills (02a Q2) */
+  --warning: 138 75 0; /* #8A4B00 (02a Q3) */
+  --warning-bg: 252 239 217; /* #FCEFD9 */
+  --focus: 11 11 11; /* = --text: the 2px focus outline */
+  color-scheme: light;
+}
+
+/* Main panel, dark. ⚠️ Never redefine the fixed tokens below here — that is
+   what keeps the sidebar dark and the paper tiles white in both themes. */
+[data-theme="dark"] {
+  --bg: 15 15 15; /* #0F0F0F */
+  --surface: 23 23 23; /* #171717 */
+  --surface-2: 29 29 29; /* #1D1D1D */
+  --input-bg: 18 18 18; /* #121212 */
+  --border: 42 42 42; /* #2A2A2A */
+  --border-strong: 59 59 59; /* #3B3B3B */
+  --border-input: 107 107 107; /* #6B6B6B */
+  --text: 242 242 240; /* #F2F2F0 */
+  --muted: 163 163 160; /* #A3A3A0 */
+  --track: 35 35 35; /* #232323 */
+  --chip-bg: 34 34 34; /* #222222 */
+  --ok: 95 208 138; /* #5FD08A */
+  --ok-bg: 16 38 26; /* #10261A */
+  --danger: 249 112 102; /* #F97066 */
+  --danger-bg: 42 19 17; /* #2A1311 */
+  --warning: 245 181 74; /* #F5B54A */
+  --warning-bg: 42 30 8; /* #2A1E08 */
+  --focus: 242 242 240;
+  color-scheme: dark;
+}
+
+/* Fixed — the same in both themes. */
 :root {
-  /* Surfaces */
-  --bg: 250 250 250; /* neutral-50 — page base */
-  --surface: 255 255 255; /* cards, panels, fields */
-  --surface-2: 245 245 245; /* neutral-100 — table headers, hover, subtle fills */
+  --accent: 254 210 23; /* #FED217 — active or primary only */
+  --accent-ink: 11 11 11; /* #0B0B0B text on yellow */
+  --accent-hover: 240 196 15; /* #F0C40F primary-button hover (02a Q4) */
+  --paper: 255 255 255; /* always-white tile: images, logos, PDF previews, QR, widget previews */
+  --radius: 0.625rem; /* ⚠️ until redesign 3.6 sets every radius to 0 and deletes this */
 
-  /* Lines — a hairline border does the work a shadow used to */
-  --border: 229 229 229; /* neutral-200 */
-  --input: 229 229 229;
-  --ring: 254 210 23; /* brand yellow focus ring */
+  /* Sidebar — always dark, whatever the theme. */
+  --sidebar: 11 11 11; /* #0B0B0B */
+  --sidebar-border: 31 31 31; /* #1F1F1F */
+  --sidebar-fg: 255 255 255; /* lockup text */
+  --sidebar-text: 201 201 197; /* #C9C9C5 item text */
+  --sidebar-label: 107 107 107; /* #6B6B6B group labels (02a Q6) */
+  --sidebar-hover: 26 26 26; /* #1A1A1A item hover (02a Q4) */
+  --sidebar-active: 254 210 23; /* #FED217 active item */
+  --sidebar-active-ink: 11 11 11;
+  --sidebar-badge: 31 31 31; /* #1F1F1F */
+  --sidebar-badge-ink: 229 229 226; /* #E5E5E2 */
+  --sidebar-focus: 254 210 23; /* #FED217 (02a Q5) */
+}
 
-  /* Content */
-  --text: 10 10 10; /* neutral-950 */
-  --muted: 115 115 115; /* neutral-500 — secondary text (shadcn muted-foreground) */
-  --subtle: 163 163 163; /* neutral-400 — placeholders, tertiary */
-
-  /* Brand accent */
-  --accent: 254 210 23;
-  --accent-hover: 240 196 15;
-  --accent-foreground: 10 10 10;
-
-  /* Neutral primary, for shadcn-style dark controls where yellow is too loud */
-  --primary: 23 23 23; /* neutral-900 */
-  --primary-foreground: 250 250 250;
-  --secondary: 245 245 245;
-  --secondary-foreground: 23 23 23;
-
-  /* Status */
-  --danger: 220 38 38;
-  --success: 22 163 74;
-
-  /* Sidebar — deliberately DARK against the light content area, mirroring
-     shadcn's own sidebar token set. Tokenised rather than hardcoded so the
-     panel can be retuned in one place. */
-  --sidebar: 20 20 20;
-  --sidebar-foreground: 250 250 250;
-  --sidebar-muted: 161 161 161; /* idle nav labels */
-  --sidebar-subtle: 107 107 107; /* section headings, secondary meta */
-  --sidebar-border: 38 38 38;
-
-  /* shadcn's 0.625rem base radius */
-  --radius: 0.625rem;
+/* Inside the sidebar, focus is yellow and drawn inside the item (02a Q5):
+   the main panel's --focus follows --text, which in the light theme is the
+   sidebar's own background. */
+[data-sidebar] {
+  --focus: var(--sidebar-focus);
+  color-scheme: dark;
+}
+[data-sidebar] :focus-visible {
+  outline-offset: -2px;
 }
 
 @layer base {
@@ -113,14 +144,15 @@
 
   ::selection {
     background-color: rgb(var(--accent));
-    color: rgb(var(--accent-foreground));
+    color: rgb(var(--accent-ink));
   }
 
-  /* Soft ring rather than a hard outline — the shadcn focus treatment.
-     Controls that style their own focus state override this. */
+  /* The focus treatment (00: "a 2px outline in --text with a 2px offset").
+     An outline follows the element's corners, so with every radius at 0 the
+     ring is square too. --focus is yellow inside the sidebar (see above). */
   :focus-visible {
-    outline: 2px solid rgb(var(--ring));
-    outline-offset: 1px;
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
   }
 
   input, textarea, select, button {
@@ -129,7 +161,20 @@
   }
 
   * {
-    scrollbar-color: rgb(var(--subtle)) transparent;
+    scrollbar-color: rgb(var(--muted)) transparent;
+  }
+
+  /* 02a Q4: movement and transitions are dropped for anyone who asks the OS
+     for reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

@@ -57,7 +57,7 @@ function Detail({ label, children, wide = false }: { label: string; children?: R
   const empty = children == null || children === "";
   return (
     <div className={wide ? "sm:col-span-2" : undefined}>
-      <div className="t-label text-subtle">{label}</div>
+      <div className="t-label text-muted">{label}</div>
       <div className="whitespace-pre-line text-body font-medium text-text">{empty ? "—" : children}</div>
     </div>
   );
@@ -92,7 +92,7 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
       </div>
 
       <div>
-        <div className="t-overline mb-2 text-subtle">
+        <div className="t-overline mb-2 text-muted">
           Items ({quote.items.length})
         </div>
         {/* No price column: SAEquip quotes prices, so the basket never carries one. */}
@@ -125,7 +125,7 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
                   </div>
                 </TD>
                 <TD>{item.sku || "—"}</TD>
-                <TD className="text-subtle">{formatOptions(item.options) ?? "—"}</TD>
+                <TD className="text-muted">{formatOptions(item.options) ?? "—"}</TD>
                 <TD>{item.quantity}</TD>
               </TR>
             ))}

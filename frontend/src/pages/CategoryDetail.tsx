@@ -314,7 +314,7 @@ export default function CategoryDetail() {
               }
             />
             {children.length === 0 ? (
-              <p className="text-help text-subtle">No subcategories yet.</p>
+              <p className="text-help text-muted">No subcategories yet.</p>
             ) : (
               <SortableList
                 items={children}
@@ -324,7 +324,7 @@ export default function CategoryDetail() {
                 renderItem={(c, handle: DragHandleProps) => (
                   <div className="flex items-center gap-2 py-2">
                     <DragHandle handle={handle} />
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-subtle">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-muted">
                       {c.imageUrl ? (
                         <img src={c.imageUrl} alt="" className="h-full w-full object-contain" />
                       ) : (
@@ -351,7 +351,7 @@ export default function CategoryDetail() {
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-surface-2 text-subtle transition-colors hover:border-ring hover:text-text"
+              className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-surface-2 text-muted transition-colors hover:border-ring hover:text-text"
             >
               {draft.image_url ? (
                 <img src={draft.image_url} alt="" className="h-full w-full object-contain" />
@@ -362,7 +362,7 @@ export default function CategoryDetail() {
                 </span>
               )}
             </button>
-            <p className="mt-2 text-help text-subtle">
+            <p className="mt-2 text-help text-muted">
               Duda fetches the file and re-hosts its own copy, so the Media Centre original can
               change later without breaking the page.
               {/*

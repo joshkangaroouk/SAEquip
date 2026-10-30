@@ -147,7 +147,7 @@ function EditTranslation({
     >
       <div className="space-y-4">
         <div>
-          <div className="t-label mb-1 text-subtle">English</div>
+          <div className="t-label mb-1 text-muted">English</div>
           {html ? (
             <div className="max-h-48 overflow-auto rounded-md border border-border bg-surface-2 p-3">
               <RichHtml html={item.sourceText} />
@@ -164,7 +164,7 @@ function EditTranslation({
         )}
 
         <div>
-          <label htmlFor="translation-text" className="t-label mb-1 block text-subtle">
+          <label htmlFor="translation-text" className="t-label mb-1 block text-muted">
             {targetLabel(locale)}
             {html && <span className="ml-2 font-normal">HTML - keep every tag and link as it is</span>}
           </label>
@@ -331,7 +331,7 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
                     <TD className="whitespace-nowrap text-help text-muted">{n.entity === "PRODUCT" ? "Product" : "Category"}</TD>
                     <TD>{n.english}</TD>
                     <TD lang={locale} dir={rtl ? "rtl" : "ltr"}>
-                      {n.text ?? <span className="text-subtle">-</span>}
+                      {n.text ?? <span className="text-muted">-</span>}
                       {n.stale && (
                         <Badge tone="neutral" className="ms-2">
                           English changed since
@@ -586,7 +586,7 @@ export default function Translations() {
             key={t.locale}
             onClick={() => setParam("lang", t.locale)}
             className={`rounded-full px-4 py-1.5 text-body font-semibold ${
-              locale === t.locale ? "bg-accent text-accent-foreground" : "border border-border text-muted hover:bg-surface-2"
+              locale === t.locale ? "bg-accent text-accent-ink" : "border border-border text-muted hover:bg-surface-2"
             }`}
             aria-pressed={locale === t.locale}
           >
@@ -701,7 +701,7 @@ export default function Translations() {
                       <TR key={`${i.kind}:${i.sourceHash}`} hover onClick={() => setEditing(i)}>
                         <TD className="align-top text-help text-muted">
                           {KIND_LABEL[i.kind]}
-                          <div className="mt-0.5 truncate text-label text-subtle" title={usedOn(i, products)}>
+                          <div className="mt-0.5 truncate text-label text-muted" title={usedOn(i, products)}>
                             {usedOn(i, products)}
                           </div>
                         </TD>
@@ -715,7 +715,7 @@ export default function Translations() {
                           {i.text ? (
                             <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.text) : i.text}</span>
                           ) : (
-                            <span className="text-subtle">Shown in English</span>
+                            <span className="text-muted">Shown in English</span>
                           )}
                         </TD>
                         <TD className="align-top">

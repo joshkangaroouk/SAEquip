@@ -207,7 +207,7 @@ export default function Login() {
                     onClick={() => setShowPassword((v) => !v)}
                     tabIndex={-1}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-subtle transition-colors hover:text-text"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-text"
                   >
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
@@ -234,7 +234,7 @@ export default function Login() {
               {submitting ? "Signing in…" : "Sign in"}
             </Button>
 
-            <p className="mt-5 text-center text-help text-subtle">
+            <p className="mt-5 text-center text-help text-muted">
               Accounts are created by invitation only.
             </p>
           </form>

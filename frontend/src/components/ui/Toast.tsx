@@ -23,9 +23,9 @@ export function Toaster() {
         classNames: {
           title: "font-semibold",
           description: "text-muted",
-          actionButton: "!bg-accent !text-accent-foreground !rounded-md font-semibold",
+          actionButton: "!bg-accent !text-accent-ink !rounded-md font-semibold",
           cancelButton: "!bg-surface-2 !text-muted !rounded-md",
-          success: "!text-success",
+          success: "!text-ok",
           error: "!text-danger",
           loading: "!text-accent",
         },

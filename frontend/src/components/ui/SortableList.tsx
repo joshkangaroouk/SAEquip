@@ -50,7 +50,7 @@ export function DragHandle({
       aria-label="Drag to reorder"
       className={cn(
         "flex shrink-0 cursor-grab touch-none items-center justify-center rounded-md p-1.5",
-        "text-subtle transition-colors hover:bg-surface-2 hover:text-text active:cursor-grabbing",
+        "text-muted transition-colors hover:bg-surface-2 hover:text-text active:cursor-grabbing",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         className,
       )}

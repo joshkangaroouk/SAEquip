@@ -78,7 +78,7 @@ export function TranslationProgressModal({
                 className={p.phase === "failed" ? "text-danger" : "text-muted"}
               >
                 <span className="inline-flex items-center gap-1.5">
-                  {p.phase === "done" && !p.rejected && <Check size={14} className="text-success" aria-hidden="true" />}
+                  {p.phase === "done" && !p.rejected && <Check size={14} className="text-ok" aria-hidden="true" />}
                   {(p.phase === "failed" || (p.phase === "done" && p.rejected > 0)) && (
                     <TriangleAlert size={14} className={p.phase === "failed" ? "text-danger" : "text-muted"} aria-hidden="true" />
                   )}

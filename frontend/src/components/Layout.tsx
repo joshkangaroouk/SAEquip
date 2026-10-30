@@ -26,12 +26,13 @@ import logoUrl from "../assets/saequip-logo.svg";
 /**
  * Dark sidebar against the light content area.
  *
- * Colours come from the `--sidebar-*` tokens rather than being hardcoded, so
- * the whole panel can be retuned in index.css. The active route gets three
+ * Colours come from the fixed `--sidebar-*` tokens, which the dark theme never
+ * redefines — that is what keeps this panel dark in both themes. `data-sidebar`
+ * on each container turns focus yellow and draws it inside the item (02a Q5). The active route gets three
  * cues at once: a soft yellow-tinted pill, a bright accent bar pinned to the
  * panel's left edge, and an accent-coloured icon.
  */
-const SIDEBAR = "bg-sidebar text-sidebar-foreground";
+const SIDEBAR = "bg-sidebar text-sidebar-fg";
 const SIDEBAR_BORDER = "border-sidebar-border";
 /** Declared once — the aside's width and the main content's offset must match. */
 const SIDEBAR_W = "w-[17rem]";
@@ -81,9 +82,9 @@ const rowBase =
   "group relative flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-150 " +
   "before:absolute before:-left-3 before:top-1/2 before:h-6 before:w-[3px] before:-translate-y-1/2 " +
   "before:rounded-r-full before:transition-all before:duration-150";
-const rowActive = "bg-accent/[0.12] font-medium text-sidebar-foreground before:bg-accent";
+const rowActive = "bg-accent/[0.12] font-medium text-sidebar-fg before:bg-accent";
 const rowIdle =
-  "text-sidebar-muted before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-foreground";
+  "text-sidebar-text before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-fg";
 
 /** One row. Shared by top-level items and the nested children. */
 function NavRow({
@@ -117,7 +118,7 @@ function NavRow({
             strokeWidth={2}
             className={cn(
               "shrink-0 transition-colors duration-150",
-              isActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
+              isActive ? "text-accent" : "text-sidebar-label group-hover:text-sidebar-text",
             )}
           />
           {item.label}
@@ -174,7 +175,7 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
             strokeWidth={2}
             className={cn(
               "shrink-0 transition-colors duration-150",
-              selfActive ? "text-accent" : "text-sidebar-subtle group-hover:text-sidebar-muted",
+              selfActive ? "text-accent" : "text-sidebar-label group-hover:text-sidebar-text",
             )}
           />
           {item.label}
@@ -195,7 +196,7 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
            * height of its own — the row is sized by its text exactly as the
            * others are. Hover is a colour change only.
            */
-          className="flex shrink-0 items-center text-sidebar-subtle transition-colors hover:text-sidebar-foreground"
+          className="flex shrink-0 items-center text-sidebar-label transition-colors hover:text-sidebar-fg"
         >
           <ChevronDown
             size={18}
@@ -268,7 +269,7 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-0.5">
-      <p className="t-overline px-3 pb-2.5 pt-1 text-sidebar-subtle">
+      <p className="t-overline px-3 pb-2.5 pt-1 text-sidebar-label">
         Main menu
       </p>
 
@@ -311,7 +312,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       <div className="px-4 py-5">
         <NavLink to="/" onClick={onNavigate} className="flex items-center gap-3">
           <img src={logoUrl} alt="SAEquip" className="h-14 w-auto shrink-0" />
-          <span className="font-heading text-body font-semibold leading-tight text-sidebar-foreground">
+          <span className="font-heading text-body font-semibold leading-tight text-sidebar-fg">
             SAEquip
             <br />
             Admin
@@ -329,12 +330,12 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         <div className="flex items-center gap-2.5">
           <span
             aria-hidden="true"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-body font-semibold text-accent-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-body font-semibold text-accent-ink"
           >
             {initialsFrom(user?.email)}
           </span>
           <span
-            className="min-w-0 flex-1 truncate text-body text-sidebar-muted"
+            className="min-w-0 flex-1 truncate text-body text-sidebar-text"
             title={user?.email ?? undefined}
           >
             {user?.email}
@@ -344,8 +345,8 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             title="Sign out"
             aria-label="Sign out"
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-subtle",
-              "transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground outline-none",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-label",
+              "transition-colors hover:bg-white/[0.06] hover:text-sidebar-fg outline-none",
               "focus-visible:ring-[3px] focus-visible:ring-ring/50",
             )}
           >
@@ -370,6 +371,7 @@ export function Layout({ children }: { children?: ReactNode }) {
     <div className="min-h-screen bg-bg text-text">
       {/* Desktop sidebar */}
       <aside
+        data-sidebar
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden border-r lg:block",
           SIDEBAR_W,
@@ -382,6 +384,7 @@ export function Layout({ children }: { children?: ReactNode }) {
 
       {/* Mobile top bar */}
       <header
+        data-sidebar
         className={cn(
           "sticky top-0 z-30 flex items-center justify-between border-b px-4 py-2.5 lg:hidden",
           SIDEBAR,
@@ -390,12 +393,12 @@ export function Layout({ children }: { children?: ReactNode }) {
       >
         <NavLink to="/" className="inline-flex items-center gap-2">
           <img src={logoUrl} alt="SAEquip" className="h-10 w-auto" />
-          <span className="text-body font-semibold text-sidebar-foreground">SAEquip Admin</span>
+          <span className="text-body font-semibold text-sidebar-fg">SAEquip Admin</span>
         </NavLink>
         <button
           aria-label="Open menu"
           onClick={() => setDrawerOpen(true)}
-          className="rounded-md p-2 text-sidebar-muted transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground"
+          className="rounded-md p-2 text-sidebar-text transition-colors hover:bg-white/[0.06] hover:text-sidebar-fg"
         >
           <Menu size={18} strokeWidth={2} />
         </button>
@@ -405,11 +408,11 @@ export function Layout({ children }: { children?: ReactNode }) {
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
-          <aside className={cn("absolute inset-y-0 left-0 w-72 border-r", SIDEBAR, SIDEBAR_BORDER)}>
+          <aside data-sidebar className={cn("absolute inset-y-0 left-0 w-72 border-r", SIDEBAR, SIDEBAR_BORDER)}>
             <button
               aria-label="Close menu"
               onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-3.5 rounded-md p-1.5 text-sidebar-muted transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground"
+              className="absolute right-3 top-3.5 rounded-md p-1.5 text-sidebar-text transition-colors hover:bg-white/[0.06] hover:text-sidebar-fg"
             >
               <X size={18} strokeWidth={2} />
             </button>

@@ -100,7 +100,7 @@ export function AttachOptionModal({
 
         <div className="max-h-72 space-y-2 overflow-y-auto">
           {visible.length === 0 && (
-            <p className="text-help text-subtle">
+            <p className="text-help text-muted">
               {catalog.options.length === 0
                 ? "The store has no options yet — create the first one below."
                 : `No options match “${query}”.`}

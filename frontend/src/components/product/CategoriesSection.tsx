@@ -57,7 +57,7 @@ export function CategoriesSection({
       defaultOpen
     >
       {!cats && !loadError ? (
-        <p className="text-help text-subtle">Loading categories…</p>
+        <p className="text-help text-muted">Loading categories…</p>
       ) : (
         <AssignPickList
           // parentId is what lets the list keep a child from being selected

@@ -54,7 +54,7 @@ function SiteThumbnail({ src, alt }: { src: string | null; alt: string }) {
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center">
-          <Globe size={28} className="text-subtle" />
+          <Globe size={28} className="text-muted" />
         </div>
       )}
     </div>
@@ -177,7 +177,7 @@ export default function WebsiteEditor() {
                           <p className="mt-1 text-body text-muted">{site.siteName}</p>
                         )}
 
-                        <p className="mt-1 text-help text-subtle">
+                        <p className="mt-1 text-help text-muted">
                           Site ID: {site.siteName}
                           {site.lastPublished && (
                             <> · Last published {new Date(site.lastPublished).toLocaleDateString()}</>
@@ -197,7 +197,7 @@ export default function WebsiteEditor() {
                 </Card>
               ))}
 
-              <p className="text-help text-subtle">
+              <p className="text-help text-muted">
                 You'll be signed into Duda as {data.dudaAccountName}. Product content is managed
                 here in the Hub, not in Duda's store.
               </p>

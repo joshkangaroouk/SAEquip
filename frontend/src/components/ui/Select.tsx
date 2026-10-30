@@ -19,7 +19,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       <select
         ref={ref}
         className={cn(
-          "w-full appearance-none rounded-md bg-surface border border-input text-text",
+          "w-full appearance-none rounded-md bg-field border border-border-input text-text",
           fieldSizes[size],
           size === "md" ? "pr-9" : "pr-8",
           "shadow-xs transition-[color,box-shadow] outline-none",

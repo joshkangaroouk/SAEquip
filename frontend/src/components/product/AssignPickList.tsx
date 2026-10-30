@@ -186,15 +186,15 @@ export function AssignPickList({
               onChange={setOnlySelected}
               label="Only show selected"
             />
-            <span className="text-help text-subtle">{selected.length} selected</span>
+            <span className="text-help text-muted">{selected.length} selected</span>
           </div>
         </>
       )}
 
       {items.length === 0 ? (
-        <p className="text-help text-subtle">{emptyText}</p>
+        <p className="text-help text-muted">{emptyText}</p>
       ) : rows.length === 0 ? (
-        <p className="text-help text-subtle">
+        <p className="text-help text-muted">
           {onlySelected && !selected.length
             ? "Nothing is selected yet."
             : onlySelected
@@ -210,7 +210,7 @@ export function AssignPickList({
               // long group otherwise loses its label off the top.
               <div
                 key={`h:${row.label}`}
-                className="sticky top-0 z-10 border-b border-border bg-surface-2 px-2.5 py-1.5 t-overline text-subtle"
+                className="sticky top-0 z-10 border-b border-border bg-surface-2 px-2.5 py-1.5 t-overline text-muted"
               >
                 {row.label}
               </div>
@@ -239,7 +239,7 @@ export function AssignPickList({
                   label={
                     withImages ? (
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-subtle">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-muted">
                           {row.item.imageUrl ? (
                             <img
                               src={row.item.imageUrl}
@@ -260,7 +260,7 @@ export function AssignPickList({
                   className="min-w-0 flex-1 text-label"
                 />
                 {row.item.hint && (
-                  <span className="shrink-0 text-label text-subtle">{row.item.hint}</span>
+                  <span className="shrink-0 text-label text-muted">{row.item.hint}</span>
                 )}
               </div>
             ),

@@ -185,7 +185,7 @@ export default function Media() {
             ref={fileInputRef}
             type="file"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="mt-1 block text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-body file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
+            className="mt-1 block text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-body file:font-semibold file:text-accent-ink file:transition-colors hover:file:bg-accent-hover"
           />
         </label>
         <label className="text-body font-semibold text-text">
@@ -194,13 +194,13 @@ export default function Media() {
             value={alt}
             onChange={(e) => setAlt(e.target.value)}
             placeholder="describe the image"
-            className="mt-1 block rounded-md border border-border px-3 py-2 text-body focus:border-text focus:outline-none placeholder:text-subtle"
+            className="mt-1 block rounded-md border border-border px-3 py-2 text-body focus:border-text focus:outline-none placeholder:text-muted"
           />
         </label>
         <button
           type="submit"
           disabled={!file || uploading}
-          className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
+          className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-40"
         >
           {uploading ? "Uploading…" : "Upload"}
         </button>
@@ -216,7 +216,7 @@ export default function Media() {
               onClick={() => setKind(t.value)}
               className={`rounded-full px-3 py-1 font-semibold ${
                 kind === t.value
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-accent text-accent-ink"
                   : "border border-border text-muted hover:bg-surface-2"
               }`}
             >
@@ -349,7 +349,7 @@ export default function Media() {
                     <span>{formatBytes(a.sizeBytes)}</span>
                     <UsageNote asset={a} />
                   </div>
-                  {a.alt && <p className="mt-1 truncate text-label text-subtle">alt: {a.alt}</p>}
+                  {a.alt && <p className="mt-1 truncate text-label text-muted">alt: {a.alt}</p>}
                 </div>
 
                 <div className="mt-2 grid grid-cols-2 gap-2">

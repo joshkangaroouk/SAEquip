@@ -94,11 +94,11 @@ export function FileDropzone({
           "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
           isDragActive
             ? "border-accent bg-accent/10 text-text"
-            : "border-border bg-surface text-muted hover:border-subtle",
+            : "border-border bg-surface text-muted hover:border-border-strong",
         )}
       >
         <input {...getInputProps()} />
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="mb-3 text-subtle">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="mb-3 text-muted">
           <path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="currentColor" strokeWidth="1.5" />
           <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="1.5" />
         </svg>
@@ -118,7 +118,7 @@ export function FileDropzone({
                     it.status === "error"
                       ? "text-danger"
                       : it.status === "done"
-                        ? "text-success"
+                        ? "text-ok"
                         : "text-muted",
                   )}
                 >

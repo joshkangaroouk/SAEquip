@@ -54,7 +54,7 @@ function LogoCard({
     }
   }
 
-  const inputCls = "w-full rounded-md border border-border px-2 py-1 text-body font-medium focus:border-text focus:outline-none placeholder:text-subtle";
+  const inputCls = "w-full rounded-md border border-border px-2 py-1 text-body font-medium focus:border-text focus:outline-none placeholder:text-muted";
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-surface p-3">
@@ -90,7 +90,7 @@ function LogoCard({
       </div>
 
       {dirty && (
-        <button onClick={saveMeta} disabled={saving} className="mt-2 rounded-md bg-accent px-3 py-1 text-body font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
+        <button onClick={saveMeta} disabled={saving} className="mt-2 rounded-md bg-accent px-3 py-1 text-body font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-40">
           {saving ? "Saving…" : "Save label/alt"}
         </button>
       )}
@@ -248,7 +248,7 @@ export default function Logos() {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="t-h1 text-text">Logos</h1>
-          <button onClick={() => setPickerOpen(true)} className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-foreground hover:bg-accent-hover">
+          <button onClick={() => setPickerOpen(true)} className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-ink hover:bg-accent-hover">
             + Add logo
           </button>
         </div>
@@ -261,7 +261,7 @@ export default function Logos() {
               key={k}
               onClick={() => setTab(k)}
               className={`rounded-full px-4 py-1.5 font-semibold ${
-                tab === k ? "bg-accent text-accent-foreground" : "border border-border text-muted hover:bg-surface-2"
+                tab === k ? "bg-accent text-accent-ink" : "border border-border text-muted hover:bg-surface-2"
               }`}
             >
               {k === "SA_LOGO" ? "SA Logos" : "Cert Logos"}

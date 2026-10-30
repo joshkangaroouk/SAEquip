@@ -56,7 +56,7 @@ function ToolbarButton({
       // Keep focus in the document so commands apply to the current selection.
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={cn(btn, active ? "bg-accent text-accent-foreground" : "text-muted hover:bg-surface-2 hover:text-text")}
+      className={cn(btn, active ? "bg-accent text-accent-ink" : "text-muted hover:bg-surface-2 hover:text-text")}
     >
       {children}
     </button>
@@ -286,7 +286,7 @@ export function RichTextEditor({
             autoFocus
             className="flex-1 rounded border border-border bg-surface px-2 py-1 text-label focus:border-accent focus:outline-none"
           />
-          <button type="button" onClick={applyLink} className={cn(btn, "bg-accent text-accent-foreground")}>
+          <button type="button" onClick={applyLink} className={cn(btn, "bg-accent text-accent-ink")}>
             Apply
           </button>
           <button

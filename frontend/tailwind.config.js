@@ -1,6 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  // `dark:` applies under <html data-theme="dark">. Rarely needed: almost
+  // everything themes through the CSS variables in index.css.
+  darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     // REPLACES the theme: only the weights index.html loads. Barlow and Inter
     // ship 400/500/600/700, JetBrains Mono 400/500 — so `font-medium` is a
@@ -22,35 +25,52 @@ export default {
         bg: "rgb(var(--bg) / <alpha-value>)",
         surface: "rgb(var(--surface) / <alpha-value>)",
         "surface-2": "rgb(var(--surface-2) / <alpha-value>)",
-        border: "rgb(var(--border) / <alpha-value>)",
-        input: "rgb(var(--input) / <alpha-value>)",
-        ring: "rgb(var(--ring) / <alpha-value>)",
+        field: "rgb(var(--input-bg) / <alpha-value>)", // bg-field — inputs and selects
+        border: {
+          DEFAULT: "rgb(var(--border) / <alpha-value>)", // border-border
+          strong: "rgb(var(--border-strong) / <alpha-value>)", // border-border-strong — ghost buttons, edges
+          input: "rgb(var(--border-input) / <alpha-value>)", // border-border-input — form controls (02a Q13)
+        },
         text: "rgb(var(--text) / <alpha-value>)",
-        // NOTE: `muted` is secondary TEXT here, not shadcn's grey fill — see
-        // the naming note in index.css before repurposing it.
+        // `muted` is secondary TEXT, not shadcn's grey fill.
         muted: "rgb(var(--muted) / <alpha-value>)",
-        subtle: "rgb(var(--subtle) / <alpha-value>)",
+        track: "rgb(var(--track) / <alpha-value>)",
+        chip: "rgb(var(--chip-bg) / <alpha-value>)",
+        ok: {
+          DEFAULT: "rgb(var(--ok) / <alpha-value>)",
+          bg: "rgb(var(--ok-bg) / <alpha-value>)",
+        },
+        danger: {
+          DEFAULT: "rgb(var(--danger) / <alpha-value>)",
+          bg: "rgb(var(--danger-bg) / <alpha-value>)",
+        },
+        warning: {
+          DEFAULT: "rgb(var(--warning) / <alpha-value>)",
+          bg: "rgb(var(--warning-bg) / <alpha-value>)",
+        },
         accent: {
           DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          ink: "rgb(var(--accent-ink) / <alpha-value>)",
           hover: "rgb(var(--accent-hover) / <alpha-value>)",
-          foreground: "rgb(var(--accent-foreground) / <alpha-value>)",
         },
-        primary: {
-          DEFAULT: "rgb(var(--primary) / <alpha-value>)",
-          foreground: "rgb(var(--primary-foreground) / <alpha-value>)",
-        },
-        secondary: {
-          DEFAULT: "rgb(var(--secondary) / <alpha-value>)",
-          foreground: "rgb(var(--secondary-foreground) / <alpha-value>)",
-        },
-        danger: "rgb(var(--danger) / <alpha-value>)",
-        success: "rgb(var(--success) / <alpha-value>)",
+        paper: "rgb(var(--paper) / <alpha-value>)",
+        focus: "rgb(var(--focus) / <alpha-value>)",
+        // ⚠️ Interim alias: the `focus-visible:ring-ring/50` classes still in
+        // the components draw in the focus colour until batch 2 replaces them
+        // with outlines. Delete with them.
+        ring: "rgb(var(--focus) / <alpha-value>)",
         sidebar: {
           DEFAULT: "rgb(var(--sidebar) / <alpha-value>)",
-          foreground: "rgb(var(--sidebar-foreground) / <alpha-value>)",
-          muted: "rgb(var(--sidebar-muted) / <alpha-value>)",
-          subtle: "rgb(var(--sidebar-subtle) / <alpha-value>)",
           border: "rgb(var(--sidebar-border) / <alpha-value>)",
+          fg: "rgb(var(--sidebar-fg) / <alpha-value>)",
+          text: "rgb(var(--sidebar-text) / <alpha-value>)",
+          label: "rgb(var(--sidebar-label) / <alpha-value>)",
+          hover: "rgb(var(--sidebar-hover) / <alpha-value>)",
+          active: "rgb(var(--sidebar-active) / <alpha-value>)",
+          "active-ink": "rgb(var(--sidebar-active-ink) / <alpha-value>)",
+          badge: "rgb(var(--sidebar-badge) / <alpha-value>)",
+          "badge-ink": "rgb(var(--sidebar-badge-ink) / <alpha-value>)",
+          focus: "rgb(var(--sidebar-focus) / <alpha-value>)",
         },
       },
       // Loaded from Google Fonts by the <link> in index.html. Body text is
@@ -92,11 +112,7 @@ export default {
         lg: "0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)",
       },
       ringColor: {
-        DEFAULT: "rgb(var(--ring) / <alpha-value>)",
-      },
-      ringOffsetColor: {
-        bg: "rgb(var(--bg) / <alpha-value>)",
-        surface: "rgb(var(--surface) / <alpha-value>)",
+        DEFAULT: "rgb(var(--focus) / <alpha-value>)",
       },
     },
   },

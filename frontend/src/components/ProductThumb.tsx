@@ -13,7 +13,7 @@ export function ProductThumb({ url }: { url: string | null }) {
       {url && !broken ? (
         <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full object-contain" />
       ) : (
-        <ImageOff className="h-4 w-4 text-subtle" aria-hidden="true" />
+        <ImageOff className="h-4 w-4 text-muted" aria-hidden="true" />
       )}
     </span>
   );

@@ -103,7 +103,7 @@ export function DownloadsSection({
       {notice && <p className="mb-3 text-help text-muted">{notice}</p>}
 
       {value.length === 0 ? (
-        <p className="text-body text-subtle">No downloads on this product yet.</p>
+        <p className="text-body text-muted">No downloads on this product yet.</p>
       ) : (
         <div className="overflow-hidden rounded-md border border-border">
           {/* overflow-hidden clips the rows' square backgrounds to the rounded
@@ -175,7 +175,7 @@ export function DownloadsSection({
                       </div>
                     )}
                   </div>
-                  <p className="mt-1 truncate text-label text-subtle" title={d.filename}>
+                  <p className="mt-1 truncate text-label text-muted" title={d.filename}>
                     {d.filename} · {formatBytes(d.sizeBytes)}
                   </p>
                 </div>

@@ -51,7 +51,7 @@ export function LogoActivationPanel({
       />
 
       {entries.length === 0 ? (
-        <p className="text-body text-subtle">
+        <p className="text-body text-muted">
           No {kind === "SA_LOGO" ? "SA" : "Cert"} logos in the catalog yet —{" "}
           <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
             add some
@@ -69,7 +69,7 @@ export function LogoActivationPanel({
                 onClick={() => onToggle(entry.id)}
                 aria-pressed={on}
                 className={`flex flex-col items-center rounded-lg border-2 p-2 text-left transition ${
-                  on ? "border-accent bg-accent/10" : "border-border hover:border-subtle"
+                  on ? "border-accent bg-accent/10" : "border-border hover:border-border-strong"
                 }`}
               >
                 <div className="flex h-16 w-full items-center justify-center bg-surface-2">

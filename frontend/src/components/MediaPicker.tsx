@@ -61,7 +61,7 @@ export function MediaPicker({
           <h2 className="text-body font-semibold text-text">Choose {KIND_LABEL[kind]}</h2>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-text"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-text"
           >
             ✕
           </button>
@@ -74,12 +74,12 @@ export function MediaPicker({
               type="file"
               accept={kind === "model" ? ".glb" : kind === "image" ? "image/*" : undefined}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-body file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
+              className="text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-body file:font-semibold file:text-accent-ink file:transition-colors hover:file:bg-accent-hover"
             />
             <button
               onClick={onUpload}
               disabled={!file || uploading}
-              className="rounded-md bg-accent px-3 py-1.5 text-body font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40"
+              className="rounded-md bg-accent px-3 py-1.5 text-body font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-40"
             >
               {uploading ? "Uploading…" : "Upload new"}
             </button>
@@ -89,7 +89,7 @@ export function MediaPicker({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <p className="t-overline text-subtle">
+            <p className="t-overline text-muted">
               Or choose existing
             </p>
             {/* One row — see the note in pages/Media.tsx on why the widths
@@ -138,7 +138,7 @@ export function MediaPicker({
           )}
           {lib.error && <p className="text-body text-danger">{lib.error}</p>}
           {lib.isEmpty && (
-            <p className="text-body text-subtle">
+            <p className="text-body text-muted">
               {lib.isFiltered
                 ? "Nothing matches that search."
                 : `No ${kind}s in the library yet — upload one above.`}

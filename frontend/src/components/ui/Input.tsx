@@ -5,7 +5,7 @@ import { cn } from "../../lib/cn";
 // focus, and a red ring when aria-invalid. The previous hard 1px yellow ring
 // plus border colour change read as much more aggressive.
 const fieldBase =
-  "w-full rounded-md bg-surface border border-input text-text placeholder:text-subtle " +
+  "w-full rounded-md bg-field border border-border-input text-text placeholder:text-muted " +
   "shadow-xs transition-[color,box-shadow] outline-none " +
   "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
   "aria-[invalid=true]:border-danger aria-[invalid=true]:ring-[3px] aria-[invalid=true]:ring-danger/20 " +

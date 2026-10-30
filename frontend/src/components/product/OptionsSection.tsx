@@ -182,7 +182,7 @@ export function OptionsSection({
                           className={`inline-flex h-7 items-center rounded-full border px-3 text-help font-medium transition ${
                             on
                               ? "border-accent bg-accent/15 text-text"
-                              : "border-border text-muted hover:border-subtle"
+                              : "border-border text-muted hover:border-border-strong"
                           }`}
                           title={on ? "Offered on this product" : "Not offered on this product"}
                         >
@@ -202,7 +202,7 @@ export function OptionsSection({
                           }}
                           placeholder="New value…"
                           autoFocus
-                          className="h-7 w-32 rounded-full border border-input bg-surface px-3 text-help outline-none transition-[color,box-shadow] placeholder:text-subtle focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          className="h-7 w-32 rounded-full border border-border-input bg-field px-3 text-help outline-none transition-[color,box-shadow] placeholder:text-muted focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                         />
                         <Button
                           variant="primary"
@@ -232,7 +232,7 @@ export function OptionsSection({
                           setAddingTo(ref.id);
                           setNewChoice("");
                         }}
-                        className="inline-flex h-7 items-center rounded-full border border-dashed border-border px-3 text-help text-muted transition-colors hover:border-subtle hover:text-text"
+                        className="inline-flex h-7 items-center rounded-full border border-dashed border-border px-3 text-help text-muted transition-colors hover:border-border-strong hover:text-text"
                         title="Adds a value to the shared option. Existing products keep their own selection."
                       >
                         + value

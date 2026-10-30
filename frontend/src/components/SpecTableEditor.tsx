@@ -81,7 +81,7 @@ export function SpecTableEditor({
   };
 
   const inputCls =
-    "w-full rounded-md border bg-surface px-3 py-2 text-label font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent";
+    "w-full rounded-md border bg-surface px-3 py-2 text-label font-medium text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent";
   const lineCount = rows.length;
 
   return (
@@ -92,7 +92,7 @@ export function SpecTableEditor({
         actions={
           <div className="flex items-center gap-2">
             {lineCount > 0 && (
-              <span className="text-label text-subtle">
+              <span className="text-label text-muted">
                 {groups.length} spec{groups.length === 1 ? "" : "s"} · {lineCount} row
                 {lineCount === 1 ? "" : "s"}
               </span>
@@ -105,7 +105,7 @@ export function SpecTableEditor({
       <SectionError message={error} />
 
       {groups.length === 0 ? (
-        <p className="text-help text-subtle">No specs. Add one below.</p>
+        <p className="text-help text-muted">No specs. Add one below.</p>
       ) : (
         <SortableList
           as="div"
@@ -128,7 +128,7 @@ export function SpecTableEditor({
                   placeholder="e.g. PROTECTION"
                 />
                 {g.heading && (
-                  <p className="mt-1 text-label text-subtle">
+                  <p className="mt-1 text-label text-muted">
                     Sub-heading — no value beside it.
                   </p>
                 )}

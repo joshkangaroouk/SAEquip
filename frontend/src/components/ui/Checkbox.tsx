@@ -32,14 +32,14 @@ export function Checkbox({ checked, onChange, disabled, label, id, className }: 
           onChange={(e) => onChange(e.target.checked)}
           className={cn(
             // shadcn checkbox is 16px with a small radius and a soft ring.
-            "peer h-4 w-4 shrink-0 appearance-none rounded-sm border bg-surface shadow-xs transition-shadow",
+            "peer h-4 w-4 shrink-0 appearance-none rounded-sm border bg-field shadow-xs transition-shadow",
             "checked:bg-accent checked:border-accent outline-none",
             "focus-visible:ring-[3px] focus-visible:ring-ring/50",
-            checked ? "border-accent" : "border-border",
+            checked ? "border-accent" : "border-border-input",
           )}
         />
         <svg
-          className="pointer-events-none absolute left-0 top-0 hidden h-4 w-4 text-accent-foreground peer-checked:block"
+          className="pointer-events-none absolute left-0 top-0 hidden h-4 w-4 text-accent-ink peer-checked:block"
           viewBox="0 0 20 20"
           fill="none"
           aria-hidden="true"

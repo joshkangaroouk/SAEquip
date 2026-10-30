@@ -32,13 +32,13 @@ export function Toggle({ checked, onChange, disabled, label, id }: ToggleProps) 
           // shadcn switch: 32x18 track, soft focus ring, no offset outline.
           "relative h-[1.15rem] w-8 shrink-0 rounded-full border transition-colors outline-none",
           "focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          checked ? "bg-accent border-accent" : "bg-surface-2 border-border",
+          checked ? "bg-accent border-accent" : "bg-surface-2 border-border-input",
         )}
       >
         <span
           className={cn(
             "absolute left-0.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full shadow-xs transition-transform",
-            checked ? "translate-x-[0.875rem] bg-accent-foreground" : "translate-x-0 bg-surface",
+            checked ? "translate-x-[0.875rem] bg-accent-ink" : "translate-x-0 bg-surface",
           )}
         />
       </button>

@@ -130,7 +130,7 @@ export function DangerZoneSection({
             </div>
 
             <div>
-              <p className="text-help font-semibold text-success">Will be kept</p>
+              <p className="text-help font-semibold text-ok">Will be kept</p>
               <ul className="mt-1 list-inside list-disc text-help text-muted">
                 <li>
                   {preview.retains.leads > 0

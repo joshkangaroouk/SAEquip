@@ -23,7 +23,7 @@ export function Pagination({
   if (pageCount <= 1) return null;
   return (
     <div className="mt-5 flex items-center justify-between gap-3">
-      <span className="text-label text-subtle">
+      <span className="text-label text-muted">
         Page {page} of {pageCount} · {total} {label}
       </span>
       <div className="flex gap-2">

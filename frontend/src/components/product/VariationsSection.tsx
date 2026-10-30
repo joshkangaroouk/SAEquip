@@ -129,7 +129,7 @@ export function VariationsSection({
                   const byOption = new Map(v.choices.map((c) => [c.optionId, c.value]));
                   return (
                     <TR key={v.id}>
-                      <TD className="w-px text-subtle">{idx + 1}</TD>
+                      <TD className="w-px text-muted">{idx + 1}</TD>
                       {columns.map((o) => (
                         <TD key={o.id} className="whitespace-nowrap font-medium text-text">
                           {byOption.get(o.id) ?? "—"}

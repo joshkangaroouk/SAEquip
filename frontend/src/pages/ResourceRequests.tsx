@@ -52,7 +52,7 @@ function Detail({ label, children, wide = false }: { label: string; children?: R
   const empty = children == null || children === "";
   return (
     <div className={wide ? "sm:col-span-2" : undefined}>
-      <div className="t-label text-subtle">{label}</div>
+      <div className="t-label text-muted">{label}</div>
       <div className="whitespace-pre-line text-body font-medium text-text">{empty ? "—" : children}</div>
     </div>
   );
@@ -87,7 +87,7 @@ function RequestDetail({ request: r }: { request: ResourceRequest }) {
       </div>
 
       <div>
-        <div className="t-overline mb-2 text-subtle">File requested</div>
+        <div className="t-overline mb-2 text-muted">File requested</div>
         <div className="flex items-center gap-3 rounded-md border border-border p-3">
           <ProductThumb url={r.file.imageUrl} />
           <div className="min-w-0">
@@ -106,7 +106,7 @@ function RequestDetail({ request: r }: { request: ResourceRequest }) {
               {r.file.title ?? "—"}
               {r.file.productSku ? ` · ${r.file.productSku}` : ""}
             </div>
-            <div className="truncate text-label text-subtle" title={r.file.fileName ?? undefined}>
+            <div className="truncate text-label text-muted" title={r.file.fileName ?? undefined}>
               {r.file.fileName ?? ""}
             </div>
           </div>

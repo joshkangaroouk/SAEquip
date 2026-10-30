@@ -347,7 +347,7 @@ export default function Categories() {
               ))}
             </Select>
           </Field>
-          <p className="text-help text-subtle">
+          <p className="text-help text-muted">
             Description, image, SEO and products are edited on the category page after it
             exists.
           </p>
@@ -415,7 +415,7 @@ function CategoryTree({
           ) : (
             <span className="h-5 w-5 shrink-0" />
           )}
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-subtle">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-muted">
             {n.imageUrl ? (
               <img src={n.imageUrl} alt="" className="h-full w-full object-contain" />
             ) : (

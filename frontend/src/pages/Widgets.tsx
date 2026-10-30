@@ -635,7 +635,7 @@ export default function Widgets() {
               <Badge tone="neutral">{w.section}</Badge>
             </div>
             <p className="mt-1 text-body text-muted">{w.what}</p>
-            <p className="mt-1 text-label text-subtle">
+            <p className="mt-1 text-label text-muted">
               <span className="font-semibold">Comes from:</span> {w.source}
             </p>
 

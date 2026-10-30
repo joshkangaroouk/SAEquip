@@ -267,7 +267,7 @@ export default function Products() {
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <div className="relative w-full min-w-0 sm:w-52">
           <svg
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-subtle"
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
             width="14"
             height="14"
             viewBox="0 0 16 16"
@@ -291,7 +291,7 @@ export default function Products() {
               onClick={() => setQuery("")}
               aria-label="Clear search"
               title="Clear search"
-              className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-text"
+              className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-text"
             >
               <X size={14} strokeWidth={2} aria-hidden="true" />
             </button>
@@ -433,7 +433,7 @@ export default function Products() {
                           <Link to={`/products/${p.id}`} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 font-medium text-text">
                             <Highlight text={p.name} query={query} />
                           </Link>
-                          <div className="text-help text-subtle">{p.type}</div>
+                          <div className="text-help text-muted">{p.type}</div>
                         </div>
                       </div>
                     </TD>
@@ -445,7 +445,7 @@ export default function Products() {
                     </TD>
                     <TD>
                       {chips.length === 0 ? (
-                        <span className="text-subtle">—</span>
+                        <span className="text-muted">—</span>
                       ) : (
                         <div className="flex flex-col items-start gap-1">
                           {named.length > 0 && (

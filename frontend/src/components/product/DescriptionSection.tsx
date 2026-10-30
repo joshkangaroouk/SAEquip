@@ -41,7 +41,7 @@ export function DescriptionSection({
                   onClick={() => setMode(m)}
                   className={`rounded px-2 py-0.5 text-label font-semibold transition-colors ${
                     mode === m
-                      ? "bg-accent text-accent-foreground"
+                      ? "bg-accent text-accent-ink"
                       : "text-muted hover:text-text"
                   }`}
                 >

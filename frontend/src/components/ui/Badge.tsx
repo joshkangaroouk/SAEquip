@@ -8,8 +8,8 @@ type Tone = "neutral" | "accent" | "success" | "danger";
 // yellow at 10% is invisible.
 const tones: Record<Tone, string> = {
   neutral: "border-border bg-surface-2 text-muted",
-  accent: "border-accent bg-accent text-accent-foreground",
-  success: "border-success/25 bg-success/10 text-success",
+  accent: "border-accent bg-accent text-accent-ink",
+  success: "border-ok/25 bg-ok/10 text-ok",
   danger: "border-danger/25 bg-danger/10 text-danger",
 };
 

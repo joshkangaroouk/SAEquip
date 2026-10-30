@@ -36,9 +36,9 @@ export default function Status() {
   }, []);
 
   const healthColor =
-    health === "loading" ? "text-muted" : health === "ok" ? "text-success" : "text-danger";
+    health === "loading" ? "text-muted" : health === "ok" ? "text-ok" : "text-danger";
   const healthDot =
-    health === "loading" ? "bg-subtle" : health === "ok" ? "bg-success" : "bg-danger";
+    health === "loading" ? "bg-muted" : health === "ok" ? "bg-ok" : "bg-danger";
   const healthLabel =
     health === "loading"
       ? "Backend: checking…"
@@ -63,7 +63,7 @@ export default function Status() {
           <div className="mt-2 font-semibold">
             {me.status === "loading" && <span className="text-muted">Checking /api/me…</span>}
             {me.status === "ok" && (
-              <span className="text-success">Authenticated as {me.email}</span>
+              <span className="text-ok">Authenticated as {me.email}</span>
             )}
             {me.status === "error" && <span className="text-danger">/api/me failed</span>}
           </div>

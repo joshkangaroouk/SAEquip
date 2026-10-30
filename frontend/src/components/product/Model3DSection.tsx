@@ -59,7 +59,7 @@ export function Model3DSection({
         </div>
       ) : (
         <div className="flex flex-col items-start gap-3">
-          <p className="text-body text-subtle">No 3D model uploaded yet.</p>
+          <p className="text-body text-muted">No 3D model uploaded yet.</p>
           <Button type="button" size="sm" onClick={() => setPickerOpen(true)}>
             Upload GLB file
           </Button>

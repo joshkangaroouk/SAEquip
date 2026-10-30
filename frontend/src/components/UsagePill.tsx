@@ -173,7 +173,7 @@ function ProductRow({ product: p, showVia }: { product: UsageProduct; showVia: b
             className="h-full w-full object-contain"
           />
         ) : (
-          <ImageOff className="h-4 w-4 text-subtle" aria-hidden="true" />
+          <ImageOff className="h-4 w-4 text-muted" aria-hidden="true" />
         )}
       </span>
       <span className="min-w-0 flex-1">
@@ -183,7 +183,7 @@ function ProductRow({ product: p, showVia }: { product: UsageProduct; showVia: b
           {showVia && p.via.length > 0 && ` · ${p.via.join(" · ")}`}
         </span>
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-subtle transition-colors group-hover:text-text" aria-hidden="true" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-colors group-hover:text-text" aria-hidden="true" />
     </Link>
   );
 }
