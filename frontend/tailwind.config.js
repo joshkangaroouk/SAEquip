@@ -105,6 +105,16 @@ export default {
         sans: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
+      // The design's px sizes that Tailwind's 4px grid lacks (16px root).
+      // 4.5 → `px-4.5`, 8.5 → `h-8.5` and so on.
+      spacing: {
+        4.5: "1.125rem", // 18 — primary button horizontal padding
+        6.5: "1.625rem", // 26 — chip height
+        8.5: "2.125rem", // 34 — small ghost / icon button, dense inputs, pagination squares
+        10.5: "2.625rem", // 42 — toggle width
+        70: "17.5rem", // 280 — top-bar search
+        95: "23.75rem", // 380 — split-view list pane
+      },
       // ONE type scale (docs/redesign/02 §2.2), in rem at the default 16px
       // root. Most text uses a role class from index.css (`.t-h1`, `.t-label`…)
       // rather than these directly. Line heights for help and label are the
