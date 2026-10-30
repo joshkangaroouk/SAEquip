@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { uploadFile } from "../lib/upload";
-import { FilePreview, Input, Pagination, Select, Skeleton } from "./ui";
+import { Button, FilePreview, Input, Pagination, Select, Skeleton } from "./ui";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
@@ -76,13 +76,9 @@ export function MediaPicker({
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-body file:font-semibold file:text-accent-ink file:transition-colors hover:file:bg-accent-hover"
             />
-            <button
-              onClick={onUpload}
-              disabled={!file || uploading}
-              className="rounded-md bg-accent px-3 py-1.5 text-body font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-40"
-            >
+            <Button size="sm" onClick={onUpload} disabled={!file || uploading}>
               {uploading ? "Uploading…" : "Upload new"}
-            </button>
+            </Button>
             {uploadError && <span className="text-body text-danger">{uploadError}</span>}
           </div>
         </div>

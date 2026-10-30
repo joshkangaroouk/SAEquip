@@ -121,7 +121,8 @@ export function VariationsSection({
                   ))}
                   <TH>SKU</TH>
                   {!hideCommerce && <TH className="w-28">Price Δ</TH>}
-                  <TH className="w-32">Status</TH>
+                  {/* 144px: the cell's 20px padding plus the select's chevron gutter leave room for "Hidden". */}
+                  <TH className="w-36">Status</TH>
                 </TR>
               </THead>
               <TBody>

@@ -317,10 +317,12 @@ function Surfaces() {
         <p className="text-body">Body</p>
       </AccordionCard>
       <EmptyState title="Nothing here yet" description="Add one below." icon={<Image />} action={<Button size="sm">Add</Button>} />
-      <div className="flex items-center gap-4">
+      {/* On a card, where skeletons sit in the app. */}
+      <Card className="flex items-center gap-4">
         <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-4 w-64" />
         <Spinner className="text-muted" />
-      </div>
+      </Card>
       <Loader label="Loading products…" />
     </Section>
   );
@@ -329,32 +331,14 @@ function Surfaces() {
 function Tables() {
   const [rows, setRows] = useState(["Air Mover", "EX Heater", "Trolley for EX Heater"]);
   return (
-    <Section title="Table">
-      <Table scroll="none">
-        <THead sticky>
+    <Section title="Table and sortable list">
+      <Table>
+        <THead>
           <TR>
-            <TH className="w-12" />
             <TH>Product</TH>
-            <TH>Status</TH>
+            <TH>SKU</TH>
           </TR>
         </THead>
-        <SortableList
-          as="tbody"
-          items={rows}
-          getId={(r) => r}
-          onReorder={setRows}
-          renderItem={(r, handle, i) => (
-            <>
-              <TD className="w-12">
-                <DragHandle handle={handle} label={`Drag ${r} to reorder`} />
-              </TD>
-              <TD>{r}</TD>
-              <TD>{i === 0 ? <StatusBadge status="HIDDEN" /> : <StatusBadge status="ACTIVE" />}</TD>
-            </>
-          )}
-        />
-      </Table>
-      <Table>
         <TBody>
           <TR hover data-kit="row:hover">
             <TD>Hover row</TD>
@@ -366,6 +350,22 @@ function Tables() {
           </TR>
         </TBody>
       </Table>
+      {/* The list form the editor sections use (as="div"). */}
+      <Card padded={false}>
+        <SortableList
+          items={rows}
+          getId={(r) => r}
+          onReorder={setRows}
+          className="divide-y divide-border"
+          renderItem={(r, handle, i) => (
+            <div className="flex items-center gap-3 px-3 py-2">
+              <DragHandle handle={handle} label={`Drag ${r} to reorder`} />
+              <span className="flex-1 text-body">{r}</span>
+              <StatusBadge status={i === 0 ? "HIDDEN" : "ACTIVE"} />
+            </div>
+          )}
+        />
+      </Card>
     </Section>
   );
 }

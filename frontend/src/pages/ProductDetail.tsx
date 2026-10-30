@@ -111,7 +111,7 @@ export default function ProductDetail() {
                               ? "Save or reset your changes before refreshing"
                               : "Re-read this product from Duda"
                           }
-                          className="underline underline-offset-2 hover:text-text disabled:cursor-not-allowed disabled:no-underline disabled:opacity-40"
+                          className="underline underline-offset-2 enabled:hover:text-text disabled:cursor-not-allowed disabled:no-underline"
                         >
                           refresh
                         </button>

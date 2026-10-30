@@ -90,9 +90,9 @@ function LogoCard({
       </div>
 
       {dirty && (
-        <button onClick={saveMeta} disabled={saving} className="mt-2 rounded-md bg-accent px-3 py-1 text-body font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-40">
+        <Button size="sm" onClick={saveMeta} disabled={saving} className="mt-2">
           {saving ? "Saving…" : "Save label/alt"}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -248,9 +248,7 @@ export default function Logos() {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="t-h1 text-text">Logos</h1>
-          <button onClick={() => setPickerOpen(true)} className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-ink hover:bg-accent-hover">
-            + Add logo
-          </button>
+          <Button onClick={() => setPickerOpen(true)}>+ Add logo</Button>
         </div>
         <p className="mt-1 text-body text-muted">Global catalog shared across all products.</p>
 

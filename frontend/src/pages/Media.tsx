@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { apiFetch, apiJson } from "../lib/api";
 import { uploadFile } from "../lib/upload";
-import { FilePreview, Input, Pagination, Select, Skeleton, useConfirm } from "../components/ui";
+import { Button, FilePreview, Input, Pagination, Select, Skeleton, useConfirm } from "../components/ui";
 import { UsagePill } from "../components/UsagePill";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
 import type { AssetUsage, MediaAsset } from "../lib/types";
@@ -198,13 +198,9 @@ export default function Media() {
             className="mt-1 block font-normal"
           />
         </label>
-        <button
-          type="submit"
-          disabled={!file || uploading}
-          className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-40"
-        >
+        <Button type="submit" size="sm" disabled={!file || uploading}>
           {uploading ? "Uploading…" : "Upload"}
-        </button>
+        </Button>
         {uploadError && <span className="text-body text-danger">{uploadError}</span>}
       </form>
 
