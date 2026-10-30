@@ -13,9 +13,6 @@ import Quotes from "./pages/Quotes";
 import ResourceRequests from "./pages/ResourceRequests";
 import Translations from "./pages/Translations";
 import Status from "./pages/Status";
-// The component-kit showcase (pages/UIShowcase.tsx) is intentionally NOT
-// routed: it was a temporary reference for building the UI and is hidden from
-// the app. The file is kept for reference rather than deleted.
 import UsersPage from "./pages/Users";
 import Security from "./pages/Security";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -39,6 +36,14 @@ export const router = createBrowserRouter([
   // emailed recovery link's short-lived session exists — it checks for one.
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
+
+  // The UI kit (pages/UIShowcase.tsx): development only. `import.meta.env.DEV`
+  // is the constant `false` in a production build, so this branch, and the
+  // lazy import inside it, are dropped — the page is never shipped. Outside
+  // the auth guard because it calls no API.
+  ...(import.meta.env.DEV
+    ? [{ path: "/ui", lazy: async () => ({ Component: (await import("./pages/UIShowcase")).default }) }]
+    : []),
 
   // Authenticated app — shared sidebar shell renders the page via <Outlet/>.
   {

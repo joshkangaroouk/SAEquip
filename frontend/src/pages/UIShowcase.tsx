@@ -1,289 +1,461 @@
 import { useState } from "react";
+import { Image, Plus, Trash2 } from "lucide-react";
 import {
+  AccordionCard,
   Badge,
   Button,
   Card,
   CardHeader,
   Checkbox,
   DragHandle,
+  DropdownMenu,
   EmptyState,
   Field,
   FileDropzone,
+  FilePreview,
+  Highlight,
   Input,
   Loader,
   Modal,
   PageHeader,
+  RemoveButton,
+  RichTextEditor,
   Select,
+  SelectMenu,
+  Skeleton,
   SortableList,
   Spinner,
   StatusBadge,
   Table,
+  TBody,
   TD,
   TH,
   THead,
-  Textarea,
-  toast,
-  Toggle,
   TR,
+  Textarea,
+  Toggle,
+  ToggleTrack,
+  toast,
   useConfirm,
 } from "../components/ui";
+import { ErrorBox } from "../components/ui/Card";
 
 /**
- * TEMPORARY component-kit showcase (route: /ui). Exercises every primitive for
- * visual verification of the dark/sharp/yellow system. Remove before shipping
- * the feature-page rewrites.
+ * The living UI kit — every ui/ primitive, every variant and state, in the
+ * light and the dark theme side by side. Development only: routed at /ui
+ * when `import.meta.env.DEV` (see App.tsx), never in a production build.
+ *
+ * The two panels each set their own `data-theme`, which the token blocks in
+ * index.css support when nested. Dialogs, menus and toasts are portalled to
+ * <body> and follow <html data-theme> instead — "Overlays in" switches that.
+ *
+ * ⚠️ Nothing here talks to the API: the FileDropzone is given a local
+ * stand-in upload, so dropping a file here uploads nothing.
+ *
+ * `data-kit` attributes name each specimen for the contrast checks.
  */
 export default function UIShowcase() {
-  const confirm = useConfirm();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [toggleOn, setToggleOn] = useState(true);
-  const [checkOn, setCheckOn] = useState(false);
-  const [rows, setRows] = useState([
-    { id: "a", name: "First item" },
-    { id: "b", name: "Second item" },
-    { id: "c", name: "Third item" },
-  ]);
-  const [tableRows, setTableRows] = useState([
-    { id: "r1", product: "EX Heater", status: "ACTIVE", sku: "EXH-100" },
-    { id: "r2", product: "Sample Widget", status: "HIDDEN", sku: "SMP-200" },
-    { id: "r3", product: "Demo Gadget", status: "ACTIVE", sku: "DMO-300" },
-  ]);
-
+  const [overlayTheme, setOverlayTheme] = useState<"light" | "dark">(() =>
+    document.documentElement.dataset.theme === "dark" ? "dark" : "light",
+  );
+  const setOverlays = (t: "light" | "dark") => {
+    // Attribute only — the stored preference is left alone.
+    document.documentElement.dataset.theme = t;
+    setOverlayTheme(t);
+  };
   return (
-    <div className="space-y-12">
+    <div className="min-h-screen bg-bg text-text">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-6 py-4">
+        <div>
+          <p className="t-overline">Development only</p>
+          <h1 className="t-h1">UI kit</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="t-label">Overlays in</span>
+          <Button size="sm" variant={overlayTheme === "light" ? "primary" : "secondary"} onClick={() => setOverlays("light")}>
+            Light
+          </Button>
+          <Button size="sm" variant={overlayTheme === "dark" ? "primary" : "secondary"} onClick={() => setOverlays("dark")}>
+            Dark
+          </Button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-2">
+        <Panel theme="light" />
+        <Panel theme="dark" />
+      </div>
+    </div>
+  );
+}
+
+function Panel({ theme }: { theme: "light" | "dark" }) {
+  return (
+    <section data-theme={theme} data-kit-panel={theme} className="min-w-0 space-y-8 bg-bg p-6 text-text">
+      <p className="t-overline">{theme} theme</p>
+      <Typography />
+      <Buttons />
+      <Fields />
+      <Choices />
+      <Chips />
+      <Surfaces />
+      <Tables />
+      <Overlays />
+      <Files />
+      <Editing />
+    </section>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <h2 className="t-section border-b border-border pb-2">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, children }: { label?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      {label && <span className="t-label w-24 shrink-0">{label}</span>}
+      {children}
+    </div>
+  );
+}
+
+function Typography() {
+  return (
+    <Section title="Type roles">
+      <p className="t-h1" data-kit="type:h1">Page title 36</p>
+      <p className="t-editor-title">Editor title 28</p>
+      <p className="t-detail-title">Detail title 24</p>
+      <p className="t-modal-title">Modal title 22</p>
+      <p className="t-section">Section heading 14</p>
+      <p className="t-overline">Overline 12</p>
+      <p className="t-empty-title">Empty-state title 16</p>
+      <p className="t-body" data-kit="type:body">Body 14 — the quick brown fox. <a href="#kit" className="underline underline-offset-2">Inline link</a>.</p>
+      <p className="t-label" data-kit="type:label">Field label 12</p>
+      <p className="t-help" data-kit="type:help">Help text 13, muted.</p>
+      <p className="t-th">Table head 12</p>
+      <p>
+        <span className="t-code">SAPH18440</span> <span className="t-code-sm text-muted">ex-heater · 12</span>
+      </p>
+      <p className="text-body">
+        Search highlight: <Highlight text="EX Heater on a trolley" query="heater" />
+      </p>
+    </Section>
+  );
+}
+
+function Buttons() {
+  const variants = ["primary", "secondary", "ghost", "danger", "danger-solid"] as const;
+  return (
+    <Section title="Buttons">
+      {variants.map((v) => (
+        <Row key={v} label={v}>
+          <Button variant={v} data-kit={`btn:${v}`}>
+            {v === "danger-solid" ? "Delete permanently" : "Button"}
+          </Button>
+          <Button variant={v} size="sm" data-kit={`btn:${v}:sm`}>
+            Small
+          </Button>
+          <Button variant={v} disabled data-kit={`btn:${v}:disabled`}>
+            Disabled
+          </Button>
+          <Button variant={v} loading>
+            Saving
+          </Button>
+        </Row>
+      ))}
+      <Row label="icon">
+        <Button variant="secondary" icon aria-label="Add" data-kit="btn:icon">
+          <Plus size={16} />
+        </Button>
+        <Button variant="ghost" icon aria-label="Delete" data-kit="btn:icon-ghost">
+          <Trash2 size={16} />
+        </Button>
+        <Button variant="secondary" icon aria-label="Add (disabled)" disabled>
+          <Plus size={16} />
+        </Button>
+      </Row>
+      <Row label="remove">
+        <RemoveButton onClick={() => {}} title="Remove row" />
+        <RemoveButton onClick={() => {}} title="Remove (disabled)" disabled />
+        <Badge>
+          In a chip
+          <RemoveButton size="sm" onClick={() => {}} title="Remove chip" />
+        </Badge>
+      </Row>
+    </Section>
+  );
+}
+
+function Fields() {
+  const [text, setText] = useState("EX Heater");
+  const [select, setSelect] = useState("ACTIVE");
+  const [menu, setMenu] = useState("recent");
+  return (
+    <Section title="Fields">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Name" hint="Shown on the product page.">
+          <Input value={text} onChange={(e) => setText(e.target.value)} data-kit="input" />
+        </Field>
+        <Field label="Placeholder">
+          <Input placeholder="e.g. EX Heater" data-kit="input:placeholder" />
+        </Field>
+        <Field label="With an error" error="Enter a name.">
+          <Input defaultValue="" data-kit="input:error" />
+        </Field>
+        <Field label="Disabled">
+          <Input defaultValue="Locked" disabled data-kit="input:disabled" />
+        </Field>
+        <Field label="Dense (34px)">
+          <Input size="sm" defaultValue="Toolbar field" />
+        </Field>
+        <Field label="Select">
+          <Select value={select} onChange={(e) => setSelect(e.target.value)}>
+            <option value="ACTIVE">Live</option>
+            <option value="HIDDEN">Hidden</option>
+          </Select>
+        </Field>
+        <Field label="Textarea" hint="Grows with its content.">
+          <Textarea rows={3} defaultValue="Multi-line text." />
+        </Field>
+        <div className="space-y-1.5">
+          <span className="t-label block">SelectMenu</span>
+          <SelectMenu
+            ariaLabel="Sort"
+            value={menu}
+            onChange={setMenu}
+            options={[
+              { value: "recent", label: "Recently added" },
+              { value: "name", label: "Name A–Z" },
+              { value: "sites", label: "Site Challenges", depth: 0 },
+              { value: "hot", label: "Hot work", depth: 1 },
+            ]}
+          />
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function Choices() {
+  const [a, setA] = useState(true);
+  const [b, setB] = useState(false);
+  const [t1, setT1] = useState(true);
+  const [t2, setT2] = useState(false);
+  return (
+    <Section title="Checkbox and toggle">
+      <Row label="checkbox">
+        <Checkbox checked={a} onChange={setA} label="Checked" />
+        <Checkbox checked={b} onChange={setB} label="Unchecked" />
+        <Checkbox checked onChange={() => {}} disabled label="Disabled on" />
+        <Checkbox checked={false} onChange={() => {}} disabled label="Disabled off" />
+      </Row>
+      <Row label="toggle">
+        <Toggle checked={t1} onChange={setT1} label="On" />
+        <Toggle checked={t2} onChange={setT2} label="Off" />
+        <Toggle checked onChange={() => {}} disabled label="Disabled on" />
+        <Toggle checked={false} onChange={() => {}} disabled label="Disabled off" />
+      </Row>
+      <Row label="track only">
+        <span data-kit="toggle-track:off">
+          <ToggleTrack checked={false} />
+        </span>
+        <span data-kit="toggle-track:on">
+          <ToggleTrack checked />
+        </span>
+      </Row>
+    </Section>
+  );
+}
+
+function Chips() {
+  return (
+    <Section title="Chips">
+      <Row>
+        <span data-kit="chip:neutral"><Badge>Neutral</Badge></span>
+        <span data-kit="chip:ok"><Badge tone="ok">Live</Badge></span>
+        <span data-kit="chip:solid"><Badge tone="solid">Primary</Badge></span>
+        <span data-kit="chip:new"><Badge tone="new">New</Badge></span>
+        <span data-kit="chip:warning"><Badge tone="warning">3 left</Badge></span>
+        <span data-kit="chip:danger"><Badge tone="danger">File missing</Badge></span>
+      </Row>
+      <Row>
+        <Badge dot="unsaved">Unsaved</Badge>
+        <Badge tone="danger" dot="error">Error</Badge>
+        <StatusBadge status="ACTIVE" />
+        <StatusBadge status="HIDDEN" />
+        <StatusBadge status="IN_STOCK" />
+      </Row>
+    </Section>
+  );
+}
+
+function Surfaces() {
+  return (
+    <Section title="Surfaces">
       <PageHeader
-        title="Component Kit"
-        description="Temporary showcase of the brand design system — dark, sharp, yellow."
-        actions={<Button onClick={() => toast.success("Hello from the kit")}>Fire a toast</Button>}
+        overline="Catalogue"
+        title="Page header"
+        description="One line of muted description."
+        actions={
+          <>
+            <Button variant="secondary">Export CSV</Button>
+            <Button>New product</Button>
+          </>
+        }
       />
+      <Card data-kit="card">
+        <CardHeader title="Card heading" description="Optional description." actions={<Button size="sm" variant="secondary">Action</Button>} />
+        <p className="text-body">Card body on --surface with a 1px border.</p>
+      </Card>
+      <ErrorBox message="Couldn't save the images: the network dropped." />
+      <AccordionCard title="Accordion (until tabs)" description="Collapsible section" summary="3" dirty>
+        <p className="text-body">Body</p>
+      </AccordionCard>
+      <EmptyState title="Nothing here yet" description="Add one below." icon={<Image />} action={<Button size="sm">Add</Button>} />
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-40" />
+        <Spinner className="text-muted" />
+      </div>
+      <Loader label="Loading products…" />
+    </Section>
+  );
+}
 
-      {/* Typography */}
-      <section className="space-y-4">
-        <h2 className="t-section">Typography</h2>
-        <Card className="space-y-3">
-          <p className="t-h1">Display</p>
-          <h1 className="t-h1">Heading 1</h1>
-          <h2 className="t-section">Heading 2</h2>
-          <h3 className="t-section">Heading 3</h3>
-          <p className="text-body">
-            Body text at 16px, weight 400 (Regular). DIN 2014 is the only typeface, loaded from
-            Adobe Fonts — <span className="font-semibold">this span is semibold (600)</span>, and{" "}
-            <span className="font-bold">this one is bold (700)</span>. Note there is no 500, so{" "}
-            <span className="font-medium">font-medium</span> resolves to 400.
-          </p>
-          <p className="text-help text-muted">Small / muted text at 14px.</p>
-        </Card>
-      </section>
-
-      {/* Buttons */}
-      <section className="space-y-4">
-        <h2 className="t-section">Buttons</h2>
-        <Card className="flex flex-wrap items-center gap-3">
-          <Button variant="primary">Primary</Button>
-          <Button variant="secondary">Secondary</Button>
-          <Button variant="ghost">Ghost</Button>
-          <Button variant="danger">Danger</Button>
-          <Button variant="primary" size="sm">Small</Button>
-          <Button variant="primary" loading>Loading</Button>
-          <Button variant="primary" disabled>Disabled</Button>
-        </Card>
-      </section>
-
-      {/* Form controls */}
-      <section className="space-y-4">
-        <h2 className="t-section">Form controls</h2>
-        <Card className="grid gap-5 sm:grid-cols-2">
-          <Field label="Text input" hint="A short helper hint.">
-            <Input placeholder="Type something…" />
-          </Field>
-          <Field label="With error" error="This field is required.">
-            <Input placeholder="Invalid" />
-          </Field>
-          <Field label="Select" className="sm:col-span-1">
-            <Select defaultValue="">
-              <option value="" disabled>Choose an option…</option>
-              <option value="1">Option one</option>
-              <option value="2">Option two</option>
-              <option value="3">Option three</option>
-            </Select>
-          </Field>
-          <Field label="Textarea" className="sm:col-span-1">
-            <Textarea placeholder="Multiple lines…" />
-          </Field>
-          <div className="flex items-center gap-8 sm:col-span-2">
-            <Toggle checked={toggleOn} onChange={setToggleOn} label="Toggle switch" />
-            <Checkbox checked={checkOn} onChange={setCheckOn} label="Checkbox" />
-          </div>
-        </Card>
-      </section>
-
-      {/* Badges */}
-      <section className="space-y-4">
-        <h2 className="t-section">Badges</h2>
-        <Card className="flex flex-wrap items-center gap-3">
-          <Badge tone="neutral">Neutral</Badge>
-          <Badge tone="new">New</Badge>
-          <Badge tone="success">Success</Badge>
-          <Badge tone="danger">Danger</Badge>
-          <StatusBadge status="ACTIVE" />
-          <StatusBadge status="HIDDEN" />
-        </Card>
-      </section>
-
-      {/* Card with header */}
-      <section className="space-y-4">
-        <h2 className="t-section">Card / Panel</h2>
-        <Card>
-          <CardHeader
-            title="Panel title"
-            description="A surface panel with a hairline border and rounded corners."
-            actions={<Button size="sm" variant="secondary">Action</Button>}
-          />
-          <p className="text-body text-muted">Panel body content goes here.</p>
-        </Card>
-      </section>
-
-      {/* Table (with sortable rows) */}
-      <section className="space-y-4">
-        <h2 className="t-section">Table (drag to reorder)</h2>
-        <Table>
-          <THead sticky>
-            <TR>
-              <TH className="w-10"></TH>
-              <TH>Product</TH>
-              <TH>SKU</TH>
-              <TH>Status</TH>
-            </TR>
-          </THead>
-          <SortableList
-            as="tbody"
-            items={tableRows}
-            getId={(r) => r.id}
-            onReorder={setTableRows}
-            renderItem={(r, handle) => (
-              <>
-                <TD className="w-10"><DragHandle handle={handle} /></TD>
-                <TD className="font-semibold">{r.product}</TD>
-                <TD className="text-muted">{r.sku}</TD>
-                <TD><StatusBadge status={r.status} /></TD>
-              </>
-            )}
-          />
-        </Table>
-      </section>
-
-      {/* Sortable list */}
-      <section className="space-y-4">
-        <h2 className="t-section">Sortable list (dnd-kit)</h2>
+function Tables() {
+  const [rows, setRows] = useState(["Air Mover", "EX Heater", "Trolley for EX Heater"]);
+  return (
+    <Section title="Table">
+      <Table scroll="none">
+        <THead sticky>
+          <TR>
+            <TH className="w-12" />
+            <TH>Product</TH>
+            <TH>Status</TH>
+          </TR>
+        </THead>
         <SortableList
+          as="tbody"
           items={rows}
-          getId={(r) => r.id}
+          getId={(r) => r}
           onReorder={setRows}
-          renderItem={(r, handle) => (
-            <div className="flex items-center gap-3 border border-border bg-surface px-4 py-3">
-              <DragHandle handle={handle} />
-              <span className="text-body">{r.name}</span>
-            </div>
+          renderItem={(r, handle, i) => (
+            <>
+              <TD className="w-12">
+                <DragHandle handle={handle} label={`Drag ${r} to reorder`} />
+              </TD>
+              <TD>{r}</TD>
+              <TD>{i === 0 ? <StatusBadge status="HIDDEN" /> : <StatusBadge status="ACTIVE" />}</TD>
+            </>
           )}
         />
-      </section>
+      </Table>
+      <Table>
+        <TBody>
+          <TR hover data-kit="row:hover">
+            <TD>Hover row</TD>
+            <TD className="t-code">SAPH18440</TD>
+          </TR>
+          <TR selected data-kit="row:selected">
+            <TD>Selected row</TD>
+            <TD className="t-code">SA4000</TD>
+          </TR>
+        </TBody>
+      </Table>
+    </Section>
+  );
+}
 
-      {/* Modal + confirm */}
-      <section className="space-y-4">
-        <h2 className="t-section">Modal &amp; confirm</h2>
-        <Card className="flex flex-wrap gap-3">
-          <Button onClick={() => setModalOpen(true)}>Open modal</Button>
-          <Button
-            variant="danger"
-            onClick={async () => {
-              const ok = await confirm({
-                title: "Delete this item?",
-                description: "This action cannot be undone.",
-                confirmLabel: "Delete",
-                danger: true,
-              });
-              toast[ok ? "success" : "error"](ok ? "Confirmed" : "Cancelled");
-            }}
-          >
-            Confirm dialog
-          </Button>
-        </Card>
-        <Modal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title="Example modal"
-          description="Rounded dialog rendered in a portal."
-          footer={
-            <>
-              <Button variant="secondary" size="sm" onClick={() => setModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={() => setModalOpen(false)}>Save</Button>
-            </>
+function Overlays() {
+  const [open, setOpen] = useState(false);
+  const confirm = useConfirm();
+  return (
+    <Section title="Dialogs, menus, toasts (portalled — follow “Overlays in”)">
+      <Row>
+        <Button variant="secondary" onClick={() => setOpen(true)}>
+          Open dialog
+        </Button>
+        <Button
+          variant="danger"
+          onClick={() =>
+            void confirm({ title: "Delete this logo?", description: "It is on 12 products.", confirmLabel: "Delete", danger: true })
           }
         >
-          <p className="text-muted">Modal body content — anything can go here.</p>
-        </Modal>
-      </section>
-
-      {/* Toasts */}
-      <section className="space-y-4">
-        <h2 className="t-section">Toasts</h2>
-        <Card className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => toast.success("Saved successfully")}>
-            Success
-          </Button>
-          <Button variant="secondary" onClick={() => toast.error("Something went wrong")}>
-            Error
-          </Button>
-          <Button variant="secondary" onClick={() => toast.loading("Working…")}>
-            Loading
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() =>
-              toast.promise(new Promise((res) => setTimeout(res, 1200)), {
-                loading: "Uploading…",
-                success: "Uploaded!",
-                error: "Failed",
-              })
-            }
-          >
-            Promise
-          </Button>
-        </Card>
-      </section>
-
-      {/* File dropzone */}
-      <section className="space-y-4">
-        <h2 className="t-section">File dropzone</h2>
-        <p className="text-help text-muted">
-          Uploads each file to <code>POST /api/media</code> with a progress bar. (Use throwaway
-          files — real uploads create Media assets.)
-        </p>
-        <FileDropzone
-          hint="Images or files up to 25MB"
-          onUploaded={(asset) => toast.success(`Asset ${asset.id ?? ""} ready`)}
+          Delete…
+        </Button>
+        <DropdownMenu
+          label="Actions for the kit row"
+          actions={[
+            { label: "Edit", onSelect: () => {} },
+            { label: "Add value", onSelect: () => {} },
+            { label: "Disabled", onSelect: () => {}, disabled: true, title: "Why it is disabled" },
+            { label: "Delete", onSelect: () => {}, danger: true },
+          ]}
         />
-      </section>
+      </Row>
+      <Row>
+        <Button size="sm" variant="secondary" onClick={() => toast.success("Saved")}>Success</Button>
+        <Button size="sm" variant="secondary" onClick={() => toast.error("Couldn't save")}>Error</Button>
+        <Button size="sm" variant="secondary" onClick={() => toast.warning("1 translation was kept in English", { description: "The translator changed a number." })}>Warning</Button>
+        <Button size="sm" variant="secondary" onClick={() => toast.info("Copied")}>Info</Button>
+        <Button size="sm" variant="secondary" onClick={() => toast.loading("Uploading…")}>Loading</Button>
+      </Row>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Rename option"
+        description="Renaming keeps every product's choice."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={() => setOpen(false)}>Save</Button>
+          </>
+        }
+      >
+        <Field label="Name">
+          <Input defaultValue="Hire/Purchase" />
+        </Field>
+      </Modal>
+    </Section>
+  );
+}
 
-      {/* Empty / loading states */}
-      <section className="space-y-4">
-        <h2 className="t-section">States</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <EmptyState
-            title="Nothing here yet"
-            description="An empty-state block with a call to action."
-            action={<Button size="sm">Create one</Button>}
-          />
-          <Card className="flex items-center justify-center">
-            <Loader label="Loading data…" />
-          </Card>
-        </div>
-        <div className="flex items-center gap-3 text-muted">
-          <Spinner /> <span className="text-help">Inline spinner</span>
-        </div>
-      </section>
-    </div>
+/** A stand-in for the real upload: fakes progress locally and never calls the API. */
+const fakeUpload: NonNullable<React.ComponentProps<typeof FileDropzone>["upload"]> = (file, opts) =>
+  new Promise((resolve) => {
+    let p = 0;
+    const tick = setInterval(() => {
+      p = Math.min(100, p + 25);
+      opts?.onProgress?.(p);
+      if (p >= 100) {
+        clearInterval(tick);
+        resolve({ id: "kit", filename: file.name } as never);
+      }
+    }, 150);
+  });
+
+function Files() {
+  return (
+    <Section title="Files">
+      <FileDropzone upload={fakeUpload} hint="Kit only — nothing is uploaded." />
+      <Row>
+        <FilePreview filename="datasheet.pdf" className="h-24 w-20 border border-border" />
+        <FilePreview filename="manual.docx" className="h-24 w-20 border border-border" />
+        <FilePreview filename="model.glb" className="h-24 w-20 border border-border" />
+      </Row>
+    </Section>
+  );
+}
+
+function Editing() {
+  const [html, setHtml] = useState("<p>First paragraph.</p><p>Second paragraph, 12px below.</p>");
+  return (
+    <Section title="Rich text">
+      <RichTextEditor value={html} onChange={setHtml} />
+    </Section>
   );
 }
