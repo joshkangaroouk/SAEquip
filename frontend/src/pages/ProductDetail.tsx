@@ -76,7 +76,7 @@ export default function ProductDetail() {
       <TranslationProgressModal progress={translation} onSkip={skipTranslation} onDownload={downloadLanguage} />
 
       <div className={saveBarVisible ? "pb-28" : "pb-4"}>
-        <Link to="/" className="text-body text-muted hover:text-text">
+        <Link to="/" className="text-body text-muted underline-offset-2 hover:text-text hover:underline">
           ← Back to products
         </Link>
 

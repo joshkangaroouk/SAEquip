@@ -347,8 +347,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             aria-label="Sign out"
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-label",
-              "transition-colors hover:bg-white/[0.06] hover:text-sidebar-fg outline-none",
-              "focus-visible:ring-[3px] focus-visible:ring-ring/50",
+              "transition-colors hover:bg-white/[0.06] hover:text-sidebar-fg",
             )}
           >
             <LogOut size={18} strokeWidth={2} />

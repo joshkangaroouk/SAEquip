@@ -175,7 +175,7 @@ export function CompatibleProductsSection({
                     "Add <product>" — otherwise a screen reader hears "Add"
                     twice. */}
                 <span
-                  className="flex shrink-0 items-center gap-1 text-label font-semibold text-accent-strong"
+                  className="flex shrink-0 items-center gap-1 text-label font-semibold text-text"
                   aria-hidden="true"
                 >
                   Add

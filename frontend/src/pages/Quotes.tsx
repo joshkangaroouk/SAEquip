@@ -256,7 +256,7 @@ export default function Quotes() {
               {requests.map((q) => (
                 <TR key={q.id} hover onClick={() => setSelected(q)}>
                   <TD className="font-semibold text-text">
-                    <button type="button" onClick={() => setSelected(q)} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50">
+                    <button type="button" onClick={() => setSelected(q)} className="text-left">
                       <span className="sr-only">Open the quote from </span>
                       {q.name}
                     </button>

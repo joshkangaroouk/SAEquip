@@ -1,4 +1,4 @@
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, RemoveButton, SortableList } from "./ui";
+import { Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, RemoveButton, SortableList } from "./ui";
 import type { TextItemDraft } from "./product/productEditorTypes";
 
 /**
@@ -55,10 +55,11 @@ export function TextItemListEditor({
             <div className="flex items-center gap-3 rounded-md border border-border bg-surface-2 p-3">
               <DragHandle handle={handle} />
               <span className="w-6 text-right text-label text-muted">{index + 1}.</span>
-              <input
-                className={`flex-1 rounded-md border bg-surface px-3 py-2 text-label font-medium text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent ${
-                  it.text.trim() ? "border-border" : "border-danger"
-                }`}
+              <Input
+                size="sm"
+                className="flex-1"
+                aria-label={`Item ${index + 1}`}
+                aria-invalid={!it.text.trim() || undefined}
                 value={it.text}
                 onChange={(e) => update(it.id, e.target.value)}
                 placeholder={placeholder}

@@ -1,4 +1,4 @@
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, RemoveButton, SortableList } from "./ui";
+import { Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, RemoveButton, SortableList } from "./ui";
 import type { SpecRowDraft } from "./product/productEditorTypes";
 import {
   flattenSpecGroups,
@@ -80,8 +80,6 @@ export function SpecTableEditor({
     commit([...groups, { id: rowId, label: "", heading: false, lines: [{ id: rowId, value: "" }] }]);
   };
 
-  const inputCls =
-    "w-full rounded-md border bg-surface px-3 py-2 text-label font-medium text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent";
   const lineCount = rows.length;
 
   return (
@@ -121,8 +119,10 @@ export function SpecTableEditor({
 
               {/* Label — one per group, however many lines it has. */}
               <div className="w-2/5 shrink-0">
-                <input
-                  className={`${inputCls} ${g.label.trim() ? "border-border" : "border-danger"}`}
+                <Input
+                  size="sm"
+                  aria-label="Spec label"
+                  aria-invalid={!g.label.trim() || undefined}
                   value={g.label}
                   onChange={(e) => setLabel(g.id, e.target.value)}
                   placeholder="e.g. PROTECTION"
@@ -138,8 +138,10 @@ export function SpecTableEditor({
               <div className="min-w-0 flex-1 space-y-1.5">
                 {g.lines.map((ln, i) => (
                   <div key={ln.id} className="flex items-center gap-1.5">
-                    <input
-                      className={`${inputCls} ${ln.value.trim() ? "border-border" : "border-danger"}`}
+                    <Input
+                      size="sm"
+                      aria-label={g.label.trim() ? `${g.label} — value line ${i + 1}` : `Spec value line ${i + 1}`}
+                      aria-invalid={!ln.value.trim() || undefined}
                       value={ln.value}
                       onChange={(e) => setLine(g.id, ln.id, e.target.value)}
                       placeholder={i === 0 ? "e.g. Tipping protection" : "another line…"}

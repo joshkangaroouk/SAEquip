@@ -80,10 +80,6 @@ export default {
         // A full colour with its own alpha, set per theme (02a Q10): `bg-backdrop`.
         backdrop: "var(--backdrop)",
         focus: "rgb(var(--focus) / <alpha-value>)",
-        // ⚠️ Interim alias: the `focus-visible:ring-ring/50` classes still in
-        // the components draw in the focus colour until batch 2 replaces them
-        // with outlines. Delete with them.
-        ring: "rgb(var(--focus) / <alpha-value>)",
         sidebar: {
           DEFAULT: "rgb(var(--sidebar) / <alpha-value>)",
           border: "rgb(var(--sidebar-border) / <alpha-value>)",
@@ -128,9 +124,6 @@ export default {
         help: ["0.8125rem", { lineHeight: "1.5" }], // 13 — help text, chips, codes
         label: ["0.75rem", { lineHeight: "1.3" }], // 12 — labels, overlines, table heads, codes
         micro: "0.6875rem", // 11 — segment counts, "New" chip
-      },
-      ringColor: {
-        DEFAULT: "rgb(var(--focus) / <alpha-value>)",
       },
     },
   },

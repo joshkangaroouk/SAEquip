@@ -190,11 +190,12 @@ export default function Media() {
         </label>
         <label className="text-body font-semibold text-text">
           Alt text (optional)
-          <input
+          <Input
+            size="sm"
             value={alt}
             onChange={(e) => setAlt(e.target.value)}
             placeholder="describe the image"
-            className="mt-1 block rounded-md border border-border px-3 py-2 text-body focus:border-text focus:outline-none placeholder:text-muted"
+            className="mt-1 block font-normal"
           />
         </label>
         <button

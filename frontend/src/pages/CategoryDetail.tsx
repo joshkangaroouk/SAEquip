@@ -229,7 +229,7 @@ export default function CategoryDetail() {
     <>
       <UnsavedChangesModal blocker={blocker} onSave={save} />
       <nav className="flex items-center gap-1.5 text-help text-muted">
-        <Link to="/categories" className="hover:text-text">
+        <Link to="/categories" className="underline-offset-2 hover:text-text hover:underline">
           Categories
         </Link>
         <ChevronRight size={13} />
@@ -351,7 +351,7 @@ export default function CategoryDetail() {
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-surface-2 text-muted transition-colors hover:border-ring hover:text-text"
+              className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-surface-2 text-muted transition-colors duration-[120ms] hover:border-text hover:text-text"
             >
               {draft.image_url ? (
                 <img src={draft.image_url} alt="" className="h-full w-full bg-paper object-contain" />

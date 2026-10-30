@@ -50,7 +50,7 @@ export default function ForgotPassword() {
                 If <span className="font-medium text-text">{email}</span> has an account, a reset link
                 is on its way. The link expires shortly, so use it soon.
               </p>
-              <Link to="/login" className="mt-6 inline-block text-help font-semibold text-accent-strong">
+              <Link to="/login" className="mt-6 inline-block text-help font-semibold text-text underline-offset-2 hover:underline">
                 ← Back to sign in
               </Link>
             </>
@@ -76,7 +76,7 @@ export default function ForgotPassword() {
               <Button type="submit" className="mt-6 w-full" disabled={submitting || !email.trim()}>
                 {submitting ? "Sending…" : "Send reset link"}
               </Button>
-              <Link to="/login" className="mt-4 inline-block text-help text-muted hover:text-text">
+              <Link to="/login" className="mt-4 inline-block text-help text-muted underline-offset-2 hover:text-text hover:underline">
                 ← Back to sign in
               </Link>
             </form>

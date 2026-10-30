@@ -5,6 +5,7 @@ import { UsagePill } from "../components/UsagePill";
 import {
   Button,
   DragHandle,
+  Input,
   RemoveButton,
   Skeleton,
   SortableList,
@@ -54,7 +55,6 @@ function LogoCard({
     }
   }
 
-  const inputCls = "w-full rounded-md border border-border px-2 py-1 text-body font-medium focus:border-text focus:outline-none placeholder:text-muted";
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-surface p-3">
@@ -68,11 +68,11 @@ function LogoCard({
       <div className="mt-2 space-y-2">
         <label className="block text-label font-semibold text-muted">
           Label
-          <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="optional" />
+          <Input size="sm" className="mt-1" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="optional" />
         </label>
         <label className="block text-label font-semibold text-muted">
           Alt
-          <input className={inputCls} value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="optional" />
+          <Input size="sm" className="mt-1" value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="optional" />
         </label>
       </div>
 

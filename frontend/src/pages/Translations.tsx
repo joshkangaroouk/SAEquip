@@ -707,7 +707,7 @@ export default function Translations() {
                           </div>
                         </TD>
                         <TD className="align-top">
-                          <button type="button" onClick={() => setEditing(i)} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50">
+                          <button type="button" onClick={() => setEditing(i)} className="text-left">
                             <span className="sr-only">Edit the translation of </span>
                             <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText}</span>
                           </button>

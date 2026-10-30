@@ -224,7 +224,7 @@ export default function ResourceRequests() {
               {requests.map((r) => (
                 <TR key={r.id} hover onClick={() => setSelected(r)}>
                   <TD className="font-semibold text-text">
-                    <button type="button" onClick={() => setSelected(r)} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50">
+                    <button type="button" onClick={() => setSelected(r)} className="text-left">
                       <span className="sr-only">Open the request from </span>
                       {r.name}
                     </button>

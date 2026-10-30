@@ -40,7 +40,7 @@ export function UsagePill({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         title="See which products use this"
-        className={`${PILL} transition-colors hover:bg-border hover:text-text focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50`}
+        className={`${PILL} transition-colors duration-[120ms] hover:bg-border hover:text-text`}
       >
         {label}
       </button>
@@ -161,7 +161,7 @@ function ProductRow({ product: p, showVia }: { product: UsageProduct; showVia: b
   return (
     <Link
       to={`/products/${p.dudaProductId}`}
-      className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      className="group flex items-center gap-3 px-2 py-2 transition-colors duration-[120ms] hover:bg-surface-2"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2">
         {p.thumbnailUrl && !broken ? (

@@ -430,7 +430,7 @@ export default function Products() {
                           <div className="h-[100px] w-[100px] shrink-0 rounded border border-border bg-surface-2" />
                         )}
                         <div>
-                          <Link to={`/products/${p.id}`} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 font-medium text-text">
+                          <Link to={`/products/${p.id}`} className="text-left font-medium text-text">
                             <Highlight text={p.name} query={query} />
                           </Link>
                           <div className="text-help text-muted">{p.type}</div>

@@ -458,7 +458,7 @@ function IncludedIn({ option }: { option: CatalogOption }) {
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         title="See which products use this option"
-        className="group rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="group"
       >
         {/* Darker as a whole on hover, like the Media Centre's pill: the fill
             takes the border's own colour, so the badge reads as one shape. */}

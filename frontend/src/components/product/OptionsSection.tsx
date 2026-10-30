@@ -202,7 +202,7 @@ export function OptionsSection({
                           }}
                           placeholder="New value…"
                           autoFocus
-                          className="h-7 w-32 rounded-full border border-border-input bg-field px-3 text-help outline-none transition-[color,box-shadow] placeholder:text-muted focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          className="h-7 w-32 border border-border-input bg-field px-3 text-help transition-colors duration-[120ms] placeholder:text-muted"
                         />
                         <Button
                           variant="primary"
