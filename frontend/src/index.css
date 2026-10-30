@@ -85,6 +85,8 @@
   --accent-ink: 11 11 11; /* #0B0B0B text on yellow */
   --accent-hover: 240 196 15; /* #F0C40F primary-button hover (02a Q4) */
   --paper: 255 255 255; /* always-white tile: images, logos, PDF previews, QR, widget previews */
+  --danger-solid: 180 35 24; /* #B42318 confirm-delete button, both themes (02a "After 3b") */
+  --danger-solid-hover: 155 28 19; /* #9B1C13 */
 
   /* Sidebar — always dark, whatever the theme. */
   --sidebar: 11 11 11; /* #0B0B0B */

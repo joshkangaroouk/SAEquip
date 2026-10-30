@@ -64,6 +64,8 @@ export default {
         danger: {
           DEFAULT: "rgb(var(--danger) / <alpha-value>)",
           bg: "rgb(var(--danger-bg) / <alpha-value>)",
+          solid: "rgb(var(--danger-solid) / <alpha-value>)", // confirm-delete, fixed in both themes
+          "solid-hover": "rgb(var(--danger-solid-hover) / <alpha-value>)",
         },
         warning: {
           DEFAULT: "rgb(var(--warning) / <alpha-value>)",

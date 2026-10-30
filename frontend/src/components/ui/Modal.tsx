@@ -225,7 +225,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               {state?.cancelLabel ?? "Cancel"}
             </Button>
             <Button
-              variant={state?.danger ? "danger" : "primary"}
+              variant={state?.danger ? "danger-solid" : "primary"}
               size="sm"
               onClick={() => settle(true)}
             >

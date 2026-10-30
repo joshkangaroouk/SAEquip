@@ -103,7 +103,7 @@ export function DangerZoneSection({
               Cancel
             </Button>
             <Button
-              variant="danger"
+              variant="danger-solid"
               onClick={() => void confirmDelete()}
               disabled={typed !== productName || loading}
               loading={deleting}

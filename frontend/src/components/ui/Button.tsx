@@ -3,67 +3,71 @@ import { X } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Spinner } from "./Spinner";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "danger-solid";
 type Size = "xs" | "sm" | "md";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /**
+   * - `primary`: yellow — the one primary action in a view.
+   * - `secondary`: the design's "ghost" button — transparent, bordered.
+   * - `ghost`: text only, no border (toolbars, quiet actions).
+   * - `danger`: everyday destructive action — red outline.
+   * - `danger-solid`: the confirm-delete button inside a dialog — solid red in
+   *   both themes (02a "After 3b").
+   */
   variant?: Variant;
+  /** `md` 40px; `sm` 34px (the design's small ghost); `xs` is the same as `sm`. */
   size?: Size;
   loading?: boolean;
+  /** A 34×34 square for an icon on its own. Needs an `aria-label`. */
+  icon?: boolean;
 }
 
 /*
- * shadcn buttons are compact and focus with a soft 3px ring at half opacity
- * rather than a hard offset outline.
+ * Square, 1px border on every variant (transparent where there is none) so
+ * all variants share one box. Inter 14/600. Focus is the global outline
+ * (index.css), never a ring.
  *
- * `font-semibold` (600) is the button weight in the design (Inter 14/600).
- * Set on `base` so no variant or size can opt out of it.
+ * Hovers apply only while ENABLED (`enabled:hover:`), so a disabled button
+ * cannot light up. Disabled is drawn explicitly — surface-2 fill, muted text,
+ * the plain border — never with opacity, which turned yellow into olive on
+ * dark (02a "After 3b").
  */
 const base =
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-semibold whitespace-nowrap " +
-  "transition-colors select-none outline-none " +
-  "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
-  "disabled:pointer-events-none disabled:opacity-50 " +
+  "inline-flex shrink-0 items-center justify-center gap-2 border font-semibold whitespace-nowrap select-none " +
+  "transition-colors duration-[120ms] " +
+  "disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-2 disabled:text-muted " +
   "[&_svg]:pointer-events-none [&_svg]:shrink-0";
 
 const variants: Record<Variant, string> = {
-  // Brand yellow keeps the primary slot — shadcn's own primary is near-black.
-  primary: "bg-accent text-accent-ink hover:bg-accent-hover",
-  // shadcn's "outline": bordered, transparent, subtle hover fill.
-  secondary: "border border-border bg-surface text-text hover:bg-surface-2",
-  ghost: "bg-transparent text-muted hover:bg-surface-2 hover:text-text",
-  danger: "bg-danger text-white hover:bg-danger/90",
+  primary: "border-accent bg-accent text-accent-ink enabled:hover:border-accent-hover enabled:hover:bg-accent-hover",
+  secondary: "border-border-strong bg-transparent text-text enabled:hover:border-text enabled:hover:bg-surface-2",
+  ghost: "border-transparent bg-transparent text-muted enabled:hover:bg-surface-2 enabled:hover:text-text",
+  danger: "border-danger bg-transparent text-danger enabled:hover:bg-danger-bg",
+  "danger-solid": "border-danger bg-danger-solid text-white enabled:hover:bg-danger-solid-hover",
 };
 
-/*
- * shadcn's control heights: 36px default, 32px small.
- *
- * ⚠️ Every size is `text-body` (16px). The sizes are a scale of BOX, not of
- * type — a button reading 14px next to one reading 16px is the inconsistency
- * this exists to prevent, and `sm` alone accounts for 65 of the hub's buttons,
- * so whatever it renders at is effectively the house style.
- *
- * `xs` grew from h-7 to h-8 to take the taller line box: 16px at line-height
- * 1.5 is a 24px line, which left barely 3px above and below inside a 28px
- * button and collided with the focus ring. It now differs from `sm` only in
- * horizontal padding.
- */
+/* The sizes are a scale of BOX, not of type: every size is 14px (text-body). */
 const sizes: Record<Size, string> = {
-  xs: "h-8 gap-1 px-2.5 text-body",
-  sm: "h-8 gap-1.5 px-3 text-body",
-  md: "h-9 px-4 text-body",
+  xs: "h-8.5 px-3 text-body",
+  sm: "h-8.5 px-3 text-body",
+  md: "h-10 px-4.5 text-body",
 };
 
-/** Rounded button. Yellow primary, outline secondary, ghost, danger. */
+/** Square button: yellow primary, outline secondary, text ghost, danger outline, solid confirm-delete. */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "primary", size = "md", loading = false, disabled, className, children, ...rest },
+  { variant = "primary", size = "md", loading = false, icon = false, disabled, className, children, ...rest },
   ref,
 ) {
+  if (import.meta.env.DEV && icon && !rest["aria-label"] && !rest["aria-labelledby"]) {
+    console.warn("Button: an icon button needs an aria-label.");
+  }
   return (
     <button
       ref={ref}
       disabled={disabled || loading}
-      className={cn(base, variants[variant], sizes[size], className)}
+      aria-busy={loading || undefined}
+      className={cn(base, variants[variant], sizes[size], icon && "h-8.5 w-8.5 p-0", className)}
       {...rest}
     >
       {loading && <Spinner />}
@@ -73,13 +77,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 });
 
 /**
- * "×" remove control: neutral until hovered, then a tinted square and a red
- * glyph — the same treatment used to detach an option on the product editor.
+ * The "×" remove control: neutral until hovered, then a surface-2 square and
+ * a red glyph.
  *
- * `size` is a prop rather than something callers override via className: cn()
- * is plain concatenation with no tailwind-merge, so passing "h-6 w-6" alongside
- * the built-in "h-8 w-8" leaves BOTH in the class list and the winner up to
- * stylesheet order.
+ * `size` is a prop, not something to override through className: the box and
+ * the glyph change together.
  */
 export function RemoveButton({
   onClick,
@@ -89,9 +91,10 @@ export function RemoveButton({
   className,
 }: {
   onClick: () => void;
+  /** Also the accessible name — prefer a specific one, e.g. "Remove EX Heater". */
   title?: string;
   disabled?: boolean;
-  /** "sm" (24px) sits inside a chip; "md" (32px) stands alone in a row. */
+  /** "sm" (20px) sits inside a 26px chip; "md" (34px) stands alone in a row. */
   size?: "sm" | "md";
   className?: string;
 }) {
@@ -103,14 +106,14 @@ export function RemoveButton({
       title={title}
       aria-label={title}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-md text-muted transition-colors",
-        size === "sm" ? "h-6 w-6" : "h-8 w-8",
-        "hover:bg-surface-2 hover:text-danger outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-        "disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent",
+        "flex shrink-0 items-center justify-center text-muted transition-colors duration-[120ms]",
+        size === "sm" ? "h-5 w-5" : "h-8.5 w-8.5",
+        "enabled:hover:bg-surface-2 enabled:hover:text-danger",
+        "disabled:cursor-not-allowed disabled:text-border-input",
         className,
       )}
     >
-      <X size={size === "sm" ? 14 : 16} strokeWidth={2} aria-hidden="true" />
+      <X size={size === "sm" ? 12 : 16} strokeWidth={2} aria-hidden="true" />
     </button>
   );
 }
