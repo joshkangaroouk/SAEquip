@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useMatches, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   ChevronDown,
@@ -366,6 +366,10 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
  */
 export function Layout({ children }: { children?: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // A route with `handle: { layout: "full" }` (the split views) drops the
+  // max-w-6xl column and, from lg, fills the viewport height so its panes can
+  // scroll on their own.
+  const full = useMatches().some((m) => (m.handle as { layout?: string } | undefined)?.layout === "full");
   // Applies the account's light/dark choice once the session has loaded.
   useThemePreference();
 
@@ -425,7 +429,7 @@ export function Layout({ children }: { children?: ReactNode }) {
 
       {/* Main content */}
       <main className={MAIN_OFFSET}>
-        <div className="mx-auto max-w-6xl px-5 py-6 lg:px-8">
+        <div className={full ? "px-5 py-6 lg:flex lg:h-dvh lg:flex-col lg:px-8" : "mx-auto max-w-6xl px-5 py-6 lg:px-8"}>
           {children ?? <Outlet />}
         </div>
       </main>

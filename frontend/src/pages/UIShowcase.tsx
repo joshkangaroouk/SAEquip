@@ -28,6 +28,9 @@ import {
   SelectMenu,
   Skeleton,
   SortableList,
+  SplitDetailHeader,
+  SplitListItem,
+  SplitView,
   Spinner,
   StatusBadge,
   Tab,
@@ -47,6 +50,7 @@ import {
   toast,
   useConfirm,
   usePagedList,
+  useSelection,
 } from "../components/ui";
 
 /**
@@ -113,6 +117,7 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
       <Tables />
       <Overlays />
       <Pages />
+      <Split theme={theme} />
       <Thumbs />
       <Files />
       <Editing />
@@ -582,7 +587,88 @@ function Overlays() {
   );
 }
 
-const KIT_ROWS = Array.from({ length: 91 }, (_, i) => `Product ${i + 1}`);
+const KIT_REQUESTS = [
+  { id: "q1", name: "Alex Example", company: "Example Refining Ltd", date: "29 Oct", isNew: true },
+  { id: "q2", name: "Sam Sample", company: "Sample Shipyards", date: "27 Oct", isNew: true },
+  { id: "q3", name: "Jo Tester", company: "Tester Rail", date: "21 Oct", isNew: false },
+  { id: "q4", name: "Pat Placeholder", company: "—", date: "18 Oct", isNew: false },
+  { id: "q5", name: "Lee Longname-Hyphenated", company: "A company with a long enough name to truncate", date: "2 Oct", isNew: false },
+];
+
+function Split({ theme }: { theme: string }) {
+  // One URL param per panel, so the two demos don't select each other's rows.
+  const { selectedId, select, hrefFor } = useSelection(`${theme}-id`);
+  const item = KIT_REQUESTS.find((r) => r.id === selectedId);
+  return (
+    <Section title="Split view">
+      <p className="t-help">
+        Selection is in the URL (<span className="t-code-sm">?{theme}-id=</span>); focus moves to the heading. Below lg:
+        list only, then the detail with "Back to list".{" "}
+        <a href={hrefFor("missing")} className="underline underline-offset-2">
+          Open an id that isn't in the list
+        </a>
+      </p>
+      <div data-kit="split">
+        <SplitView
+          className="h-[420px]"
+          listLabel="Quote requests (kit)"
+          selectedId={selectedId}
+          onBack={() => select(null)}
+          list={KIT_REQUESTS.map((r) => (
+            <SplitListItem
+              key={r.id}
+              to={hrefFor(r.id)}
+              selected={r.id === selectedId}
+              title={r.name}
+              subtitle={r.company}
+              meta={r.date}
+              badge={r.isNew ? <Badge tone="new">New</Badge> : undefined}
+            />
+          ))}
+          detail={
+            selectedId === null ? null : item ? (
+              <>
+                <SplitDetailHeader
+                  title={item.name}
+                  subtitle={item.company}
+                  actions={
+                    <>
+                      <Button variant="secondary" size="sm">
+                        Mark as handled
+                      </Button>
+                      <Button size="sm">Reply by email</Button>
+                    </>
+                  }
+                />
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-5">
+                  {[
+                    ["Email", "alex@example.com"],
+                    ["Telephone", "+44 1234 567890"],
+                    ["When needed", "Within the next month"],
+                    ["Submitted", `${item.date} 2026, 10:00`],
+                  ].map(([k, v]) => (
+                    <div key={k}>
+                      <dt className="t-label">{k}</dt>
+                      <dd className="mt-0.5 text-body text-text">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
+            ) : (
+              <>
+                <SplitDetailHeader title="Not found" />
+                <p className="px-6 py-5 text-body text-muted">Nothing in this list has that id.</p>
+              </>
+            )
+          }
+          emptyDetail={<EmptyState className="m-6" title="Select a request" description="Its details show here." />}
+        />
+      </div>
+    </Section>
+  );
+}
+
+const KIT_ROWS =Array.from({ length: 91 }, (_, i) => `Product ${i + 1}`);
 
 function Pages() {
   const paged = usePagedList(KIT_ROWS);
