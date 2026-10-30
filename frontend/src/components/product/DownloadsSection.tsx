@@ -117,7 +117,7 @@ export function DownloadsSection({
             onReorder={onChange}
             renderItem={(d, handle) => (
               <div className="flex items-center gap-2.5 bg-surface px-2.5 py-2">
-                <DragHandle handle={handle} />
+                <DragHandle handle={handle} label={`Drag ${d.title || d.filename} to reorder`} />
                 <FilePreview
                   thumbnailUrl={d.thumbnailUrl}
                   filename={d.filename}

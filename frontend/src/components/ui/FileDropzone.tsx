@@ -21,6 +21,11 @@ export interface FileDropzoneProps {
   label?: string;
   hint?: string;
   className?: string;
+  /**
+   * The upload itself — the real browser → Supabase upload by default. The UI
+   * kit passes a local stand-in so dropping a file there uploads nothing.
+   */
+  upload?: typeof uploadFile;
 }
 
 /**
@@ -39,6 +44,7 @@ export function FileDropzone({
   label = "Drop files here or click to browse",
   hint,
   className,
+  upload = uploadFile,
 }: FileDropzoneProps) {
   const [items, setItems] = useState<UploadItem[]>([]);
   // An upload finishes after later renders, so it calls the CURRENT handler,
@@ -49,7 +55,7 @@ export function FileDropzone({
   const uploadOne = useCallback(
     async (file: File, id: string) => {
       try {
-        const asset = await uploadFile(file, {
+        const asset = await upload(file, {
           onProgress: (progress) =>
             setItems((prev) => prev.map((it) => (it.id === id ? { ...it, progress } : it))),
         });
@@ -66,7 +72,7 @@ export function FileDropzone({
         toast.error(`Failed to upload ${file.name}: ${detail}`);
       }
     },
-    [],
+    [upload],
   );
 
   const onDrop = useCallback(
@@ -91,10 +97,11 @@ export function FileDropzone({
       <div
         {...getRootProps()}
         className={cn(
-          "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
+          "flex cursor-pointer flex-col items-center justify-center border border-dashed px-6 py-10 text-center",
+          "transition-colors duration-[120ms]",
           isDragActive
             ? "border-accent bg-accent/10 text-text"
-            : "border-border bg-surface text-muted hover:border-border-strong",
+            : "border-border-strong bg-surface text-muted hover:border-text",
         )}
       >
         <input {...getInputProps()} />
@@ -103,13 +110,14 @@ export function FileDropzone({
           <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="1.5" />
         </svg>
         <p className="text-body font-semibold text-text">{label}</p>
-        {hint && <p className="mt-1 text-help text-muted">{hint}</p>}
+        {hint && <p className="t-help mt-1">{hint}</p>}
       </div>
 
       {items.length > 0 && (
-        <ul className="space-y-2">
+        // Announced as files finish or fail.
+        <ul className="space-y-2" aria-live="polite">
           {items.map((it) => (
-            <li key={it.id} className="rounded-md bg-surface border border-border px-4 py-3">
+            <li key={it.id} className="border border-border bg-surface px-4 py-3">
               <div className="flex items-center justify-between gap-3 text-help">
                 <span className="truncate text-text">{it.name}</span>
                 <span
@@ -125,10 +133,10 @@ export function FileDropzone({
                   {it.status === "error" ? it.error : `${it.progress}%`}
                 </span>
               </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+              <div className="mt-2 h-1.5 w-full overflow-hidden bg-surface-2">
                 <div
                   className={cn(
-                    "h-full rounded-full transition-all",
+                    "h-full transition-[width] duration-[120ms]",
                     it.status === "error" ? "bg-danger" : "bg-accent",
                   )}
                   style={{ width: `${it.progress}%` }}

@@ -78,7 +78,7 @@ function LogoCard({
 
       <div className="mt-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <DragHandle handle={handle} />
+          <DragHandle handle={handle} label={`Drag ${entry.label || entry.alt || "logo"} to reorder`} />
           <UsagePill
             count={entry.usage}
             label={`Used by ${entry.usage}`}

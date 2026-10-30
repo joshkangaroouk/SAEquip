@@ -400,7 +400,7 @@ function CategoryTree({
     const kids = childrenOf(n.id);
     return (
       <div className={`${COLS} border-b border-border py-2.5 last:border-b-0 hover:bg-surface-2`}>
-        <DragHandle handle={handle} />
+        <DragHandle handle={handle} label={`Drag ${n.title} to reorder`} />
         <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: child ? "1.5rem" : 0 }}>
           {kids.length > 0 ? (
             <button

@@ -215,7 +215,7 @@ export function CompatibleProductsSection({
                 onReorder={onChange}
                 renderItem={(item, handle, index) => (
                   <div className="flex items-center gap-2 bg-surface px-2.5 py-2">
-                    <DragHandle handle={handle} />
+                    <DragHandle handle={handle} label={`Drag ${item.name ?? "product"} to reorder`} />
                     <span className="w-5 shrink-0 text-right text-label text-muted">{index + 1}.</span>
                     <Thumb url={byId.get(item.dudaProductId)?.thumbnail ?? null} name={item.name} />
                     <span className="min-w-0 flex-1 truncate text-label font-medium text-text" title={item.name}>

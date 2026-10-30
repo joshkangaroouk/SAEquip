@@ -39,19 +39,22 @@ interface SortableListProps<T> {
 /** A ready-made grip handle. Spread the `handle` from renderItem onto it. */
 export function DragHandle({
   handle,
+  label = "Drag to reorder",
   className,
 }: {
   handle: DragHandleProps;
+  /** The accessible name — prefer the item, e.g. "Drag EX Heater to reorder". */
+  label?: string;
   className?: string;
 }) {
   return (
     <button
       type="button"
-      aria-label="Drag to reorder"
+      aria-label={label}
       className={cn(
-        "flex shrink-0 cursor-grab touch-none items-center justify-center rounded-md p-1.5",
-        "text-muted transition-colors hover:bg-surface-2 hover:text-text active:cursor-grabbing",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        // A 34px square icon button (00); focus is the global outline.
+        "flex h-8.5 w-8.5 shrink-0 cursor-grab touch-none items-center justify-center",
+        "text-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-text active:cursor-grabbing",
         className,
       )}
       {...handle}
