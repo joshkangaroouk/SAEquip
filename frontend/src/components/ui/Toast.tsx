@@ -24,11 +24,15 @@ export function Toaster() {
         classNames: {
           title: "font-semibold",
           description: "text-muted",
-          actionButton: "!bg-accent !text-accent-ink font-semibold",
-          cancelButton: "!bg-surface-2 !text-muted",
+          actionButton: "!rounded-none !bg-accent !text-accent-ink !font-semibold hover:!bg-accent-hover",
+          cancelButton: "!rounded-none !bg-surface-2 !text-muted",
           success: "!text-ok",
           error: "!text-danger",
-          loading: "!text-accent",
+          // translate-on-save reports with toast.warning; without these two
+          // the warning and info toasts fell back to sonner's own colours.
+          warning: "!text-warning",
+          info: "!text-text",
+          loading: "!text-text",
         },
       }}
     />
