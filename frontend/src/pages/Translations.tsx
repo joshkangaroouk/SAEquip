@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Languages, RefreshCw } from "lucide-react";
 import {
+  Alert,
   Badge,
   Button,
   EmptyState,
@@ -160,9 +161,9 @@ function EditTranslation({
         </div>
 
         {item.status === "rejected" && item.lastError && (
-          <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
+          <Alert tone="danger" live="off">
             The machine translation was kept in English: {item.lastError}.
-          </p>
+          </Alert>
         )}
 
         <div>
@@ -194,9 +195,7 @@ function EditTranslation({
           or the translation is refused - that is what keeps a rating from changing in translation.
         </p>
         {problem && (
-          <p role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
-            Not saved: {problem}.
-          </p>
+          <Alert tone="danger">Not saved: {problem}.</Alert>
         )}
       </div>
     </Modal>
@@ -303,7 +302,7 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
           {refreshing && refreshing !== "…" ? `Copying ${refreshing}…` : "Refresh all languages from Duda"}
         </Button>
       </div>
-      {error && <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">{error}</div>}
+      {error && <Alert tone="danger" className="mt-6">{error}</Alert>}
       {!items && !error && (
         <div className="mt-6" aria-busy="true" aria-label="Loading names">
           <Skeleton className="h-64 w-full" />
@@ -653,7 +652,7 @@ export default function Translations() {
             </div>
 
             {error && (
-              <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">{error}</div>
+              <Alert tone="danger" className="mt-6">{error}</Alert>
             )}
             {!data && !error && (
               <div className="mt-4" aria-busy="true" aria-live="polite" aria-label="Loading translations">

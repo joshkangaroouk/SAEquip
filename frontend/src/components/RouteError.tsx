@@ -1,5 +1,5 @@
 import { isRouteErrorResponse, useNavigate, useRouteError } from "react-router-dom";
-import { Button, Card } from "./ui";
+import { Alert, Button, Card } from "./ui";
 
 /**
  * Route-level error boundary.
@@ -34,9 +34,9 @@ export function RouteError() {
         The rest of the dashboard is still working — use the sidebar, or try again.
       </p>
 
-      <p className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-help text-danger">
+      <Alert tone="danger" className="mt-4">
         {summary}
-      </p>
+      </Alert>
 
       <div className="mt-5 flex flex-wrap gap-2">
         <Button onClick={() => navigate(0)}>Reload this page</Button>

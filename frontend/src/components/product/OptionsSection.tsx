@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, Card, CardHeader, SectionError, EmptyState, RemoveButton, toast, useConfirm } from "../ui";
+import { Alert, Badge, Button, Card, CardHeader, SectionError, EmptyState, RemoveButton, toast, useConfirm } from "../ui";
 import { apiJson } from "../../lib/api";
 import { cartesianSize } from "./normalize";
 import { AttachOptionModal } from "./AttachOptionModal";
@@ -136,10 +136,10 @@ export function OptionsSection({
         <SectionError message={error} />
 
         {dirty && (
-          <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-help text-text">
+          <Alert tone="warning" className="mb-4">
             Saving this regenerates the variation list. SKUs and price differences are carried across
             for combinations that still exist; any that disappear lose theirs.
-          </div>
+          </Alert>
         )}
 
         {options.length === 0 ? (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Image, Plus, Trash2 } from "lucide-react";
 import {
   AccordionCard,
+  Alert,
   Badge,
   Button,
   Card,
@@ -43,7 +44,6 @@ import {
   toast,
   useConfirm,
 } from "../components/ui";
-import { ErrorBox } from "../components/ui/Card";
 
 /**
  * The living UI kit — every ui/ primitive, every variant and state, in the
@@ -104,6 +104,7 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
       <Segments />
       <TabsDemo theme={theme} />
       <Chips />
+      <Alerts />
       <Surfaces />
       <Tables />
       <Overlays />
@@ -409,6 +410,39 @@ function Chips() {
   );
 }
 
+function Alerts() {
+  return (
+    <Section title="Alert">
+      <span data-kit="alert:danger" className="block">
+        <Alert tone="danger">Couldn't save the images: the network dropped.</Alert>
+      </span>
+      <span data-kit="alert:warning" className="block">
+        <Alert tone="warning" title="Saving regenerates the variations">
+          SKUs carry across for combinations that still exist; any that disappear lose theirs.
+        </Alert>
+      </span>
+      <span data-kit="alert:info" className="block">
+        <Alert tone="info" live="off" title="Save your option changes first.">
+          Duda rebuilds this list when the options change.
+        </Alert>
+      </span>
+      <span data-kit="alert:ok" className="block">
+        <Alert tone="ok" title="Published">The site was republished a moment ago.</Alert>
+      </span>
+      <Alert
+        tone="danger"
+        action={
+          <Button size="sm" variant="secondary">
+            Remove
+          </Button>
+        }
+      >
+        2 selected items no longer exist (deleted in Duda).
+      </Alert>
+    </Section>
+  );
+}
+
 function Surfaces() {
   return (
     <Section title="Surfaces">
@@ -427,7 +461,6 @@ function Surfaces() {
         <CardHeader title="Card heading" description="Optional description." actions={<Button size="sm" variant="secondary">Action</Button>} />
         <p className="text-body">Card body on --surface with a 1px border.</p>
       </Card>
-      <ErrorBox message="Couldn't save the images: the network dropped." />
       <AccordionCard title="Accordion (until tabs)" description="Collapsible section" summary="3" dirty>
         <p className="text-body">Body</p>
       </AccordionCard>

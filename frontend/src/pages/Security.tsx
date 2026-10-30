@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Factor } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthContext";
-import { Badge, Button, Card, Input, toast, useConfirm } from "../components/ui";
+import { Alert, Badge, Button, Card, Input, toast, useConfirm } from "../components/ui";
 
 /**
  * Two-factor setup for the signed-in user.
@@ -122,9 +122,9 @@ export default function Security() {
       </p>
 
       {error && (
-        <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
+        <Alert tone="danger" className="mt-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       <Card className="mt-6">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../../lib/api";
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
+import { Alert, Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
 import type { CompatibleDraft } from "./productEditorTypes";
 import type { ProductSummary } from "../../lib/types";
 
@@ -126,9 +126,9 @@ export function CompatibleProductsSection({
 
       <SectionError message={error} />
       {loadError && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
+        <Alert tone="danger" className="mb-3">
           {loadError}
-        </div>
+        </Alert>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">

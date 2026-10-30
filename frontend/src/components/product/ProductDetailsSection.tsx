@@ -1,4 +1,4 @@
-import { Badge, Card, CardHeader, Checkbox, Field, Input, Select } from "../ui";
+import { Alert, Badge, Card, CardHeader, Checkbox, Field, Input, Select } from "../ui";
 import type { NativeForm } from "./productEditorTypes";
 
 const TYPES = ["PHYSICAL", "DIGITAL", "SERVICE", "DONATION"];
@@ -39,9 +39,9 @@ export function ProductDetailsSection({
       />
 
       {error && (
-        <div className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
+        <Alert tone="danger" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

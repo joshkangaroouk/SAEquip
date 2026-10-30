@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, SectionError, EmptyState, Input, Select, Table, TBody, TD, TH, THead, TR } from "../ui";
+import { Alert, Badge, Button, Card, CardHeader, SectionError, EmptyState, Input, Select, Table, TBody, TD, TH, THead, TR } from "../ui";
 import type { OptionRefDraft, VariationDraft } from "./productEditorTypes";
 
 /**
@@ -58,10 +58,9 @@ export function VariationsSection({
       <SectionError message={error} />
 
       {lockedByOptions && (
-        <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-help text-text">
-          <span className="font-semibold">Save your option changes first.</span> Duda rebuilds this
-          list when the options change, so SKUs and prices are entered afterwards.
-        </div>
+        <Alert tone="info" title="Save your option changes first." className="mb-4">
+          Duda rebuilds this list when the options change, so SKUs and prices are entered afterwards.
+        </Alert>
       )}
 
       {variations.length === 0 ? (

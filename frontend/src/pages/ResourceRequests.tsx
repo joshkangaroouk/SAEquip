@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState, Badge } from "../components/ui";
+import { Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState, Badge } from "../components/ui";
 import type { ResourceRequest, ResourceRequestsResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { languageName } from "../lib/language";
@@ -206,7 +206,7 @@ export default function ResourceRequests() {
         </div>
       )}
       {error && (
-        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">{error}</div>
+        <Alert tone="danger" className="mt-8">{error}</Alert>
       )}
       {!loading && !error && requests.length === 0 && (
         <EmptyState

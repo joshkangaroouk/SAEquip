@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronDown, ChevronRight, ImageOff } from "lucide-react";
 import {
+  Alert,
   Button,
   Card,
   DropdownMenu,
@@ -262,9 +263,9 @@ export default function Categories() {
         </div>
       )}
       {error && (
-        <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
+        <Alert tone="danger" className="mt-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {!loading && !error && nodes && (

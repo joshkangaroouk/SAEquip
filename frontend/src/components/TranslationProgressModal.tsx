@@ -1,5 +1,5 @@
 import { Check, Languages, TriangleAlert } from "lucide-react";
-import { Button, Modal, Spinner } from "./ui";
+import { Alert, Button, Modal, Spinner } from "./ui";
 import type { LangProgress } from "../lib/translations";
 
 function statusText(p: LangProgress): string {
@@ -88,14 +88,17 @@ export function TranslationProgressModal({
               </span>
             </div>
             {p.phase === "needs-click" && (
-              <div className="mt-2 flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface-2 px-3 py-2">
-                <p className="min-w-0 flex-1 text-help text-muted">
-                  Chrome downloads each language once per computer, and only when you click.
-                </p>
-                <Button size="xs" onClick={() => onDownload(p.locale)}>
-                  Download {p.label}
-                </Button>
-              </div>
+              <Alert
+                tone="info"
+                className="mt-2"
+                action={
+                  <Button size="xs" onClick={() => onDownload(p.locale)}>
+                    Download {p.label}
+                  </Button>
+                }
+              >
+                Chrome downloads each language once per computer, and only when you click.
+              </Alert>
             )}
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
               <div

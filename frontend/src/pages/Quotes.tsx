@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
+import { Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { languageName } from "../lib/language";
@@ -228,9 +228,9 @@ export default function Quotes() {
         </div>
       )}
       {error && (
-        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
+        <Alert tone="danger" className="mt-8">
           {error}
-        </div>
+        </Alert>
       )}
       {!loading && !error && requests.length === 0 && (
         <EmptyState

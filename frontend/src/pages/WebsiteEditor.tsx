@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Globe } from "lucide-react";
-import { Badge, Button, Card, EmptyState, Loader, PageHeader, toast } from "../components/ui";
+import { Alert, Badge, Button, Card, EmptyState, Loader, PageHeader, toast } from "../components/ui";
 import { apiJson } from "../lib/api";
 
 interface EditableSite {
@@ -133,9 +133,9 @@ export default function WebsiteEditor() {
       {loading && <Loader label="Checking your website access…" />}
 
       {error && (
-        <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
+        <Alert tone="danger" className="mt-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {!loading && !error && data && (

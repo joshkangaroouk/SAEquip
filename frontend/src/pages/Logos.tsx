@@ -3,6 +3,7 @@ import { rectSortingStrategy } from "@dnd-kit/sortable";
 import { MediaPicker } from "../components/MediaPicker";
 import { UsagePill } from "../components/UsagePill";
 import {
+  Alert,
   Button,
   DragHandle,
   Input,
@@ -284,7 +285,7 @@ export default function Logos() {
           </div>
         )}
         {error && (
-          <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">{error}</div>
+          <Alert tone="danger" className="mt-8">{error}</Alert>
         )}
         {!loading && !error && entries && entries.length === 0 && (
           <p className="mt-8 text-muted">No logos in this catalog yet. Add one to get started.</p>

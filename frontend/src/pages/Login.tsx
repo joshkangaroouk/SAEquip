@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useForceLightTheme } from "../lib/theme";
-import { Button, Field, Input } from "../components/ui";
+import { Alert, Button, Field, Input } from "../components/ui";
 import logoUrl from "../assets/saequip-logo.svg";
 
 function EyeIcon() {
@@ -153,12 +153,9 @@ export default function Login() {
               </div>
 
               {error && (
-                <p
-                  role="alert"
-                  className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-help text-danger"
-                >
+                <Alert tone="danger" className="mt-4">
                   {error}
-                </p>
+                </Alert>
               )}
 
               <Button type="submit" loading={submitting} className="mt-6 w-full" disabled={code.length < 6}>
@@ -218,12 +215,9 @@ export default function Login() {
             </div>
 
             {error && (
-              <p
-                role="alert"
-                className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-help text-danger"
-              >
+              <Alert tone="danger" className="mt-4">
                 {error}
-              </p>
+              </Alert>
             )}
 
             <div className="mt-4 text-right">

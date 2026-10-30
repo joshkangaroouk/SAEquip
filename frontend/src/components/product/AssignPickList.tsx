@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { ImageOff } from "lucide-react";
-import { Checkbox, Input, Toggle } from "../ui";
+import { Alert, Button, Checkbox, Input, Toggle } from "../ui";
 
 export interface PickItem {
   id: string;
@@ -155,19 +155,18 @@ export function AssignPickList({
   return (
     <div>
       {missing.length > 0 && (
-        <div role="alert" className="mb-2 flex items-start justify-between gap-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
-          <span>
-            {missing.length === 1 ? "1 selected item no longer exists" : `${missing.length} selected items no longer exist`}{" "}
-            (deleted in Duda), so this list cannot be saved until {missing.length === 1 ? "it is" : "they are"} removed.
-          </span>
-          <button
-            type="button"
-            onClick={() => onChange(selected.filter((id) => byId.has(id)))}
-            className="shrink-0 font-semibold underline underline-offset-2 hover:no-underline"
-          >
-            Remove
-          </button>
-        </div>
+        <Alert
+          tone="danger"
+          className="mb-2"
+          action={
+            <Button variant="secondary" size="sm" onClick={() => onChange(selected.filter((id) => byId.has(id)))}>
+              Remove
+            </Button>
+          }
+        >
+          {missing.length === 1 ? "1 selected item no longer exists" : `${missing.length} selected items no longer exist`}{" "}
+          (deleted in Duda), so this list cannot be saved until {missing.length === 1 ? "it is" : "they are"} removed.
+        </Alert>
       )}
       {showTools && (
         <>

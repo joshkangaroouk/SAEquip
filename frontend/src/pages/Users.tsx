@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../lib/api";
-import { Badge, Button, Table, TBody, TD, TH, THead, TR, toast } from "../components/ui";
+import { Alert, Badge, Button, Table, TBody, TD, TH, THead, TR, toast } from "../components/ui";
 
 interface StaffUser {
   id: string;
@@ -71,9 +71,9 @@ export default function Users() {
 
 
       {error && (
-        <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
+        <Alert tone="danger" className="mt-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {!users && !error && <p className="mt-8 text-muted">Loading users…</p>}

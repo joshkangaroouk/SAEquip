@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronRight, ImageOff } from "lucide-react";
 import {
+  Alert,
   Button,
   Card,
   CardHeader,
@@ -218,9 +219,9 @@ export default function CategoryDetail() {
   if (loading) return <Loader label="Loading category…" />;
   if (error) {
     return (
-      <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
+      <Alert tone="danger" className="mt-4">
         {error}
-      </div>
+      </Alert>
     );
   }
   if (!draft) return null;

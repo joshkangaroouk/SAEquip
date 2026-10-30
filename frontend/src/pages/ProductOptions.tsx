@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   Badge,
   Button,
   Card,
@@ -274,9 +275,9 @@ export default function ProductOptions() {
 
       {loading && <Loader label="Loading options…" />}
       {error && (
-        <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
+        <Alert tone="danger" className="mt-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {!loading && !error && catalog && (

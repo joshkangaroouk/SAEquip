@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { AccordionCard, Badge, Card, Checkbox, Loader, StatusBadge } from "../components/ui";
+import { Alert, AccordionCard, Badge, Card, Checkbox, Loader, StatusBadge } from "../components/ui";
 import { LogoActivationPanel } from "../components/LogoActivationPanel";
 import { SpecTableEditor } from "../components/SpecTableEditor";
 import { TextItemListEditor } from "../components/TextItemListEditor";
@@ -82,9 +82,9 @@ export default function ProductDetail() {
 
         {loading && <Loader label="Loading product…" />}
         {loadError && (
-          <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
+          <Alert tone="danger" className="mt-6">
             {loadError}
-          </div>
+          </Alert>
         )}
 
         {!loading && !loadError && product && draft && context && (

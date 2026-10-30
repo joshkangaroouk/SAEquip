@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { apiFetch } from "../lib/api";
 import {
+  Alert,
   Button,
   Highlight,
   Input,
@@ -370,9 +371,9 @@ export default function Products() {
           </div>
         )}
         {error && (
-          <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
+          <Alert tone="danger" className="mt-6">
             {error}
-          </div>
+          </Alert>
         )}
         {!loading && !error && products && products.length === 0 && (
           <p className="mt-6 text-muted">No products in this store yet.</p>

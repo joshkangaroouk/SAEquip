@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { apiFetch, apiJson } from "../lib/api";
 import { uploadFile } from "../lib/upload";
-import { Button, FilePreview, Input, Pagination, SegmentedControl, Select, Skeleton, useConfirm } from "../components/ui";
+import { Alert, Button, FilePreview, Input, Pagination, SegmentedControl, Select, Skeleton, useConfirm } from "../components/ui";
 import { UsagePill } from "../components/UsagePill";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
 import type { AssetUsage, MediaAsset } from "../lib/types";
@@ -266,9 +266,9 @@ export default function Media() {
         </div>
       )}
       {lib.error && (
-        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
+        <Alert tone="danger" className="mt-8">
           {lib.error}
-        </div>
+        </Alert>
       )}
       {lib.isEmpty && (
         <p className="mt-8 text-muted">

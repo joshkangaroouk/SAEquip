@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, ImageOff } from "lucide-react";
-import { Modal, Skeleton } from "./ui";
+import { Alert, Modal, Skeleton } from "./ui";
 import type { AssetUsage, UsageProduct } from "../lib/types";
 
 const PILL = "rounded-full bg-surface-2 px-2 py-0.5 text-label text-muted";
@@ -106,7 +106,7 @@ export function UsageDialog({
       }
     >
       {data?.logos && data.logos.length > 0 && (
-        <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-help text-muted">
+        <Alert tone="info" live="off" className="mb-3">
           In the logo catalogue as{" "}
           {data.logos.map((l, i) => (
             <span key={l.id}>
@@ -119,7 +119,7 @@ export function UsageDialog({
           <Link to="/logos" className="font-semibold text-text underline underline-offset-2">
             Manage logos
           </Link>
-        </p>
+        </Alert>
       )}
 
       {error && <p className="text-help text-danger">{error}</p>}

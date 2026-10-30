@@ -1,22 +1,10 @@
 import { createContext, useContext } from "react";
-import { CircleAlert } from "lucide-react";
 import { cn } from "../../lib/cn";
+import { Alert } from "./Alert";
+import { useInAccordionBody } from "./AccordionBody";
 
-/**
- * True inside an AccordionCard body.
- *
- * ⚠️ Why context rather than a prop: every editor section renders its own
- * Card + CardHeader, so putting them inside an accordion would draw a card in
- * a card and print the title twice. The alternative was threading a `bare`
- * prop through eight section components that have nothing else in common —
- * eight signatures changed to say one thing about their surroundings. The
- * accordion already knows; this lets it tell them.
- */
-const InAccordion = createContext(false);
-
-export function AccordionBodyProvider({ children }: { children: React.ReactNode }) {
-  return <InAccordion.Provider value={true}>{children}</InAccordion.Provider>;
-}
+// The accordion-body context lives in AccordionBody.tsx; re-exported for existing imports.
+export { AccordionBodyProvider } from "./AccordionBody";
 
 /** True inside a padded Card, so a CardHeader can run edge to edge as its own row. */
 const InPaddedCard = createContext(false);
@@ -33,7 +21,7 @@ export function Card({
   padded = true,
   ...rest
 }: React.HTMLAttributes<HTMLDivElement> & { padded?: boolean }) {
-  const bare = useContext(InAccordion);
+  const bare = useInAccordionBody();
   return (
     <div
       className={cn(
@@ -71,7 +59,7 @@ export function CardHeader({
   actions?: React.ReactNode;
   className?: string;
 }) {
-  const bare = useContext(InAccordion);
+  const bare = useInAccordionBody();
   const row = useContext(InPaddedCard);
 
   /*
@@ -110,9 +98,8 @@ export function CardHeader({
 }
 
 /**
- * A section's error message — the ONE error box every editor section uses.
- * Drawn as the design's alert (02a Q2): --surface, a 3px --danger bar on the
- * left, the icon in --danger, the message in --text. Announced (role="alert").
+ * A section's error message — the ONE error box every editor section uses: a
+ * danger `Alert` (role="alert").
  *
  * ⚠️ Renders nothing inside an accordion body, because the accordion prints the
  * same message itself, at the top of the body. Each section used to carry its
@@ -122,23 +109,10 @@ export function CardHeader({
  * exists for every section, including those that render no box of their own.
  */
 export function SectionError({ message }: { message?: string | null }) {
-  const bare = useContext(InAccordion);
-  if (!message || bare) return null;
-  return <ErrorBox message={message} />;
-}
-
-/** The alert-styled error box, shared by SectionError and AccordionCard. */
-export function ErrorBox({ message, className }: { message: string; className?: string }) {
+  if (!message) return null;
   return (
-    <div
-      role="alert"
-      className={cn(
-        "mb-3 flex items-start gap-2 border border-l-[3px] border-border border-l-danger bg-surface px-3 py-2 text-help text-text",
-        className,
-      )}
-    >
-      <CircleAlert size={16} strokeWidth={2} aria-hidden="true" className="mt-0.5 shrink-0 text-danger" />
-      <span>{message}</span>
-    </div>
+    <Alert tone="danger" section className="mb-3">
+      {message}
+    </Alert>
   );
 }
