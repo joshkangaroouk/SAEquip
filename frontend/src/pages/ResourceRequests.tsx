@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { Thumb, Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState, Badge } from "../components/ui";
+import { PageHeader, Thumb, Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState, Badge } from "../components/ui";
 import type { ResourceRequest, ResourceRequestsResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { languageName } from "../lib/language";
@@ -165,15 +165,15 @@ export default function ResourceRequests() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="t-h1 text-text">Resource Requests</h1>
-        <Button variant="secondary" size="sm" disabled={requests.length === 0} onClick={() => exportRequests(requests)}>
-          Export CSV
-        </Button>
-      </div>
-      <p className="mt-1 text-body text-muted">
-        Details entered on the Datasheets, User Manuals and Certificates pages before a file is downloaded.
-      </p>
+      <PageHeader
+        title="Resource Requests"
+        description="Details entered on the Datasheets, User Manuals and Certificates pages before a file is downloaded."
+        actions={
+          <Button variant="secondary" size="sm" disabled={requests.length === 0} onClick={() => exportRequests(requests)}>
+            Export CSV
+          </Button>
+        }
+      />
 
       {/* The real table, so only the cells change when the data lands. */}
       {loading && (

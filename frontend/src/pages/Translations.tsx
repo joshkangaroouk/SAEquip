@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Languages, RefreshCw } from "lucide-react";
 import {
+  PageHeader,
   Alert,
   Badge,
   Button,
@@ -545,40 +546,47 @@ export default function Translations() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="t-h1 flex items-center gap-2 text-text">
-          <Languages size={22} className="text-accent" aria-hidden="true" />
-          Translations
-        </h1>
-        {tab === "content" && (
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" size="sm" onClick={exportCsv} disabled={!filtered.length}>
-              Export CSV
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => fileInput.current?.click()} disabled={!data}>
-              Import CSV
-            </Button>
-            <input
-              ref={fileInput}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (f) void importCsv(f);
-              }}
-            />
-            <Button size="sm" onClick={translateNow} disabled={!data || counts.missing === 0}>
-              Translate missing ({counts.missing})
-            </Button>
-          </div>
-        )}
-      </div>
-      <p className="mt-1 max-w-3xl text-body text-muted">
-        Product content in the website's other languages. Anything missing or kept in English shows in English on that
-        language's pages. Machine translations are checked automatically; a correction made here is never overwritten.
-      </p>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <Languages size={22} className="text-accent" aria-hidden="true" />
+            Translations
+          </span>
+        }
+        description={
+          <span className="block max-w-3xl">
+            Product content in the website's other languages. Anything missing or kept in English shows in English on
+            that language's pages. Machine translations are checked automatically; a correction made here is never
+            overwritten.
+          </span>
+        }
+        actions={
+          tab === "content" && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm" onClick={exportCsv} disabled={!filtered.length}>
+                Export CSV
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => fileInput.current?.click()} disabled={!data}>
+                Import CSV
+              </Button>
+              <input
+                ref={fileInput}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void importCsv(f);
+                }}
+              />
+              <Button size="sm" onClick={translateNow} disabled={!data || counts.missing === 0}>
+                Translate missing ({counts.missing})
+              </Button>
+            </div>
+          )
+        }
+      />
 
       <SegmentedControl<TargetLocale>
         className="mt-6"

@@ -3,6 +3,7 @@ import { rectSortingStrategy } from "@dnd-kit/sortable";
 import { MediaPicker } from "../components/MediaPicker";
 import { UsagePill } from "../components/UsagePill";
 import {
+  PageHeader,
   Alert,
   Button,
   DragHandle,
@@ -247,16 +248,14 @@ export default function Logos() {
 
   return (
     <>
+      <PageHeader
+        title="Logos"
+        description="Global catalog shared across all products."
+        actions={<Button onClick={() => setPickerOpen(true)}>+ Add logo</Button>}
+      />
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="t-h1 text-text">Logos</h1>
-          <Button onClick={() => setPickerOpen(true)}>+ Add logo</Button>
-        </div>
-        <p className="mt-1 text-body text-muted">Global catalog shared across all products.</p>
-
         {/* Tabs */}
         <SegmentedControl<Kind>
-          className="mt-6"
           ariaLabel="Logo catalogue"
           value={tab}
           onChange={setTab}

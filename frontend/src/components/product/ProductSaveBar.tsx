@@ -49,7 +49,7 @@ export function ProductSaveBar({
       {/* Inner container mirrors Layout's content wrapper, so the text and
           buttons stay aligned with the page content rather than drifting to
           the far edges on a wide screen. */}
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-5 py-3 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-5 py-3 lg:px-10">
         <div className="min-w-0 flex-1">
           {saving ? (
             <p className="text-help font-semibold text-text">

@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { apiFetch, apiJson } from "../lib/api";
 import { uploadFile } from "../lib/upload";
-import { Alert, Button, FileInput, FilePreview, Input, Pagination, SegmentedControl, Select, Skeleton, useConfirm } from "../components/ui";
+import { PageHeader, Alert, Button, FileInput, FilePreview, Input, Pagination, SegmentedControl, Select, Skeleton, useConfirm } from "../components/ui";
 import { UsagePill } from "../components/UsagePill";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
 import type { AssetUsage, MediaAsset } from "../lib/types";
@@ -171,10 +171,7 @@ export default function Media() {
 
   return (
     <>
-      <h1 className="t-h1 text-text">Media Centre</h1>
-      <p className="mt-1 text-body text-muted">
-        Reusable library of images and files, stored in Supabase.
-      </p>
+      <PageHeader title="Media Centre" description="Reusable library of images and files, stored in Supabase." />
 
       {/* Upload */}
       <form

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { Thumb, Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
+import { PageHeader, Thumb, Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { languageName } from "../lib/language";
@@ -165,17 +165,6 @@ export default function Quotes() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="t-h1 text-text">Quote Requests</h1>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={requests.length === 0}
-          onClick={() => exportQuotes(requests)}
-        >
-          Export CSV
-        </Button>
-      </div>
       {/*
         * ⚠️ No email-status banner, badge or column. Resend is not being set
         * up — these will feed SAEquip's own CRM later — so `emailSent` is
@@ -183,10 +172,20 @@ export default function Quotes() {
         * a setting nobody chose. The backend still stores every submission
         * independently of email, which is what makes leaving it off safe.
         */}
-      <p className="mt-1 text-body text-muted">
-        Submissions captured from the public basket-page widget. Every request is stored here
-        regardless of any notification setup.
-      </p>
+      <PageHeader
+        title="Quote Requests"
+        description="Submissions captured from the public basket-page widget. Every request is stored here regardless of any notification setup."
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={requests.length === 0}
+            onClick={() => exportQuotes(requests)}
+          >
+            Export CSV
+          </Button>
+        }
+      />
 
 
       {/* The real table, so only the cells change when the data lands. */}

@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { apiFetch } from "../lib/api";
 import { fetchProductIndex } from "../lib/productIndex";
 import {
+  PageHeader,
   Thumb,
   Alert,
   Button,
@@ -211,38 +212,39 @@ export default function Products() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="t-h1 text-text">Products</h1>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void exportCsv()}
-            disabled={!filtered?.length || exporting}
-            title={
-              filteredBy
-                ? `Exports the ${filtered?.length ?? 0} products matching the current search and filter`
-                : "Exports every product"
-            }
-          >
-            {exporting ? "Exporting…" : filteredBy ? `Export CSV (${filtered?.length ?? 0})` : "Export CSV"}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => navigate("/products/new")}
-            disabled={storeFull}
-            title={
-              storeFull
-                ? `The store is at its limit of ${store?.max_products} products.`
-                : "Create a new product"
-            }
-          >
-            + New product
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Products"
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void exportCsv()}
+              disabled={!filtered?.length || exporting}
+              title={
+                filteredBy
+                  ? `Exports the ${filtered?.length ?? 0} products matching the current search and filter`
+                  : "Exports every product"
+              }
+            >
+              {exporting ? "Exporting…" : filteredBy ? `Export CSV (${filtered?.length ?? 0})` : "Export CSV"}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate("/products/new")}
+              disabled={storeFull}
+              title={
+                storeFull
+                  ? `The store is at its limit of ${store?.max_products} products.`
+                  : "Create a new product"
+              }
+            >
+              + New product
+            </Button>
+          </>
+        }
+      />
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         {/*

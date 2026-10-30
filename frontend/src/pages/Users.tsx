@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../lib/api";
-import { Alert, Badge, Button, Table, TBody, TD, TH, THead, TR, toast } from "../components/ui";
+import { PageHeader, Alert, Badge, Button, Table, TBody, TD, TH, THead, TR, toast } from "../components/ui";
 
 interface StaffUser {
   id: string;
@@ -64,10 +64,7 @@ export default function Users() {
 
   return (
     <>
-      <h1 className="t-h1 text-text">Users</h1>
-      <p className="mt-1 text-body text-muted">
-        Staff accounts that can sign into this dashboard.
-      </p>
+      <PageHeader title="Users" description="Staff accounts that can sign into this dashboard." />
 
 
       {error && (

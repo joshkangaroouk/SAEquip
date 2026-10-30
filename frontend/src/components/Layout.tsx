@@ -21,7 +21,7 @@ import { useThemePreference } from "../hooks/useUserPreference";
 import { cn } from "../lib/cn";
 import { clearProductIndex, useProductIndex } from "../lib/productIndex";
 import { CrumbProvider, TopBar } from "./TopBar";
-import { useDialog } from "./ui";
+import { PageHeaderSlot, useDialog } from "./ui";
 import { LG, useMediaQuery } from "../hooks/useMediaQuery";
 
 /**
@@ -265,6 +265,8 @@ export function Layout({ children }: { children?: ReactNode }) {
   // The breadcrumb's last crumb, when the page names itself (usePageCrumb).
   const [pageLabel, setPageLabel] = useState<string | null>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
+  // Where a page's PageHeader is drawn: the band under the top bar.
+  const [headerSlot, setHeaderSlot] = useState<HTMLDivElement | null>(null);
 
   /*
    * The drawer below lg is a dialog: focus moves in and is held there, Escape
@@ -330,16 +332,25 @@ export function Layout({ children }: { children?: ReactNode }) {
           menuOpen={drawerOpen}
           pageLabel={pageLabel}
         />
+        <div ref={setHeaderSlot} className="shrink-0" />
         <CrumbProvider value={setPageLabel}>
-          <div
-            className={
-              full
-                ? "px-5 py-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:px-8"
-                : "mx-auto max-w-6xl px-5 py-6 lg:px-8"
-            }
-          >
-            {children ?? <Outlet />}
-          </div>
+          <PageHeaderSlot value={{ el: headerSlot, full }}>
+            {/*
+              Content padding 32 40 56 (00). The first element's own top margin
+              is dropped: pages spaced their first block from a heading that is
+              now the band above, so the padding alone sets that gap.
+            */}
+            <div
+              className={cn(
+                "[&>:first-child]:mt-0",
+                full
+                  ? "px-5 py-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:px-10 lg:py-8"
+                  : "mx-auto max-w-6xl px-5 pb-14 pt-6 lg:px-10 lg:pt-8",
+              )}
+            >
+              {children ?? <Outlet />}
+            </div>
+          </PageHeaderSlot>
         </CrumbProvider>
       </main>
     </div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Factor } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthContext";
-import { Alert, Badge, Button, Card, Input, toast, useConfirm } from "../components/ui";
+import { PageHeader, Alert, Badge, Button, Card, Input, toast, useConfirm } from "../components/ui";
 
 /**
  * Two-factor setup for the signed-in user.
@@ -116,10 +116,14 @@ export default function Security() {
 
   return (
     <>
-      <h1 className="t-h1 text-text">Security</h1>
-      <p className="mt-1 text-body text-muted">
-        Two-factor authentication for <span className="font-medium text-text">{user?.email}</span>.
-      </p>
+      <PageHeader
+        title="Security"
+        description={
+          <>
+            Two-factor authentication for <span className="font-medium text-text">{user?.email}</span>.
+          </>
+        }
+      />
 
       {error && (
         <Alert tone="danger" className="mt-6">

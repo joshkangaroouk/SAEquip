@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { Badge, Card } from "../components/ui";
+import { PageHeader, Badge, Card } from "../components/ui";
 
 /**
  * The embeddable widget's own production CSS (verbatim from
@@ -602,12 +602,13 @@ export default function Widgets() {
     <>
       <style>{WIDGET_CSS}</style>
 
-      <h1 className="t-h1 text-text">Widgets</h1>
-      <p className="mt-1 text-body text-muted">
-        The five widgets on the live product page. Each one shows content you enter here in the Hub.
-      </p>
+      <PageHeader
+        title="Widgets"
+        description="The five widgets on the live product page. Each one shows content you enter here in the Hub."
+      />
 
-      <Card className="mt-6">
+      {/* No top margin: the <style> above is the column's first child, so the shell's first-child rule can't take one off this. */}
+      <Card>
         <h2 className="text-body font-semibold text-text">How it works</h2>
         <ul className="mt-2 list-disc space-y-1.5 pl-5 text-body text-muted">
           <li>
