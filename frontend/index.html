@@ -17,26 +17,17 @@
     <link rel="icon" type="image/jpeg" href="/sa-favicon.jpg" />
     <link rel="apple-touch-icon" href="/sa-favicon.jpg" />
 
-    <!-- DIN 2014 via Adobe Fonts. Adobe's licence forbids self-hosting the
-         files, so this must load from their CDN rather than being vendored
-         into public/fonts the way the previous typefaces were. The dashboard's
-         domain has to be listed in the Adobe Fonts web project, or the CSS
-         serves nothing and the app silently falls back to system sans. -->
-    <link rel="preconnect" href="https://use.typekit.net" crossorigin />
-    <link rel="stylesheet" href="https://use.typekit.net/mrd2ybk.css" />
-
-    <!-- Barlow + Inter are for the WIDGET PREVIEWS on /widgets only, never for
-         the dashboard's own UI (that is DIN 2014, above). The public widget
-         renders headings in Barlow and body text in Inter 16, and those
-         previews are documented as byte-accurate reproductions of it — without
-         these they would silently fall back to DIN 2014 and stop matching what
-         Duda actually shows, which is the one thing the previews exist for.
-         The live Duda site loads both families itself; this is the dashboard
-         catching up, not a new dependency for the widget. -->
+    <!-- Barlow (headings), Inter (body) and JetBrains Mono (codes, SKUs,
+         counts) — the dashboard's only typefaces, from Google Fonts.
+         Barlow 400 and Inter 700 are not used by the dashboard itself; they
+         are here for the /widgets previews, whose copied widget CSS uses them.
+         A weight's font file only downloads when text actually uses it, so
+         they cost nothing on the other pages. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
   </head>
   <body>

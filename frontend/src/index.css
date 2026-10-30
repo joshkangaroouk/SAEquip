@@ -5,9 +5,9 @@
    radii, and soft focus rings instead of hard outlines.
    Brand yellow (#FED217) stays as the accent — shadcn's own primary is
    near-black, but the brand takes precedence.
-   Typeface: DIN 2014 (Adobe Fonts, loaded via the <link> in index.html —
-   Adobe forbids self-hosting, so it is NOT vendored like previous typefaces).
-   Weights available: 200/300/400/600/700/800, normal only, no 500.
+   Typefaces: Barlow (headings), Inter (body), JetBrains Mono (codes) — from
+   Google Fonts via the <link> in index.html. Weights: Barlow and Inter
+   400/500/600/700, JetBrains Mono 400/500.
    ========================================================================== */
 
 @tailwind base;
@@ -103,8 +103,7 @@
   body {
     background-color: rgb(var(--bg));
     color: rgb(var(--text));
-    font-family: "din-2014", ui-sans-serif, system-ui, -apple-system,
-      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     font-weight: 400;
     /* 16px paragraph/body text. Matches the `body` token in
        tailwind.config.js — keep the two in step, since some text inherits
@@ -115,6 +114,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
+    font-family: "Barlow", ui-sans-serif, system-ui, sans-serif;
     font-weight: 600;
     line-height: 1.2;
     letter-spacing: -0.01em;

@@ -2,27 +2,16 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    // DIN 2014 (Adobe Fonts) ships 200/300/400/600/700/800 in this web
-    // project — normal style only, and crucially NO 500. Every Tailwind weight
-    // name is mapped onto a weight that actually exists so a stray class can
-    // never request one the font can't serve (which would make the browser
-    // synthesise a fake weight).
-    //
-    // `medium` deliberately resolves to 400, not 600: it's used ~23x for
-    // input/list/table content as a subtle step above body, and 600 is the
-    // heading weight — promoting it there would flatten the hierarchy far more
-    // than dropping it to body weight does. This is also exactly how CSS would
-    // resolve a missing 500 on its own.
+    // REPLACES the theme: only the weights index.html loads. Barlow and Inter
+    // ship 400/500/600/700, JetBrains Mono 400/500 — so `font-medium` is a
+    // real 500 again (under DIN 2014 it had to be mapped down to 400). A
+    // weight a family lacks renders at the nearest loaded one, never a fake
+    // one: index.css sets `font-synthesis: none`.
     fontWeight: {
-      thin: "200",
-      extralight: "200",
-      light: "300",
       normal: "400",
-      medium: "400",
+      medium: "500",
       semibold: "600",
       bold: "700",
-      extrabold: "800",
-      black: "800",
     },
     extend: {
       // Colours are declared as `rgb(var(--token) / <alpha-value>)` so Tailwind
@@ -64,21 +53,14 @@ export default {
           border: "rgb(var(--sidebar-border) / <alpha-value>)",
         },
       },
+      // Loaded from Google Fonts by the <link> in index.html. Body text is
+      // already Inter through the <body> rule in index.css, and h1–h6 are
+      // Barlow there; these utilities are for setting a family explicitly.
       fontFamily: {
-        // DIN 2014 everywhere — this is already the <body> default (see
-        // index.css); the "font-sans" utility exists for explicit opt-in.
-        // Loaded from Adobe Fonts via the <link> in index.html.
-        sans: [
-          '"din-2014"',
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          '"Segoe UI"',
-          "Roboto",
-          "Helvetica",
-          "Arial",
-          "sans-serif",
-        ],
+        heading: ['"Barlow"', "ui-sans-serif", "system-ui", "sans-serif"],
+        body: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       // Sizes are rem so the whole scale tracks the 110% root in index.css —
       // that root stays the single knob for scaling the UI. Values below are

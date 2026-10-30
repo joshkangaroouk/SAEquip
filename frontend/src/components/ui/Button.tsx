@@ -15,12 +15,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * shadcn buttons are compact and focus with a soft 3px ring at half opacity
  * rather than a hard offset outline.
  *
- * ⚠️ `font-semibold`, not `font-medium`. In this project `font-medium`
- * resolves to 400 — the Adobe Fonts web project ships no 500, so
- * tailwind.config.js maps it down to body weight — which meant every button
- * in the hub rendered at the same weight as the paragraph beside it. 600 is
- * the weight buttons are supposed to carry, and it has to be asked for by
- * name. Set on `base` so no variant or size can opt out of it.
+ * `font-semibold` (600) is the button weight in the design (Inter 14/600).
+ * Set on `base` so no variant or size can opt out of it.
  */
 const base =
   "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-semibold whitespace-nowrap " +
