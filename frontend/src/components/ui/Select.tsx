@@ -1,50 +1,39 @@
 import { forwardRef, type SelectHTMLAttributes } from "react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { fieldSizes, type FieldSize } from "./Input";
+import { fieldBase, fieldSizes, useFieldControl, type FieldSize } from "./Input";
 
 export type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> & {
   size?: FieldSize;
 };
 
 /**
- * Rounded native select with a yellow focus ring and a custom chevron
- * (native arrow hidden via appearance-none).
+ * Native select in the field box, with a drawn chevron (the native arrow is
+ * hidden by appearance-none). Native, so its option list and keyboard
+ * behaviour are the browser's own.
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   { className, children, size = "md", ...rest },
   ref,
 ) {
+  const a11y = useFieldControl(rest);
   return (
     <div className="relative">
       <select
         ref={ref}
-        className={cn(
-          "w-full appearance-none rounded-md bg-field border border-border-input text-text",
-          fieldSizes[size],
-          size === "md" ? "pr-9" : "pr-8",
-          "transition-[color,box-shadow] outline-none",
-          "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          "aria-[invalid=true]:border-danger aria-[invalid=true]:ring-[3px] aria-[invalid=true]:ring-danger/20",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className,
-        )}
+        // pr-9 AFTER the size: its px-3 would otherwise cancel the chevron's room.
+        className={cn(fieldBase, "appearance-none", fieldSizes[size], "pr-9", className)}
         {...rest}
+        {...a11y}
       >
         {children}
       </select>
-      <svg
-        className={cn(
-          "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted",
-          size === "md" ? "right-3" : "right-2.5",
-        )}
-        width="14"
-        height="14"
-        viewBox="0 0 16 16"
-        fill="none"
+      <ChevronDown
+        size={16}
+        strokeWidth={2}
         aria-hidden="true"
-      >
-        <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+      />
     </div>
   );
 });

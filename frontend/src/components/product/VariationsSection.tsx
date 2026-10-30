@@ -149,11 +149,7 @@ export function VariationsSection({
                         <TD>
                           <Input
                             size="sm"
-                            className={
-                              /^-?\d+(\.\d+)?$/.test(v.price_difference)
-                                ? undefined
-                                : "border-danger focus:border-danger"
-                            }
+                            aria-invalid={!/^-?\d+(\.\d+)?$/.test(v.price_difference) || undefined}
                             inputMode="decimal"
                             value={v.price_difference}
                             disabled={lockedByOptions}
