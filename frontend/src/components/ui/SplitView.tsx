@@ -65,7 +65,8 @@ const SplitContext = createContext<SplitState | null>(null);
  * When the selection changes, focus moves to the detail's heading (rendered
  * by `SplitDetailHeader`), so a keyboard or screen-reader user lands on what
  * they opened. Not on first load: a deep link opens with focus where the page
- * starts. Not a dialog, so no focus trap.
+ * starts. Not a dialog, so no focus trap. In the list, the arrow keys move
+ * between rows.
  */
 export function SplitView({
   list,
@@ -105,6 +106,25 @@ export function SplitView({
     previous.current = selectedId;
   }, [selectedId]);
 
+  /**
+   * Arrow keys move between the list's rows (Home/End to the ends); Enter
+   * opens the focused one, as on any link. Only while a row has focus, so the
+   * toolbar's search box keeps its own arrow keys.
+   */
+  function onListKey(e: React.KeyboardEvent<HTMLElement>) {
+    if (!(e.target as HTMLElement).matches("[data-split-item]")) return;
+    const rows = Array.from(navRef.current?.querySelectorAll<HTMLElement>("[data-split-item]") ?? []);
+    const at = rows.indexOf(e.target as HTMLElement);
+    let to: number | undefined;
+    if (e.key === "ArrowDown") to = Math.min(at + 1, rows.length - 1);
+    else if (e.key === "ArrowUp") to = Math.max(at - 1, 0);
+    else if (e.key === "Home") to = 0;
+    else if (e.key === "End") to = rows.length - 1;
+    if (to === undefined) return;
+    e.preventDefault();
+    rows[to]?.focus();
+  }
+
   function back() {
     // The open row is still in the DOM (only hidden), so it can take focus
     // back once the list shows again — otherwise focus falls to the page.
@@ -124,6 +144,7 @@ export function SplitView({
         <nav
           ref={navRef}
           aria-label={listLabel}
+          onKeyDown={onListKey}
           className={cn("min-h-0 lg:block lg:overflow-y-auto lg:border-r lg:border-border", showing && "hidden")}
         >
           {list}
@@ -172,6 +193,7 @@ export function SplitListItem({
     <Link
       to={to}
       replace
+      data-split-item
       aria-current={selected ? "true" : undefined}
       className={cn(
         "block border-b border-border px-5 py-3 transition-colors duration-[120ms] focus-visible:outline-offset-[-2px]",
@@ -220,7 +242,9 @@ export function SplitDetailHeader({
         </h2>
         {subtitle && <p className="mt-1 text-body text-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {/* Not shrink-0: in a narrow pane (lg, 1024) the group must be able to
+          shrink so its own flex-wrap breaks the buttons onto a second line. */}
+      {actions && <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

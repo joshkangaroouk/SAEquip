@@ -286,6 +286,9 @@ export interface QuoteRequest {
   locale: string | null;
   createdAt: string;
   emailSent: boolean;
+  /** When staff marked it handled, and who (their email). Both null = new. */
+  handledAt: string | null;
+  handledBy: string | null;
   items: QuoteRequestItem[];
 }
 
@@ -314,6 +317,9 @@ export interface ResourceRequest {
   /** The language the form was shown in ("en", "ar", …); null before languages. */
   locale: string | null;
   createdAt: string;
+  /** When staff marked it handled, and who (their email). Both null = new. */
+  handledAt: string | null;
+  handledBy: string | null;
   file: {
     title: string | null;
     fileName: string | null;
@@ -328,4 +334,11 @@ export interface ResourceRequest {
 
 export interface ResourceRequestsResponse {
   requests: ResourceRequest[];
+}
+
+/** PATCH /api/quotes/:id/handled and /api/resource-requests/:id/handled. */
+export interface HandledResponse {
+  id: string;
+  handledAt: string | null;
+  handledBy: string | null;
 }

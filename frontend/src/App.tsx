@@ -90,7 +90,12 @@ export const router = createBrowserRouter([
       { path: "/media", element: <Media />, handle: { crumbs: { group: "Catalogue", title: "Media" } } },
       { path: "/logos", element: <Logos />, handle: { crumbs: { group: "Catalogue", title: "Logos" } } },
       { path: "/widgets", element: <Widgets />, handle: { crumbs: { title: "Widgets" } } },
-      { path: "/quotes", element: <Quotes />, handle: { crumbs: { group: "Enquiries", title: "Quote requests" } } },
+      {
+        path: "/quotes",
+        element: <Quotes />,
+        // A split view: full width, and the panes scroll on their own (Layout).
+        handle: { crumbs: { group: "Enquiries", title: "Quote requests" }, layout: "full" },
+      },
       {
         path: "/resource-requests",
         element: <ResourceRequests />,
