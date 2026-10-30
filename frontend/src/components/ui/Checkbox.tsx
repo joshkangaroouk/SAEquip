@@ -10,7 +10,13 @@ export interface CheckboxProps {
   className?: string;
 }
 
-/** Rounded checkbox — yellow fill with a black tick when checked. */
+/**
+ * Square 16px checkbox (02a Q27): a custom appearance-none box rather than a
+ * native one with accent-color, whose corners and tick the browser draws.
+ * Unchecked: --input-bg with a --border-input edge. Checked: yellow fill, black
+ * tick. Disabled: drawn (surface-2, plain border; a checked one goes grey), not
+ * dimmed. Focus is the global outline on the box.
+ */
 export function Checkbox({ checked, onChange, disabled, label, id, className }: CheckboxProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
@@ -19,7 +25,7 @@ export function Checkbox({ checked, onChange, disabled, label, id, className }: 
       htmlFor={inputId}
       className={cn(
         "inline-flex items-center gap-2.5 select-none",
-        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+        disabled ? "cursor-not-allowed" : "cursor-pointer",
         className,
       )}
     >
@@ -31,11 +37,9 @@ export function Checkbox({ checked, onChange, disabled, label, id, className }: 
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
           className={cn(
-            // shadcn checkbox is 16px with a small radius and a soft ring.
-            "peer h-4 w-4 shrink-0 appearance-none rounded-sm border bg-field transition-shadow",
-            "checked:bg-accent checked:border-accent outline-none",
-            "focus-visible:ring-[3px] focus-visible:ring-ring/50",
-            checked ? "border-accent" : "border-border-input",
+            "peer h-4 w-4 shrink-0 cursor-[inherit] appearance-none border border-border-input bg-field",
+            "transition-colors duration-[120ms] checked:border-accent checked:bg-accent",
+            "disabled:border-border disabled:bg-surface-2 disabled:checked:border-border-input disabled:checked:bg-border-input",
           )}
         />
         <svg
@@ -47,7 +51,7 @@ export function Checkbox({ checked, onChange, disabled, label, id, className }: 
           <path d="M5 10l3.5 3.5L15 6.5" stroke="currentColor" strokeWidth="2" />
         </svg>
       </span>
-      {label && <span className="text-body text-text">{label}</span>}
+      {label && <span className={cn("text-body", disabled ? "text-muted" : "text-text")}>{label}</span>}
     </label>
   );
 }

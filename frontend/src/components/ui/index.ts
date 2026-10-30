@@ -3,7 +3,7 @@ export { Button, RemoveButton, type ButtonProps } from "./Button";
 export { Input, Field, type InputProps } from "./Input";
 export { Textarea, type TextareaProps } from "./Textarea";
 export { Select, type SelectProps } from "./Select";
-export { Toggle, type ToggleProps } from "./Toggle";
+export { Toggle, ToggleTrack, type ToggleProps } from "./Toggle";
 export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { Card, CardHeader, AccordionBodyProvider, SectionError } from "./Card";
 export { AccordionCard } from "./AccordionCard";

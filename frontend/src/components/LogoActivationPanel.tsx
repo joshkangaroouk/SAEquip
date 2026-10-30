@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Badge, Card, CardHeader } from "./ui";
+import { Badge, Card, CardHeader, ToggleTrack } from "./ui";
 import type { ProductLogoEntry } from "../lib/types";
 
 /**
@@ -68,7 +68,7 @@ export function LogoActivationPanel({
                 type="button"
                 onClick={() => onToggle(entry.id)}
                 aria-pressed={on}
-                className={`flex flex-col items-center rounded-lg border-2 p-2 text-left transition ${
+                className={`flex flex-col items-center border-2 p-2 text-left transition-colors duration-[120ms] ${
                   on ? "border-accent bg-accent/10" : "border-border hover:border-border-strong"
                 }`}
               >
@@ -83,13 +83,8 @@ export function LogoActivationPanel({
                   <span className="truncate text-help text-muted" title={entry.label ?? ""}>
                     {entry.label || "—"}
                   </span>
-                  <span
-                    className={`inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full px-1 ${
-                      on ? "justify-end bg-accent" : "justify-start bg-surface-2"
-                    }`}
-                  >
-                    <span className="h-3.5 w-3.5 rounded-full bg-surface" />
-                  </span>
+                  {/* The card is the toggle (aria-pressed); this only draws its state. */}
+                  <ToggleTrack checked={on} />
                 </div>
               </button>
             );
