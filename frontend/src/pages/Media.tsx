@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { apiFetch, apiJson } from "../lib/api";
 import { uploadFile } from "../lib/upload";
-import { Button, FilePreview, Input, Pagination, Select, Skeleton, useConfirm } from "../components/ui";
+import { Button, FilePreview, Input, Pagination, SegmentedControl, Select, Skeleton, useConfirm } from "../components/ui";
 import { UsagePill } from "../components/UsagePill";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
 import type { AssetUsage, MediaAsset } from "../lib/types";
@@ -206,21 +206,7 @@ export default function Media() {
 
       {/* Kind tabs + search + sort. Also where paging scrolls back to — see goToPage. */}
       <div ref={listTop} className="mt-6 flex scroll-mt-20 flex-wrap items-center gap-3 lg:scroll-mt-4">
-        <div className="flex flex-wrap gap-2 text-body">
-          {KIND_TABS.map((t) => (
-            <button
-              key={t.value || "all"}
-              onClick={() => setKind(t.value)}
-              className={`rounded-full px-3 py-1 font-semibold ${
-                kind === t.value
-                  ? "bg-accent text-accent-ink"
-                  : "border border-border text-muted hover:bg-surface-2"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl ariaLabel="File type" value={kind} onChange={setKind} options={KIND_TABS} />
 
         {/*
           Search and sort stay on ONE row: no `flex-wrap` here, and each

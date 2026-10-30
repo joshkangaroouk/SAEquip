@@ -20,6 +20,7 @@ import {
   PageHeader,
   RemoveButton,
   RichTextEditor,
+  SegmentedControl,
   Select,
   SelectMenu,
   Skeleton,
@@ -96,6 +97,7 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
       <Buttons />
       <Fields />
       <Choices />
+      <Segments />
       <Chips />
       <Surfaces />
       <Tables />
@@ -266,6 +268,55 @@ function Choices() {
         </span>
         <span data-kit="toggle-track:on">
           <ToggleTrack checked />
+        </span>
+      </Row>
+    </Section>
+  );
+}
+
+function Segments() {
+  const [status, setStatus] = useState<"all" | "live" | "hidden">("live");
+  const [rows, setRows] = useState<"20" | "50" | "all">("20");
+  const [mode, setMode] = useState<"rich" | "html">("rich");
+  return (
+    <Section title="Segmented control">
+      <Row label="counts">
+        <span data-kit="segments">
+          <SegmentedControl
+            ariaLabel="Status"
+            value={status}
+            onChange={setStatus}
+            options={[
+              { value: "all", label: "All", count: 91 },
+              { value: "live", label: "Live", count: 88 },
+              { value: "hidden", label: "Hidden", count: 3 },
+            ]}
+          />
+        </span>
+      </Row>
+      <Row label="plain">
+        <SegmentedControl
+          ariaLabel="Rows per page"
+          value={rows}
+          onChange={setRows}
+          options={[
+            { value: "20", label: "20" },
+            { value: "50", label: "50" },
+            { value: "all", label: "All" },
+          ]}
+        />
+      </Row>
+      <Row label="disabled">
+        <span data-kit="segments:disabled">
+          <SegmentedControl
+            ariaLabel="Editor mode"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "rich", label: "Rich text" },
+              { value: "html", label: "HTML", disabled: true },
+            ]}
+          />
         </span>
       </Row>
     </Section>

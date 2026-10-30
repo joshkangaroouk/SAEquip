@@ -7,6 +7,7 @@ import {
   DragHandle,
   Input,
   RemoveButton,
+  SegmentedControl,
   Skeleton,
   SortableList,
   toast,
@@ -253,19 +254,16 @@ export default function Logos() {
         <p className="mt-1 text-body text-muted">Global catalog shared across all products.</p>
 
         {/* Tabs */}
-        <div className="mt-6 flex gap-2 text-body">
-          {(["SA_LOGO", "CERT_LOGO"] as Kind[]).map((k) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`rounded-full px-4 py-1.5 font-semibold ${
-                tab === k ? "bg-accent text-accent-ink" : "border border-border text-muted hover:bg-surface-2"
-              }`}
-            >
-              {k === "SA_LOGO" ? "SA Logos" : "Cert Logos"}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl<Kind>
+          className="mt-6"
+          ariaLabel="Logo catalogue"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "SA_LOGO", label: "SA Logos" },
+            { value: "CERT_LOGO", label: "Cert Logos" },
+          ]}
+        />
 
         {/* The same 2/3/4-up grid and the same 8rem tile, so the real logos
             drop straight into place. */}

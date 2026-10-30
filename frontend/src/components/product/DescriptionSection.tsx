@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Card, CardHeader, RichTextEditor, Textarea } from "../ui";
+import { Badge, Card, CardHeader, RichTextEditor, SegmentedControl, Textarea } from "../ui";
 
 /**
  * Product description editor — a WYSIWYG (tiptap) with a raw-HTML escape hatch.
@@ -33,22 +33,15 @@ export function DescriptionSection({
         actions={
           <>
             {dirty && <Badge dot="unsaved">Unsaved</Badge>}
-            <div className="flex rounded-md border border-border p-0.5">
-              {(["rich", "html"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  className={`rounded px-2 py-0.5 text-label font-semibold transition-colors ${
-                    mode === m
-                      ? "bg-accent text-accent-ink"
-                      : "text-muted hover:text-text"
-                  }`}
-                >
-                  {m === "rich" ? "Rich text" : "HTML"}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              ariaLabel="Description editor"
+              value={mode}
+              onChange={setMode}
+              options={[
+                { value: "rich", label: "Rich text" },
+                { value: "html", label: "HTML" },
+              ]}
+            />
           </>
         }
       />

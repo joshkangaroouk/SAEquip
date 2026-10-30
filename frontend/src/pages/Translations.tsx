@@ -8,6 +8,7 @@ import {
   Input,
   Modal,
   Pagination,
+  SegmentedControl,
   SelectMenu,
   Skeleton,
   Table,
@@ -581,20 +582,13 @@ export default function Translations() {
         language's pages. Machine translations are checked automatically; a correction made here is never overwritten.
       </p>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        {TARGETS.map((t) => (
-          <button
-            key={t.locale}
-            onClick={() => setParam("lang", t.locale)}
-            className={`rounded-full px-4 py-1.5 text-body font-semibold ${
-              locale === t.locale ? "bg-accent text-accent-ink" : "border border-border text-muted hover:bg-surface-2"
-            }`}
-            aria-pressed={locale === t.locale}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl<TargetLocale>
+        className="mt-6"
+        ariaLabel="Language"
+        value={locale}
+        onChange={(v) => setParam("lang", v)}
+        options={TARGETS.map((t) => ({ value: t.locale, label: t.label }))}
+      />
 
       <div className="mt-4 flex gap-4 border-b border-border text-body" role="tablist">
         {(
