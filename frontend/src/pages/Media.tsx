@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { apiFetch, apiJson } from "../lib/api";
 import { uploadFile } from "../lib/upload";
-import { Alert, Button, FilePreview, Input, Pagination, SegmentedControl, Select, Skeleton, useConfirm } from "../components/ui";
+import { Alert, Button, FileInput, FilePreview, Input, Pagination, SegmentedControl, Select, Skeleton, useConfirm } from "../components/ui";
 import { UsagePill } from "../components/UsagePill";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary, type MediaKind } from "../lib/useMediaLibrary";
 import type { AssetUsage, MediaAsset } from "../lib/types";
@@ -181,15 +181,12 @@ export default function Media() {
         onSubmit={onUpload}
         className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4"
       >
-        <label className="text-body font-semibold text-text">
+        <div className="text-body font-semibold text-text">
           File
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="mt-1 block text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-body file:font-semibold file:text-accent-ink file:transition-colors hover:file:bg-accent-hover"
-          />
-        </label>
+          <div className="mt-1">
+            <FileInput file={file} onChange={setFile} inputRef={fileInputRef} />
+          </div>
+        </div>
         <label className="text-body font-semibold text-text">
           Alt text (optional)
           <Input

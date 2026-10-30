@@ -13,6 +13,7 @@ import {
   EmptyState,
   Field,
   FileDropzone,
+  FileInput,
   FilePreview,
   Highlight,
   ImageWell,
@@ -750,9 +751,17 @@ const fakeUpload: NonNullable<React.ComponentProps<typeof FileDropzone>["upload"
   });
 
 function Files() {
+  // Holds the chosen file locally; nothing is uploaded.
+  const [file, setFile] = useState<File | null>(null);
   return (
     <Section title="Files">
       <FileDropzone upload={fakeUpload} hint="Kit only — nothing is uploaded." />
+      <Row label="file input">
+        <span data-kit="fileinput">
+          <FileInput file={file} onChange={setFile} />
+        </span>
+        <FileInput file={null} onChange={() => {}} disabled label="Choose file (disabled)" />
+      </Row>
       <Row>
         <FilePreview filename="datasheet.pdf" className="h-24 w-20 border border-border" />
         <FilePreview filename="manual.docx" className="h-24 w-20 border border-border" />

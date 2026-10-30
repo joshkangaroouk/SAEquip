@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { uploadFile } from "../lib/upload";
-import { Alert, Button, FilePreview, ImageWell, Input, Modal, Pagination, Select, Skeleton } from "./ui";
+import { Alert, Button, FileInput, FilePreview, ImageWell, Input, Modal, Pagination, Select, Skeleton } from "./ui";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
@@ -59,12 +59,11 @@ export function MediaPicker({
     <Modal open onClose={onClose} title={`Choose ${KIND_LABEL[kind]}`} size="lg">
       <div className="-mx-6 -mt-5 mb-4 border-b border-border px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
-          <input
-            ref={fileRef}
-            type="file"
+          <FileInput
+            file={file}
+            onChange={setFile}
             accept={kind === "model" ? ".glb" : kind === "image" ? "image/*" : undefined}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-body file:font-semibold file:text-accent-ink file:transition-colors hover:file:bg-accent-hover"
+            inputRef={fileRef}
           />
           <Button size="sm" onClick={onUpload} disabled={!file || uploading}>
             {uploading ? "Uploading…" : "Upload new"}
