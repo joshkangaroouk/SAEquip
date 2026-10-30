@@ -130,7 +130,7 @@ export function Modal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-backdrop backdrop-blur-sm"
         onClick={() => dismissable && onClose()}
       />
       <div
@@ -141,7 +141,7 @@ export function Modal({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex w-full flex-col overflow-hidden rounded-xl bg-surface border border-border shadow-2xl outline-none",
+          "relative flex w-full flex-col overflow-hidden rounded-xl bg-surface border border-border shadow-menu outline-none",
           "max-h-[calc(100vh-2rem)] supports-[height:100dvh]:max-h-[calc(100dvh-2rem)]",
           sizes[size],
         )}

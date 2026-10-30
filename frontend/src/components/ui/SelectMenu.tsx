@@ -209,7 +209,7 @@ export function SelectMenu({
         onKeyDown={onTriggerKey}
         className={cn(
           "flex h-8 w-full items-center justify-between gap-2 rounded-md border border-border-input bg-field",
-          "px-2.5 text-body text-text shadow-xs transition-[color,box-shadow] outline-none",
+          "px-2.5 text-body text-text transition-[color,box-shadow] outline-none",
           "hover:bg-surface-2 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
           open && "border-ring",
         )}
@@ -243,7 +243,7 @@ export function SelectMenu({
             className={cn(
               // z-50 clears the sticky table header and the product save bar.
               "z-50 overflow-y-auto overscroll-contain rounded-md border border-border",
-              "bg-surface py-1 shadow-md",
+              "bg-surface py-1 shadow-menu",
             )}
           >
             {options.map((o, i) => {

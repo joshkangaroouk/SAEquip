@@ -22,7 +22,7 @@ export function Highlight({ text, query }: { text: string; query: string }) {
         part.toLowerCase() === needle ? (
           <mark
             key={i}
-            className="rounded-[2px] bg-accent px-0.5 text-accent-ink"
+            className="bg-accent px-0.5 text-accent-ink"
           >
             {part}
           </mark>

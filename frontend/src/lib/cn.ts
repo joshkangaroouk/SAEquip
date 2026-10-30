@@ -19,6 +19,9 @@ const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
       "font-size": [{ text: FONT_SIZES }],
+      // Without this, `shadow-menu` is read as a shadow COLOUR and would not
+      // replace `shadow-none` (or vice versa).
+      shadow: [{ shadow: ["menu"] }],
     },
   },
 });

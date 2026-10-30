@@ -28,11 +28,11 @@ const base =
 
 const variants: Record<Variant, string> = {
   // Brand yellow keeps the primary slot — shadcn's own primary is near-black.
-  primary: "bg-accent text-accent-ink shadow-xs hover:bg-accent-hover",
+  primary: "bg-accent text-accent-ink hover:bg-accent-hover",
   // shadcn's "outline": bordered, transparent, subtle hover fill.
-  secondary: "border border-border bg-surface text-text shadow-xs hover:bg-surface-2",
+  secondary: "border border-border bg-surface text-text hover:bg-surface-2",
   ghost: "bg-transparent text-muted hover:bg-surface-2 hover:text-text",
-  danger: "bg-danger text-white shadow-xs hover:bg-danger/90",
+  danger: "bg-danger text-white hover:bg-danger/90",
 };
 
 /*

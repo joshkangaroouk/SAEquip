@@ -39,7 +39,7 @@ export function Card({
       className={cn(
         // Inside an accordion the chrome belongs to the accordion, so this
         // collapses to a plain wrapper and keeps only a caller's own classes.
-        bare ? "" : "rounded-xl border border-border bg-surface shadow-xs",
+        bare ? "" : "rounded-xl border border-border bg-surface",
         // overflow-hidden so flush content cannot square off the rounded
         // corners it now sits against.
         bare ? "" : padded ? "p-5" : "overflow-hidden",

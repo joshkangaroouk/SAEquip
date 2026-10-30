@@ -59,7 +59,7 @@ export function AccordionCard({
      * `hidden` attribute beside a `flex` utility. Declaring the chrome here
      * means there is nothing to override.
      */
-    <div id={id} className="rounded-xl border border-border bg-surface shadow-xs">
+    <div id={id} className="rounded-xl border border-border bg-surface">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

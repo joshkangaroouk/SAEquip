@@ -114,7 +114,7 @@ export default function ResetPassword() {
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-12">
       <div className="w-full max-w-sm">
         <img src={logoUrl} alt="SAEquip" className="mx-auto mb-8 h-24 w-auto" />
-        <div className="rounded-xl border border-border bg-surface p-8 shadow-sm">
+        <div className="rounded-xl border border-border bg-surface p-8">
           <h1 className="t-auth-title text-text">Choose a new password</h1>
 
           {ready === "checking" && <p className="mt-3 text-help text-muted">Checking your link…</p>}

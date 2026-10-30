@@ -48,6 +48,8 @@
   --warning: 138 75 0; /* #8A4B00 (02a Q3) */
   --warning-bg: 252 239 217; /* #FCEFD9 */
   --focus: 11 11 11; /* = --text: the 2px focus outline */
+  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.12); /* menus, popovers, modals, toasts (02a Q10) */
+  --backdrop: rgb(0 0 0 / 0.5); /* behind modals and the mobile drawer */
   color-scheme: light;
 }
 
@@ -72,6 +74,8 @@
   --warning: 245 181 74; /* #F5B54A */
   --warning-bg: 42 30 8; /* #2A1E08 */
   --focus: 242 242 240;
+  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.5);
+  --backdrop: rgb(0 0 0 / 0.7);
   color-scheme: dark;
 }
 
@@ -81,7 +85,6 @@
   --accent-ink: 11 11 11; /* #0B0B0B text on yellow */
   --accent-hover: 240 196 15; /* #F0C40F primary-button hover (02a Q4) */
   --paper: 255 255 255; /* always-white tile: images, logos, PDF previews, QR, widget previews */
-  --radius: 0.625rem; /* ⚠️ until redesign 3.6 sets every radius to 0 and deletes this */
 
   /* Sidebar — always dark, whatever the theme. */
   --sidebar: 11 11 11; /* #0B0B0B */

@@ -32,7 +32,7 @@ export function Checkbox({ checked, onChange, disabled, label, id, className }: 
           onChange={(e) => onChange(e.target.checked)}
           className={cn(
             // shadcn checkbox is 16px with a small radius and a soft ring.
-            "peer h-4 w-4 shrink-0 appearance-none rounded-sm border bg-field shadow-xs transition-shadow",
+            "peer h-4 w-4 shrink-0 appearance-none rounded-sm border bg-field transition-shadow",
             "checked:bg-accent checked:border-accent outline-none",
             "focus-visible:ring-[3px] focus-visible:ring-ring/50",
             checked ? "border-accent" : "border-border-input",

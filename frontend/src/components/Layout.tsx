@@ -407,7 +407,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       {/* Mobile drawer */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute inset-0 bg-backdrop" onClick={() => setDrawerOpen(false)} />
           <aside data-sidebar className={cn("absolute inset-y-0 left-0 w-72 border-r", SIDEBAR, SIDEBAR_BORDER)}>
             <button
               aria-label="Close menu"

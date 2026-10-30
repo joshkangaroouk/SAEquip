@@ -139,7 +139,7 @@ export function DropdownMenu({
               // z-50 to clear the sticky table header and the product save bar;
               // the portal already puts it outside every clipping ancestor.
               "z-50 min-w-40 overflow-hidden rounded-md border border-border",
-              "bg-surface py-1 shadow-md",
+              "bg-surface py-1 shadow-menu",
             )}
             onClick={(e) => e.stopPropagation()}
           >

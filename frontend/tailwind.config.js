@@ -16,6 +16,27 @@ export default {
       semibold: "600",
       bold: "700",
     },
+    // REPLACES the theme: square everywhere (00: "border-radius: 0 everywhere,
+    // including chips, avatars, toggles, checkboxes"). This is also what
+    // neutralises `rounded-full`, which never followed a --radius token.
+    borderRadius: {
+      none: "0",
+      sm: "0",
+      DEFAULT: "0",
+      md: "0",
+      lg: "0",
+      xl: "0",
+      "2xl": "0",
+      "3xl": "0",
+      full: "0",
+    },
+    // REPLACES the theme: no elevation on cards or panels, so every
+    // shadow-xs…2xl generates nothing. One shadow for menus, popovers, modals
+    // and toasts, whose strength depends on the theme (--shadow-menu, 02a Q10).
+    boxShadow: {
+      none: "none",
+      menu: "var(--shadow-menu)",
+    },
     extend: {
       // Colours are declared as `rgb(var(--token) / <alpha-value>)` so Tailwind
       // can inject an alpha channel — this is what makes `bg-danger/10`,
@@ -54,6 +75,8 @@ export default {
           hover: "rgb(var(--accent-hover) / <alpha-value>)",
         },
         paper: "rgb(var(--paper) / <alpha-value>)",
+        // A full colour with its own alpha, set per theme (02a Q10): `bg-backdrop`.
+        backdrop: "var(--backdrop)",
         focus: "rgb(var(--focus) / <alpha-value>)",
         // ⚠️ Interim alias: the `focus-visible:ring-ring/50` classes still in
         // the components draw in the focus colour until batch 2 replaces them
@@ -93,23 +116,6 @@ export default {
         help: ["0.8125rem", { lineHeight: "1.5" }], // 13 — help text, chips, codes
         label: ["0.75rem", { lineHeight: "1.3" }], // 12 — labels, overlines, table heads, codes
         micro: "0.6875rem", // 11 — segment counts, "New" chip
-      },
-      // Derived from --radius exactly as shadcn does it.
-      borderRadius: {
-        sm: "calc(var(--radius) - 4px)",
-        DEFAULT: "calc(var(--radius) - 2px)",
-        md: "calc(var(--radius) - 2px)",
-        lg: "var(--radius)",
-        xl: "calc(var(--radius) + 4px)",
-        "2xl": "calc(var(--radius) + 8px)",
-      },
-      // shadcn leans on borders, not elevation. These are deliberately faint;
-      // only overlays should reach for anything heavier.
-      boxShadow: {
-        xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-        sm: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
-        md: "0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)",
-        lg: "0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)",
       },
       ringColor: {
         DEFAULT: "rgb(var(--focus) / <alpha-value>)",

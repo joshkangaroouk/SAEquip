@@ -126,7 +126,7 @@ export default function Login() {
           {showCode ? (
             <form
               onSubmit={onSubmitCode}
-              className="rounded-xl border border-border bg-surface p-8 shadow-sm"
+              className="rounded-xl border border-border bg-surface p-8"
             >
               <h1 className="t-auth-title text-text">Enter your code</h1>
               <p className="mt-1 text-help text-muted">
@@ -173,7 +173,7 @@ export default function Login() {
           ) : (
           <form
             onSubmit={onSubmit}
-            className="rounded-xl border border-border bg-surface p-8 shadow-sm"
+            className="rounded-xl border border-border bg-surface p-8"
           >
             <h1 className="t-auth-title text-text">Welcome back</h1>
             <p className="mt-1 text-help text-muted">Sign in to continue</p>

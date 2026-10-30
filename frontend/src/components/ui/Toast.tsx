@@ -14,8 +14,8 @@ export function Toaster() {
         style: {
           background: "rgb(var(--surface))",
           border: "1px solid rgb(var(--border))",
-          borderRadius: "0.75rem",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+          borderRadius: "0",
+          boxShadow: "var(--shadow-menu)",
           color: "rgb(var(--text))",
           fontFamily: '"Inter", sans-serif',
           fontWeight: 400,
@@ -23,8 +23,8 @@ export function Toaster() {
         classNames: {
           title: "font-semibold",
           description: "text-muted",
-          actionButton: "!bg-accent !text-accent-ink !rounded-md font-semibold",
-          cancelButton: "!bg-surface-2 !text-muted !rounded-md",
+          actionButton: "!bg-accent !text-accent-ink font-semibold",
+          cancelButton: "!bg-surface-2 !text-muted",
           success: "!text-ok",
           error: "!text-danger",
           loading: "!text-accent",

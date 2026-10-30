@@ -88,7 +88,7 @@ export function LogoActivationPanel({
                       on ? "justify-end bg-accent" : "justify-start bg-surface-2"
                     }`}
                   >
-                    <span className="h-3.5 w-3.5 rounded-full bg-surface shadow-sm" />
+                    <span className="h-3.5 w-3.5 rounded-full bg-surface" />
                   </span>
                 </div>
               </button>
