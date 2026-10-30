@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { Link, Outlet, useLocation, useMatches, useNavigate } from "react-router-dom";
 import {
   BarChart3,
@@ -8,7 +8,6 @@ import {
   Images,
   Languages,
   LogOut,
-  Menu,
   Package,
   KeyRound,
   ShieldCheck,
@@ -21,6 +20,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useThemePreference } from "../hooks/useUserPreference";
 import { cn } from "../lib/cn";
 import { clearProductIndex, useProductIndex } from "../lib/productIndex";
+import { CrumbProvider, TopBar } from "./TopBar";
 
 /**
  * The sidebar (docs/redesign 02a Q6): always dark, on the fixed `--sidebar-*`
@@ -257,8 +257,12 @@ export function Layout({ children }: { children?: ReactNode }) {
   // max-w-6xl column and, from lg, fills the viewport height so its panes can
   // scroll on their own.
   const full = useMatches().some((m) => (m.handle as { layout?: string } | undefined)?.layout === "full");
-  // Applies the account's light/dark choice once the session has loaded.
-  useThemePreference();
+  // Applies the account's light/dark choice once the session has loaded; the
+  // top bar's toggle sets it (the only write the shell makes).
+  const { theme, setTheme } = useThemePreference();
+  // The breadcrumb's last crumb, when the page names itself (usePageCrumb).
+  const [pageLabel, setPageLabel] = useState<string | null>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -269,27 +273,6 @@ export function Layout({ children }: { children?: ReactNode }) {
       >
         <SidebarBody />
       </aside>
-
-      {/* Mobile top bar */}
-      <header
-        data-sidebar
-        className={cn(
-          "sticky top-0 z-30 flex items-center justify-between border-b px-4 py-2.5 lg:hidden",
-          SIDEBAR,
-          SIDEBAR_BORDER,
-        )}
-      >
-        <Link to="/">
-          <Lockup />
-        </Link>
-        <button
-          aria-label="Open menu"
-          onClick={() => setDrawerOpen(true)}
-          className="p-2 text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg"
-        >
-          <Menu size={18} strokeWidth={2} />
-        </button>
-      </header>
 
       {/* Mobile drawer */}
       {drawerOpen && (
@@ -312,10 +295,26 @@ export function Layout({ children }: { children?: ReactNode }) {
       )}
 
       {/* Main content */}
-      <main className="lg:pl-sidebar">
-        <div className={full ? "px-5 py-6 lg:flex lg:h-dvh lg:flex-col lg:px-8" : "mx-auto max-w-6xl px-5 py-6 lg:px-8"}>
-          {children ?? <Outlet />}
-        </div>
+      <main className={cn("lg:pl-sidebar", full && "lg:flex lg:h-dvh lg:flex-col")}>
+        <TopBar
+          theme={theme}
+          onThemeChange={setTheme}
+          onOpenMenu={() => setDrawerOpen(true)}
+          menuButtonRef={menuButton}
+          menuOpen={drawerOpen}
+          pageLabel={pageLabel}
+        />
+        <CrumbProvider value={setPageLabel}>
+          <div
+            className={
+              full
+                ? "px-5 py-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:px-8"
+                : "mx-auto max-w-6xl px-5 py-6 lg:px-8"
+            }
+          >
+            {children ?? <Outlet />}
+          </div>
+        </CrumbProvider>
       </main>
     </div>
   );

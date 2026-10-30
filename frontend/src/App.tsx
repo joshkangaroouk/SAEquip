@@ -63,25 +63,43 @@ export const router = createBrowserRouter([
         </Layout>
       </ProtectedRoute>
     ),
+    // `handle.crumbs` is each page's place in the top bar's breadcrumb (TopBar.tsx).
     children: [
-      { path: "/website", element: <WebsiteEditor /> },
-      { path: "/", element: <Products /> },
+      { path: "/website", element: <WebsiteEditor />, handle: { crumbs: { title: "Website editor" } } },
+      { path: "/", element: <Products />, handle: { crumbs: { group: "Catalogue", title: "Products" } } },
       // Static segments outrank dynamic ones in v7's route ranking, so
       // /products/new wins over /products/:id regardless of declaration order.
-      { path: "/products/new", element: <ProductNew /> },
-      { path: "/products/:id", element: <ProductDetail /> },
-      { path: "/categories", element: <Categories /> },
-      { path: "/categories/:id", element: <CategoryDetail /> },
-      { path: "/options", element: <ProductOptions /> },
-      { path: "/media", element: <Media /> },
-      { path: "/logos", element: <Logos /> },
-      { path: "/widgets", element: <Widgets /> },
-      { path: "/quotes", element: <Quotes /> },
-      { path: "/resource-requests", element: <ResourceRequests /> },
-      { path: "/translations", element: <Translations /> },
-      { path: "/users", element: <UsersPage /> },
-      { path: "/security", element: <Security /> },
-      { path: "/status", element: <Status /> },
+      {
+        path: "/products/new",
+        element: <ProductNew />,
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "New product" } },
+      },
+      {
+        path: "/products/:id",
+        element: <ProductDetail />,
+        // The editor names the product (usePageCrumb); "Product" until it loads.
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "Product" } },
+      },
+      { path: "/categories", element: <Categories />, handle: { crumbs: { group: "Catalogue", title: "Categories" } } },
+      {
+        path: "/categories/:id",
+        element: <CategoryDetail />,
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Categories", to: "/categories" }, title: "Category" } },
+      },
+      { path: "/options", element: <ProductOptions />, handle: { crumbs: { group: "Catalogue", title: "Product options" } } },
+      { path: "/media", element: <Media />, handle: { crumbs: { group: "Catalogue", title: "Media" } } },
+      { path: "/logos", element: <Logos />, handle: { crumbs: { group: "Catalogue", title: "Logos" } } },
+      { path: "/widgets", element: <Widgets />, handle: { crumbs: { title: "Widgets" } } },
+      { path: "/quotes", element: <Quotes />, handle: { crumbs: { group: "Enquiries", title: "Quote requests" } } },
+      {
+        path: "/resource-requests",
+        element: <ResourceRequests />,
+        handle: { crumbs: { group: "Enquiries", title: "Resource requests" } },
+      },
+      { path: "/translations", element: <Translations />, handle: { crumbs: { group: "Catalogue", title: "Translations" } } },
+      { path: "/users", element: <UsersPage />, handle: { crumbs: { group: "Admin", title: "Users" } } },
+      { path: "/security", element: <Security />, handle: { crumbs: { group: "Admin", title: "Security" } } },
+      { path: "/status", element: <Status />, handle: { crumbs: { title: "Status" } } },
     ],
   },
 ]);

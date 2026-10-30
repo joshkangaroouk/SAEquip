@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthContext";
 import { toast } from "../components/ui";
-import { applyTheme, useDocumentTheme, THEME_PREFERENCE_KEY, type Theme } from "../lib/theme";
+import { applyTheme, readTheme, useDocumentTheme, THEME_PREFERENCE_KEY, type Theme } from "../lib/theme";
 
 /**
  * A UI preference stored against the signed-in ACCOUNT, in Supabase's
@@ -16,6 +16,7 @@ import { applyTheme, useDocumentTheme, THEME_PREFERENCE_KEY, type Theme } from "
  *
  * Writes are optimistic — the control responds immediately and reverts with a
  * toast if the round-trip fails, since a preference isn't worth a spinner.
+ * `setValue` resolves to whether the write was saved.
  */
 export function useUserPreference<T>(key: string, fallback: T) {
   const { user } = useAuth();
@@ -34,16 +35,18 @@ export function useUserPreference<T>(key: string, fallback: T) {
   }, [JSON.stringify(remote)]);
 
   const update = useCallback(
-    async (next: T) => {
+    async (next: T): Promise<boolean> => {
       const previous = value;
       setValue(next); // optimistic
       setSaving(true);
       try {
         const { error } = await supabase.auth.updateUser({ data: { [key]: next } });
         if (error) throw new Error(error.message);
+        return true;
       } catch (e) {
         setValue(previous);
         toast.error(e instanceof Error ? e.message : "Couldn't save that preference");
+        return false;
       } finally {
         setSaving(false);
       }
@@ -88,10 +91,14 @@ export function useThemePreference() {
   }, [value]);
   const setTheme = useCallback(
     (theme: Theme) => {
+      const before = readTheme();
       applyTheme(theme); // instant, and refreshes the pre-paint copy
-      // Optimistic: on failure it reverts with a toast, and the effect above
-      // re-applies the previous theme.
-      void setValue(theme);
+      // Optimistic: on failure the preference reverts with a toast, and the
+      // theme that was showing is put back. (The effect above cannot do that
+      // for an account that never chose one: its previous value is null.)
+      void setValue(theme).then((saved) => {
+        if (!saved) applyTheme(before);
+      });
     },
     [setValue],
   );

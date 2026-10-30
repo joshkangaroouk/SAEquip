@@ -20,6 +20,7 @@ import {
 import { MediaPicker } from "../components/MediaPicker";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
+import { usePageCrumb } from "../components/TopBar";
 import { AssignPickList } from "../components/product/AssignPickList";
 import { apiJson } from "../lib/api";
 import type { ProductSummary } from "../lib/types";
@@ -124,6 +125,8 @@ export default function CategoryDetail() {
   }, [load]);
 
   const node = cats.find((c) => c.id === id);
+  // "Catalogue / Categories / <title>" in the top bar: the saved title.
+  usePageCrumb(node?.title ?? baseline?.title);
   const children = useMemo(() => cats.filter((c) => c.parent_id === id), [cats, id]);
   const dirty = !!draft && !!baseline && project(draft) !== project(baseline);
 

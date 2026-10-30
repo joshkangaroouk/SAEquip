@@ -20,6 +20,7 @@ import { ProductSaveBar } from "../components/product/ProductSaveBar";
 import { useProductEditor } from "../components/product/useProductEditor";
 import { useHideCommerceFields } from "../hooks/useUserPreference";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
+import { usePageCrumb } from "../components/TopBar";
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +65,8 @@ export default function ProductDetail() {
   const blocker = useUnsavedChangesWarning({ when: isDirty && !guardSuppressed(), suppress: guardSuppressed });
 
   const product = context?.product;
+  // The top bar reads "Catalogue / Products / <name>" — the SAVED name, like the header.
+  usePageCrumb(product?.name);
 
   // ProductSaveBar is position:fixed, so it no longer reserves its own space.
   // Reserve it here — but only while the bar is actually on screen (same

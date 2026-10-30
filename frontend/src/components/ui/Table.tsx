@@ -46,7 +46,8 @@ export function THead({
         // The background is what makes a sticky head usable: without it the
         // rows scroll visibly underneath.
         "border-b border-border bg-surface-2",
-        sticky && "sticky top-0 z-10",
+        // top-16: under the shell's sticky 64px top bar.
+        sticky && "sticky top-16 z-10",
         className,
       )}
       {...rest}
