@@ -80,8 +80,10 @@ function NotAvailable() {
 }
 
 /**
- * "English only", or "English + 6" with the others named beneath. As set up
- * in Duda: a language paused there still counts, since Duda's API lists it.
+ * "English only", or "English + 6 set up" with the others named beneath
+ * (02a "After 6b"). Duda's API lists a language that is set up even while it
+ * is switched off, so this never claims they are live, and does not try to
+ * tell which are paused.
  */
 function SiteLanguages({ lang, others }: { lang: string | null; others: string[] }) {
   if (!lang) return <NotAvailable />;
@@ -90,8 +92,11 @@ function SiteLanguages({ lang, others }: { lang: string | null; others: string[]
   if (others.length === 0) return <>{base} only</>;
   return (
     <>
-      {base} + {others.length}
-      <span className="t-help mt-0.5 block">{others.map(languageName).join(", ")}</span>
+      {base} + {others.length} set up
+      <span className="mt-0.5 block text-help text-text">{others.map(languageName).join(", ")}</span>
+      <span className="t-help mt-1 block">
+        Languages switched off in Duda still count here. Check the language menu in the Duda editor.
+      </span>
     </>
   );
 }
