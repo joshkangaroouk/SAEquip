@@ -2,10 +2,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useForceLightTheme } from "../lib/theme";
-import { Button, Field, Input } from "../components/ui";
+import { Alert, Button, Field, Input, Loader } from "../components/ui";
+import { AuthShell } from "../components/AuthShell";
 import { assessPassword } from "../lib/passwordPolicy";
 import { needsSecondFactor, verifyTotpCode } from "../lib/mfa";
-import logoUrl from "../assets/saequip-logo.svg";
 
 /**
  * Choose a new password, landed on from the emailed recovery link.
@@ -113,93 +113,88 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-12">
-      <div className="w-full max-w-sm">
-        <img src={logoUrl} alt="SAEquip" className="mx-auto mb-8 h-24 w-auto" />
-        <div className="rounded-xl border border-border bg-surface p-8">
-          <h1 className="t-auth-title text-text">Choose a new password</h1>
+    <AuthShell title="Choose a new password">
+      {ready === "checking" && <Loader label="Checking your link…" />}
 
-          {ready === "checking" && <p className="mt-3 text-help text-muted">Checking your link…</p>}
+      {ready === "no-session" && (
+        <>
+          <Alert tone="danger" className="mt-5">
+            This reset link is invalid or has expired. Request a new one.
+          </Alert>
+          <Button className="mt-6 w-full" onClick={() => navigate("/forgot-password")}>
+            Request a new link
+          </Button>
+        </>
+      )}
 
-          {ready === "no-session" && (
-            <>
-              <p className="mt-3 text-help text-muted">
-                This reset link is invalid or has expired. Request a new one.
-              </p>
-              <Button className="mt-6 w-full" onClick={() => navigate("/forgot-password")}>
-                Request a new link
-              </Button>
-            </>
-          )}
-
-          {ready === "ok" && (
-            <form onSubmit={onSubmit}>
-              <div className="mt-6 space-y-4">
-                <Field label="New password" htmlFor="password">
-                  <Input
-                    id="password"
-                    type="password"
-                    required
-                    autoFocus
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </Field>
-                <Field label="Confirm password" htmlFor="confirm">
-                  <Input
-                    id="confirm"
-                    type="password"
-                    required
-                    autoComplete="new-password"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                  />
-                </Field>
-                {needsCode && (
-                  <Field label="Authentication code" htmlFor="code">
-                    <Input
-                      id="code"
-                      // As on the login page: numeric keypad on mobile, and
-                      // password managers and iOS autofill can offer the code.
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      required
-                      placeholder="123456"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    />
-                  </Field>
-                )}
-              </div>
-              {needsCode && (
-                <p className="mt-2 text-help text-muted">
-                  This account uses two-factor authentication, so enter the 6-digit code from your
-                  authenticator app as well.
-                </p>
-              )}
-
-              {password.length > 0 && !verdict.ok && (
-                <ul className="mt-3 list-disc space-y-0.5 pl-5 text-help text-muted">
-                  {verdict.problems.map((p) => (
-                    <li key={p}>{p}</li>
-                  ))}
-                </ul>
-              )}
-              {mismatch && <p className="mt-3 text-help text-danger">The two passwords don't match.</p>}
-              {error && <p className="mt-3 text-help text-danger">{error}</p>}
-
-              <Button
-                type="submit"
-                className="mt-6 w-full"
-                disabled={submitting || !verdict.ok || mismatch || !confirm || (needsCode && code.length < 6)}
+      {ready === "ok" && (
+        <form onSubmit={onSubmit}>
+          <div className="mt-6 space-y-4">
+            <Field label="New password" htmlFor="password">
+              <Input
+                id="password"
+                type="password"
+                required
+                autoFocus
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+            {/* A mismatch is this field's own error: marked invalid and described by it. */}
+            <Field label="Confirm password" htmlFor="confirm" error={mismatch ? "The two passwords don't match." : undefined}>
+              <Input
+                id="confirm"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+              />
+            </Field>
+            {needsCode && (
+              <Field
+                label="Authentication code"
+                htmlFor="code"
+                hint="This account uses two-factor authentication, so enter the 6-digit code from your authenticator app as well."
               >
-                {submitting ? "Saving…" : "Save new password"}
-              </Button>
-            </form>
+                <Input
+                  id="code"
+                  // As on the login page: numeric keypad on mobile, and
+                  // password managers and iOS autofill can offer the code.
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  placeholder="123456"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                />
+              </Field>
+            )}
+          </div>
+
+          {password.length > 0 && !verdict.ok && (
+            <ul className="t-help mt-3 list-disc space-y-0.5 pl-5">
+              {verdict.problems.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
           )}
-        </div>
-      </div>
-    </div>
+          {error && (
+            <Alert tone="danger" className="mt-4">
+              {error}
+            </Alert>
+          )}
+
+          <Button
+            type="submit"
+            className="mt-6 w-full"
+            disabled={submitting || !verdict.ok || mismatch || !confirm || (needsCode && code.length < 6)}
+          >
+            {submitting ? "Saving…" : "Save new password"}
+          </Button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

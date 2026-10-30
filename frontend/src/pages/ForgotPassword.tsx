@@ -2,8 +2,8 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useForceLightTheme } from "../lib/theme";
-import { Button, Field, Input } from "../components/ui";
-import logoUrl from "../assets/saequip-logo.svg";
+import { Alert, Button, Field, Input } from "../components/ui";
+import { AuthShell } from "../components/AuthShell";
 
 /**
  * Request a password-reset email.
@@ -37,52 +37,51 @@ export default function ForgotPassword() {
     setSent(true);
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-12">
-      <div className="w-full max-w-sm">
-        <img src={logoUrl} alt="SAEquip" className="mx-auto mb-8 h-24 w-auto" />
-        <div className="rounded-xl border border-border bg-surface p-8">
-          <h1 className="t-auth-title text-text">Reset your password</h1>
+  const back = (
+    <Link to="/login" className="mt-5 inline-block text-help text-muted underline-offset-2 hover:text-text hover:underline">
+      ← Back to sign in
+    </Link>
+  );
 
-          {sent ? (
-            <>
-              <p className="mt-3 text-help text-muted">
-                If <span className="font-medium text-text">{email}</span> has an account, a reset link
-                is on its way. The link expires shortly, so use it soon.
-              </p>
-              <Link to="/login" className="mt-6 inline-block text-help font-semibold text-text underline-offset-2 hover:underline">
-                ← Back to sign in
-              </Link>
-            </>
-          ) : (
-            <form onSubmit={onSubmit}>
-              <p className="mt-1 text-help text-muted">
-                We'll email you a link to choose a new one.
-              </p>
-              <div className="mt-6">
-                <Field label="Email" htmlFor="email">
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    autoFocus
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </Field>
-              </div>
-              {error && <p className="mt-3 text-help text-danger">{error}</p>}
-              <Button type="submit" className="mt-6 w-full" disabled={submitting || !email.trim()}>
-                {submitting ? "Sending…" : "Send reset link"}
-              </Button>
-              <Link to="/login" className="mt-4 inline-block text-help text-muted underline-offset-2 hover:text-text hover:underline">
-                ← Back to sign in
-              </Link>
-            </form>
+  return (
+    <AuthShell
+      title="Reset your password"
+      description={sent ? undefined : "We'll email you a link to choose a new one."}
+    >
+      {sent ? (
+        <>
+          <Alert tone="ok" className="mt-5">
+            If <span className="font-medium">{email}</span> has an account, a reset link is on its way. The link
+            expires shortly, so use it soon.
+          </Alert>
+          {back}
+        </>
+      ) : (
+        <form onSubmit={onSubmit}>
+          <div className="mt-6">
+            <Field label="Email" htmlFor="email">
+              <Input
+                id="email"
+                type="email"
+                required
+                autoFocus
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+          </div>
+          {error && (
+            <Alert tone="danger" className="mt-4">
+              {error}
+            </Alert>
           )}
-        </div>
-      </div>
-    </div>
+          <Button type="submit" className="mt-6 w-full" disabled={submitting || !email.trim()}>
+            {submitting ? "Sending…" : "Send reset link"}
+          </Button>
+          {back}
+        </form>
+      )}
+    </AuthShell>
   );
 }

@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useForceLightTheme } from "../lib/theme";
 import { Alert, Button, Field, Input } from "../components/ui";
-import logoUrl from "../assets/saequip-logo.svg";
+import { AuthShell } from "../components/AuthShell";
 
 function EyeIcon() {
   return (
@@ -106,137 +106,108 @@ export default function Login() {
     await signOut();
   }
 
-  return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
-      {/* Brand panel — dark, matches the sidebar; the logo is built for dark backgrounds. */}
-      <div className="relative hidden overflow-hidden bg-[#0A0A0A] lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:border-r lg:border-white/10">
-        <div
-          aria-hidden="true"
-          className="absolute -top-24 left-1/2 h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-[#fed217]/20 blur-[110px]"
-        />
-        <div className="relative px-10">
-          <img src={logoUrl} alt="SAEquip" className="h-32 w-auto" />
-        </div>
-      </div>
+  if (showCode) {
+    return (
+      <AuthShell
+        title="Enter your code"
+        description="Open your authenticator app and type the 6-digit code for SAEquip."
+      >
+        <form onSubmit={onSubmitCode}>
+          <div className="mt-6">
+            <Field label="Authentication code" htmlFor="code">
+              <Input
+                id="code"
+                // A one-time-code field: numeric keypad on mobile, and it
+                // lets password managers and iOS autofill offer the code.
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+                placeholder="123456"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              />
+            </Field>
+          </div>
 
-      {/* Form panel */}
-      <div className="flex flex-1 items-center justify-center bg-bg px-4 py-12">
-        <div className="w-full max-w-sm">
-          {/* Compact logo for small screens, where the brand panel is hidden. */}
-          <img src={logoUrl} alt="SAEquip" className="mx-auto mb-8 h-28 w-auto lg:hidden" />
-
-          {showCode ? (
-            <form
-              onSubmit={onSubmitCode}
-              className="rounded-xl border border-border bg-surface p-8"
-            >
-              <h1 className="t-auth-title text-text">Enter your code</h1>
-              <p className="mt-1 text-help text-muted">
-                Open your authenticator app and type the 6-digit code for SAEquip.
-              </p>
-
-              <div className="mt-6">
-                <Field label="Authentication code" htmlFor="code">
-                  <Input
-                    id="code"
-                    // A one-time-code field: numeric keypad on mobile, and it
-                    // lets password managers and iOS autofill offer the code.
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    required
-                    placeholder="123456"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  />
-                </Field>
-              </div>
-
-              {error && (
-                <Alert tone="danger" className="mt-4">
-                  {error}
-                </Alert>
-              )}
-
-              <Button type="submit" loading={submitting} className="mt-6 w-full" disabled={code.length < 6}>
-                {submitting ? "Checking…" : "Verify"}
-              </Button>
-              <button
-                type="button"
-                onClick={cancelCode}
-                className="mt-4 w-full text-help text-muted hover:text-text"
-              >
-                Cancel and sign out
-              </button>
-            </form>
-          ) : (
-          <form
-            onSubmit={onSubmit}
-            className="rounded-xl border border-border bg-surface p-8"
-          >
-            <h1 className="t-auth-title text-text">Welcome back</h1>
-            <p className="mt-1 text-help text-muted">Sign in to continue</p>
-
-            <div className="mt-6 space-y-4">
-              <Field label="Email" htmlFor="email">
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  autoFocus
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </Field>
-
-              <Field label="Password" htmlFor="password">
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    tabIndex={-1}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-text"
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-              </Field>
-            </div>
-
-            {error && (
-              <Alert tone="danger" className="mt-4">
-                {error}
-              </Alert>
-            )}
-
-            <div className="mt-4 text-right">
-              <Link to="/forgot-password" className="text-help text-muted underline-offset-2 hover:text-text hover:underline">
-                Forgot your password?
-              </Link>
-            </div>
-
-            <Button type="submit" loading={submitting} className="mt-6 w-full">
-              {submitting ? "Signing in…" : "Sign in"}
-            </Button>
-
-            <p className="mt-5 text-center text-help text-muted">
-              Accounts are created by invitation only.
-            </p>
-          </form>
+          {error && (
+            <Alert tone="danger" className="mt-4">
+              {error}
+            </Alert>
           )}
+
+          <Button type="submit" loading={submitting} className="mt-6 w-full" disabled={code.length < 6}>
+            {submitting ? "Checking…" : "Verify"}
+          </Button>
+          <Button type="button" variant="ghost" onClick={cancelCode} className="mt-2 w-full">
+            Cancel and sign out
+          </Button>
+        </form>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell title="Welcome back" description="Sign in to continue.">
+      <form onSubmit={onSubmit}>
+        <div className="mt-6 space-y-4">
+          <Field label="Email" htmlFor="email">
+            <Input
+              id="email"
+              type="email"
+              required
+              autoFocus
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+
+          <Field label="Password" htmlFor="password">
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-11"
+              />
+              {/* In the tab order (it was tabIndex -1, out of reach of the keyboard). */}
+              <Button
+                type="button"
+                variant="ghost"
+                icon
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                className="absolute right-[3px] top-1/2 -translate-y-1/2"
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </Button>
+            </div>
+          </Field>
         </div>
-      </div>
-    </div>
+
+        {error && (
+          <Alert tone="danger" className="mt-4">
+            {error}
+          </Alert>
+        )}
+
+        <div className="mt-4 text-right">
+          <Link to="/forgot-password" className="text-help text-muted underline-offset-2 hover:text-text hover:underline">
+            Forgot your password?
+          </Link>
+        </div>
+
+        <Button type="submit" loading={submitting} className="mt-6 w-full">
+          {submitting ? "Signing in…" : "Sign in"}
+        </Button>
+
+        <p className="mt-5 text-center text-help text-muted">Accounts are created by invitation only.</p>
+      </form>
+    </AuthShell>
   );
 }

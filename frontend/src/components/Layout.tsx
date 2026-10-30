@@ -22,6 +22,7 @@ import { cn } from "../lib/cn";
 import { useProductIndex } from "../lib/productIndex";
 import { useSignOut } from "../hooks/useSignOut";
 import { initialsFrom } from "../lib/initials";
+import { Lockup } from "./Lockup";
 import { CrumbProvider, TopBar } from "./TopBar";
 import { PageHeaderSlot, useDialog } from "./ui";
 import { LG, useMediaQuery } from "../hooks/useMediaQuery";
@@ -99,24 +100,6 @@ const NAV: NavGroup[] = [
 
 const isCurrent = (item: NavItem, pathname: string) =>
   item.match ? item.match(pathname) : pathname === item.to || pathname.startsWith(item.to + "/");
-
-/** The SA lockup, in HTML rather than an image (02a Q6). */
-export function Lockup() {
-  return (
-    <span className="flex items-center gap-3">
-      <span
-        aria-hidden="true"
-        className="t-lockup-mark flex h-10 w-10 shrink-0 items-center justify-center bg-sidebar-active text-sidebar-active-ink"
-      >
-        SA
-      </span>
-      <span className="min-w-0">
-        <span className="t-lockup-name block text-sidebar-fg">SA Equip</span>
-        <span className="block text-label text-sidebar-muted">Product Hub</span>
-      </span>
-    </span>
-  );
-}
 
 /**
  * One item: 40px, 18px icon, Inter 14/500; the current one solid yellow with
