@@ -34,7 +34,7 @@ export function Model3DSection({
       <CardHeader
         title="3D Model"
         description="Upload a .glb file to show an interactive 3D viewer on the product page."
-        actions={dirty && <Badge tone="accent">Unsaved</Badge>}
+        actions={dirty && <Badge dot="unsaved">Unsaved</Badge>}
       />
 
       <SectionError message={error} />

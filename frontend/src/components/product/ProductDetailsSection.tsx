@@ -35,7 +35,7 @@ export function ProductDetailsSection({
       <CardHeader
         title="Details"
         description="Native Duda fields. These sync straight to the store."
-        actions={dirty ? <Badge tone="accent">Unsaved</Badge> : undefined}
+        actions={dirty ? <Badge dot="unsaved">Unsaved</Badge> : undefined}
       />
 
       {error && (

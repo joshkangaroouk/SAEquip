@@ -36,7 +36,7 @@ export function ImageCard({
         />
         {isPrimary && (
           <span className="absolute left-1 top-1">
-            <Badge tone="accent">Primary</Badge>
+            <Badge tone="solid">Primary</Badge>
           </span>
         )}
         {!isDudaHosted(image.url) && (

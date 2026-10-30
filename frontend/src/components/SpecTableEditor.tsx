@@ -97,7 +97,7 @@ export function SpecTableEditor({
                 {lineCount === 1 ? "" : "s"}
               </span>
             )}
-            {dirty ? <Badge tone="accent">Unsaved</Badge> : null}
+            {dirty ? <Badge dot="unsaved">Unsaved</Badge> : null}
           </div>
         }
       />

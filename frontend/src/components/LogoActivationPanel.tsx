@@ -44,7 +44,7 @@ export function LogoActivationPanel({
         }
         actions={
           <>
-            {dirty && <Badge tone="accent">Unsaved</Badge>}
+            {dirty && <Badge dot="unsaved">Unsaved</Badge>}
             {entries.length > 0 && <Badge tone="neutral">{active.size} active</Badge>}
           </>
         }

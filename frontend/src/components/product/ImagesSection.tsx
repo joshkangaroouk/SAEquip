@@ -67,7 +67,7 @@ export function ImagesSection({
           description="Drag to reorder — the first image is the product thumbnail."
           actions={
             <>
-              {dirty && <Badge tone="accent">Unsaved</Badge>}
+              {dirty && <Badge dot="unsaved">Unsaved</Badge>}
               <Button variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
                 Add from Media Centre
               </Button>

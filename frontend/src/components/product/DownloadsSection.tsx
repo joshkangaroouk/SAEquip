@@ -91,7 +91,7 @@ export function DownloadsSection({
         description="Datasheets, user manuals and certificates for this product. The type decides which resources page lists each file. Drag to set the order."
         actions={
           <div className="flex items-center gap-2">
-            {dirty && <Badge tone="accent">Unsaved</Badge>}
+            {dirty && <Badge dot="unsaved">Unsaved</Badge>}
             <Button type="button" size="sm" onClick={() => setPickerOpen(true)}>
               + Add download
             </Button>

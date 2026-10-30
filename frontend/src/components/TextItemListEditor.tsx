@@ -34,7 +34,7 @@ export function TextItemListEditor({
       <CardHeader
         title={title}
         description={description}
-        actions={dirty ? <Badge tone="accent">Unsaved</Badge> : undefined}
+        actions={dirty ? <Badge dot="unsaved">Unsaved</Badge> : undefined}
       />
 
       <SectionError message={error} />

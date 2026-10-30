@@ -49,7 +49,7 @@ export function VariationsSection({
         }
         actions={
           <>
-            {dirty && <Badge tone="accent">Unsaved</Badge>}
+            {dirty && <Badge dot="unsaved">Unsaved</Badge>}
             <Badge tone="neutral">{variations.length}</Badge>
           </>
         }

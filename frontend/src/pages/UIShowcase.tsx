@@ -122,7 +122,7 @@ export default function UIShowcase() {
         <h2 className="t-section">Badges</h2>
         <Card className="flex flex-wrap items-center gap-3">
           <Badge tone="neutral">Neutral</Badge>
-          <Badge tone="accent">Accent</Badge>
+          <Badge tone="new">New</Badge>
           <Badge tone="success">Success</Badge>
           <Badge tone="danger">Danger</Badge>
           <StatusBadge status="ACTIVE" />

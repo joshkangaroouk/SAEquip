@@ -82,7 +82,7 @@ export function AttachOptionModal({
       description="Options are shared across the whole store. Attach an existing one and pick which of its choices this product offers."
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          <Badge tone={atCap ? "danger" : catalog.remaining != null && catalog.remaining <= 3 ? "accent" : "neutral"}>
+          <Badge tone={atCap ? "danger" : catalog.remaining != null && catalog.remaining <= 3 ? "warning" : "neutral"}>
             {catalog.count} / {catalog.max_options ?? "?"} options used
           </Badge>
           <Button variant="ghost" onClick={onClose}>

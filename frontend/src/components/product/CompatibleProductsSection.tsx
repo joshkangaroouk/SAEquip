@@ -121,7 +121,7 @@ export function CompatibleProductsSection({
       <CardHeader
         title="Compatible Products"
         description="Shown on the product page as a carousel. Click a product on the left to add it; drag the right-hand list to set the order it appears in."
-        actions={dirty ? <Badge tone="accent">Unsaved</Badge> : undefined}
+        actions={dirty ? <Badge dot="unsaved">Unsaved</Badge> : undefined}
       />
 
       <SectionError message={error} />

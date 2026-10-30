@@ -85,7 +85,7 @@ export function AccordionCard({
           )}
         </span>
         {summary != null && <span className="shrink-0 text-label text-muted">{summary}</span>}
-        {error ? <Badge tone="danger">Error</Badge> : dirty ? <Badge tone="accent">Unsaved</Badge> : null}
+        {error ? <Badge tone="danger">Error</Badge> : dirty ? <Badge dot="unsaved">Unsaved</Badge> : null}
       </button>
 
       {open && (

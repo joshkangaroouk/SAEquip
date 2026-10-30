@@ -32,7 +32,7 @@ export function DescriptionSection({
         description="Shown on the product page in Duda."
         actions={
           <>
-            {dirty && <Badge tone="accent">Unsaved</Badge>}
+            {dirty && <Badge dot="unsaved">Unsaved</Badge>}
             <div className="flex rounded-md border border-border p-0.5">
               {(["rich", "html"] as const).map((m) => (
                 <button

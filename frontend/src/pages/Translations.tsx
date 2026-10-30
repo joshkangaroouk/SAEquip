@@ -54,7 +54,8 @@ const STATUS_LABEL: Record<TranslationStatus, string> = {
 };
 
 function StatusBadge({ status }: { status: TranslationStatus }) {
-  const tone = status === "staff" ? "success" : status === "rejected" ? "danger" : status === "missing" ? "accent" : "neutral";
+  // "Missing" is neutral, not yellow: yellow marks only the active or primary thing (02a Q9).
+  const tone = status === "staff" ? "ok" : status === "rejected" ? "danger" : "neutral";
   return <Badge tone={tone}>{STATUS_LABEL[status]}</Badge>;
 }
 

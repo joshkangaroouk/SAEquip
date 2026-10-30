@@ -113,7 +113,7 @@ export default function Users() {
                   </TD>
                   <TD className="text-muted">{when(u.lastSignInAt)}</TD>
                   <TD className="text-muted">{when(u.createdAt)}</TD>
-                  <TD>{u.dudaEditor ? <Badge tone="accent">Yes</Badge> : <span className="text-muted">—</span>}</TD>
+                  <TD>{u.dudaEditor ? <Badge tone="solid">Yes</Badge> : <span className="text-muted">—</span>}</TD>
                   <TD className="w-px whitespace-nowrap">
                     <Button
                       variant="secondary"
