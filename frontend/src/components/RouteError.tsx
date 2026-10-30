@@ -1,5 +1,5 @@
 import { isRouteErrorResponse, useNavigate, useRouteError } from "react-router-dom";
-import { Alert, Button, Card } from "./ui";
+import { Alert, Button, PageHeader } from "./ui";
 
 /**
  * Route-level error boundary.
@@ -13,8 +13,9 @@ import { Alert, Button, Card } from "./ui";
  * TypeScript cannot check against the route producing it, so a nullability
  * drift shows up first at runtime, in the browser.
  *
- * Attached to the authenticated layout route, so the sidebar survives and the
- * failure is scoped to the page that threw.
+ * Attached to the authenticated layout route, so the sidebar and top bar
+ * survive (the breadcrumb still names the page) and the failure is scoped to
+ * the page that threw. Drawn like any page: the header band, then the error.
  */
 export function RouteError() {
   const error = useRouteError();
@@ -28,33 +29,28 @@ export function RouteError() {
   const stack = error instanceof Error ? error.stack : undefined;
 
   return (
-    <Card>
-      <h1 className="t-section text-text">This page hit an error</h1>
-      <p className="mt-2 text-body text-muted">
-        The rest of the dashboard is still working — use the sidebar, or try again.
-      </p>
+    <>
+      <PageHeader
+        title="This page hit an error"
+        description="The rest of the dashboard is still working — use the sidebar, or try again."
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => navigate("/")}>
+              Back to products
+            </Button>
+            <Button onClick={() => navigate(0)}>Reload this page</Button>
+          </>
+        }
+      />
 
-      <Alert tone="danger" className="mt-4">
-        {summary}
-      </Alert>
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        <Button onClick={() => navigate(0)}>Reload this page</Button>
-        <Button variant="secondary" onClick={() => navigate("/")}>
-          Back to Products
-        </Button>
-      </div>
+      <Alert tone="danger">{summary}</Alert>
 
       {stack && (
         <details className="mt-5">
-          <summary className="cursor-pointer text-label text-muted hover:text-text">
-            Technical detail (useful when reporting this)
-          </summary>
-          <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-surface-2 p-3 text-label text-muted">
-            {stack}
-          </pre>
+          <summary className="t-label cursor-pointer hover:text-text">Technical detail (useful when reporting this)</summary>
+          <pre className="t-code-sm mt-2 max-h-64 overflow-auto border border-border bg-surface-2 p-3 text-muted">{stack}</pre>
         </details>
       )}
-    </Card>
+    </>
   );
 }
