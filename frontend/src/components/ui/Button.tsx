@@ -106,8 +106,10 @@ export function RemoveButton({
       title={title}
       aria-label={title}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-md leading-none text-muted transition-colors",
-        size === "sm" ? "h-6 w-6 text-base" : "h-8 w-8 text-lg",
+        "flex shrink-0 items-center justify-center rounded-md text-muted transition-colors",
+        // `leading-none` AFTER the size: tailwind-merge lets a later font size
+        // cancel an earlier line-height, which would loosen the glyph's box.
+        size === "sm" ? "h-6 w-6 text-base leading-none" : "h-8 w-8 text-lg leading-none",
         "hover:bg-surface-2 hover:text-danger outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent",
         className,

@@ -176,7 +176,9 @@ function EditTranslation({
             lang={locale}
             // HTML source reads left to right, like code; the preview below is the real direction.
             dir={rtl && !html ? "rtl" : "ltr"}
-            className={html ? "font-mono text-small" : undefined}
+            // `leading-relaxed` restated: with tailwind-merge a font size cancels
+            // the Textarea's own line-height, which was not the intent here.
+            className={html ? "font-mono text-small leading-relaxed" : undefined}
           />
           {html && text.trim() && (
             <div className="mt-2 max-h-48 overflow-auto rounded-md border border-border p-3" lang={locale} dir={rtl ? "rtl" : "ltr"}>
