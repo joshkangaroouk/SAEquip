@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useForceLightTheme } from "../lib/theme";
 import { Button, Field, Input } from "../components/ui";
 import logoUrl from "../assets/saequip-logo.svg";
 
@@ -41,6 +42,7 @@ function EyeOffIcon() {
 }
 
 export default function Login() {
+  useForceLightTheme(); // auth pages are light only (redesign 02a Q15)
   const { user, loading, mfaPending, signIn, verifyMfa, signOut } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");

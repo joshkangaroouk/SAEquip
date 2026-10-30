@@ -639,7 +639,7 @@ export default function Widgets() {
               <span className="font-semibold">Comes from:</span> {w.source}
             </p>
 
-            <div className="mt-4 rounded-lg border border-border bg-white p-4">{w.preview}</div>
+            <div className="mt-4 rounded-lg border border-border bg-paper p-4">{w.preview}</div>
           </Card>
         ))}
       </div>

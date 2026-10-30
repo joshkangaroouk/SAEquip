@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthContext";
 import { toast } from "../components/ui";
+import { applyTheme, useDocumentTheme, THEME_PREFERENCE_KEY, type Theme } from "../lib/theme";
 
 /**
  * A UI preference stored against the signed-in ACCOUNT, in Supabase's
@@ -65,4 +66,34 @@ export const HIDE_COMMERCE_KEY = "hideCommerceFields";
 
 export function useHideCommerceFields() {
   return useUserPreference<boolean>(HIDE_COMMERCE_KEY, true);
+}
+
+/**
+ * The account's light/dark choice.
+ *
+ * `null` means never chosen, which keeps whatever the pre-paint copy applied.
+ * A value from the account wins once the session resolves, so a choice made
+ * on one computer reaches the others. Called once in Layout so it runs on
+ * every authenticated page; the theme toggle (redesign batch 4) calls
+ * `setTheme`.
+ *
+ * ⚠️ `setTheme` writes the signed-in user's Supabase user_metadata — a real
+ * write to the live auth record, if a harmless one.
+ */
+export function useThemePreference() {
+  const pref = useUserPreference<Theme | null>(THEME_PREFERENCE_KEY, null);
+  const { value, setValue, saving } = pref;
+  useEffect(() => {
+    if (value === "light" || value === "dark") applyTheme(value);
+  }, [value]);
+  const setTheme = useCallback(
+    (theme: Theme) => {
+      applyTheme(theme); // instant, and refreshes the pre-paint copy
+      // Optimistic: on failure it reverts with a toast, and the effect above
+      // re-applies the previous theme.
+      void setValue(theme);
+    },
+    [setValue],
+  );
+  return { theme: useDocumentTheme(), setTheme, saving };
 }

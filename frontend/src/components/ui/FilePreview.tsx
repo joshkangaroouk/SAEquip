@@ -96,7 +96,7 @@ export function FilePreview({
 }) {
   const [broken, setBroken] = useState(false);
   return (
-    <span className={cn("flex items-center justify-center overflow-hidden bg-white", className)}>
+    <span className={cn("flex items-center justify-center overflow-hidden bg-paper", className)}>
       {thumbnailUrl && !broken ? (
         <img
           src={thumbnailUrl}

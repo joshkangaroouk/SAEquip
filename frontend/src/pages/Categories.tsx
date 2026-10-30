@@ -417,7 +417,7 @@ function CategoryTree({
           )}
           <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-muted">
             {n.imageUrl ? (
-              <img src={n.imageUrl} alt="" className="h-full w-full object-contain" />
+              <img src={n.imageUrl} alt="" className="h-full w-full bg-paper object-contain" />
             ) : (
               <ImageOff size={14} />
             )}

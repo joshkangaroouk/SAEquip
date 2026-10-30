@@ -36,7 +36,7 @@ function Thumb({ url, name }: { url: string | null; name: string }) {
   return (
     <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2">
       {url ? (
-        <img src={url} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
+        <img src={url} alt="" loading="lazy" className="max-h-full max-w-full bg-paper object-contain" />
       ) : (
         <span className="text-micro font-semibold text-muted" aria-hidden="true">
           {name.trim().charAt(0).toUpperCase() || "?"}

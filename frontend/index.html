@@ -1,8 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Pre-paint theme, so a dark-theme page never flashes light. It reads the
+      copy that src/lib/theme.ts keeps in localStorage ("hub-theme"), falls
+      back to light, and always paints the sign-in, forgot-password and
+      reset-password pages light (they are light only).
+
+      ⚠️ Its sha256 is in the Content-Security-Policy in vercel.json
+      (script-src). Changing ONE byte between the tags — whitespace included —
+      changes the hash: recompute it and update vercel.json in the same
+      commit. Kept on one line so that is easy to get right.
+    -->
+    <script>try{var a=/^\/(login|forgot-password|reset-password)\/?$/.test(location.pathname);document.documentElement.dataset.theme=!a&&localStorage.getItem("hub-theme")==="dark"?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
     <title>SAEquip Product Hub</title>
     <!--
       The SA EQUIP logo mark. Declared as the ONLY rel="icon" on purpose: a

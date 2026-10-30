@@ -424,7 +424,7 @@ export default function Products() {
                             // only the rows in view should load.
                             loading="lazy"
                             decoding="async"
-                            className="h-[100px] w-[100px] shrink-0 rounded border border-border object-cover"
+                            className="h-[100px] w-[100px] shrink-0 rounded border border-border bg-paper object-cover"
                           />
                         ) : (
                           <div className="h-[100px] w-[100px] shrink-0 rounded border border-border bg-surface-2" />

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useForceLightTheme } from "../lib/theme";
 import { Button, Field, Input } from "../components/ui";
 import { assessPassword } from "../lib/passwordPolicy";
 import { needsSecondFactor, verifyTotpCode } from "../lib/mfa";
@@ -27,6 +28,7 @@ import logoUrl from "../assets/saequip-logo.svg";
  * way out was the CLI. The code raises the recovery session to aal2 first.
  */
 export default function ResetPassword() {
+  useForceLightTheme(); // auth pages are light only (redesign 02a Q15)
   const navigate = useNavigate();
   const [ready, setReady] = useState<"checking" | "ok" | "no-session">("checking");
   const [password, setPassword] = useState("");

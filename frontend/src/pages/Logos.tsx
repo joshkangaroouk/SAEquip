@@ -58,7 +58,7 @@ function LogoCard({
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-surface p-3">
-      <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
+      <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-paper">
         <img src={entry.url} alt={entry.alt || entry.label || "logo"} className="max-h-24 max-w-full object-contain" />
       </div>
       <Button variant="secondary" size="xs" className="mt-2" onClick={() => onReplace(entry)}>
@@ -180,11 +180,11 @@ export default function Logos() {
         <>
           {/* Spans, not divs: the dialog renders its description in a <p>. */}
           <span className="mb-3 flex items-center justify-center gap-3">
-            <span className="flex h-20 w-28 items-center justify-center rounded-lg bg-surface-2 p-2">
+            <span className="flex h-20 w-28 items-center justify-center rounded-lg bg-paper p-2">
               <img src={entry.url} alt="Current image" className="max-h-full max-w-full object-contain" />
             </span>
             <span aria-hidden="true" className="text-muted">→</span>
-            <span className="flex h-20 w-28 items-center justify-center rounded-lg bg-surface-2 p-2">
+            <span className="flex h-20 w-28 items-center justify-center rounded-lg bg-paper p-2">
               <img src={asset.url ?? ""} alt="New image" className="max-h-full max-w-full object-contain" />
             </span>
           </span>

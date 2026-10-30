@@ -170,7 +170,7 @@ export function MediaPicker({
                         src={a.url ?? undefined}
                         alt={a.alt || a.filename}
                         loading="lazy"
-                        className="h-24 w-full object-contain"
+                        className="h-24 w-full bg-paper object-contain"
                       />
                     ) : (
                       <FilePreview

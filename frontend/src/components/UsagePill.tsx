@@ -163,14 +163,14 @@ function ProductRow({ product: p, showVia }: { product: UsageProduct; showVia: b
       to={`/products/${p.dudaProductId}`}
       className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-white">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2">
         {p.thumbnailUrl && !broken ? (
           <img
             src={p.thumbnailUrl}
             alt=""
             loading="lazy"
             onError={() => setBroken(true)}
-            className="h-full w-full object-contain"
+            className="h-full w-full bg-paper object-contain"
           />
         ) : (
           <ImageOff className="h-4 w-4 text-muted" aria-hidden="true" />

@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { useThemePreference } from "../hooks/useUserPreference";
 import { cn } from "../lib/cn";
 import logoUrl from "../assets/saequip-logo.svg";
 
@@ -366,6 +367,8 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
  */
 export function Layout({ children }: { children?: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Applies the account's light/dark choice once the session has loaded.
+  useThemePreference();
 
   return (
     <div className="min-h-screen bg-bg text-text">

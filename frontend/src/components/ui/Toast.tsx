@@ -1,14 +1,15 @@
 import { Toaster as SonnerToaster, toast } from "sonner";
+import { useDocumentTheme } from "../../lib/theme";
 
 /**
- * Themed sonner Toaster — light, rounded, top-right, yellow accents.
+ * Themed sonner Toaster — follows the page theme, square, top-right.
  * Mount ONCE near the app root. Fire toasts with the re-exported `toast`.
  */
 export function Toaster() {
   return (
     <SonnerToaster
       position="top-right"
-      theme="light"
+      theme={useDocumentTheme()}
       richColors={false}
       toastOptions={{
         style: {

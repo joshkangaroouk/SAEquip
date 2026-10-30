@@ -72,7 +72,7 @@ export function LogoActivationPanel({
                   on ? "border-accent bg-accent/10" : "border-border hover:border-border-strong"
                 }`}
               >
-                <div className="flex h-16 w-full items-center justify-center bg-surface-2">
+                <div className="flex h-16 w-full items-center justify-center bg-paper">
                   <img
                     src={entry.url}
                     alt={entry.alt || entry.label || "logo"}

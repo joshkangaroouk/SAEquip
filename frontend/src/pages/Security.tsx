@@ -176,7 +176,7 @@ export default function Security() {
                 <img
                   src={enrolling.qr}
                   alt="Two-factor QR code"
-                  className="mt-3 h-44 w-44 rounded-md border border-border bg-white p-2"
+                  className="mt-3 h-44 w-44 rounded-md border border-border bg-paper p-2"
                 />
                 <details className="mt-2">
                   <summary className="cursor-pointer text-label text-muted hover:text-text">

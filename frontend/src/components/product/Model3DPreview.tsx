@@ -73,5 +73,5 @@ export function Model3DPreview({ src }: { src: string }) {
     };
   }, [src]);
 
-  return <div ref={ref} className="overflow-hidden rounded-md border border-border bg-surface-2" />;
+  return <div ref={ref} className="overflow-hidden rounded-md border border-border bg-paper" />;
 }

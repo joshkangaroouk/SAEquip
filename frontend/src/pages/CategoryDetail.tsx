@@ -326,7 +326,7 @@ export default function CategoryDetail() {
                     <DragHandle handle={handle} />
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-muted">
                       {c.imageUrl ? (
-                        <img src={c.imageUrl} alt="" className="h-full w-full object-contain" />
+                        <img src={c.imageUrl} alt="" className="h-full w-full bg-paper object-contain" />
                       ) : (
                         <ImageOff size={14} />
                       )}
@@ -354,7 +354,7 @@ export default function CategoryDetail() {
               className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-surface-2 text-muted transition-colors hover:border-ring hover:text-text"
             >
               {draft.image_url ? (
-                <img src={draft.image_url} alt="" className="h-full w-full object-contain" />
+                <img src={draft.image_url} alt="" className="h-full w-full bg-paper object-contain" />
               ) : (
                 <span className="flex flex-col items-center gap-2 text-help">
                   <ImageOff size={24} />

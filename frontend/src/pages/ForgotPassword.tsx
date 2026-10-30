@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useForceLightTheme } from "../lib/theme";
 import { Button, Field, Input } from "../components/ui";
 import logoUrl from "../assets/saequip-logo.svg";
 
@@ -13,6 +14,7 @@ import logoUrl from "../assets/saequip-logo.svg";
  * than the reset itself. Supabase behaves the same way for the same reason.
  */
 export default function ForgotPassword() {
+  useForceLightTheme(); // auth pages are light only (redesign 02a Q15)
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);

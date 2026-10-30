@@ -9,9 +9,9 @@ import { ImageOff } from "lucide-react";
 export function ProductThumb({ url }: { url: string | null }) {
   const [broken, setBroken] = useState(false);
   return (
-    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-white">
+    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2">
       {url && !broken ? (
-        <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full object-contain" />
+        <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full bg-paper object-contain" />
       ) : (
         <ImageOff className="h-4 w-4 text-muted" aria-hidden="true" />
       )}

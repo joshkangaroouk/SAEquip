@@ -25,7 +25,7 @@ export function ImageCard({
         apart as the grid narrowed. A square well keeps every tile identical
         and matches how Duda crops the gallery thumbnail.
       */}
-      <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-surface-2">
+      <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-paper">
         <img
           src={image.url}
           alt={image.alt || "product image"}

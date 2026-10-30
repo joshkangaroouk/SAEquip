@@ -245,7 +245,7 @@ export function AssignPickList({
                               src={row.item.imageUrl}
                               alt=""
                               loading="lazy"
-                              className="h-full w-full object-contain"
+                              className="h-full w-full bg-paper object-contain"
                             />
                           ) : (
                             <ImageOff size={14} />

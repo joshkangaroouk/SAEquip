@@ -312,7 +312,7 @@ export default function Media() {
           >
             {lib.items.map((a) => (
               <div key={a.id} className="flex flex-col rounded-xl border border-border bg-surface p-3">
-                <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
+                <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg bg-paper">
                   {a.kind === "image" ? (
                     <img
                       src={a.url ?? undefined}
