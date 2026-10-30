@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { forwardRef, type AnchorHTMLAttributes, type ButtonHTMLAttributes } from "react";
 import { X } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Spinner } from "./Spinner";
@@ -75,6 +75,26 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     </button>
   );
 });
+
+/**
+ * A link that looks like a Button — for navigation, e.g. "View live site"
+ * opening another site. A real <a>, so it opens in a new tab, copies and
+ * reads as a link. Same variants and sizes; the hovers drop `enabled:`,
+ * which never matches a link.
+ */
+export function ButtonLink({
+  variant = "secondary",
+  size = "md",
+  className,
+  children,
+  ...rest
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: Exclude<Variant, "danger-solid">; size?: Size }) {
+  return (
+    <a className={cn(base, variants[variant].replace(/enabled:hover:/g, "hover:"), sizes[size], className)} {...rest}>
+      {children}
+    </a>
+  );
+}
 
 /**
  * The "×" remove control: neutral until hovered, then a surface-2 square and

@@ -1,5 +1,5 @@
 /** SAEquip component kit — light and dark themes, square, yellow accent. See it all at /ui in development. */
-export { Button, RemoveButton, type ButtonProps } from "./Button";
+export { Button, ButtonLink, RemoveButton, type ButtonProps } from "./Button";
 export { Input, Field, type InputProps } from "./Input";
 export { Textarea, type TextareaProps } from "./Textarea";
 export { Select, type SelectProps } from "./Select";

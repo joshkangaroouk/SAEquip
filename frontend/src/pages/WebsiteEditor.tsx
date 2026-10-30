@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Globe } from "lucide-react";
-import { Alert, Badge, Button, Card, EmptyState, Loader, PageHeader, toast } from "../components/ui";
+import { Alert, Badge, Button, ButtonLink, Card, EmptyState, Loader, PageHeader, toast } from "../components/ui";
 import { apiJson } from "../lib/api";
 
 interface EditableSite {
@@ -19,8 +19,8 @@ interface SitesResponse {
   sites: EditableSite[];
 }
 
-function publishTone(status: string | null): "success" | "neutral" {
-  return status === "PUBLISHED" ? "success" : "neutral";
+function publishTone(status: string | null): "ok" | "neutral" {
+  return status === "PUBLISHED" ? "ok" : "neutral";
 }
 
 function publishLabel(status: string | null): string {
@@ -29,35 +29,46 @@ function publishLabel(status: string | null): string {
 }
 
 /**
- * Homepage screenshot from Duda's CDN — the same image Duda shows in its own
- * site list.
+ * Homepage preview: Duda's screenshot, the same image Duda shows in its own
+ * site list, on --paper.
  *
- * Duda captures the FULL page, so the source image is very tall. Cropping a
- * fixed 200x160 tile from the top (object-top) shows the above-the-fold hero,
- * which reads as a browser viewport rather than a squashed whole-page image.
+ * Duda captures the FULL page, so the source image is very tall. Cropping from
+ * the top (object-top) shows the above-the-fold hero, which reads as a browser
+ * viewport rather than a squashed whole-page image.
  *
  * Falls back to a neutral tile if the screenshot 404s (a site Duda hasn't
  * captured yet) rather than showing a broken-image icon.
  */
-function SiteThumbnail({ src, alt }: { src: string | null; alt: string }) {
+function HomepagePreview({ src, alt }: { src: string | null; alt: string }) {
   const [failed, setFailed] = useState(false);
-
   return (
-    <div className="h-[160px] w-[200px] shrink-0 overflow-hidden rounded-md border border-border bg-surface-2">
+    <div className="aspect-[16/9] max-h-[420px] w-full overflow-hidden border border-border bg-surface-2">
       {src && !failed ? (
         <img
           src={src}
           alt={alt}
           loading="lazy"
           onError={() => setFailed(true)}
-          className="h-full w-full object-cover object-top"
+          className="h-full w-full bg-paper object-cover object-top"
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center">
-          <Globe size={28} className="text-muted" />
+          <Globe size={32} className="text-muted" aria-hidden="true" />
         </div>
       )}
     </div>
+  );
+}
+
+/** A value the page cannot show without a new Duda read (02a Q21). */
+function NotAvailable() {
+  return (
+    <>
+      <span aria-hidden="true" className="text-muted">
+        —
+      </span>
+      <span className="sr-only">Not available</span>
+    </>
   );
 }
 
@@ -132,74 +143,108 @@ export default function WebsiteEditor() {
 
       {loading && <Loader label="Checking your website access…" />}
 
-      {error && (
-        <Alert tone="danger" className="mt-4">
-          {error}
-        </Alert>
-      )}
+      {error && <Alert tone="danger">{error}</Alert>}
 
       {!loading && !error && data && (
         <>
           {!data.hasAccess || data.sites.length === 0 ? (
-            <Card className="mt-4">
-              <EmptyState
-                title="No editor access yet"
-                description="Your account isn't set up to edit the website. Ask Kangaroo to enable editor access for you."
-              />
-            </Card>
+            <EmptyState
+              title="No editor access yet"
+              description="Your account isn't set up to edit the website. Ask Kangaroo to enable editor access for you."
+            />
           ) : (
-            <div className="mt-4 space-y-4">
+            <div className="space-y-5">
               {data.sites.map((site) => (
-                <Card key={site.siteName}>
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                    <SiteThumbnail src={site.thumbnailUrl} alt="SAEquip homepage" />
-
-                    <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="t-section text-text">SAEquip</h2>
-                          <Badge tone={publishTone(site.publishStatus)}>
-                            {publishLabel(site.publishStatus)}
-                          </Badge>
-                        </div>
-
-                        {site.siteUrl ? (
-                          <a
-                            href={site.siteUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-1 inline-flex items-center gap-1.5 text-body text-muted underline underline-offset-2 hover:text-text"
-                          >
-                            {site.domain ?? site.siteUrl}
-                            <ExternalLink size={13} className="shrink-0" />
-                          </a>
-                        ) : (
-                          <p className="mt-1 text-body text-muted">{site.siteName}</p>
-                        )}
-
-                        <p className="mt-1 text-help text-muted">
-                          Site ID: {site.siteName}
-                          {site.lastPublished && (
-                            <> · Last published {new Date(site.lastPublished).toLocaleDateString()}</>
-                          )}
-                        </p>
+                <Card key={site.siteName} padded={false}>
+                  {/* Header row: the site, its publish state, and the two ways out — primary last. */}
+                  <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-5 py-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="t-section text-text">SAEquip</h2>
+                        <Badge tone={publishTone(site.publishStatus)}>{publishLabel(site.publishStatus)}</Badge>
                       </div>
-
+                      <p className="t-help mt-1">
+                        Site ID <span className="t-code-sm">{site.siteName}</span>
+                        {site.lastPublished && (
+                          <> · Last published {new Date(site.lastPublished).toLocaleDateString()}</>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {site.siteUrl && (
+                        <ButtonLink href={site.siteUrl} target="_blank" rel="noopener noreferrer">
+                          View live site
+                          <ExternalLink size={16} aria-hidden="true" />
+                          <span className="sr-only">(opens in a new tab)</span>
+                        </ButtonLink>
+                      )}
+                      {/* openEditor claims its tab synchronously in this click — keep it the first thing it does. */}
                       <Button
                         onClick={() => void openEditor(site.siteName)}
                         loading={opening === site.siteName}
                         disabled={opening !== null}
                       >
-                        Edit Website
+                        Open in Duda editor
                       </Button>
                     </div>
                   </div>
+
+                  <div className="p-5">
+                    <HomepagePreview src={site.thumbnailUrl} alt="SAEquip homepage" />
+                  </div>
+
+                  {/*
+                    The site status grid (00). Only what the Hub already reads
+                    (02a Q21): /api/website/sites returns the domain, publish
+                    state and dates, nothing about search engines or languages.
+                  */}
+                  <dl className="grid grid-cols-1 border-t border-border sm:grid-cols-3">
+                    <div className="px-5 py-4">
+                      <dt className="t-label">Search engines</dt>
+                      <dd className="mt-1 text-body text-text">
+                        {/* — until the site's no-index setting is read: Duda's site_seo.no_index,
+                            on the same GET /sites/multiscreen/{site} the sites route already makes
+                            but does not pass on. */}
+                        <NotAvailable />
+                      </dd>
+                    </div>
+                    <div className="border-t border-border px-5 py-4 sm:border-l sm:border-t-0">
+                      <dt className="t-label">Languages</dt>
+                      <dd className="mt-1 text-body text-text">
+                        {/* — until the site's languages are read: Duda's lang and
+                            additionalLanguages (duda.getSiteLanguages()), the same site read,
+                            not returned by /api/website/sites. */}
+                        <NotAvailable />
+                      </dd>
+                    </div>
+                    <div className="border-t border-border px-5 py-4 sm:border-l sm:border-t-0">
+                      <dt className="t-label">Address</dt>
+                      <dd className="mt-1 min-w-0 truncate text-body text-text">
+                        {site.domain ? (
+                          site.siteUrl ? (
+                            <a
+                              href={site.siteUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline-offset-2 hover:underline"
+                            >
+                              {site.domain}
+                            </a>
+                          ) : (
+                            site.domain
+                          )
+                        ) : (
+                          <NotAvailable />
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
                 </Card>
               ))}
 
-              <p className="text-help text-muted">
-                You'll be signed into Duda as {data.dudaAccountName}. Product content is managed
-                here in the Hub, not in Duda's store.
+              <p className="t-help">
+                You'll be signed into Duda as {data.dudaAccountName}. Product content is managed here in the Hub, not
+                in Duda's store.
               </p>
             </div>
           )}
