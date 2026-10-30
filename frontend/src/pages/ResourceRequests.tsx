@@ -28,6 +28,7 @@ import {
 } from "../components/enquiries";
 import type { ResourceRequest, ResourceRequestsResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
+import { refreshEnquiryCounts } from "../lib/enquiryCounts";
 import { formatDateTime, formatShortDate } from "../lib/format";
 import { languageName } from "../lib/language";
 
@@ -175,7 +176,10 @@ export default function ResourceRequests() {
     apiFetch("/api/resource-requests")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((json: ResourceRequestsResponse) => {
-        if (!cancelled) setData(json);
+        if (cancelled) return;
+        setData(json);
+        // The badge should agree with the list just loaded.
+        refreshEnquiryCounts();
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load resource requests");

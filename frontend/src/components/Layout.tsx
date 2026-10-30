@@ -20,6 +20,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useThemePreference } from "../hooks/useUserPreference";
 import { cn } from "../lib/cn";
 import { useProductIndex } from "../lib/productIndex";
+import { useEnquiryCounts } from "../lib/enquiryCounts";
 import { useSignOut } from "../hooks/useSignOut";
 import { initialsFrom } from "../lib/initials";
 import { Lockup } from "./Lockup";
@@ -44,8 +45,11 @@ interface NavItem {
   icon: LucideIcon;
   /** When the item is current. Defaults to the route and anything below it. */
   match?: (pathname: string) => boolean;
-  /** Products carries the live product count (02a "After 4b"). */
-  badge?: "liveProducts";
+  /**
+   * Products carries the live product count; Quote requests and Resource
+   * requests the count not yet handled (02a "After 4b").
+   */
+  badge?: "liveProducts" | "newQuotes" | "newResourceRequests";
 }
 
 interface NavGroup {
@@ -83,10 +87,9 @@ const NAV: NavGroup[] = [
   },
   {
     label: "Enquiries",
-    // No badges until the batch 6 migration adds handledAt (02a "After 4b").
     items: [
-      { to: "/quotes", label: "Quote requests", icon: BarChart3 },
-      { to: "/resource-requests", label: "Resource requests", icon: FileDown },
+      { to: "/quotes", label: "Quote requests", icon: BarChart3, badge: "newQuotes" },
+      { to: "/resource-requests", label: "Resource requests", icon: FileDown, badge: "newResourceRequests" },
     ],
   },
   {
@@ -105,7 +108,16 @@ const isCurrent = (item: NavItem, pathname: string) =>
  * One item: 40px, 18px icon, Inter 14/500; the current one solid yellow with
  * black 600 text, the rest #C9C9C5 going to white on #1A1A1A under the pointer.
  */
-function NavRow({ item, badge, onNavigate }: { item: NavItem; badge?: number; onNavigate?: () => void }) {
+function NavRow({
+  item,
+  badge,
+  onNavigate,
+}: {
+  item: NavItem;
+  /** The number, and what it counts for a screen reader ("83 live", "3 new"). */
+  badge?: { count: number; noun: string };
+  onNavigate?: () => void;
+}) {
   const { pathname } = useLocation();
   const current = isCurrent(item, pathname);
   const Icon = item.icon;
@@ -128,15 +140,15 @@ function NavRow({ item, badge, onNavigate }: { item: NavItem; badge?: number; on
       <Icon size={18} strokeWidth={2} aria-hidden="true" className="shrink-0" />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {/* Never a badge of 0 (02a "After 4b"). */}
-      {badge ? (
+      {badge?.count ? (
         <span
           className={cn(
             "t-code-sm inline-flex h-5 min-w-5 shrink-0 items-center justify-center px-1.5",
             current ? "bg-sidebar-active-ink text-sidebar-active" : "bg-sidebar-badge text-sidebar-badge-ink",
           )}
         >
-          <span aria-hidden="true">{badge}</span>
-          <span className="sr-only">{`${badge} live`}</span>
+          <span aria-hidden="true">{badge.count}</span>
+          <span className="sr-only">{`${badge.count} ${badge.noun}`}</span>
         </span>
       ) : null}
     </Link>
@@ -145,7 +157,12 @@ function NavRow({ item, badge, onNavigate }: { item: NavItem; badge?: number; on
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const { products } = useProductIndex();
-  const live = products?.filter((p) => p.status === "ACTIVE").length ?? 0;
+  const enquiries = useEnquiryCounts();
+  const badges: Record<NonNullable<NavItem["badge"]>, { count: number; noun: string }> = {
+    liveProducts: { count: products?.filter((p) => p.status === "ACTIVE").length ?? 0, noun: "live" },
+    newQuotes: { count: enquiries?.quotes ?? 0, noun: "new" },
+    newResourceRequests: { count: enquiries?.resourceRequests ?? 0, noun: "new" },
+  };
   // Per instance: the drawer renders a second copy of the nav.
   const idBase = useId();
   return (
@@ -163,7 +180,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
             <ul aria-labelledby={labelId} className="flex flex-col gap-0.5">
               {group.items.map((item) => (
                 <li key={item.to}>
-                  <NavRow item={item} badge={item.badge ? live : undefined} onNavigate={onNavigate} />
+                  <NavRow item={item} badge={item.badge && badges[item.badge]} onNavigate={onNavigate} />
                 </li>
               ))}
             </ul>

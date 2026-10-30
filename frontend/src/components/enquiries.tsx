@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Search } from "lucide-react";
 import { Badge, Button, ButtonLink, DropdownMenu, Input, SegmentedControl, Skeleton, toast } from "./ui";
 import { apiJson } from "../lib/api";
+import { refreshEnquiryCounts } from "../lib/enquiryCounts";
 import { formatDateTime } from "../lib/format";
 import type { HandledResponse } from "../lib/types";
 
@@ -24,8 +25,8 @@ export const isNew = (e: { handledAt: string | null }) => e.handledAt === null;
 
 /**
  * Mark as handled / Mark as new: PATCH `endpoint(id)` with `{ handled }`, then
- * hand the server's answer to `onDone` to fold into the page's list. `busy` is
- * the id in flight.
+ * hand the server's answer to `onDone` to fold into the page's list, and
+ * refresh the sidebar badges. `busy` is the id in flight.
  */
 export function useMarkHandled(endpoint: (id: string) => string, onDone: (res: HandledResponse) => void, noun: string) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export function useMarkHandled(endpoint: (id: string) => string, onDone: (res: H
         body: JSON.stringify({ handled }),
       });
       onDone(res);
+      refreshEnquiryCounts();
       toast.success(handled ? "Marked as handled" : "Marked as new");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : `Couldn't update the ${noun}`);

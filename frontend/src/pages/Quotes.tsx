@@ -34,6 +34,7 @@ import {
 } from "../components/enquiries";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
+import { refreshEnquiryCounts } from "../lib/enquiryCounts";
 import { formatDateTime, formatShortDate } from "../lib/format";
 import { languageName } from "../lib/language";
 
@@ -201,7 +202,10 @@ export default function Quotes() {
     apiFetch("/api/quotes")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((json: QuotesResponse) => {
-        if (!cancelled) setData(json);
+        if (cancelled) return;
+        setData(json);
+        // The badge should agree with the list just loaded.
+        refreshEnquiryCounts();
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load quote requests");
