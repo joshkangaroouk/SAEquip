@@ -99,7 +99,7 @@ export const router = createBrowserRouter([
       {
         path: "/resource-requests",
         element: <ResourceRequests />,
-        handle: { crumbs: { group: "Enquiries", title: "Resource requests" } },
+        handle: { crumbs: { group: "Enquiries", title: "Resource requests" }, layout: "full" },
       },
       { path: "/translations", element: <Translations />, handle: { crumbs: { group: "Catalogue", title: "Translations" } } },
       { path: "/users", element: <UsersPage />, handle: { crumbs: { group: "Admin", title: "Users" } } },

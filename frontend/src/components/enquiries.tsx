@@ -1,17 +1,114 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Search } from "lucide-react";
-import { Input, SegmentedControl, Skeleton } from "./ui";
+import { Badge, Button, ButtonLink, DropdownMenu, Input, SegmentedControl, Skeleton, toast } from "./ui";
+import { apiJson } from "../lib/api";
+import { formatDateTime } from "../lib/format";
+import type { HandledResponse } from "../lib/types";
 
 /**
  * The pieces Quote requests and Resource requests share as split views
  * (redesign batch 6): the list toolbar, the New / Handled filter, the
- * loading rows and the detail's definition grid.
+ * loading rows, the detail's header actions and definition grid, and the
+ * Mark as handled call.
  */
 
 export type EnquiryFilter = "all" | "new" | "handled";
 
+interface Handled {
+  handledAt: string | null;
+  handledBy: string | null;
+}
+
 /** New = not yet marked handled. */
 export const isNew = (e: { handledAt: string | null }) => e.handledAt === null;
+
+/**
+ * Mark as handled / Mark as new: PATCH `endpoint(id)` with `{ handled }`, then
+ * hand the server's answer to `onDone` to fold into the page's list. `busy` is
+ * the id in flight.
+ */
+export function useMarkHandled(endpoint: (id: string) => string, onDone: (res: HandledResponse) => void, noun: string) {
+  const [busy, setBusy] = useState<string | null>(null);
+  async function setHandled(id: string, handled: boolean) {
+    setBusy(id);
+    try {
+      const res = await apiJson<HandledResponse>(endpoint(id), {
+        method: "PATCH",
+        body: JSON.stringify({ handled }),
+      });
+      onDone(res);
+      toast.success(handled ? "Marked as handled" : "Marked as new");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : `Couldn't update the ${noun}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+  return { busy, setHandled };
+}
+
+/** The list with one row's handled state replaced by the server's answer. */
+export function withHandled<T extends Handled & { id: string }>(list: T[], res: HandledResponse): T[] {
+  return list.map((e) => (e.id === res.id ? { ...e, handledAt: res.handledAt, handledBy: res.handledBy } : e));
+}
+
+/** The detail's Status value: when and by whom it was handled, or the New chip. */
+export function HandledStatus({ enquiry }: { enquiry: Handled }) {
+  if (!enquiry.handledAt) return <Badge tone="new">New</Badge>;
+  return (
+    <>
+      Handled {formatDateTime(enquiry.handledAt)}
+      {enquiry.handledBy && <span className="text-muted"> by {enquiry.handledBy}</span>}
+    </>
+  );
+}
+
+/**
+ * The detail header's actions (00): the more menu (export this one, copy the
+ * address), Mark as handled / Mark as new, and Reply by email as the primary,
+ * last. The reply subject is 02a Q17's.
+ */
+export function EnquiryActions({
+  kind,
+  enquiry,
+  busy,
+  onHandled,
+  onExport,
+}: {
+  kind: "quote" | "resource";
+  enquiry: Handled & { name: string; email: string };
+  busy: boolean;
+  /** Called with the state to set: true = handled. */
+  onHandled: (handled: boolean) => void;
+  onExport: () => void;
+}) {
+  const fresh = isNew(enquiry);
+  const subject = `Your SA Equip ${kind} request`;
+  return (
+    <>
+      <DropdownMenu
+        label={`More actions for the ${kind} request from ${enquiry.name}`}
+        actions={[
+          { label: "Export this request as CSV", onSelect: onExport },
+          {
+            label: "Copy email address",
+            onSelect: () =>
+              void navigator.clipboard
+                .writeText(enquiry.email)
+                .then(() => toast.success("Email address copied"))
+                .catch(() => toast.error("Couldn't copy the email address")),
+          },
+        ]}
+      />
+      <Button variant="secondary" size="sm" loading={busy} onClick={() => onHandled(fresh)}>
+        {fresh ? "Mark as handled" : "Mark as new"}
+      </Button>
+      <ButtonLink variant="primary" size="sm" href={`mailto:${enquiry.email}?subject=${encodeURIComponent(subject)}`}>
+        Reply by email
+      </ButtonLink>
+    </>
+  );
+}
 
 /** Filter by state, then by a case-insensitive search over the given fields. */
 export function filterEnquiries<T extends { handledAt: string | null }>(

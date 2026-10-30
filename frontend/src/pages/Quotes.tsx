@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch, apiJson } from "../lib/api";
+import { apiFetch } from "../lib/api";
 import {
   Alert,
   Badge,
   Button,
-  ButtonLink,
-  DropdownMenu,
   EmptyState,
   PageHeader,
   SplitDetailHeader,
@@ -19,19 +17,22 @@ import {
   THead,
   TR,
   Thumb,
-  toast,
   useSelection,
 } from "../components/ui";
 import {
   DefinitionGrid,
   Detail,
+  EnquiryActions,
   EnquiryListSkeleton,
   EnquiryToolbar,
+  HandledStatus,
   filterEnquiries,
   isNew,
+  useMarkHandled,
+  withHandled,
   type EnquiryFilter,
 } from "../components/enquiries";
-import type { HandledResponse, QuoteRequest, QuotesResponse } from "../lib/types";
+import type { QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { formatDateTime, formatShortDate } from "../lib/format";
 import { languageName } from "../lib/language";
@@ -73,9 +74,6 @@ function formatOptions(options: Record<string, unknown> | null): string | null {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** "Reply by email": the requester, with the subject 02a Q17 gives. */
-const replyHref = (q: QuoteRequest) => `mailto:${q.email}?subject=${encodeURIComponent("Your SA Equip quote request")}`;
-
 function QuoteDetail({
   quote,
   busy,
@@ -98,28 +96,13 @@ function QuoteDetail({
         title={quote.name}
         subtitle={quote.company ?? quote.email}
         actions={
-          <>
-            <DropdownMenu
-              label={`More actions for the quote from ${quote.name}`}
-              actions={[
-                { label: "Export this request as CSV", onSelect: () => exportQuotes([quote]) },
-                {
-                  label: "Copy email address",
-                  onSelect: () =>
-                    void navigator.clipboard
-                      .writeText(quote.email)
-                      .then(() => toast.success("Email address copied"))
-                      .catch(() => toast.error("Couldn't copy the email address")),
-                },
-              ]}
-            />
-            <Button variant="secondary" size="sm" loading={busy} onClick={() => onHandled(isNew(quote))}>
-              {isNew(quote) ? "Mark as handled" : "Mark as new"}
-            </Button>
-            <ButtonLink variant="primary" size="sm" href={replyHref(quote)}>
-              Reply by email
-            </ButtonLink>
-          </>
+          <EnquiryActions
+            kind="quote"
+            enquiry={quote}
+            busy={busy}
+            onHandled={onHandled}
+            onExport={() => exportQuotes([quote])}
+          />
         }
       />
 
@@ -137,14 +120,7 @@ function QuoteDetail({
               Unknown (—) for quotes from before 2026-10-07. */}
           <Detail label="Language">{quote.locale ? languageName(quote.locale) : null}</Detail>
           <Detail label="Status">
-            {quote.handledAt ? (
-              <>
-                Handled {formatDateTime(quote.handledAt)}
-                {quote.handledBy && <span className="text-muted"> by {quote.handledBy}</span>}
-              </>
-            ) : (
-              <Badge tone="new">New</Badge>
-            )}
+            <HandledStatus enquiry={quote} />
           </Detail>
           <Detail label="Message" wide>
             {quote.message}
@@ -211,8 +187,12 @@ export default function Quotes() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<EnquiryFilter>("all");
-  const [busy, setBusy] = useState<string | null>(null);
   const { selectedId, select, hrefFor } = useSelection();
+  const { busy, setHandled } = useMarkHandled(
+    (id) => `/api/quotes/${id}/handled`,
+    (res) => setData((d) => d && { ...d, requests: withHandled(d.requests, res) }),
+    "quote request",
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -237,27 +217,6 @@ export default function Quotes() {
   const requests = data?.requests ?? [];
   const shown = filterEnquiries(requests, filter, query, (q) => [q.name, q.company, q.email]);
   const selected = selectedId ? requests.find((q) => q.id === selectedId) ?? null : null;
-
-  async function setHandled(quote: QuoteRequest, handled: boolean) {
-    setBusy(quote.id);
-    try {
-      const res = await apiJson<HandledResponse>(`/api/quotes/${quote.id}/handled`, {
-        method: "PATCH",
-        body: JSON.stringify({ handled }),
-      });
-      setData((d) =>
-        d && {
-          ...d,
-          requests: d.requests.map((q) => (q.id === res.id ? { ...q, handledAt: res.handledAt, handledBy: res.handledBy } : q)),
-        },
-      );
-      toast.success(handled ? "Marked as handled" : "Marked as new");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't update the quote request");
-    } finally {
-      setBusy(null);
-    }
-  }
 
   return (
     <>
@@ -337,7 +296,7 @@ export default function Quotes() {
               <QuoteDetail
                 quote={selected}
                 busy={busy === selected.id}
-                onHandled={(handled) => void setHandled(selected, handled)}
+                onHandled={(handled) => void setHandled(selected.id, handled)}
               />
             ) : (
               <>
