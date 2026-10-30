@@ -106,3 +106,12 @@ These answer the open questions at the end of `02-design-system.md`. Where this 
   - Applies to Table selected rows, SplitView list items and the Media selected tile (where the tile outline becomes 2px `--text` in light, yellow in dark).
 - **Native "Choose file" buttons:** hide the native input visually and trigger it from a real `Button` (ghost style), so it gets the disabled state and focus outline.
 - **Light-theme yellow edges** (primary button, checked checkbox, toggle on, New chip at about 1.3:1 against the page): accepted. The black text, tick or knob carries the state.
+
+## After 4b
+- **Disabled segments** at about 2.9:1: accepted, since disabled controls are exempt.
+- **Sidebar badges, until the batch 6 migration:**
+  - Products shows the live product count.
+  - Quote requests and Resource requests show NO badge until `handledAt` exists. After batch 6 they show the count of requests not yet handled.
+  - Never show a badge of 0.
+- **Theme toggle writes:** toggling saves through `useUserPreference`, which writes the signed-in user's own Supabase `user_metadata`. That is allowed, because it's the user's preference, not catalogue data. In the fixtures harness the write is blocked; verify it by calling the function with the network stubbed.
+- **Top-bar search data:** a GET of `/api/products`, cached for the session and shared with the Products page if it's already loaded. No new endpoints.
