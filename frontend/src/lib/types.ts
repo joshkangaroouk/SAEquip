@@ -17,6 +17,8 @@ export interface ProductSummary {
   type: string;
   price: string | null;
   thumbnail: string | null;
+  /** Duda's `seo.product_url`, the live page's /product/<slug>. Null if Duda has none. */
+  slug: string | null;
   variation_count: number;
   /** Hub-side category assignment. Titles come from GET /api/categories. */
   category_ids: string[];

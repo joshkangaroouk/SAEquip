@@ -2628,7 +2628,8 @@ six non-English languages are paused (Josh, 2026-10-13). In this order at launch
 
 Also before launch (each detailed elsewhere in this file):
 - `/privacy-policy` must exist (the File Requests consent link);
-- the custom domain means editing every widget shim and the basket's `ENDPOINT`;
+- the custom domain means editing every widget shim and the basket's `ENDPOINT`, and
+  `LIVE_SITE_ORIGIN` in `frontend/src/lib/site.ts` (the dashboard's "View on website" links);
 - Supabase's Site URL and redirect list;
 - the post-launch "Refresh all languages from Duda", once the languages are live again.
 

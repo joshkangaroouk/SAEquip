@@ -324,6 +324,9 @@ dudaRouter.get("/products", async (_req, res, next) => {
         type: p.type,
         price: formatFirstPrice(p.prices),
         thumbnail: p.images?.[0]?.url ?? null,
+        // The live page's path segment (/product/<slug>): the listing shows it
+        // and builds "View on website" from it.
+        slug: p.seo?.product_url ?? null,
         variation_count: p.variations?.length ?? 0,
         category_ids: (h?.categories ?? []).map((c) => c.dudaCategoryId),
         // Duda's own creation time from the ULID, falling back to the Hub

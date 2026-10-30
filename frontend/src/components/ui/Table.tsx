@@ -26,7 +26,11 @@ export function Table({
   scroll?: "x" | "none";
 }) {
   return (
-    <div className={cn("w-full border border-border bg-surface", scroll === "x" && "overflow-x-auto")}>
+    // `relative`: the containing block for any absolutely positioned cell
+    // content (`sr-only` text above all). Without it that content sits outside
+    // the scroll box, escapes its clipping and widens the PAGE — a table that
+    // scrolls sideways in its box made the whole Products page do so.
+    <div className={cn("relative w-full border border-border bg-surface", scroll === "x" && "overflow-x-auto")}>
       <table className={cn("w-full border-collapse text-left", className)} {...rest}>
         {children}
       </table>
