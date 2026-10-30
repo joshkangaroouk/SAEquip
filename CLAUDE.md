@@ -1018,6 +1018,14 @@ SAEquip has **no native pricing/checkout** for these products — instead there'
 
 ⚠️ **A dashboard tab left open across a deploy keeps running the OLD code** until it is refreshed — the new quote fields "not showing" on 2026-10-02 was exactly that (they were stored correctly).
 
+### Handled state (batch 6, 2026-10-30)
+
+`QuoteRequest` and `Lead` have nullable `handledAt` / `handledBy` (null = new), from migration `20261030120000_enquiry_handled`.
+- ⚠️ **Written, not applied.** Josh applies it to production with `docs/redesign/06b-migration-runbook.md` (back up, check `_prisma_migrations`, `migrate deploy`, verify). Until then the enquiry pages and the sidebar's enquiry badges error against production. **Don't merge `redesign/ui` before it is applied.**
+- **Mark handled / new:** `PATCH /api/quotes/:id/handled` and `PATCH /api/resource-requests/:id/handled`, body `{ handled: boolean }` (`.strict()`, else 400). `true` stamps now and the signed-in user's email; `false` clears both. Unknown id → 404 (P2025).
+- **Sidebar badges:** `GET /api/enquiries/counts` → `{ quotes, resourceRequests }`, the not-handled counts. It's its own endpoint because the sidebar loads neither list.
+- **The list endpoints** return `handledAt` and `handledBy` on each row.
+
 ### The quote widgets in every language (2026-10-07)
 
 - ⚠️ **Blocked site data must not take the widgets down** (fixed 2026-10-12). Reading `window.localStorage` throws when site data is blocked, and the store read it bare, so all three widgets died at load and the basket form, left without its handler, submitted natively with the visitor's details in the URL. The store now probes it and falls back to an in-memory basket for the page view, `write()` cannot throw, and the form is `method="post"` and hidden (`.qp-form-section{display:none}`) until `render()` shows it.

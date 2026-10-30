@@ -100,6 +100,11 @@ websiteEditorRouter.get("/website/sites", async (req, res, next) => {
         let lastPublished: string | null = null;
         let thumbnailUrl: string | null = null;
         let siteUrl: string | null = null;
+        // From the same site read: whether search engines are told to stay
+        // away, and the site's languages (the Website editor's status grid).
+        let noIndex: boolean | null = null;
+        let lang: string | null = null;
+        let additionalLanguages: string[] = [];
         try {
           const details = await dudaSso.getSiteDetails(access.siteName);
           domain = details.site_default_domain ?? null;
@@ -108,6 +113,11 @@ websiteEditorRouter.get("/website/sites", async (req, res, next) => {
           thumbnailUrl = details.thumbnail_url ?? null;
           siteUrl =
             details.canonical_url ?? (domain ? `https://${domain}` : null);
+          noIndex = typeof details.site_seo?.no_index === "boolean" ? details.site_seo.no_index : null;
+          lang = details.lang ?? null;
+          additionalLanguages = Array.isArray(details.additionalLanguages)
+            ? details.additionalLanguages.filter((l): l is string => typeof l === "string")
+            : [];
         } catch {
           /* leave metadata null */
         }
@@ -118,6 +128,9 @@ websiteEditorRouter.get("/website/sites", async (req, res, next) => {
           thumbnailUrl,
           publishStatus,
           lastPublished,
+          noIndex,
+          lang,
+          additionalLanguages,
           grantedPermissions: access.grantedPermissions,
         };
       }),

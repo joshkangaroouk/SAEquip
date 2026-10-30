@@ -187,6 +187,12 @@ export const dudaSso = {
     last_published_date?: string;
     thumbnail_url?: string;
     canonical_url?: string;
+    /** "No index for the entire site" (Optimization Center). */
+    site_seo?: { no_index?: boolean | null } | null;
+    /** The default language, e.g. "en-gb". */
+    lang?: string | null;
+    /** The other languages, by Duda's own code, e.g. ["ar"]. */
+    additionalLanguages?: string[] | null;
   }> {
     return dudaRequest("GET", PATHS.site(siteName), undefined, {
       timeoutMs: ADMIN_TIMEOUT_MS,
