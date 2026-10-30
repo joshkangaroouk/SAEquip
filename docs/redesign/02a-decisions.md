@@ -115,3 +115,11 @@ These answer the open questions at the end of `02-design-system.md`. Where this 
   - Never show a badge of 0.
 - **Theme toggle writes:** toggling saves through `useUserPreference`, which writes the signed-in user's own Supabase `user_metadata`. That is allowed, because it's the user's preference, not catalogue data. In the fixtures harness the write is blocked; verify it by calling the function with the network stubbed.
 - **Top-bar search data:** a GET of `/api/products`, cached for the session and shared with the Products page if it's already loaded. No new endpoints.
+
+## After stage 5
+- **Sidebar group labels:** change `--sidebar-label` to #8A8A85 (about 5.7:1), so they pass AA.
+- **Page titles:** sentence case everywhere, matching the sidebar and breadcrumb. For example "Quote requests", "Product options", "Media" (not "Media Centre"), "Resource requests". Sweep page titles, modal titles and empty-state titles as each page's batch lands. Batch 5 also sweeps all page titles at once, since they're one-line changes.
+- **Products band:** the store headroom line ("91 / 1000 products used") becomes the band's description. It uses the warning tone when 10 or fewer remain.
+- **Duplicate back links and breadcrumbs:** remove page-level breadcrumbs and "← Back to …" links once the top-bar breadcrumb covers them. That's CategoryDetail in batch 7 and the product editor in batch 8.
+- **Users table at narrow widths:** below lg it becomes stacked cards (one per user), not a horizontally scrolling table.
+- **Approved shell deviations:** black focus ring on the current yellow nav item; menu highlights get the 3px selected bar; the breadcrumb group is hidden between 1024 and 1280.
