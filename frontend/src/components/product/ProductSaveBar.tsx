@@ -40,12 +40,12 @@ export function ProductSaveBar({
     // so it couldn't reach the viewport edges. Fixed also means showing/hiding
     // it can't shift the page, since it's out of flow.
     //
-    // ⚠ `lg:left-[17rem]` must match SIDEBAR_W / MAIN_OFFSET in Layout.tsx —
-    // that file already notes the two literals have to stay in step, and this
-    // is now a third. Below `lg` the sidebar is a top bar, so left-0 is right.
+    // `lg:left-sidebar` is the sidebar's width from tailwind.config.js — the
+    // one value the aside and the main column's offset use too. Below `lg`
+    // the sidebar is a drawer, so left-0 is right.
     // ProductDetail.tsx pairs this with bottom padding so the last section
     // isn't hidden underneath.
-    <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-surface/95 backdrop-blur lg:left-[17rem]">
+    <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-surface/95 backdrop-blur lg:left-sidebar">
       {/* Inner container mirrors Layout's content wrapper, so the text and
           buttons stay aligned with the page content rather than drifting to
           the far edges on a wide screen. */}

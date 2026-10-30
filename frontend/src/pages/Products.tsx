@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { apiFetch } from "../lib/api";
+import { fetchProductIndex } from "../lib/productIndex";
 import {
   Thumb,
   Alert,
@@ -64,15 +65,16 @@ export default function Products() {
       setLoading(true);
       setError(null);
       try {
-        const [storeRes, productsRes, catsRes] = await Promise.all([
+        // The product list comes through the shell's shared fetch: the same
+        // GET /api/products, fresh, but reusing the request the sidebar and
+        // search may already have in flight (lib/productIndex.ts).
+        const [storeRes, productsData, catsRes] = await Promise.all([
           apiFetch("/api/store"),
-          apiFetch("/api/products"),
+          fetchProductIndex(),
           apiFetch("/api/categories"),
         ]);
         if (!storeRes.ok) throw new Error(`/api/store returned ${storeRes.status}`);
-        if (!productsRes.ok) throw new Error(`/api/products returned ${productsRes.status}`);
         const storeData: StoreInfo = await storeRes.json();
-        const productsData: ProductSummary[] = await productsRes.json();
         if (cancelled) return;
         setStore(storeData);
         setProducts(productsData);

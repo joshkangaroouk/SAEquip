@@ -1,8 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { NavLink, Outlet, useLocation, useMatches, useNavigate } from "react-router-dom";
+import { useId, useState, type ReactNode } from "react";
+import { Link, Outlet, useLocation, useMatches, useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  ChevronDown,
   FileDown,
   FolderTree,
   Globe,
@@ -14,7 +13,6 @@ import {
   KeyRound,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Users,
   X,
   type LucideIcon,
@@ -22,265 +20,165 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { useThemePreference } from "../hooks/useUserPreference";
 import { cn } from "../lib/cn";
-import logoUrl from "../assets/saequip-logo.svg";
+import { clearProductIndex, useProductIndex } from "../lib/productIndex";
 
 /**
- * Dark sidebar against the light content area.
+ * The sidebar (docs/redesign 02a Q6): always dark, on the fixed `--sidebar-*`
+ * tokens, which the dark theme never redefines. `data-sidebar` on each
+ * container turns focus yellow and draws it inside the item (02a Q5).
  *
- * Colours come from the fixed `--sidebar-*` tokens, which the dark theme never
- * redefines — that is what keeps this panel dark in both themes. `data-sidebar`
- * on each container turns focus yellow and draws it inside the item (02a Q5). The active route gets three
- * cues at once: a soft yellow-tinted pill, a bright accent bar pinned to the
- * panel's left edge, and an accent-coloured icon.
+ * Its width is `sidebar` (272px) in tailwind.config.js — the one value the
+ * aside, the main column's offset and the product save bar all use.
  */
 const SIDEBAR = "bg-sidebar text-sidebar-fg";
 const SIDEBAR_BORDER = "border-sidebar-border";
-/** Declared once — the aside's width and the main content's offset must match. */
-const SIDEBAR_W = "w-[17rem]";
-const MAIN_OFFSET = "lg:pl-[17rem]";
 
 interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
-  end?: boolean;
-  /** Rendered as a collapsible group under this item. */
-  children?: NavItem[];
+  /** When the item is current. Defaults to the route and anything below it. */
+  match?: (pathname: string) => boolean;
+  /** Products carries the live product count (02a "After 4b"). */
+  badge?: "liveProducts";
 }
 
-const NAV: NavItem[] = [
-  { to: "/website", label: "Website Editor", icon: Globe },
+interface NavGroup {
+  /** Group label; the first group (Website editor) has none. */
+  label?: string;
+  items: NavItem[];
+}
+
+/*
+ * ⚠️ Not in the nav, deliberately, but still routed:
+ * - /widgets documents the embed snippets and is Kangaroo's reference, not
+ *   something SAEquip staff should change;
+ * - /status (02a Q16).
+ * The development-only /ui kit is not routed in production at all.
+ */
+const NAV: NavGroup[] = [
+  { items: [{ to: "/website", label: "Website editor", icon: Globe }] },
   {
-    to: "/",
-    label: "Products",
-    icon: Package,
-    end: true,
-    // Everything that describes a product lives under it, rather than as ten
-    // flat siblings where "Logos" and "Status" read as equally important.
-    children: [
+    label: "Catalogue",
+    items: [
+      {
+        to: "/",
+        label: "Products",
+        icon: Package,
+        // The list is "/", and a product's editor is /products/… — both are Products.
+        match: (p) => p === "/" || p.startsWith("/products/"),
+        badge: "liveProducts",
+      },
       { to: "/categories", label: "Categories", icon: FolderTree },
-      { to: "/options", label: "Product Options", icon: SlidersHorizontal },
+      { to: "/options", label: "Product options", icon: SlidersHorizontal },
       { to: "/media", label: "Media", icon: Images },
       { to: "/logos", label: "Logos", icon: ShieldCheck },
       { to: "/translations", label: "Translations", icon: Languages },
     ],
   },
-  /*
-   * ⚠️ /widgets is deliberately NOT in the sidebar. It documents the embed
-   * snippets and is Kangaroo's reference, not something SAEquip staff should
-   * be changing — but the ROUTE stays, so it is still reachable by URL. Same
-   * treatment as pages/UIShowcase.tsx, which is unrouted for the same reason.
-   */
-  { to: "/quotes", label: "Quote Requests", icon: BarChart3 },
-  { to: "/resource-requests", label: "Resource Requests", icon: FileDown },
-  { to: "/users", label: "Users", icon: Users },
-  { to: "/security", label: "Security", icon: KeyRound },
-  { to: "/status", label: "Status", icon: Sparkles },
+  {
+    label: "Enquiries",
+    // No badges until the batch 6 migration adds handledAt (02a "After 4b").
+    items: [
+      { to: "/quotes", label: "Quote requests", icon: BarChart3 },
+      { to: "/resource-requests", label: "Resource requests", icon: FileDown },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { to: "/users", label: "Users", icon: Users },
+      { to: "/security", label: "Security", icon: KeyRound },
+    ],
+  },
 ];
 
-/** Shared row treatment so parents and children can't drift apart visually. */
-const rowBase =
-  "group relative flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-150 " +
-  "before:absolute before:-left-3 before:top-1/2 before:h-6 before:w-[3px] before:-translate-y-1/2 " +
-  "before:rounded-r-full before:transition-all before:duration-150";
-const rowActive = "bg-accent/[0.12] font-medium text-sidebar-fg before:bg-accent";
-const rowIdle =
-  "text-sidebar-text before:bg-transparent hover:bg-white/[0.04] hover:text-sidebar-fg";
+const isCurrent = (item: NavItem, pathname: string) =>
+  item.match ? item.match(pathname) : pathname === item.to || pathname.startsWith(item.to + "/");
 
-/** One row. Shared by top-level items and the nested children. */
-function NavRow({
-  item,
-  onNavigate,
-  nested = false,
-}: {
-  item: NavItem;
-  onNavigate?: () => void;
-  nested?: boolean;
-}) {
-  const Icon = item.icon;
+/** The SA lockup, in HTML rather than an image (02a Q6). */
+export function Lockup() {
   return (
-    <NavLink
-      to={item.to}
-      end={item.end}
-      onClick={onNavigate}
-      // The accent bar is a ::before pinned to the sidebar's left edge,
-      // which is why the row carries the negative inset rather than the
-      // pill doing it.
-      className={({ isActive }) =>
-        // Same type and icon size as a top-level row — only the indent
-        // differs, which is all the hierarchy needs to read.
-        cn(rowBase, "text-body", nested && "pl-6", isActive ? rowActive : rowIdle)
-      }
-    >
-      {({ isActive }) => (
-        <>
-          <Icon
-            size={18}
-            strokeWidth={2}
-            className={cn(
-              "shrink-0 transition-colors duration-150",
-              isActive ? "text-accent" : "text-sidebar-label group-hover:text-sidebar-text",
-            )}
-          />
-          {item.label}
-        </>
-      )}
-    </NavLink>
+    <span className="flex items-center gap-3">
+      <span
+        aria-hidden="true"
+        className="t-lockup-mark flex h-10 w-10 shrink-0 items-center justify-center bg-sidebar-active text-sidebar-active-ink"
+      >
+        SA
+      </span>
+      <span className="min-w-0">
+        <span className="t-lockup-name block text-sidebar-fg">SA Equip</span>
+        <span className="block text-label text-sidebar-muted">Product Hub</span>
+      </span>
+    </span>
   );
 }
 
 /**
- * A parent row plus its collapsible children.
- *
- * ⚠️ The parent is still a LINK — Products is a real page, not just a
- * heading — so the disclosure lives in its own button beside it rather than
- * swallowing the click. Making the whole row toggle would cost a click to
- * reach the product list, which is the most-used page in the app.
+ * One item: 40px, 18px icon, Inter 14/500; the current one solid yellow with
+ * black 600 text, the rest #C9C9C5 going to white on #1A1A1A under the pointer.
  */
-function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+function NavRow({ item, badge, onNavigate }: { item: NavItem; badge?: number; onNavigate?: () => void }) {
   const { pathname } = useLocation();
+  const current = isCurrent(item, pathname);
   const Icon = item.icon;
-  const children = item.children ?? [];
-  const childActive = children.some((c) => pathname === c.to || pathname.startsWith(c.to + "/"));
-  // Mirrors NavLink's own matching, since the highlight now lives on the
-  // wrapper rather than on the link itself.
-  const selfActive = item.end
-    ? pathname === item.to
-    : pathname === item.to || pathname.startsWith(item.to + "/");
-
-  const [open, setOpen] = useState(childActive);
-  useEffect(() => {
-    if (childActive) setOpen(true);
-  }, [childActive]);
-
-  const groupId = `nav-group-${item.to.replace(/\W+/g, "-")}`;
-
   return (
-    <div className="flex flex-col gap-0.5">
-      {/*
-        The ROW carries the highlight, not the link, so the chevron sits inside
-        the same background rather than floating beside it. The link keeps the
-        click target for the page; the chevron is a separate button because a
-        <button> cannot live inside an <a>, and because Products is a real page
-        whose click should not be spent on expanding a menu.
-      */}
-      <div className={cn(rowBase, "text-body", selfActive ? rowActive : rowIdle)}>
-        <NavLink
-          to={item.to}
-          end={item.end}
-          onClick={onNavigate}
-          className="flex min-w-0 flex-1 items-center gap-3"
+    <Link
+      to={item.to}
+      onClick={onNavigate}
+      aria-current={current ? "page" : undefined}
+      className={cn(
+        "flex h-10 items-center gap-3 px-3 text-body transition-colors duration-[120ms]",
+        current
+          ? "bg-sidebar-active font-semibold text-sidebar-active-ink"
+          : "font-medium text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-fg",
+      )}
+    >
+      <Icon size={18} strokeWidth={2} aria-hidden="true" className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {/* Never a badge of 0 (02a "After 4b"). */}
+      {badge ? (
+        <span
+          className={cn(
+            "t-code-sm inline-flex h-5 min-w-5 shrink-0 items-center justify-center px-1.5",
+            current ? "bg-sidebar-active-ink text-sidebar-active" : "bg-sidebar-badge text-sidebar-badge-ink",
+          )}
         >
-          <Icon
-            size={18}
-            strokeWidth={2}
-            className={cn(
-              "shrink-0 transition-colors duration-150",
-              selfActive ? "text-accent" : "text-sidebar-label group-hover:text-sidebar-text",
-            )}
-          />
-          {item.label}
-        </NavLink>
-
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-controls={groupId}
-          aria-label={`${open ? "Collapse" : "Expand"} ${item.label}`}
-          /*
-           * ⚠️ No box: no width, no height, no padding.
-           *
-           * An h-7 w-7 button is 28px tall, which is taller than the row's
-           * text line, so it forced the Products row open and left it out of
-           * step with every other nav item. The chevron now contributes no
-           * height of its own — the row is sized by its text exactly as the
-           * others are. Hover is a colour change only.
-           */
-          className="flex shrink-0 items-center text-sidebar-label transition-colors hover:text-sidebar-fg"
-        >
-          <ChevronDown
-            size={18}
-            strokeWidth={2.5}
-            className={cn(
-              "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
-              open ? "rotate-180" : "rotate-0",
-            )}
-          />
-        </button>
-      </div>
-
-      {/*
-        The slide.
-        
-        ⚠️ `grid-template-rows: 0fr -> 1fr`, not max-height and not the
-        `hidden` attribute.
-
-        - `height:auto` cannot be transitioned, and the usual max-height hack
-          needs a guessed ceiling: too small clips the list, too large makes
-          the open feel instant and the close feel delayed, because the
-          easing is spent travelling through empty space.
-        - The `hidden` ATTRIBUTE was the previous approach and did nothing at
-          all: `[hidden]{display:none}` from preflight and `.flex{display:flex}`
-          have identical specificity, and utilities are emitted after
-          preflight, so `flex` won.
-
-        A grid row measured in `fr` animates to the content's real height, so
-        the timing is honest at any number of children.
-
-        `visibility` is what keeps collapsed links out of the tab order — a
-        0fr row still contains focusable anchors. It flips to hidden only
-        AFTER the collapse finishes (hence the delay) so the rows do not
-        vanish mid-slide, and back to visible immediately on open.
-      */}
-      <div
-        id={groupId}
-        className="grid transition-[grid-template-rows,visibility] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
-        style={{
-          gridTemplateRows: open ? "1fr" : "0fr",
-          visibility: open ? "visible" : "hidden",
-          transitionDelay: open ? "0ms" : "0ms, 300ms",
-        }}
-      >
-        <div className="overflow-hidden">
-          <div className="flex flex-col gap-0.5 pt-0.5">
-            {children.map((c, i) => (
-              <div
-                key={c.to}
-                // A short stagger on the way in gives the list a sense of
-                // arriving rather than appearing. On the way out every row
-                // leaves together — a staggered exit reads as sluggish.
-                className="transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
-                style={{
-                  opacity: open ? 1 : 0,
-                  transform: open ? "translateY(0)" : "translateY(-6px)",
-                  transitionDelay: open ? `${60 + i * 45}ms` : "0ms",
-                }}
-              >
-                <NavRow item={c} onNavigate={onNavigate} nested />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+          <span aria-hidden="true">{badge}</span>
+          <span className="sr-only">{`${badge} live`}</span>
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+  const { products } = useProductIndex();
+  const live = products?.filter((p) => p.status === "ACTIVE").length ?? 0;
+  // Per instance: the drawer renders a second copy of the nav.
+  const idBase = useId();
   return (
-    <nav className="flex flex-col gap-0.5">
-      <p className="t-overline px-3 pb-2.5 pt-1 text-sidebar-label">
-        Main menu
-      </p>
-
-      {NAV.map((item) =>
-        item.children?.length ? (
-          <NavGroup key={item.to} item={item} onNavigate={onNavigate} />
-        ) : (
-          <NavRow key={item.to} item={item} onNavigate={onNavigate} />
-        ),
-      )}
+    <nav aria-label="Main">
+      {NAV.map((group, g) => {
+        const labelId = group.label ? `${idBase}-group-${g}` : undefined;
+        return (
+          <div key={group.label ?? "top"}>
+            {group.label && (
+              // 02a Q6: Barlow 600 11px uppercase, padding 20 12 6.
+              <p id={labelId} className="t-nav-label px-3 pb-1.5 pt-5 text-sidebar-label">
+                {group.label}
+              </p>
+            )}
+            <ul aria-labelledby={labelId} className="flex flex-col gap-0.5">
+              {group.items.map((item) => (
+                <li key={item.to}>
+                  <NavRow item={item} badge={item.badge ? live : undefined} onNavigate={onNavigate} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </nav>
   );
 }
@@ -304,62 +202,51 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
   async function handleSignOut() {
     await signOut();
+    clearProductIndex();
     navigate("/login", { replace: true });
   }
 
   return (
     <div className="flex h-full flex-col">
-      {/* Brand */}
-      <div className="px-4 py-5">
-        <NavLink to="/" onClick={onNavigate} className="flex items-center gap-3">
-          <img src={logoUrl} alt="SAEquip" className="h-14 w-auto shrink-0" />
-          <span className="font-heading text-body font-semibold leading-tight text-sidebar-fg">
-            SAEquip
-            <br />
-            Admin
-          </span>
-        </NavLink>
+      {/* The lockup row is 64px with a rule under it, level with the top bar's. */}
+      <div className={cn("flex h-16 shrink-0 items-center border-b px-4", SIDEBAR_BORDER)}>
+        <Link to="/" onClick={onNavigate} className="block">
+          <Lockup />
+        </Link>
       </div>
 
-      {/* Nav */}
-      <div className="flex-1 overflow-y-auto px-3 py-3">
+      <div className="flex-1 overflow-y-auto px-3 pb-4 pt-3">
         <NavItems onNavigate={onNavigate} />
       </div>
 
       {/* Account */}
-      <div className={cn("border-t px-3 py-4", SIDEBAR_BORDER)}>
-        <div className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-body font-semibold text-accent-ink"
-          >
-            {initialsFrom(user?.email)}
-          </span>
-          <span
-            className="min-w-0 flex-1 truncate text-body text-sidebar-text"
-            title={user?.email ?? undefined}
-          >
-            {user?.email}
-          </span>
-          <button
-            onClick={handleSignOut}
-            title="Sign out"
-            aria-label="Sign out"
-            className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-label",
-              "transition-colors hover:bg-white/[0.06] hover:text-sidebar-fg",
-            )}
-          >
-            <LogOut size={18} strokeWidth={2} />
-          </button>
-        </div>
+      <div className={cn("flex shrink-0 items-center gap-2.5 border-t px-3 py-3", SIDEBAR_BORDER)}>
+        <span
+          aria-hidden="true"
+          className="flex h-8 w-8 shrink-0 items-center justify-center bg-sidebar-active text-label font-semibold text-sidebar-active-ink"
+        >
+          {initialsFrom(user?.email)}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-help text-sidebar-text" title={user?.email ?? undefined}>
+          {user?.email}
+        </span>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          title="Sign out"
+          aria-label="Sign out"
+          className="flex h-8.5 w-8.5 shrink-0 items-center justify-center text-sidebar-text transition-colors duration-[120ms] hover:bg-sidebar-hover hover:text-sidebar-fg"
+        >
+          <LogOut size={18} strokeWidth={2} aria-hidden="true" />
+        </button>
       </div>
     </div>
   );
 }
 
-/** App shell: fixed dark sidebar on desktop; dark top bar + drawer on mobile. */
 /**
+ * App shell: the fixed dark sidebar on desktop; a top bar and a drawer below lg.
+ *
  * `children` overrides the routed <Outlet/>, so the error boundary can render
  * inside the normal shell — the sidebar stays usable when a page throws
  * instead of the whole tree being replaced.
@@ -378,12 +265,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       {/* Desktop sidebar */}
       <aside
         data-sidebar
-        className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden border-r lg:block",
-          SIDEBAR_W,
-          SIDEBAR,
-          SIDEBAR_BORDER,
-        )}
+        className={cn("fixed inset-y-0 left-0 z-30 hidden w-sidebar border-r lg:block", SIDEBAR, SIDEBAR_BORDER)}
       >
         <SidebarBody />
       </aside>
@@ -397,14 +279,13 @@ export function Layout({ children }: { children?: ReactNode }) {
           SIDEBAR_BORDER,
         )}
       >
-        <NavLink to="/" className="inline-flex items-center gap-2">
-          <img src={logoUrl} alt="SAEquip" className="h-10 w-auto" />
-          <span className="text-body font-semibold text-sidebar-fg">SAEquip Admin</span>
-        </NavLink>
+        <Link to="/">
+          <Lockup />
+        </Link>
         <button
           aria-label="Open menu"
           onClick={() => setDrawerOpen(true)}
-          className="rounded-md p-2 text-sidebar-text transition-colors hover:bg-white/[0.06] hover:text-sidebar-fg"
+          className="p-2 text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg"
         >
           <Menu size={18} strokeWidth={2} />
         </button>
@@ -414,11 +295,14 @@ export function Layout({ children }: { children?: ReactNode }) {
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-backdrop" onClick={() => setDrawerOpen(false)} />
-          <aside data-sidebar className={cn("absolute inset-y-0 left-0 w-72 border-r", SIDEBAR, SIDEBAR_BORDER)}>
+          <aside
+            data-sidebar
+            className={cn("absolute inset-y-0 left-0 w-sidebar max-w-[85vw] border-r", SIDEBAR, SIDEBAR_BORDER)}
+          >
             <button
               aria-label="Close menu"
               onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-3.5 rounded-md p-1.5 text-sidebar-text transition-colors hover:bg-white/[0.06] hover:text-sidebar-fg"
+              className="absolute right-3 top-3.5 p-1.5 text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg"
             >
               <X size={18} strokeWidth={2} />
             </button>
@@ -428,7 +312,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       )}
 
       {/* Main content */}
-      <main className={MAIN_OFFSET}>
+      <main className="lg:pl-sidebar">
         <div className={full ? "px-5 py-6 lg:flex lg:h-dvh lg:flex-col lg:px-8" : "mx-auto max-w-6xl px-5 py-6 lg:px-8"}>
           {children ?? <Outlet />}
         </div>

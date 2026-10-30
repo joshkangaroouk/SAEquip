@@ -91,6 +91,7 @@ export default {
           fg: "rgb(var(--sidebar-fg) / <alpha-value>)",
           text: "rgb(var(--sidebar-text) / <alpha-value>)",
           label: "rgb(var(--sidebar-label) / <alpha-value>)",
+          muted: "rgb(var(--sidebar-muted) / <alpha-value>)",
           hover: "rgb(var(--sidebar-hover) / <alpha-value>)",
           active: "rgb(var(--sidebar-active) / <alpha-value>)",
           "active-ink": "rgb(var(--sidebar-active-ink) / <alpha-value>)",
@@ -117,6 +118,10 @@ export default {
         10.5: "2.625rem", // 42 — toggle width
         70: "17.5rem", // 280 — top-bar search
         95: "23.75rem", // 380 — split-view list pane
+        // 272 — the sidebar. THE one source for its width: the aside
+        // (`w-sidebar`), the main column's offset (`lg:pl-sidebar`) and the
+        // product save bar's (`lg:left-sidebar`) all read it.
+        sidebar: "17rem",
       },
       // ONE type scale (docs/redesign/02 §2.2), in rem at the default 16px
       // root. Most text uses a role class from index.css (`.t-h1`, `.t-label`…)
