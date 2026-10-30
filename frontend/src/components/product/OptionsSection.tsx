@@ -136,7 +136,7 @@ export function OptionsSection({
         <SectionError message={error} />
 
         {dirty && (
-          <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-small text-text">
+          <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-help text-text">
             Saving this regenerates the variation list. SKUs and price differences are carried across
             for combinations that still exist; any that disappear lose theirs.
           </div>
@@ -156,14 +156,14 @@ export function OptionsSection({
                 <div key={ref.id} className="rounded-md border border-border p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-small font-semibold text-text">{ref.name}</span>
+                      <span className="text-help font-semibold text-text">{ref.name}</span>
                       {cat && (
                         <Badge tone="neutral">
                           shared with {Math.max(cat.usage - 1, 0)} other{" "}
                           {Math.max(cat.usage - 1, 0) === 1 ? "product" : "products"}
                         </Badge>
                       )}
-                      <span className="text-small text-muted">
+                      <span className="text-help text-muted">
                         {ref.choiceIds.length} of {cat?.choices.length ?? ref.choiceIds.length} values
                       </span>
                     </div>
@@ -179,7 +179,7 @@ export function OptionsSection({
                           type="button"
                           onClick={() => onToggleChoice(ref.id, c.id)}
                           aria-pressed={on}
-                          className={`inline-flex h-7 items-center rounded-full border px-3 text-small font-medium transition ${
+                          className={`inline-flex h-7 items-center rounded-full border px-3 text-help font-medium transition ${
                             on
                               ? "border-accent bg-accent/15 text-text"
                               : "border-border text-muted hover:border-subtle"
@@ -202,7 +202,7 @@ export function OptionsSection({
                           }}
                           placeholder="New value…"
                           autoFocus
-                          className="h-7 w-32 rounded-full border border-input bg-surface px-3 text-small outline-none transition-[color,box-shadow] placeholder:text-subtle focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          className="h-7 w-32 rounded-full border border-input bg-surface px-3 text-help outline-none transition-[color,box-shadow] placeholder:text-subtle focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                         />
                         <Button
                           variant="primary"
@@ -232,7 +232,7 @@ export function OptionsSection({
                           setAddingTo(ref.id);
                           setNewChoice("");
                         }}
-                        className="inline-flex h-7 items-center rounded-full border border-dashed border-border px-3 text-small text-muted transition-colors hover:border-subtle hover:text-text"
+                        className="inline-flex h-7 items-center rounded-full border border-dashed border-border px-3 text-help text-muted transition-colors hover:border-subtle hover:text-text"
                         title="Adds a value to the shared option. Existing products keep their own selection."
                       >
                         + value
@@ -241,7 +241,7 @@ export function OptionsSection({
                   </div>
 
                   {ref.choiceIds.length === 0 && (
-                    <p className="mt-2 text-small text-danger">
+                    <p className="mt-2 text-help text-danger">
                       Select at least one value, or remove this option.
                     </p>
                   )}

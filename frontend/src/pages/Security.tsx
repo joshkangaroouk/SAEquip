@@ -116,13 +116,13 @@ export default function Security() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-text">Security</h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="t-h1 text-text">Security</h1>
+      <p className="mt-1 text-body text-muted">
         Two-factor authentication for <span className="font-medium text-text">{user?.email}</span>.
       </p>
 
       {error && (
-        <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+        <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
           {error}
         </div>
       )}
@@ -131,7 +131,7 @@ export default function Security() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-body font-semibold text-text">Authenticator app</h2>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-body text-muted">
               A 6-digit code from an app on your phone, on top of your password.
             </p>
           </div>
@@ -146,7 +146,7 @@ export default function Security() {
                 key={f.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface-2 px-3 py-2"
               >
-                <span className="text-sm text-text">{f.friendly_name || "Authenticator"}</span>
+                <span className="text-body text-text">{f.friendly_name || "Authenticator"}</span>
                 <Button variant="secondary" size="sm" onClick={() => remove(f)}>
                   Turn off
                 </Button>
@@ -166,7 +166,7 @@ export default function Security() {
 
         {enrolling && (
           <div className="mt-5 rounded-lg border border-border bg-surface-2 p-4">
-            <ol className="space-y-4 text-sm text-text">
+            <ol className="space-y-4 text-body text-text">
               <li>
                 <p className="font-semibold">1. Scan this with your authenticator app</p>
                 <p className="mt-1 text-muted">
@@ -179,11 +179,11 @@ export default function Security() {
                   className="mt-3 h-44 w-44 rounded-md border border-border bg-white p-2"
                 />
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-xs text-muted hover:text-text">
+                  <summary className="cursor-pointer text-label text-muted hover:text-text">
                     Can't scan it?
                   </summary>
-                  <p className="mt-1 text-xs text-muted">Type this key in by hand:</p>
-                  <code className="mt-1 block break-all rounded bg-surface px-2 py-1 text-xs text-text">
+                  <p className="mt-1 text-label text-muted">Type this key in by hand:</p>
+                  <code className="mt-1 block break-all rounded bg-surface px-2 py-1 text-label text-text">
                     {enrolling.secret}
                   </code>
                 </details>

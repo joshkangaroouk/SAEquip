@@ -29,12 +29,12 @@ export function RouteError() {
 
   return (
     <Card>
-      <h1 className="text-h2 font-semibold text-text">This page hit an error</h1>
-      <p className="mt-2 text-sm text-muted">
+      <h1 className="t-section text-text">This page hit an error</h1>
+      <p className="mt-2 text-body text-muted">
         The rest of the dashboard is still working — use the sidebar, or try again.
       </p>
 
-      <p className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-small text-danger">
+      <p className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-help text-danger">
         {summary}
       </p>
 
@@ -47,10 +47,10 @@ export function RouteError() {
 
       {stack && (
         <details className="mt-5">
-          <summary className="cursor-pointer text-xs text-muted hover:text-text">
+          <summary className="cursor-pointer text-label text-muted hover:text-text">
             Technical detail (useful when reporting this)
           </summary>
-          <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-surface-2 p-3 text-xs text-muted">
+          <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-surface-2 p-3 text-label text-muted">
             {stack}
           </pre>
         </details>

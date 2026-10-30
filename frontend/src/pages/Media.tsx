@@ -169,8 +169,8 @@ export default function Media() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-text">Media Centre</h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="t-h1 text-text">Media Centre</h1>
+      <p className="mt-1 text-body text-muted">
         Reusable library of images and files, stored in Supabase.
       </p>
 
@@ -179,22 +179,22 @@ export default function Media() {
         onSubmit={onUpload}
         className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4"
       >
-        <label className="text-sm font-semibold text-text">
+        <label className="text-body font-semibold text-text">
           File
           <input
             ref={fileInputRef}
             type="file"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="mt-1 block text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
+            className="mt-1 block text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-body file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
           />
         </label>
-        <label className="text-sm font-semibold text-text">
+        <label className="text-body font-semibold text-text">
           Alt text (optional)
           <input
             value={alt}
             onChange={(e) => setAlt(e.target.value)}
             placeholder="describe the image"
-            className="mt-1 block rounded-md border border-border px-3 py-2 text-sm focus:border-text focus:outline-none placeholder:text-subtle"
+            className="mt-1 block rounded-md border border-border px-3 py-2 text-body focus:border-text focus:outline-none placeholder:text-subtle"
           />
         </label>
         <button
@@ -204,12 +204,12 @@ export default function Media() {
         >
           {uploading ? "Uploading…" : "Upload"}
         </button>
-        {uploadError && <span className="text-sm text-danger">{uploadError}</span>}
+        {uploadError && <span className="text-body text-danger">{uploadError}</span>}
       </form>
 
       {/* Kind tabs + search + sort. Also where paging scrolls back to — see goToPage. */}
       <div ref={listTop} className="mt-6 flex scroll-mt-20 flex-wrap items-center gap-3 lg:scroll-mt-4">
-        <div className="flex flex-wrap gap-2 text-sm">
+        <div className="flex flex-wrap gap-2 text-body">
           {KIND_TABS.map((t) => (
             <button
               key={t.value || "all"}
@@ -283,7 +283,7 @@ export default function Media() {
         </div>
       )}
       {lib.error && (
-        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
           {lib.error}
         </div>
       )}
@@ -344,12 +344,12 @@ export default function Media() {
                       range and document type, so truncating them hid exactly
                       the part that tells two files apart. overflow-wrap:anywhere
                       because they have no spaces to break at. */}
-                  <p className="text-sm font-semibold text-text [overflow-wrap:anywhere]">{a.filename}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                  <p className="text-body font-semibold text-text [overflow-wrap:anywhere]">{a.filename}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-label text-muted">
                     <span>{formatBytes(a.sizeBytes)}</span>
                     <UsageNote asset={a} />
                   </div>
-                  {a.alt && <p className="mt-1 truncate text-xs text-subtle">alt: {a.alt}</p>}
+                  {a.alt && <p className="mt-1 truncate text-label text-subtle">alt: {a.alt}</p>}
                 </div>
 
                 <div className="mt-2 grid grid-cols-2 gap-2">
@@ -379,7 +379,7 @@ export default function Media() {
                     Delete
                   </button>
                 </div>
-                {deleteErrors[a.id] && <p className="mt-1 text-xs text-danger">{deleteErrors[a.id]}</p>}
+                {deleteErrors[a.id] && <p className="mt-1 text-label text-danger">{deleteErrors[a.id]}</p>}
               </div>
             ))}
           </div>

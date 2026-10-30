@@ -76,13 +76,13 @@ export default function ProductDetail() {
       <TranslationProgressModal progress={translation} onSkip={skipTranslation} onDownload={downloadLanguage} />
 
       <div className={saveBarVisible ? "pb-28" : "pb-4"}>
-        <Link to="/" className="text-sm text-muted hover:text-text">
+        <Link to="/" className="text-body text-muted hover:text-text">
           ← Back to products
         </Link>
 
         {loading && <Loader label="Loading product…" />}
         {loadError && (
-          <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+          <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
             {loadError}
           </div>
         )}
@@ -93,8 +93,8 @@ export default function ProductDetail() {
             <Card>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h1 className="truncate text-2xl font-semibold text-text">{product.name}</h1>
-                  <p className="mt-1 text-sm text-muted">
+                  <h1 className="t-editor-title truncate text-text">{product.name}</h1>
+                  <p className="mt-1 text-body text-muted">
                     SKU: {product.sku || "—"}
                     {loadedAt && (
                       <>

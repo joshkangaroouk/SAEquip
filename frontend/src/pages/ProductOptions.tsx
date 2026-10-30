@@ -266,7 +266,7 @@ export default function ProductOptions() {
       />
 
       {catalog && (
-        <p className="mt-1 text-small text-muted">
+        <p className="mt-1 text-help text-muted">
           {catalog.count} of {catalog.max_options ?? "?"} options used. Options are shared across every
           product — a product chooses which of their values it offers.
         </p>

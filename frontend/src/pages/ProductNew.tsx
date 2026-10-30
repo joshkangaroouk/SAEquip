@@ -277,7 +277,7 @@ function NextSteps() {
       />
       <ul className="space-y-2">
         {AFTER.map(([label, why]) => (
-          <li key={label} className="flex gap-2 text-small">
+          <li key={label} className="flex gap-2 text-help">
             <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true" />
             <span>
               <span className="font-medium text-text">{label}</span>

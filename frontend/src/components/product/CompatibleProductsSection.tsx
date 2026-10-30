@@ -38,7 +38,7 @@ function Thumb({ url, name }: { url: string | null; name: string }) {
       {url ? (
         <img src={url} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
       ) : (
-        <span className="text-[10px] font-semibold text-subtle" aria-hidden="true">
+        <span className="text-micro font-semibold text-subtle" aria-hidden="true">
           {name.trim().charAt(0).toUpperCase() || "?"}
         </span>
       )}
@@ -126,7 +126,7 @@ export function CompatibleProductsSection({
 
       <SectionError message={error} />
       {loadError && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
           {loadError}
         </div>
       )}
@@ -135,8 +135,8 @@ export function CompatibleProductsSection({
         {/* ---- Left: the catalogue ---- */}
         <div className="min-w-0">
           <div className="mb-2 flex items-baseline justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">All products</h3>
-            <span className="text-xs text-subtle">
+            <h3 className="t-overline">All products</h3>
+            <span className="text-label text-subtle">
               {all ? `${available.length} available` : "loading…"}
             </span>
           </div>
@@ -151,9 +151,9 @@ export function CompatibleProductsSection({
           />
 
           <div className={`mt-2 ${PANE}`}>
-            {!all && !loadError && <p className="px-3 py-3 text-small text-subtle">Loading products…</p>}
+            {!all && !loadError && <p className="px-3 py-3 text-help text-subtle">Loading products…</p>}
             {all && available.length === 0 && (
-              <p className="px-3 py-3 text-small text-subtle">
+              <p className="px-3 py-3 text-help text-subtle">
                 {query.trim() ? "No products match that search." : "Every other product has been added."}
               </p>
             )}
@@ -166,8 +166,8 @@ export function CompatibleProductsSection({
                 className="flex w-full items-center gap-3 border-b border-border px-2.5 py-2 text-left last:border-b-0 hover:bg-surface-2"
               >
                 <Thumb url={p.thumbnail} name={p.name ?? ""} />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium text-text">{p.name}</span>
-                <span className="shrink-0 text-xs text-subtle">{p.sku ?? "—"}</span>
+                <span className="min-w-0 flex-1 truncate text-label font-medium text-text">{p.name}</span>
+                <span className="shrink-0 text-label text-subtle">{p.sku ?? "—"}</span>
                 {/* A word plus a direction beats a "+": it says what the
                     click does AND which way the product moves, which is the
                     one thing a two-column transfer list has to make obvious.
@@ -175,7 +175,7 @@ export function CompatibleProductsSection({
                     "Add <product>" — otherwise a screen reader hears "Add"
                     twice. */}
                 <span
-                  className="flex shrink-0 items-center gap-1 text-xs font-semibold text-accent-strong"
+                  className="flex shrink-0 items-center gap-1 text-label font-semibold text-accent-strong"
                   aria-hidden="true"
                 >
                   Add
@@ -189,10 +189,10 @@ export function CompatibleProductsSection({
         {/* ---- Right: this product's list ---- */}
         <div className="min-w-0">
           <div className="mb-2 flex items-baseline justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
+            <h3 className="t-overline">
               Added to this product
             </h3>
-            <span className="text-xs text-subtle">
+            <span className="text-label text-subtle">
               {items.length} selected{items.length >= 40 ? " (max)" : ""}
             </span>
           </div>
@@ -203,7 +203,7 @@ export function CompatibleProductsSection({
 
           <div className={`mt-2 ${PANE}`}>
             {items.length === 0 ? (
-              <p className="px-3 py-3 text-small text-subtle">
+              <p className="px-3 py-3 text-help text-subtle">
                 Nothing added yet. Pick the products and accessories that go with this one.
               </p>
             ) : (
@@ -216,12 +216,12 @@ export function CompatibleProductsSection({
                 renderItem={(item, handle, index) => (
                   <div className="flex items-center gap-2 bg-surface px-2.5 py-2">
                     <DragHandle handle={handle} />
-                    <span className="w-5 shrink-0 text-right text-xs text-subtle">{index + 1}.</span>
+                    <span className="w-5 shrink-0 text-right text-label text-subtle">{index + 1}.</span>
                     <Thumb url={byId.get(item.dudaProductId)?.thumbnail ?? null} name={item.name} />
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-text" title={item.name}>
+                    <span className="min-w-0 flex-1 truncate text-label font-medium text-text" title={item.name}>
                       {item.name}
                     </span>
-                    <span className="shrink-0 text-xs text-subtle">{item.sku ?? "—"}</span>
+                    <span className="shrink-0 text-label text-subtle">{item.sku ?? "—"}</span>
                     <button
                       type="button"
                       onClick={() => remove(item.dudaProductId)}

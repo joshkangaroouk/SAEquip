@@ -80,7 +80,7 @@ export function LogoActivationPanel({
                   />
                 </div>
                 <div className="mt-2 flex w-full items-center justify-between gap-1">
-                  <span className="truncate text-small text-muted" title={entry.label ?? ""}>
+                  <span className="truncate text-help text-muted" title={entry.label ?? ""}>
                     {entry.label || "—"}
                   </span>
                   <span

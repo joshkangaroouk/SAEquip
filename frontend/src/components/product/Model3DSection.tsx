@@ -43,7 +43,7 @@ export function Model3DSection({
         <div className="space-y-3">
           <Model3DPreview src={value.url} />
           <div className="flex items-center justify-between gap-3">
-            <span className="truncate text-small text-muted" title={value.filename ?? ""}>
+            <span className="truncate text-help text-muted" title={value.filename ?? ""}>
               {value.filename}
             </span>
             <div className="flex items-center gap-1">

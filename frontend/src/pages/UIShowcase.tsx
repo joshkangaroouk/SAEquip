@@ -59,25 +59,25 @@ export default function UIShowcase() {
 
       {/* Typography */}
       <section className="space-y-4">
-        <h2 className="text-h2">Typography</h2>
+        <h2 className="t-section">Typography</h2>
         <Card className="space-y-3">
-          <p className="text-display">Display</p>
-          <h1 className="text-h1">Heading 1</h1>
-          <h2 className="text-h2">Heading 2</h2>
-          <h3 className="text-h3">Heading 3</h3>
+          <p className="t-h1">Display</p>
+          <h1 className="t-h1">Heading 1</h1>
+          <h2 className="t-section">Heading 2</h2>
+          <h3 className="t-section">Heading 3</h3>
           <p className="text-body">
             Body text at 16px, weight 400 (Regular). DIN 2014 is the only typeface, loaded from
             Adobe Fonts — <span className="font-semibold">this span is semibold (600)</span>, and{" "}
             <span className="font-bold">this one is bold (700)</span>. Note there is no 500, so{" "}
             <span className="font-medium">font-medium</span> resolves to 400.
           </p>
-          <p className="text-small text-muted">Small / muted text at 14px.</p>
+          <p className="text-help text-muted">Small / muted text at 14px.</p>
         </Card>
       </section>
 
       {/* Buttons */}
       <section className="space-y-4">
-        <h2 className="text-h2">Buttons</h2>
+        <h2 className="t-section">Buttons</h2>
         <Card className="flex flex-wrap items-center gap-3">
           <Button variant="primary">Primary</Button>
           <Button variant="secondary">Secondary</Button>
@@ -91,7 +91,7 @@ export default function UIShowcase() {
 
       {/* Form controls */}
       <section className="space-y-4">
-        <h2 className="text-h2">Form controls</h2>
+        <h2 className="t-section">Form controls</h2>
         <Card className="grid gap-5 sm:grid-cols-2">
           <Field label="Text input" hint="A short helper hint.">
             <Input placeholder="Type something…" />
@@ -119,7 +119,7 @@ export default function UIShowcase() {
 
       {/* Badges */}
       <section className="space-y-4">
-        <h2 className="text-h2">Badges</h2>
+        <h2 className="t-section">Badges</h2>
         <Card className="flex flex-wrap items-center gap-3">
           <Badge tone="neutral">Neutral</Badge>
           <Badge tone="accent">Accent</Badge>
@@ -132,7 +132,7 @@ export default function UIShowcase() {
 
       {/* Card with header */}
       <section className="space-y-4">
-        <h2 className="text-h2">Card / Panel</h2>
+        <h2 className="t-section">Card / Panel</h2>
         <Card>
           <CardHeader
             title="Panel title"
@@ -145,7 +145,7 @@ export default function UIShowcase() {
 
       {/* Table (with sortable rows) */}
       <section className="space-y-4">
-        <h2 className="text-h2">Table (drag to reorder)</h2>
+        <h2 className="t-section">Table (drag to reorder)</h2>
         <Table>
           <THead sticky>
             <TR>
@@ -174,7 +174,7 @@ export default function UIShowcase() {
 
       {/* Sortable list */}
       <section className="space-y-4">
-        <h2 className="text-h2">Sortable list (dnd-kit)</h2>
+        <h2 className="t-section">Sortable list (dnd-kit)</h2>
         <SortableList
           items={rows}
           getId={(r) => r.id}
@@ -190,7 +190,7 @@ export default function UIShowcase() {
 
       {/* Modal + confirm */}
       <section className="space-y-4">
-        <h2 className="text-h2">Modal &amp; confirm</h2>
+        <h2 className="t-section">Modal &amp; confirm</h2>
         <Card className="flex flex-wrap gap-3">
           <Button onClick={() => setModalOpen(true)}>Open modal</Button>
           <Button
@@ -228,7 +228,7 @@ export default function UIShowcase() {
 
       {/* Toasts */}
       <section className="space-y-4">
-        <h2 className="text-h2">Toasts</h2>
+        <h2 className="t-section">Toasts</h2>
         <Card className="flex flex-wrap gap-3">
           <Button variant="secondary" onClick={() => toast.success("Saved successfully")}>
             Success
@@ -256,8 +256,8 @@ export default function UIShowcase() {
 
       {/* File dropzone */}
       <section className="space-y-4">
-        <h2 className="text-h2">File dropzone</h2>
-        <p className="text-small text-muted">
+        <h2 className="t-section">File dropzone</h2>
+        <p className="text-help text-muted">
           Uploads each file to <code>POST /api/media</code> with a progress bar. (Use throwaway
           files — real uploads create Media assets.)
         </p>
@@ -269,7 +269,7 @@ export default function UIShowcase() {
 
       {/* Empty / loading states */}
       <section className="space-y-4">
-        <h2 className="text-h2">States</h2>
+        <h2 className="t-section">States</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <EmptyState
             title="Nothing here yet"
@@ -281,7 +281,7 @@ export default function UIShowcase() {
           </Card>
         </div>
         <div className="flex items-center gap-3 text-muted">
-          <Spinner /> <span className="text-small">Inline spinner</span>
+          <Spinner /> <span className="text-help">Inline spinner</span>
         </div>
       </section>
     </div>

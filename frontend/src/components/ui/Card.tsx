@@ -87,8 +87,8 @@ export function CardHeader({
   return (
     <div className={cn("mb-4 flex flex-wrap items-start justify-between gap-3", className)}>
       <div className="space-y-1">
-        <h3 className="text-h3 font-semibold text-text">{title}</h3>
-        {description && <p className="text-small text-muted">{description}</p>}
+        <h3 className="t-section text-text">{title}</h3>
+        {description && <p className="text-help text-muted">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
@@ -109,7 +109,7 @@ export function SectionError({ message }: { message?: string | null }) {
   const bare = useContext(InAccordion);
   if (!message || bare) return null;
   return (
-    <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+    <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
       {message}
     </div>
   );

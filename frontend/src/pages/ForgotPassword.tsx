@@ -40,21 +40,21 @@ export default function ForgotPassword() {
       <div className="w-full max-w-sm">
         <img src={logoUrl} alt="SAEquip" className="mx-auto mb-8 h-24 w-auto" />
         <div className="rounded-xl border border-border bg-surface p-8 shadow-sm">
-          <h1 className="text-h2 font-semibold text-text">Reset your password</h1>
+          <h1 className="t-auth-title text-text">Reset your password</h1>
 
           {sent ? (
             <>
-              <p className="mt-3 text-small text-muted">
+              <p className="mt-3 text-help text-muted">
                 If <span className="font-medium text-text">{email}</span> has an account, a reset link
                 is on its way. The link expires shortly, so use it soon.
               </p>
-              <Link to="/login" className="mt-6 inline-block text-small font-semibold text-accent-strong">
+              <Link to="/login" className="mt-6 inline-block text-help font-semibold text-accent-strong">
                 ← Back to sign in
               </Link>
             </>
           ) : (
             <form onSubmit={onSubmit}>
-              <p className="mt-1 text-small text-muted">
+              <p className="mt-1 text-help text-muted">
                 We'll email you a link to choose a new one.
               </p>
               <div className="mt-6">
@@ -70,11 +70,11 @@ export default function ForgotPassword() {
                   />
                 </Field>
               </div>
-              {error && <p className="mt-3 text-small text-danger">{error}</p>}
+              {error && <p className="mt-3 text-help text-danger">{error}</p>}
               <Button type="submit" className="mt-6 w-full" disabled={submitting || !email.trim()}>
                 {submitting ? "Sending…" : "Send reset link"}
               </Button>
-              <Link to="/login" className="mt-4 inline-block text-small text-muted hover:text-text">
+              <Link to="/login" className="mt-4 inline-block text-help text-muted hover:text-text">
                 ← Back to sign in
               </Link>
             </form>

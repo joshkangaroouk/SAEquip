@@ -39,7 +39,7 @@ export function ProductDetailsSection({
       />
 
       {error && (
-        <div className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
           {error}
         </div>
       )}
@@ -150,7 +150,7 @@ export function ProductDetailsSection({
       </div>
 
       <fieldset className="mt-4 rounded-lg border border-border p-3">
-        <legend className="px-1.5 text-small font-medium text-muted">
+        <legend className="px-1.5 text-help font-medium text-muted">
           SEO
         </legend>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

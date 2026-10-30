@@ -23,7 +23,7 @@ export function VariationCountMeter({
   return (
     <div
       className={cn(
-        "rounded-md border px-3 py-1.5 text-small",
+        "rounded-md border px-3 py-1.5 text-help",
         over
           ? "border-danger/50 bg-danger/10 text-danger"
           : near

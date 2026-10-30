@@ -113,13 +113,13 @@ export function DangerZoneSection({
           </div>
         }
       >
-        {loading && <p className="text-small text-muted">Checking what this would remove…</p>}
+        {loading && <p className="text-help text-muted">Checking what this would remove…</p>}
 
         {preview && (
           <div className="space-y-4">
             <div>
-              <p className="text-small font-semibold text-text">Will be deleted</p>
-              <ul className="mt-1 list-inside list-disc text-small text-muted">
+              <p className="text-help font-semibold text-text">Will be deleted</p>
+              <ul className="mt-1 list-inside list-disc text-help text-muted">
                 <li>The Duda product{preview.sku ? ` (SKU ${preview.sku})` : ""} and its images</li>
                 {destroyed.length > 0 ? (
                   destroyed.map((d) => <li key={String(d)}>{d}</li>)
@@ -130,8 +130,8 @@ export function DangerZoneSection({
             </div>
 
             <div>
-              <p className="text-small font-semibold text-success">Will be kept</p>
-              <ul className="mt-1 list-inside list-disc text-small text-muted">
+              <p className="text-help font-semibold text-success">Will be kept</p>
+              <ul className="mt-1 list-inside list-disc text-help text-muted">
                 <li>
                   {preview.retains.leads > 0
                     ? `${plural(preview.retains.leads, "captured download lead")} — retained with this product's name recorded`

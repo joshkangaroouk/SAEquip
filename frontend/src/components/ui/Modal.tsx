@@ -149,12 +149,12 @@ export function Modal({
         {(title || description) && (
           <div className="shrink-0 border-b border-border px-6 py-5">
             {title && (
-              <h2 id={titleId} className="text-h3 font-semibold text-text">
+              <h2 id={titleId} className="t-modal-title text-text">
                 {title}
               </h2>
             )}
             {description && (
-              <p id={descriptionId} className="mt-1 text-small text-muted">
+              <p id={descriptionId} className="mt-1 text-help text-muted">
                 {description}
               </p>
             )}

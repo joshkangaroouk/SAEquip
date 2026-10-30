@@ -268,7 +268,7 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-0.5">
-      <p className="px-3 pb-2.5 pt-1 text-small font-medium uppercase tracking-wider text-sidebar-subtle">
+      <p className="t-overline px-3 pb-2.5 pt-1 text-sidebar-subtle">
         Main menu
       </p>
 
@@ -311,7 +311,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       <div className="px-4 py-5">
         <NavLink to="/" onClick={onNavigate} className="flex items-center gap-3">
           <img src={logoUrl} alt="SAEquip" className="h-14 w-auto shrink-0" />
-          <span className="text-h3 font-semibold leading-tight text-sidebar-foreground">
+          <span className="font-heading text-body font-semibold leading-tight text-sidebar-foreground">
             SAEquip
             <br />
             Admin

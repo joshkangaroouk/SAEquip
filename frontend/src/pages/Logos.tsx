@@ -54,7 +54,7 @@ function LogoCard({
     }
   }
 
-  const inputCls = "w-full rounded-md border border-border px-2 py-1 text-sm font-medium focus:border-text focus:outline-none placeholder:text-subtle";
+  const inputCls = "w-full rounded-md border border-border px-2 py-1 text-body font-medium focus:border-text focus:outline-none placeholder:text-subtle";
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-surface p-3">
@@ -66,11 +66,11 @@ function LogoCard({
       </Button>
 
       <div className="mt-2 space-y-2">
-        <label className="block text-xs font-semibold text-muted">
+        <label className="block text-label font-semibold text-muted">
           Label
           <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="optional" />
         </label>
-        <label className="block text-xs font-semibold text-muted">
+        <label className="block text-label font-semibold text-muted">
           Alt
           <input className={inputCls} value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="optional" />
         </label>
@@ -247,15 +247,15 @@ export default function Logos() {
     <>
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-text">Logos</h1>
+          <h1 className="t-h1 text-text">Logos</h1>
           <button onClick={() => setPickerOpen(true)} className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-foreground hover:bg-accent-hover">
             + Add logo
           </button>
         </div>
-        <p className="mt-1 text-sm text-muted">Global catalog shared across all products.</p>
+        <p className="mt-1 text-body text-muted">Global catalog shared across all products.</p>
 
         {/* Tabs */}
-        <div className="mt-6 flex gap-2 text-sm">
+        <div className="mt-6 flex gap-2 text-body">
           {(["SA_LOGO", "CERT_LOGO"] as Kind[]).map((k) => (
             <button
               key={k}
@@ -288,7 +288,7 @@ export default function Logos() {
           </div>
         )}
         {error && (
-          <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>
+          <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">{error}</div>
         )}
         {!loading && !error && entries && entries.length === 0 && (
           <p className="mt-8 text-muted">No logos in this catalog yet. Add one to get started.</p>

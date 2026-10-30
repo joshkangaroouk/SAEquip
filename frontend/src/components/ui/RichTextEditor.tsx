@@ -29,7 +29,7 @@ export interface RichTextEditorProps {
 }
 
 const btn =
-  "rounded px-2 py-1 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+  "rounded px-2 py-1 text-label font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
 function ToolbarButton({
   editor,
@@ -92,7 +92,7 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "min-h-[10rem] max-h-[26rem] overflow-y-auto px-3 py-2.5 text-small leading-relaxed text-text focus:outline-none " +
+          "min-h-[10rem] max-h-[26rem] overflow-y-auto px-3 py-2.5 text-body leading-relaxed text-text focus:outline-none " +
           // ⚠ Paragraph spacing MUST mirror how the description actually
           // renders on the product page — which since 2026-09-09 is the
           // WIDGET's Overview tab, not Duda's native description element.
@@ -284,7 +284,7 @@ export function RichTextEditor({
             }}
             placeholder="https://…"
             autoFocus
-            className="flex-1 rounded border border-border bg-surface px-2 py-1 text-xs focus:border-accent focus:outline-none"
+            className="flex-1 rounded border border-border bg-surface px-2 py-1 text-label focus:border-accent focus:outline-none"
           />
           <button type="button" onClick={applyLink} className={cn(btn, "bg-accent text-accent-foreground")}>
             Apply

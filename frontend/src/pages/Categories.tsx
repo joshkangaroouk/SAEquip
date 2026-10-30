@@ -347,7 +347,7 @@ export default function Categories() {
               ))}
             </Select>
           </Field>
-          <p className="text-small text-subtle">
+          <p className="text-help text-subtle">
             Description, image, SEO and products are edited on the category page after it
             exists.
           </p>
@@ -462,7 +462,7 @@ function CategoryTree({
 
   return (
     <div>
-      <div className={`${COLS} border-b border-border py-2 text-small font-semibold text-muted`}>
+      <div className={`${COLS} border-b border-border py-2 text-help font-semibold text-muted`}>
         <span />
         <span>Category title</span>
         <span>Subcategories</span>

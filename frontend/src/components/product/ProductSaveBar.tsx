@@ -52,11 +52,11 @@ export function ProductSaveBar({
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-5 py-3 lg:px-8">
         <div className="min-w-0 flex-1">
           {saving ? (
-            <p className="text-small font-semibold text-text">
+            <p className="text-help font-semibold text-text">
               Saving{savingLabel ? ` ${savingLabel}` : ""}…
             </p>
           ) : (
-            <p className="truncate text-small text-muted">
+            <p className="truncate text-help text-muted">
               {isDirty ? (
                 <>
                   <span className="font-semibold text-text">
@@ -71,7 +71,7 @@ export function ProductSaveBar({
           )}
 
           {invalidKeys.length > 0 && !saving && (
-            <p className="mt-1 text-small text-danger">
+            <p className="mt-1 text-help text-danger">
               {invalidKeys.map((k) => `${SECTION_LABELS[k]}: ${validationErrors[k]}`).join(" · ")}
             </p>
           )}
@@ -82,7 +82,7 @@ export function ProductSaveBar({
                 <a
                   key={k}
                   href={`#section-${k}`}
-                  className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-small font-semibold text-danger hover:bg-danger/20"
+                  className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-help font-semibold text-danger hover:bg-danger/20"
                   title={saveErrors[k]}
                 >
                   {SECTION_LABELS[k]} failed

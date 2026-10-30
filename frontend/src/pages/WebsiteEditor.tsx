@@ -157,7 +157,7 @@ export default function WebsiteEditor() {
                     <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-h3 font-semibold text-text">SAEquip</h2>
+                          <h2 className="t-section text-text">SAEquip</h2>
                           <Badge tone={publishTone(site.publishStatus)}>
                             {publishLabel(site.publishStatus)}
                           </Badge>
@@ -177,7 +177,7 @@ export default function WebsiteEditor() {
                           <p className="mt-1 text-body text-muted">{site.siteName}</p>
                         )}
 
-                        <p className="mt-1 text-small text-subtle">
+                        <p className="mt-1 text-help text-subtle">
                           Site ID: {site.siteName}
                           {site.lastPublished && (
                             <> · Last published {new Date(site.lastPublished).toLocaleDateString()}</>
@@ -197,7 +197,7 @@ export default function WebsiteEditor() {
                 </Card>
               ))}
 
-              <p className="text-small text-subtle">
+              <p className="text-help text-subtle">
                 You'll be signed into Duda as {data.dudaAccountName}. Product content is managed
                 here in the Hub, not in Duda's store.
               </p>

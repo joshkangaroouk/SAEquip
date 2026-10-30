@@ -602,14 +602,14 @@ export default function Widgets() {
     <>
       <style>{WIDGET_CSS}</style>
 
-      <h1 className="text-xl font-semibold text-text">Widgets</h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="t-h1 text-text">Widgets</h1>
+      <p className="mt-1 text-body text-muted">
         The five widgets on the live product page. Each one shows content you enter here in the Hub.
       </p>
 
       <Card className="mt-6">
         <h2 className="text-body font-semibold text-text">How it works</h2>
-        <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-muted">
+        <ul className="mt-2 list-disc space-y-1.5 pl-5 text-body text-muted">
           <li>
             All five are already built and placed on the Duda product template. Nothing needs pasting or
             configuring here — edit a product and the widgets follow.
@@ -634,8 +634,8 @@ export default function Widgets() {
               <h2 className="text-body font-semibold text-text">{w.name}</h2>
               <Badge tone="neutral">{w.section}</Badge>
             </div>
-            <p className="mt-1 text-sm text-muted">{w.what}</p>
-            <p className="mt-1 text-xs text-subtle">
+            <p className="mt-1 text-body text-muted">{w.what}</p>
+            <p className="mt-1 text-label text-subtle">
               <span className="font-semibold">Comes from:</span> {w.source}
             </p>
 

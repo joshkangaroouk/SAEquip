@@ -28,7 +28,7 @@ export function Badge({
       className={cn(
         // rounded-md not full, and no hover — a badge isn't interactive.
         "inline-flex w-fit shrink-0 items-center gap-1 rounded-md border px-2 py-0.5",
-        "text-xs font-medium leading-normal whitespace-nowrap",
+        "text-help font-medium leading-normal whitespace-nowrap",
         tones[tone],
         className,
       )}

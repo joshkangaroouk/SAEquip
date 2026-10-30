@@ -209,7 +209,7 @@ export function SelectMenu({
         onKeyDown={onTriggerKey}
         className={cn(
           "flex h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface",
-          "px-2.5 text-small text-text shadow-xs transition-[color,box-shadow] outline-none",
+          "px-2.5 text-body text-text shadow-xs transition-[color,box-shadow] outline-none",
           "hover:bg-surface-2 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
           open && "border-ring",
         )}
@@ -260,7 +260,7 @@ export function SelectMenu({
                   onClick={() => choose(i)}
                   style={{ paddingLeft: 10 + (o.depth ?? 0) * 14 }}
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-2 py-1.5 pr-2.5 text-left text-small transition-colors",
+                    "flex w-full cursor-pointer items-center gap-2 py-1.5 pr-2.5 text-left text-body transition-colors",
                     selected ? "font-semibold text-text" : "text-muted",
                     i === active ? "bg-surface-2 text-text" : selected && "bg-surface-2/60",
                   )}

@@ -72,7 +72,7 @@ export function TranslationProgressModal({
       <ul className="space-y-3" aria-live="polite">
         {(progress ?? []).map((p) => (
           <li key={p.locale}>
-            <div className="flex items-center justify-between gap-3 text-small">
+            <div className="flex items-center justify-between gap-3 text-help">
               <span className="font-semibold text-text">{p.label}</span>
               <span
                 className={p.phase === "failed" ? "text-danger" : "text-muted"}
@@ -89,7 +89,7 @@ export function TranslationProgressModal({
             </div>
             {p.phase === "needs-click" && (
               <div className="mt-2 flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface-2 px-3 py-2">
-                <p className="min-w-0 flex-1 text-small text-muted">
+                <p className="min-w-0 flex-1 text-help text-muted">
                   Chrome downloads each language once per computer, and only when you click.
                 </p>
                 <Button size="xs" onClick={() => onDownload(p.locale)}>

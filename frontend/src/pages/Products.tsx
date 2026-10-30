@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { X } from "lucide-react";
 import { apiFetch } from "../lib/api";
 import {
   Button,
@@ -207,7 +208,7 @@ export default function Products() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-h1 font-semibold text-text">Products</h1>
+        <h1 className="t-h1 text-text">Products</h1>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -290,9 +291,9 @@ export default function Products() {
               onClick={() => setQuery("")}
               aria-label="Clear search"
               title="Clear search"
-              className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-base leading-none text-subtle transition-colors hover:bg-surface-2 hover:text-text"
+              className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-text"
             >
-              ×
+              <X size={14} strokeWidth={2} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -432,7 +433,7 @@ export default function Products() {
                           <Link to={`/products/${p.id}`} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 font-medium text-text">
                             <Highlight text={p.name} query={query} />
                           </Link>
-                          <div className="text-small text-subtle">{p.type}</div>
+                          <div className="text-help text-subtle">{p.type}</div>
                         </div>
                       </div>
                     </TD>
@@ -454,7 +455,7 @@ export default function Products() {
                           )}
                           {/* Still shown: it is an error to fix, not a list. */}
                           {stale && (
-                            <span className="rounded-md border border-danger/30 bg-danger/10 px-1.5 py-0.5 text-xs text-danger">
+                            <span className="rounded-md border border-danger/30 bg-danger/10 px-1.5 py-0.5 text-label text-danger">
                               {stale.label}
                             </span>
                           )}

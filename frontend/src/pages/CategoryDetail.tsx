@@ -228,7 +228,7 @@ export default function CategoryDetail() {
   return (
     <>
       <UnsavedChangesModal blocker={blocker} onSave={save} />
-      <nav className="flex items-center gap-1.5 text-small text-muted">
+      <nav className="flex items-center gap-1.5 text-help text-muted">
         <Link to="/categories" className="hover:text-text">
           Categories
         </Link>
@@ -237,9 +237,9 @@ export default function CategoryDetail() {
       </nav>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-h1 font-semibold text-text">{node?.title ?? draft.title}</h1>
+        <h1 className="t-h1 text-text">{node?.title ?? draft.title}</h1>
         <div className="flex items-center gap-2">
-          {dirty && <span className="text-small text-muted">Unsaved changes</span>}
+          {dirty && <span className="text-help text-muted">Unsaved changes</span>}
           <Button variant="secondary" size="sm" onClick={() => navigate("/categories")} disabled={saving}>
             Cancel
           </Button>
@@ -314,7 +314,7 @@ export default function CategoryDetail() {
               }
             />
             {children.length === 0 ? (
-              <p className="text-small text-subtle">No subcategories yet.</p>
+              <p className="text-help text-subtle">No subcategories yet.</p>
             ) : (
               <SortableList
                 items={children}
@@ -337,7 +337,7 @@ export default function CategoryDetail() {
                     >
                       {c.title}
                     </Link>
-                    <span className="shrink-0 text-small text-muted">{c.hubProductCount} products</span>
+                    <span className="shrink-0 text-help text-muted">{c.hubProductCount} products</span>
                   </div>
                 )}
               />
@@ -356,13 +356,13 @@ export default function CategoryDetail() {
               {draft.image_url ? (
                 <img src={draft.image_url} alt="" className="h-full w-full object-contain" />
               ) : (
-                <span className="flex flex-col items-center gap-2 text-small">
+                <span className="flex flex-col items-center gap-2 text-help">
                   <ImageOff size={24} />
                   Click to choose an image
                 </span>
               )}
             </button>
-            <p className="mt-2 text-small text-subtle">
+            <p className="mt-2 text-help text-subtle">
               Duda fetches the file and re-hosts its own copy, so the Media Centre original can
               change later without breaking the page.
               {/*

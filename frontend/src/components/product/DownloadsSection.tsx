@@ -100,7 +100,7 @@ export function DownloadsSection({
       />
 
       <SectionError message={error} />
-      {notice && <p className="mb-3 text-small text-muted">{notice}</p>}
+      {notice && <p className="mb-3 text-help text-muted">{notice}</p>}
 
       {value.length === 0 ? (
         <p className="text-body text-subtle">No downloads on this product yet.</p>
@@ -175,7 +175,7 @@ export function DownloadsSection({
                       </div>
                     )}
                   </div>
-                  <p className="mt-1 truncate text-xs text-subtle" title={d.filename}>
+                  <p className="mt-1 truncate text-label text-subtle" title={d.filename}>
                     {d.filename} · {formatBytes(d.sizeBytes)}
                   </p>
                 </div>
@@ -194,7 +194,7 @@ export function DownloadsSection({
                     Preview
                   </a>
                 ) : (
-                  <span className="shrink-0 px-1.5 text-small text-danger" title="This file could not be found in storage.">
+                  <span className="shrink-0 px-1.5 text-help text-danger" title="This file could not be found in storage.">
                     File missing
                   </span>
                 )}

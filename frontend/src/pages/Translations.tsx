@@ -147,7 +147,7 @@ function EditTranslation({
     >
       <div className="space-y-4">
         <div>
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">English</div>
+          <div className="t-label mb-1 text-subtle">English</div>
           {html ? (
             <div className="max-h-48 overflow-auto rounded-md border border-border bg-surface-2 p-3">
               <RichHtml html={item.sourceText} />
@@ -158,15 +158,15 @@ function EditTranslation({
         </div>
 
         {item.status === "rejected" && item.lastError && (
-          <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+          <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
             The machine translation was kept in English: {item.lastError}.
           </p>
         )}
 
         <div>
-          <label htmlFor="translation-text" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-subtle">
+          <label htmlFor="translation-text" className="t-label mb-1 block text-subtle">
             {targetLabel(locale)}
-            {html && <span className="ml-2 font-normal normal-case tracking-normal">HTML - keep every tag and link as it is</span>}
+            {html && <span className="ml-2 font-normal">HTML - keep every tag and link as it is</span>}
           </label>
           <Textarea
             id="translation-text"
@@ -178,7 +178,7 @@ function EditTranslation({
             dir={rtl && !html ? "rtl" : "ltr"}
             // `leading-relaxed` restated: with tailwind-merge a font size cancels
             // the Textarea's own line-height, which was not the intent here.
-            className={html ? "font-mono text-small leading-relaxed" : undefined}
+            className={html ? "font-mono text-help leading-relaxed" : undefined}
           />
           {html && text.trim() && (
             <div className="mt-2 max-h-48 overflow-auto rounded-md border border-border p-3" lang={locale} dir={rtl ? "rtl" : "ltr"}>
@@ -187,12 +187,12 @@ function EditTranslation({
           )}
         </div>
 
-        <p className="text-small text-muted">
+        <p className="text-help text-muted">
           Numbers, certification marks (ATEX, IECEx, UKEX…), product codes and links must stay exactly as in the English,
           or the translation is refused - that is what keeps a rating from changing in translation.
         </p>
         {problem && (
-          <p role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+          <p role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
             Not saved: {problem}.
           </p>
         )}
@@ -291,7 +291,7 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-2xl text-small text-muted">
+        <p className="max-w-2xl text-help text-muted">
           Product names and category titles are translated in Duda (the site's language settings), and copied here so the
           widgets' cards and lists say exactly what Duda's own pages say. After adding a language or changing a name in
           Duda, republish the site and press Refresh.
@@ -301,7 +301,7 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
           {refreshing && refreshing !== "…" ? `Copying ${refreshing}…` : "Refresh all languages from Duda"}
         </Button>
       </div>
-      {error && <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>}
+      {error && <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">{error}</div>}
       {!items && !error && (
         <div className="mt-6" aria-busy="true" aria-label="Loading names">
           <Skeleton className="h-64 w-full" />
@@ -310,7 +310,7 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
       {items && (
         <>
           {missing > 0 && (
-            <p className="mt-4 text-small text-muted">
+            <p className="mt-4 text-help text-muted">
               {missing === items.length
                 ? `Nothing copied for ${targetLabel(locale)} yet. Add the language to the Duda site, wait for Duda to translate it, then press Refresh.`
                 : `${missing} still in English in Duda, so they show in English here too. Translate them in Duda, republish, then press Refresh.`}
@@ -328,7 +328,7 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
               <TBody>
                 {items.map((n) => (
                   <TR key={`${n.entity}:${n.dudaId}`}>
-                    <TD className="whitespace-nowrap text-small text-muted">{n.entity === "PRODUCT" ? "Product" : "Category"}</TD>
+                    <TD className="whitespace-nowrap text-help text-muted">{n.entity === "PRODUCT" ? "Product" : "Category"}</TD>
                     <TD>{n.english}</TD>
                     <TD lang={locale} dir={rtl ? "rtl" : "ltr"}>
                       {n.text ?? <span className="text-subtle">-</span>}
@@ -546,7 +546,7 @@ export default function Translations() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-text">
+        <h1 className="t-h1 flex items-center gap-2 text-text">
           <Languages size={22} className="text-accent" aria-hidden="true" />
           Translations
         </h1>
@@ -575,7 +575,7 @@ export default function Translations() {
           </div>
         )}
       </div>
-      <p className="mt-1 max-w-3xl text-sm text-muted">
+      <p className="mt-1 max-w-3xl text-body text-muted">
         Product content in the website's other languages. Anything missing or kept in English shows in English on that
         language's pages. Machine translations are checked automatically; a correction made here is never overwritten.
       </p>
@@ -585,7 +585,7 @@ export default function Translations() {
           <button
             key={t.locale}
             onClick={() => setParam("lang", t.locale)}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
+            className={`rounded-full px-4 py-1.5 text-body font-semibold ${
               locale === t.locale ? "bg-accent text-accent-foreground" : "border border-border text-muted hover:bg-surface-2"
             }`}
             aria-pressed={locale === t.locale}
@@ -595,7 +595,7 @@ export default function Translations() {
         ))}
       </div>
 
-      <div className="mt-4 flex gap-4 border-b border-border text-sm" role="tablist">
+      <div className="mt-4 flex gap-4 border-b border-border text-body" role="tablist">
         {(
           [
             ["content", "Product content"],
@@ -658,7 +658,7 @@ export default function Translations() {
             </div>
 
             {error && (
-              <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>
+              <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">{error}</div>
             )}
             {!data && !error && (
               <div className="mt-4" aria-busy="true" aria-live="polite" aria-label="Loading translations">
@@ -699,9 +699,9 @@ export default function Translations() {
                   <TBody>
                     {shown.map((i) => (
                       <TR key={`${i.kind}:${i.sourceHash}`} hover onClick={() => setEditing(i)}>
-                        <TD className="align-top text-small text-muted">
+                        <TD className="align-top text-help text-muted">
                           {KIND_LABEL[i.kind]}
-                          <div className="mt-0.5 truncate text-xs text-subtle" title={usedOn(i, products)}>
+                          <div className="mt-0.5 truncate text-label text-subtle" title={usedOn(i, products)}>
                             {usedOn(i, products)}
                           </div>
                         </TD>

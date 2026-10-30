@@ -39,7 +39,7 @@ export function DescriptionSection({
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
-                  className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
+                  className={`rounded px-2 py-0.5 text-label font-semibold transition-colors ${
                     mode === m
                       ? "bg-accent text-accent-foreground"
                       : "text-muted hover:text-text"
@@ -54,7 +54,7 @@ export function DescriptionSection({
       />
 
       {mode === "rich" && wouldReformat && !dirty && (
-        <p className="mb-3 rounded-md border border-border bg-surface-2 px-3 py-2 text-small text-muted">
+        <p className="mb-3 rounded-md border border-border bg-surface-2 px-3 py-2 text-help text-muted">
           This description was written elsewhere, so editing it here will tidy the underlying HTML.
           Switch to <span className="font-semibold">HTML</span> if you need the original markup kept
           exactly as-is.

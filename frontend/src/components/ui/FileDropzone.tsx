@@ -103,14 +103,14 @@ export function FileDropzone({
           <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="1.5" />
         </svg>
         <p className="text-body font-semibold text-text">{label}</p>
-        {hint && <p className="mt-1 text-small text-muted">{hint}</p>}
+        {hint && <p className="mt-1 text-help text-muted">{hint}</p>}
       </div>
 
       {items.length > 0 && (
         <ul className="space-y-2">
           {items.map((it) => (
             <li key={it.id} className="rounded-md bg-surface border border-border px-4 py-3">
-              <div className="flex items-center justify-between gap-3 text-small">
+              <div className="flex items-center justify-between gap-3 text-help">
                 <span className="truncate text-text">{it.name}</span>
                 <span
                   className={cn(

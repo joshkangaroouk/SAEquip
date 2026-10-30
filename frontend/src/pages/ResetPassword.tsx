@@ -115,13 +115,13 @@ export default function ResetPassword() {
       <div className="w-full max-w-sm">
         <img src={logoUrl} alt="SAEquip" className="mx-auto mb-8 h-24 w-auto" />
         <div className="rounded-xl border border-border bg-surface p-8 shadow-sm">
-          <h1 className="text-h2 font-semibold text-text">Choose a new password</h1>
+          <h1 className="t-auth-title text-text">Choose a new password</h1>
 
-          {ready === "checking" && <p className="mt-3 text-small text-muted">Checking your link…</p>}
+          {ready === "checking" && <p className="mt-3 text-help text-muted">Checking your link…</p>}
 
           {ready === "no-session" && (
             <>
-              <p className="mt-3 text-small text-muted">
+              <p className="mt-3 text-help text-muted">
                 This reset link is invalid or has expired. Request a new one.
               </p>
               <Button className="mt-6 w-full" onClick={() => navigate("/forgot-password")}>
@@ -171,21 +171,21 @@ export default function ResetPassword() {
                 )}
               </div>
               {needsCode && (
-                <p className="mt-2 text-small text-muted">
+                <p className="mt-2 text-help text-muted">
                   This account uses two-factor authentication, so enter the 6-digit code from your
                   authenticator app as well.
                 </p>
               )}
 
               {password.length > 0 && !verdict.ok && (
-                <ul className="mt-3 list-disc space-y-0.5 pl-5 text-small text-muted">
+                <ul className="mt-3 list-disc space-y-0.5 pl-5 text-help text-muted">
                   {verdict.problems.map((p) => (
                     <li key={p}>{p}</li>
                   ))}
                 </ul>
               )}
-              {mismatch && <p className="mt-3 text-small text-danger">The two passwords don't match.</p>}
-              {error && <p className="mt-3 text-small text-danger">{error}</p>}
+              {mismatch && <p className="mt-3 text-help text-danger">The two passwords don't match.</p>}
+              {error && <p className="mt-3 text-help text-danger">{error}</p>}
 
               <Button
                 type="submit"

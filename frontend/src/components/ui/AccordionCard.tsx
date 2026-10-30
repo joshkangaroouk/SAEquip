@@ -81,10 +81,10 @@ export function AccordionCard({
               on open, which put it next to the section's own copy of the same
               sentence. */}
           {description && (
-            <span className="mt-0.5 block truncate text-small text-muted">{description}</span>
+            <span className="mt-0.5 block truncate text-help text-muted">{description}</span>
           )}
         </span>
-        {summary != null && <span className="shrink-0 text-xs text-subtle">{summary}</span>}
+        {summary != null && <span className="shrink-0 text-label text-subtle">{summary}</span>}
         {error ? <Badge tone="danger">Error</Badge> : dirty ? <Badge tone="accent">Unsaved</Badge> : null}
       </button>
 

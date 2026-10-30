@@ -100,7 +100,7 @@ export function AttachOptionModal({
 
         <div className="max-h-72 space-y-2 overflow-y-auto">
           {visible.length === 0 && (
-            <p className="text-small text-subtle">
+            <p className="text-help text-subtle">
               {catalog.options.length === 0
                 ? "The store has no options yet — create the first one below."
                 : `No options match “${query}”.`}
@@ -116,12 +116,12 @@ export function AttachOptionModal({
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-small font-semibold text-text">{o.name}</span>
+                    <span className="text-help font-semibold text-text">{o.name}</span>
                     <Badge tone="neutral">
                       used by {o.usage} {o.usage === 1 ? "product" : "products"}
                     </Badge>
                   </div>
-                  <p className="mt-1 truncate text-small text-muted">
+                  <p className="mt-1 truncate text-help text-muted">
                     {o.choices.map((c) => c.value).join(" · ") || "no choices"}
                   </p>
                 </div>
@@ -155,7 +155,7 @@ export function AttachOptionModal({
             </Button>
           ) : (
             <div className="space-y-3">
-              <p className="text-small text-muted">
+              <p className="text-help text-muted">
                 This adds to the shared catalog, so every product will be able to use it.
               </p>
               <Field label="Option name" htmlFor="new-opt-name">
@@ -169,7 +169,7 @@ export function AttachOptionModal({
               </Field>
 
               <div className="space-y-2">
-                <span className="block text-small font-semibold text-text">Choices</span>
+                <span className="block text-help font-semibold text-text">Choices</span>
                 {newChoices.map((c, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Input

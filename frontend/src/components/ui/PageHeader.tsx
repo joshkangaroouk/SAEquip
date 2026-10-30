@@ -20,7 +20,7 @@ export function PageHeader({
       )}
     >
       <div className="space-y-2">
-        <h1 className="text-h1 font-semibold text-text">{title}</h1>
+        <h1 className="t-h1 text-text">{title}</h1>
         {description && <p className="text-body text-muted">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-3">{actions}</div>}

@@ -58,7 +58,7 @@ export function MediaPicker({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-sm font-semibold text-text">Choose {KIND_LABEL[kind]}</h2>
+          <h2 className="text-body font-semibold text-text">Choose {KIND_LABEL[kind]}</h2>
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-text"
@@ -74,7 +74,7 @@ export function MediaPicker({
               type="file"
               accept={kind === "model" ? ".glb" : kind === "image" ? "image/*" : undefined}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
+              className="text-body text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-body file:font-semibold file:text-accent-foreground file:transition-colors hover:file:bg-accent-hover"
             />
             <button
               onClick={onUpload}
@@ -83,13 +83,13 @@ export function MediaPicker({
             >
               {uploading ? "Uploading…" : "Upload new"}
             </button>
-            {uploadError && <span className="text-sm text-danger">{uploadError}</span>}
+            {uploadError && <span className="text-body text-danger">{uploadError}</span>}
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
+            <p className="t-overline text-subtle">
               Or choose existing
             </p>
             {/* One row — see the note in pages/Media.tsx on why the widths
@@ -136,9 +136,9 @@ export function MediaPicker({
               ))}
             </div>
           )}
-          {lib.error && <p className="text-sm text-danger">{lib.error}</p>}
+          {lib.error && <p className="text-body text-danger">{lib.error}</p>}
           {lib.isEmpty && (
-            <p className="text-sm text-subtle">
+            <p className="text-body text-subtle">
               {lib.isFiltered
                 ? "Nothing matches that search."
                 : `No ${kind}s in the library yet — upload one above.`}
@@ -180,7 +180,7 @@ export function MediaPicker({
                         className="h-24 w-full rounded"
                       />
                     )}
-                    <span className="mt-1 w-full text-center text-xs text-muted [overflow-wrap:anywhere]" title={a.filename}>
+                    <span className="mt-1 w-full text-center text-label text-muted [overflow-wrap:anywhere]" title={a.filename}>
                       {a.filename}
                     </span>
                   </button>

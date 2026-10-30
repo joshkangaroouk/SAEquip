@@ -90,7 +90,7 @@ export function TR({
 
 export function TH({ className, children, ...rest }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={cn("h-10 px-3 align-middle text-small font-medium", className)} {...rest}>
+    <th className={cn("h-10 px-3 align-middle text-help font-medium", className)} {...rest}>
       {children}
     </th>
   );

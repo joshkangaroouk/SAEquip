@@ -9,7 +9,7 @@ export function RichHtml({ html, className = "" }: { html: string; className?: s
   return (
     <div
       className={
-        "text-sm leading-relaxed text-text " +
+        "text-body leading-relaxed text-text " +
         // ⚠ Mirrors how the description actually renders on the product page:
         // the widget's Overview tab, whose `.saeh-prose p + p` is
         // `margin-top:12px`. Keep in step with RichTextEditor.tsx and with

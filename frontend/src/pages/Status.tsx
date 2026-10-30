@@ -48,10 +48,10 @@ export default function Status() {
 
   return (
     <div className="mx-auto max-w-md space-y-4">
-      <h1 className="text-lg font-semibold text-text">System status</h1>
+      <h1 className="t-h1 text-text">System status</h1>
 
         <Card>
-          <h2 className="text-sm font-semibold text-muted">Backend health</h2>
+          <h2 className="text-body font-semibold text-muted">Backend health</h2>
           <div className="mt-2 flex items-center gap-2">
             <span className={`inline-block h-3 w-3 rounded-full ${healthDot}`} />
             <span className={`font-semibold ${healthColor}`}>{healthLabel}</span>
@@ -59,7 +59,7 @@ export default function Status() {
         </Card>
 
         <Card>
-          <h2 className="text-sm font-semibold text-muted">Authenticated API call</h2>
+          <h2 className="text-body font-semibold text-muted">Authenticated API call</h2>
           <div className="mt-2 font-semibold">
             {me.status === "loading" && <span className="text-muted">Checking /api/me…</span>}
             {me.status === "ok" && (

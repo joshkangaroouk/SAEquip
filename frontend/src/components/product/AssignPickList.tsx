@@ -155,7 +155,7 @@ export function AssignPickList({
   return (
     <div>
       {missing.length > 0 && (
-        <div role="alert" className="mb-2 flex items-start justify-between gap-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+        <div role="alert" className="mb-2 flex items-start justify-between gap-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-help text-danger">
           <span>
             {missing.length === 1 ? "1 selected item no longer exists" : `${missing.length} selected items no longer exist`}{" "}
             (deleted in Duda), so this list cannot be saved until {missing.length === 1 ? "it is" : "they are"} removed.
@@ -186,15 +186,15 @@ export function AssignPickList({
               onChange={setOnlySelected}
               label="Only show selected"
             />
-            <span className="text-small text-subtle">{selected.length} selected</span>
+            <span className="text-help text-subtle">{selected.length} selected</span>
           </div>
         </>
       )}
 
       {items.length === 0 ? (
-        <p className="text-small text-subtle">{emptyText}</p>
+        <p className="text-help text-subtle">{emptyText}</p>
       ) : rows.length === 0 ? (
-        <p className="text-small text-subtle">
+        <p className="text-help text-subtle">
           {onlySelected && !selected.length
             ? "Nothing is selected yet."
             : onlySelected
@@ -210,7 +210,7 @@ export function AssignPickList({
               // long group otherwise loses its label off the top.
               <div
                 key={`h:${row.label}`}
-                className="sticky top-0 z-10 border-b border-border bg-surface-2 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-subtle"
+                className="sticky top-0 z-10 border-b border-border bg-surface-2 px-2.5 py-1.5 t-overline text-subtle"
               >
                 {row.label}
               </div>
@@ -257,10 +257,10 @@ export function AssignPickList({
                       row.item.label
                     )
                   }
-                  className="min-w-0 flex-1 text-xs"
+                  className="min-w-0 flex-1 text-label"
                 />
                 {row.item.hint && (
-                  <span className="shrink-0 text-xs text-subtle">{row.item.hint}</span>
+                  <span className="shrink-0 text-label text-subtle">{row.item.hint}</span>
                 )}
               </div>
             ),

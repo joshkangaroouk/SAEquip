@@ -57,8 +57,8 @@ function Detail({ label, children, wide = false }: { label: string; children?: R
   const empty = children == null || children === "";
   return (
     <div className={wide ? "sm:col-span-2" : undefined}>
-      <div className="text-xs font-semibold uppercase tracking-wide text-subtle">{label}</div>
-      <div className="whitespace-pre-line text-sm font-medium text-text">{empty ? "—" : children}</div>
+      <div className="t-label text-subtle">{label}</div>
+      <div className="whitespace-pre-line text-body font-medium text-text">{empty ? "—" : children}</div>
     </div>
   );
 }
@@ -72,7 +72,7 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
   const address = [quote.address, quote.postcode, quote.country].filter(Boolean).join("\n");
   return (
     <div className="space-y-5">
-      <h3 className="text-sm font-semibold text-text">{quote.name}</h3>
+      <h3 className="text-body font-semibold text-text">{quote.name}</h3>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Detail label="First name">{quote.firstName}</Detail>
@@ -92,7 +92,7 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
       </div>
 
       <div>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
+        <div className="t-overline mb-2 text-subtle">
           Items ({quote.items.length})
         </div>
         {/* No price column: SAEquip quotes prices, so the basket never carries one. */}
@@ -167,7 +167,7 @@ export default function Quotes() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text">Quote Requests</h1>
+        <h1 className="t-h1 text-text">Quote Requests</h1>
         <Button
           variant="secondary"
           size="sm"
@@ -184,7 +184,7 @@ export default function Quotes() {
         * a setting nobody chose. The backend still stores every submission
         * independently of email, which is what makes leaving it off safe.
         */}
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-1 text-body text-muted">
         Submissions captured from the public basket-page widget. Every request is stored here
         regardless of any notification setup.
       </p>
@@ -228,7 +228,7 @@ export default function Quotes() {
         </div>
       )}
       {error && (
-        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
           {error}
         </div>
       )}

@@ -52,8 +52,8 @@ function Detail({ label, children, wide = false }: { label: string; children?: R
   const empty = children == null || children === "";
   return (
     <div className={wide ? "sm:col-span-2" : undefined}>
-      <div className="text-xs font-semibold uppercase tracking-wide text-subtle">{label}</div>
-      <div className="whitespace-pre-line text-sm font-medium text-text">{empty ? "—" : children}</div>
+      <div className="t-label text-subtle">{label}</div>
+      <div className="whitespace-pre-line text-body font-medium text-text">{empty ? "—" : children}</div>
     </div>
   );
 }
@@ -61,7 +61,7 @@ function Detail({ label, children, wide = false }: { label: string; children?: R
 function RequestDetail({ request: r }: { request: ResourceRequest }) {
   return (
     <div className="space-y-5">
-      <h3 className="text-sm font-semibold text-text">{r.name}</h3>
+      <h3 className="text-body font-semibold text-text">{r.name}</h3>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Detail label="First name">{r.firstName}</Detail>
@@ -87,7 +87,7 @@ function RequestDetail({ request: r }: { request: ResourceRequest }) {
       </div>
 
       <div>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">File requested</div>
+        <div className="t-overline mb-2 text-subtle">File requested</div>
         <div className="flex items-center gap-3 rounded-md border border-border p-3">
           <ProductThumb url={r.file.imageUrl} />
           <div className="min-w-0">
@@ -102,11 +102,11 @@ function RequestDetail({ request: r }: { request: ResourceRequest }) {
             ) : (
               <span className="font-medium text-text">{r.file.productName ?? "—"}</span>
             )}
-            <div className="text-sm text-muted">
+            <div className="text-body text-muted">
               {r.file.title ?? "—"}
               {r.file.productSku ? ` · ${r.file.productSku}` : ""}
             </div>
-            <div className="truncate text-xs text-subtle" title={r.file.fileName ?? undefined}>
+            <div className="truncate text-label text-subtle" title={r.file.fileName ?? undefined}>
               {r.file.fileName ?? ""}
             </div>
           </div>
@@ -167,12 +167,12 @@ export default function ResourceRequests() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text">Resource Requests</h1>
+        <h1 className="t-h1 text-text">Resource Requests</h1>
         <Button variant="secondary" size="sm" disabled={requests.length === 0} onClick={() => exportRequests(requests)}>
           Export CSV
         </Button>
       </div>
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-1 text-body text-muted">
         Details entered on the Datasheets, User Manuals and Certificates pages before a file is downloaded.
       </p>
 
@@ -206,7 +206,7 @@ export default function ResourceRequests() {
         </div>
       )}
       {error && (
-        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>
+        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">{error}</div>
       )}
       {!loading && !error && requests.length === 0 && (
         <EmptyState

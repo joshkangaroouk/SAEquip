@@ -22,9 +22,9 @@ export function EmptyState({
         className,
       )}
     >
-      {icon && <div className="mb-3 text-2xl text-subtle">{icon}</div>}
-      <h3 className="text-h3 font-semibold text-text">{title}</h3>
-      {description && <p className="mt-1.5 max-w-sm text-small text-muted">{description}</p>}
+      {icon && <div className="mb-3 text-subtle [&_svg]:h-6 [&_svg]:w-6">{icon}</div>}
+      <h3 className="t-empty-title text-text">{title}</h3>
+      {description && <p className="mt-1.5 max-w-sm text-help text-muted">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

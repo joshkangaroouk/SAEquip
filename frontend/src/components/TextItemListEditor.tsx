@@ -40,7 +40,7 @@ export function TextItemListEditor({
       <SectionError message={error} />
 
       {items.length === 0 ? (
-        <p className="text-small text-subtle">No items. Add one below.</p>
+        <p className="text-help text-subtle">No items. Add one below.</p>
       ) : (
         <SortableList
           items={items}
@@ -54,9 +54,9 @@ export function TextItemListEditor({
             // not be set to the same token. Matches SpecTableEditor's rows.
             <div className="flex items-center gap-3 rounded-md border border-border bg-surface-2 p-3">
               <DragHandle handle={handle} />
-              <span className="w-6 text-right text-xs text-subtle">{index + 1}.</span>
+              <span className="w-6 text-right text-label text-subtle">{index + 1}.</span>
               <input
-                className={`flex-1 rounded-md border bg-surface px-3 py-2 text-xs font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent ${
+                className={`flex-1 rounded-md border bg-surface px-3 py-2 text-label font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent ${
                   it.text.trim() ? "border-border" : "border-danger"
                 }`}
                 value={it.text}

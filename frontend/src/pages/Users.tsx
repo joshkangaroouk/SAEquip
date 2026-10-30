@@ -64,14 +64,14 @@ export default function Users() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-text">Users</h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="t-h1 text-text">Users</h1>
+      <p className="mt-1 text-body text-muted">
         Staff accounts that can sign into this dashboard.
       </p>
 
 
       {error && (
-        <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+        <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-body text-danger">
           {error}
         </div>
       )}

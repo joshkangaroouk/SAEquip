@@ -128,8 +128,8 @@ export default function Login() {
               onSubmit={onSubmitCode}
               className="rounded-xl border border-border bg-surface p-8 shadow-sm"
             >
-              <h1 className="text-h2 font-semibold text-text">Enter your code</h1>
-              <p className="mt-1 text-small text-muted">
+              <h1 className="t-auth-title text-text">Enter your code</h1>
+              <p className="mt-1 text-help text-muted">
                 Open your authenticator app and type the 6-digit code for SAEquip.
               </p>
 
@@ -153,7 +153,7 @@ export default function Login() {
               {error && (
                 <p
                   role="alert"
-                  className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-small text-danger"
+                  className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-help text-danger"
                 >
                   {error}
                 </p>
@@ -165,7 +165,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={cancelCode}
-                className="mt-4 w-full text-small text-muted hover:text-text"
+                className="mt-4 w-full text-help text-muted hover:text-text"
               >
                 Cancel and sign out
               </button>
@@ -175,8 +175,8 @@ export default function Login() {
             onSubmit={onSubmit}
             className="rounded-xl border border-border bg-surface p-8 shadow-sm"
           >
-            <h1 className="text-h2 font-semibold text-text">Welcome back</h1>
-            <p className="mt-1 text-small text-muted">Sign in to continue</p>
+            <h1 className="t-auth-title text-text">Welcome back</h1>
+            <p className="mt-1 text-help text-muted">Sign in to continue</p>
 
             <div className="mt-6 space-y-4">
               <Field label="Email" htmlFor="email">
@@ -218,14 +218,14 @@ export default function Login() {
             {error && (
               <p
                 role="alert"
-                className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-small text-danger"
+                className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-help text-danger"
               >
                 {error}
               </p>
             )}
 
             <div className="mt-4 text-right">
-              <Link to="/forgot-password" className="text-small text-muted hover:text-text">
+              <Link to="/forgot-password" className="text-help text-muted hover:text-text">
                 Forgot your password?
               </Link>
             </div>
@@ -234,7 +234,7 @@ export default function Login() {
               {submitting ? "Signing in…" : "Sign in"}
             </Button>
 
-            <p className="mt-5 text-center text-small text-subtle">
+            <p className="mt-5 text-center text-help text-subtle">
               Accounts are created by invitation only.
             </p>
           </form>

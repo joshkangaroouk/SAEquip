@@ -58,7 +58,7 @@ export function VariationsSection({
       <SectionError message={error} />
 
       {lockedByOptions && (
-        <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-small text-text">
+        <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-help text-text">
           <span className="font-semibold">Save your option changes first.</span> Duda rebuilds this
           list when the options change, so SKUs and prices are entered afterwards.
         </div>
@@ -79,7 +79,7 @@ export function VariationsSection({
               can reach 300. */}
           {!lockedByOptions && variations.length > 2 && (
             <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface-2 p-3">
-              <span className="text-small font-semibold text-text">Set all:</span>
+              <span className="text-help font-semibold text-text">Set all:</span>
               {!hideCommerce && (
                 <>
                   <Input

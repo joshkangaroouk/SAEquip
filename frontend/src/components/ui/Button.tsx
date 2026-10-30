@@ -1,4 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { X } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Spinner } from "./Spinner";
 
@@ -103,15 +104,13 @@ export function RemoveButton({
       aria-label={title}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-md text-muted transition-colors",
-        // `leading-none` AFTER the size: tailwind-merge lets a later font size
-        // cancel an earlier line-height, which would loosen the glyph's box.
-        size === "sm" ? "h-6 w-6 text-base leading-none" : "h-8 w-8 text-lg leading-none",
+        size === "sm" ? "h-6 w-6" : "h-8 w-8",
         "hover:bg-surface-2 hover:text-danger outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent",
         className,
       )}
     >
-      ×
+      <X size={size === "sm" ? 14 : 16} strokeWidth={2} aria-hidden="true" />
     </button>
   );
 }

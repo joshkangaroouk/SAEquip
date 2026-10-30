@@ -73,15 +73,6 @@ export default {
         help: ["0.8125rem", { lineHeight: "1.5" }], // 13 — help text, chips, codes
         label: ["0.75rem", { lineHeight: "1.3" }], // 12 — labels, overlines, table heads, codes
         micro: "0.6875rem", // 11 — segment counts, "New" chip
-
-        // ⚠️ TEMPORARY aliases for the old token names, so nothing is unmapped
-        // between redesign 3.3 and 3.4. 3.4 sweeps every use onto the scale
-        // above and deletes these.
-        display: ["2.25rem", { lineHeight: "1.05", letterSpacing: "-0.01em" }], // → title
-        h1: ["2.25rem", { lineHeight: "1.05", letterSpacing: "-0.01em" }], // → title
-        h2: ["0.875rem", { lineHeight: "1.5" }], // → body
-        h3: ["0.875rem", { lineHeight: "1.5" }], // → body
-        small: ["0.8125rem", { lineHeight: "1.5" }], // → help
       },
       // Derived from --radius exactly as shadcn does it.
       borderRadius: {
