@@ -150,3 +150,21 @@ These answer the open questions at the end of `02-design-system.md`. Where this 
   - Body `{ handled: boolean }`; it sets `handledAt = now()` / `handledBy = user email`, or clears both.
   - The list endpoints return `handledAt`. Add a single-item GET for resource requests only if SplitView genuinely needs it; otherwise derive from the list.
 - **Order:** the branch must not be merged to main until the migration has been applied. Before the migration is applied, a preview of the backend against production will error on the enquiry pages, which is expected.
+
+## After 6b
+- **Approved 6b deviations:**
+  - the `/api/resource-requests/:id/handled` naming
+  - the `GET /api/enquiries/counts` endpoint
+  - a scratch test instead of a repo test, until backend/package.json is free
+  - the "Status" field in both details
+  - "Since removed" as a fault chip
+  - the CSV left unchanged
+  - badges refresh when the lists load
+  - detail header buttons that wrap
+- **Website editor, Languages cell:** Duda lists languages that are set up even when they're paused, so don't claim they're live.
+  - Value: "English + 6 set up" (or "English only").
+  - Second line: the language names.
+  - Help line: "Languages switched off in Duda still count here. Check the language menu in the Duda editor."
+  - Do not try to detect paused languages.
+- **New chip on a selected row (light theme, 1.35:1):** accepted. The chip's text carries the meaning.
+- **Remote branch:** keep `origin/redesign/ui`; don't delete it. Push only when Josh says so. That will be after he has applied the migration, so the preview's enquiry pages work.
