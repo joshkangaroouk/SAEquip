@@ -123,3 +123,30 @@ These answer the open questions at the end of `02-design-system.md`. Where this 
 - **Duplicate back links and breadcrumbs:** remove page-level breadcrumbs and "← Back to …" links once the top-bar breadcrumb covers them. That's CategoryDetail in batch 7 and the product editor in batch 8.
 - **Users table at narrow widths:** below lg it becomes stacked cards (one per user), not a horizontally scrolling table.
 - **Approved shell deviations:** black focus ring on the current yellow nav item; menu highlights get the 3px selected bar; the breadcrumb group is hidden between 1024 and 1280.
+
+## After 6a
+- **Approved 6a deviations:**
+  - Users switch to cards below 1280
+  - Security's password card links to Forgot password
+  - the 2FA steps act as a guide and expand on setup
+  - ButtonLink, Lockup and AuthShell components
+  - the SVG logo is deleted
+- **Website editor status cells:** APPROVED as a small read-only backend change in 6b. `/api/website/sites` passes through `site_seo.no_index` and the site's `lang` and `additionalLanguages` from the Duda site read it already makes. No new Duda calls and no writes.
+
+## Batch 6: the handledAt migration
+- **Background:** CLAUDE.md "Prisma migrations" records a production wipe and no backups on this Supabase tier. Nothing runs migrations at deploy, and the guard hook blocks destructive commands.
+- **Schema (additive only):** add `handledAt DateTime?` and `handledBy String?` to `QuoteRequest` and `Lead`.
+- **Migration:** write `migration.sql` BY HAND (`ALTER TABLE ... ADD COLUMN ... NULL`; no defaults that rewrite rows, no indexes needed) in a new `prisma/migrations/<timestamp>_enquiry_handled/` folder.
+  - Do NOT run `migrate dev`, `db push`, `migrate reset`, or `migrate diff` with a shadow database.
+  - Do NOT run `migrate deploy`.
+- **Who applies it:** Josh applies it to production himself, following a runbook (`docs/redesign/06b-migration-runbook.md`):
+  1. Back up the two tables, or the whole database, first.
+  2. Check that `_prisma_migrations` exists.
+  3. Run `migrate deploy`.
+  4. Verify the columns.
+  5. Roll back by dropping the four columns.
+- **API:**
+  - `PATCH /api/quotes/:id/handled` and `PATCH /api/leads/:id/handled` (match the existing route naming), with the same auth as the other admin routes.
+  - Body `{ handled: boolean }`; it sets `handledAt = now()` / `handledBy = user email`, or clears both.
+  - The list endpoints return `handledAt`. Add a single-item GET for resource requests only if SplitView genuinely needs it; otherwise derive from the list.
+- **Order:** the branch must not be merged to main until the migration has been applied. Before the migration is applied, a preview of the backend against production will error on the enquiry pages, which is expected.
