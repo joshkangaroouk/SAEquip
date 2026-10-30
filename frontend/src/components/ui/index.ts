@@ -22,5 +22,6 @@ export { Pagination } from "./Pagination";
 export { DropdownMenu, type MenuAction } from "./DropdownMenu";
 export { SelectMenu, type SelectOption } from "./SelectMenu";
 export { SegmentedControl, type SegmentOption } from "./SegmentedControl";
+export { Tabs, TabList, Tab, TabPanel } from "./Tabs";
 export { Skeleton } from "./Skeleton";
 export { RichTextEditor } from "./RichTextEditor";

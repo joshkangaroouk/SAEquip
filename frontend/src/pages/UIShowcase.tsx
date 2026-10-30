@@ -27,7 +27,11 @@ import {
   SortableList,
   Spinner,
   StatusBadge,
+  Tab,
+  TabList,
+  TabPanel,
   Table,
+  Tabs,
   TBody,
   TD,
   TH,
@@ -98,6 +102,7 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
       <Fields />
       <Choices />
       <Segments />
+      <TabsDemo theme={theme} />
       <Chips />
       <Surfaces />
       <Tables />
@@ -319,6 +324,65 @@ function Segments() {
           />
         </span>
       </Row>
+    </Section>
+  );
+}
+
+/** Counts how often a panel's content has mounted, to show what `keepMounted` does. */
+const mounts: Record<string, number> = {};
+function MountCount({ id }: { id: string }) {
+  // StrictMode runs the initializer twice per mount in development, hence the halving.
+  const [n] = useState(() => (mounts[id] = (mounts[id] ?? 0) + 1));
+  return <span className="t-help ml-2">Mounted {Math.ceil(n / 2)}×</span>;
+}
+
+function TabsDemo({ theme }: { theme: string }) {
+  const [tab, setTab] = useState("content");
+  return (
+    <Section title="Tabs">
+      <div data-kit="tabs">
+        <Tabs defaultValue="overview">
+          <TabList aria-label="Product sections (kit)">
+            <Tab value="overview">Overview</Tab>
+            <Tab value="content" count={12} indicator="dirty">
+              Content
+            </Tab>
+            <Tab value="compliance" indicator="error">
+              Compliance
+            </Tab>
+            <Tab value="files" count={4}>
+              Files & media
+            </Tab>
+          </TabList>
+          <TabPanel value="overview" className="py-4 text-body">
+            Overview panel. <MountCount id={`${theme}-ov`} />
+          </TabPanel>
+          <TabPanel value="content" className="py-4 text-body">
+            Content panel (unsaved dot). <MountCount id={`${theme}-co`} />
+          </TabPanel>
+          <TabPanel value="compliance" className="py-4 text-body">
+            Compliance panel (error dot). <MountCount id={`${theme}-cp`} />
+          </TabPanel>
+          <TabPanel value="files" className="py-4 text-body">
+            Files panel. <MountCount id={`${theme}-fi`} />
+          </TabPanel>
+        </Tabs>
+      </div>
+      <p className="t-help">
+        Controlled, unmounting hidden panels (<span className="t-code-sm">keepMounted=false</span>) — active: {tab}
+      </p>
+      <Tabs value={tab} onValueChange={setTab} keepMounted={false}>
+        <TabList aria-label="Translations view (kit)">
+          <Tab value="content">Product content</Tab>
+          <Tab value="names">Names from Duda</Tab>
+        </TabList>
+        <TabPanel value="content" className="py-4 text-body">
+          Product content. <MountCount id={`${theme}-c2`} />
+        </TabPanel>
+        <TabPanel value="names" className="py-4 text-body">
+          Names from Duda. <MountCount id={`${theme}-n2`} />
+        </TabPanel>
+      </Tabs>
     </Section>
   );
 }
