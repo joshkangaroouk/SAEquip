@@ -62,19 +62,26 @@ export default {
         sans: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
-      // Sizes are rem so the whole scale tracks the 110% root in index.css —
-      // that root stays the single knob for scaling the UI. Values below are
-      // annotated with what they resolve to at the current 17.6px root.
+      // ONE type scale (docs/redesign/02 §2.2), in rem at the default 16px
+      // root. Most text uses a role class from index.css (`.t-h1`, `.t-label`…)
+      // rather than these directly. Line heights for help and label are the
+      // roles' (02a Q7). ⚠️ Every key here must also be in FONT_SIZES in
+      // src/lib/cn.ts — `scripts/cn-audit.mjs` checks.
       fontSize: {
-        display: ["2.25rem", { lineHeight: "1.1", letterSpacing: "-0.02em" }], // ~39.6px
-        h1: ["1.5rem", { lineHeight: "1.2", letterSpacing: "-0.02em" }], // ~26.4px
-        h2: ["1.25rem", { lineHeight: "1.25", letterSpacing: "-0.015em" }], // ~22px
-        h3: ["1.125rem", { lineHeight: "1.3", letterSpacing: "-0.01em" }], // ~19.8px
-        // Paragraph/body text is 16px by design. 0.909rem is 16/17.6 — it
-        // looks like a magic number but it's what keeps 16px expressed
-        // relative to the root rather than hardcoded in px.
-        body: ["0.909rem", { lineHeight: "1.5" }], // 16px
-        small: ["0.795rem", { lineHeight: "1.35" }], // ~14px
+        title: ["2.25rem", { lineHeight: "1.05", letterSpacing: "-0.01em" }], // 36 — H1
+        body: ["0.875rem", { lineHeight: "1.5" }], // 14
+        help: ["0.8125rem", { lineHeight: "1.5" }], // 13 — help text, chips, codes
+        label: ["0.75rem", { lineHeight: "1.3" }], // 12 — labels, overlines, table heads, codes
+        micro: "0.6875rem", // 11 — segment counts, "New" chip
+
+        // ⚠️ TEMPORARY aliases for the old token names, so nothing is unmapped
+        // between redesign 3.3 and 3.4. 3.4 sweeps every use onto the scale
+        // above and deletes these.
+        display: ["2.25rem", { lineHeight: "1.05", letterSpacing: "-0.01em" }], // → title
+        h1: ["2.25rem", { lineHeight: "1.05", letterSpacing: "-0.01em" }], // → title
+        h2: ["0.875rem", { lineHeight: "1.5" }], // → body
+        h3: ["0.875rem", { lineHeight: "1.5" }], // → body
+        small: ["0.8125rem", { lineHeight: "1.5" }], // → help
       },
       // Derived from --radius exactly as shadcn does it.
       borderRadius: {

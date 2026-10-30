@@ -111,8 +111,8 @@ export function RichTextEditor({
           // renders the description, we set the spacing ourselves and the
           // editor can show paragraph structure honestly.
           //
-          // ⚠ `mt-[12px]`, NOT `mt-3` — see the note in RichHtml.tsx: the
-          // 110% root font-size makes rem-based spacing resolve to 13.2px.
+          // ⚠ `mt-[12px]`, NOT `mt-3` — see the note in RichHtml.tsx: rem-based
+          // spacing depends on the root font size; the widget's 12px does not.
           "[&_p]:my-0 [&_p+p]:mt-[12px] [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 " +
           "[&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold " +
           "[&_h3]:mb-1.5 [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold " +

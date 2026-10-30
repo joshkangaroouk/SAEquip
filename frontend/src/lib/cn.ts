@@ -8,7 +8,11 @@ import { extendTailwindMerge } from "tailwind-merge";
  * colour) on its own: it would class both as text colours and silently DROP
  * one of them whenever they met, e.g. every Input would lose `text-text`.
  */
-export const FONT_SIZES = ["display", "h1", "h2", "h3", "body", "small"];
+export const FONT_SIZES = [
+  "title", "body", "help", "label", "micro",
+  // Temporary aliases (redesign 3.3), removed with them in 3.4.
+  "display", "h1", "h2", "h3", "small",
+];
 
 /**
  * tailwind-merge v2 — v3 targets Tailwind 4 and this project is on Tailwind 3.

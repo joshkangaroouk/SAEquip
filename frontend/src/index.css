@@ -79,21 +79,13 @@
 
 @layer base {
   html {
-    /* Scales the whole UI to ~110%, which is where the layout was judged to
-       feel right. Deliberately on the ROOT and as a percentage: Tailwind's
-       spacing scale, the type scale and --radius are all rem-based, so this
-       lifts type AND layout together the way browser zoom does — rather than
-       only enlarging text and leaving the padding/gaps behind. A percentage
-       (not a px value) keeps it relative to the visitor's own browser font
-       setting instead of overriding it.
+    /* No font-size here: the root is the browser default (100%, normally
+       16px), so it still follows the visitor's own browser setting. The
+       redesign specifies sizes in px, and at a 16px root Tailwind's 4px grid
+       IS those values (h-10 = 40, h-16 = 64, p-5 = 20). It was 110% until
+       the 2026-10 redesign, which made every rem-based size 1.1× the design.
 
-       Note this supersedes the reasoning in the body rule below: the 16px grid
-       is now a 17.6px grid, on purpose. Fixed-px values don't follow (lucide
-       `size={n}` icons, the 200x160 site thumbnail), but those sit within ~2px
-       of proportional, so the mismatch isn't perceptible. */
-    font-size: 110%;
-
-    /* Never synthesise the missing weights. */
+       Never synthesise a missing weight: render the nearest loaded one. */
     font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -105,11 +97,10 @@
     color: rgb(var(--text));
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     font-weight: 400;
-    /* 16px paragraph/body text. Matches the `body` token in
-       tailwind.config.js — keep the two in step, since some text inherits
-       from here and some sets `text-body` explicitly. Expressed in rem
-       (16/17.6) so it tracks the 110% root above rather than being pinned. */
-    font-size: 0.909rem;
+    /* 14px body text. Matches the `body` token in tailwind.config.js — keep
+       the two in step, since some text inherits from here and some sets
+       `text-body` explicitly. */
+    font-size: 0.875rem;
     line-height: 1.5;
   }
 
@@ -140,4 +131,36 @@
   * {
     scrollbar-color: rgb(var(--subtle)) transparent;
   }
+}
+
+/* --- Type roles ------------------------------------------------------------
+   One class per role in the design (docs/redesign/00 "Type", 02a Q7), so a
+   size never travels without its family, weight, tracking and case. Reach
+   for a role before a raw size, and never add a free-standing `uppercase` or
+   `tracking-*` beside one.
+
+   Sizes: the five fontSize tokens (micro 11, label 12, help 13, body 14,
+   title 36) plus the few one-off heading sizes 02a gives (16/22/24/28/32),
+   which exist only as these roles. Line heights are 02a's; a role without one
+   inherits body's 1.5.
+
+   They live in the components layer, so a utility on the same element (a
+   colour such as `text-danger`, say) still wins. */
+@layer components {
+  .t-h1 { @apply font-heading text-title font-bold; } /* page title: 36/700, lh 1.05, -0.01em */
+  .t-section { @apply font-heading text-body font-semibold uppercase tracking-[0.09em]; line-height: 1.2; } /* card/section heading */
+  .t-overline { @apply font-heading text-label font-semibold uppercase tracking-[0.14em] text-muted; line-height: 1.2; }
+  .t-body { @apply font-body text-body; }
+  .t-label { @apply font-body text-label font-semibold tracking-[0.02em] text-muted; line-height: 1.3; } /* field label */
+  .t-help { @apply font-body text-help text-muted; line-height: 1.5; }
+  .t-th { @apply font-body text-label font-semibold text-muted; line-height: 1.3; } /* table head */
+  .t-code { @apply font-mono text-help; } /* 13 — SKU, slug, page numbers in cells and inline values */
+  .t-code-sm { @apply font-mono text-label; } /* 12 — under-text slugs, counts in badges/segments, kbd */
+
+  /* One-off headings (02a Q7) */
+  .t-modal-title { @apply font-heading font-bold; font-size: 1.375rem; line-height: 1.15; } /* 22 */
+  .t-detail-title { @apply font-heading font-bold; font-size: 1.5rem; line-height: 1.15; } /* 24 — split-view detail */
+  .t-editor-title { @apply font-heading font-bold; font-size: 1.75rem; line-height: 1.1; } /* 28 — product editor name */
+  .t-auth-title { @apply font-heading font-bold; font-size: 2rem; line-height: 1.1; } /* 32 */
+  .t-empty-title { @apply font-body font-semibold; font-size: 1rem; line-height: 1.4; } /* 16 */
 }
