@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronRight, ImageOff } from "lucide-react";
 import {
+  Thumb,
   Alert,
   Button,
   Card,
@@ -325,13 +326,7 @@ export default function CategoryDetail() {
                 renderItem={(c, handle: DragHandleProps) => (
                   <div className="flex items-center gap-2 py-2">
                     <DragHandle handle={handle} label={`Drag ${c.title} to reorder`} />
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-muted">
-                      {c.imageUrl ? (
-                        <img src={c.imageUrl} alt="" className="h-full w-full bg-paper object-contain" />
-                      ) : (
-                        <ImageOff size={14} />
-                      )}
-                    </span>
+                    <Thumb src={c.imageUrl} size={40} />
                     <Link
                       to={`/categories/${c.id}`}
                       className="min-w-0 flex-1 truncate font-medium text-text underline-offset-2 hover:underline"

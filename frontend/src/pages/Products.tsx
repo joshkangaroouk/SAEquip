@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { apiFetch } from "../lib/api";
 import {
+  Thumb,
   Alert,
   Button,
   Highlight,
@@ -415,21 +416,9 @@ export default function Products() {
                   <TR key={p.id} hover onClick={() => navigate(`/products/${p.id}`)}>
                     <TD>
                       <div className="flex items-center gap-3">
-                        {p.thumbnail ? (
-                          <img
-                            src={p.thumbnail}
-                            // Decorative: the name beside it is the link, so
-                            // announcing it twice per row only adds noise.
-                            alt=""
-                            // 96 full-size Duda images on the landing page:
-                            // only the rows in view should load.
-                            loading="lazy"
-                            decoding="async"
-                            className="h-[100px] w-[100px] shrink-0 rounded border border-border bg-paper object-cover"
-                          />
-                        ) : (
-                          <div className="h-[100px] w-[100px] shrink-0 rounded border border-border bg-surface-2" />
-                        )}
+                        {/* Decorative: the name beside it is the link. Lazy, so only
+                            the rows in view load their full-size Duda image. */}
+                        <Thumb src={p.thumbnail} size={100} fit="cover" fallback="box" />
                         <div>
                           <Link to={`/products/${p.id}`} className="text-left font-medium text-text">
                             <Highlight text={p.name} query={query} />

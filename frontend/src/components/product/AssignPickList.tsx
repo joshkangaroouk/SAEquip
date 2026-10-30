@@ -1,6 +1,5 @@
 import { useId, useMemo, useState } from "react";
-import { ImageOff } from "lucide-react";
-import { Alert, Button, Checkbox, Input, Toggle } from "../ui";
+import { Thumb, Alert, Button, Checkbox, Input, Toggle } from "../ui";
 
 export interface PickItem {
   id: string;
@@ -238,18 +237,7 @@ export function AssignPickList({
                   label={
                     withImages ? (
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-muted">
-                          {row.item.imageUrl ? (
-                            <img
-                              src={row.item.imageUrl}
-                              alt=""
-                              loading="lazy"
-                              className="h-full w-full bg-paper object-contain"
-                            />
-                          ) : (
-                            <ImageOff size={14} />
-                          )}
-                        </span>
+                        <Thumb src={row.item.imageUrl} size={40} />
                         <span className="min-w-0">{row.item.label}</span>
                       </span>
                     ) : (

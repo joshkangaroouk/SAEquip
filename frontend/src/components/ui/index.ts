@@ -17,6 +17,7 @@ export { SortableList, DragHandle, type DragHandleProps } from "./SortableList";
 export { EmptyState } from "./EmptyState";
 export { Highlight } from "./Highlight";
 export { FilePreview, FileTypeIcon } from "./FilePreview";
+export { Thumb, ImageWell } from "./Thumb";
 export { Spinner, Loader } from "./Spinner";
 export { PageHeader } from "./PageHeader";
 export { Pagination } from "./Pagination";

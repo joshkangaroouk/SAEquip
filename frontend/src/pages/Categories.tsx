@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronRight, ImageOff } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import {
+  Thumb,
   Alert,
   Button,
   Card,
@@ -416,13 +417,7 @@ function CategoryTree({
           ) : (
             <span className="h-5 w-5 shrink-0" />
           )}
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-muted">
-            {n.imageUrl ? (
-              <img src={n.imageUrl} alt="" className="h-full w-full bg-paper object-contain" />
-            ) : (
-              <ImageOff size={14} />
-            )}
-          </span>
+          <Thumb src={n.imageUrl} size={40} />
           {/* The title is the edit affordance — it is what you click when you
               mean "open this", and the ⋯ menu keeps the other actions. */}
           <button

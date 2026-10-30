@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState, Badge } from "../components/ui";
+import { Thumb, Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState, Badge } from "../components/ui";
 import type { ResourceRequest, ResourceRequestsResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { languageName } from "../lib/language";
-import { ProductThumb } from "../components/ProductThumb";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -89,7 +88,7 @@ function RequestDetail({ request: r }: { request: ResourceRequest }) {
       <div>
         <div className="t-overline mb-2 text-muted">File requested</div>
         <div className="flex items-center gap-3 rounded-md border border-border p-3">
-          <ProductThumb url={r.file.imageUrl} />
+          <Thumb src={r.file.imageUrl} size={56} />
           <div className="min-w-0">
             {r.file.dudaProductId ? (
               <Link

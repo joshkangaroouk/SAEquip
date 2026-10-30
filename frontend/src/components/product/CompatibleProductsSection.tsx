@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../../lib/api";
-import { Alert, Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
+import { Thumb, Alert, Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
 import type { CompatibleDraft } from "./productEditorTypes";
 import type { ProductSummary } from "../../lib/types";
 
@@ -21,28 +21,6 @@ function ArrowRight() {
     >
       <path d="M5 12h13M13 6l6 6-6 6" />
     </svg>
-  );
-}
-
-/**
- * A product's thumbnail, or a neutral placeholder.
- *
- * `ProductSummary.thumbnail` is Duda's `images[0]`, so a product with an empty
- * gallery has none — 5 of the 96 imported that way before the fallback image
- * was applied. A missing photo must not collapse the row height or leave a
- * broken-image glyph, hence the fixed box either way.
- */
-function Thumb({ url, name }: { url: string | null; name: string }) {
-  return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2">
-      {url ? (
-        <img src={url} alt="" loading="lazy" className="max-h-full max-w-full bg-paper object-contain" />
-      ) : (
-        <span className="text-micro font-semibold text-muted" aria-hidden="true">
-          {name.trim().charAt(0).toUpperCase() || "?"}
-        </span>
-      )}
-    </span>
   );
 }
 
@@ -165,7 +143,7 @@ export function CompatibleProductsSection({
                 title={`Add ${p.name}`}
                 className="flex w-full items-center gap-3 border-b border-border px-2.5 py-2 text-left last:border-b-0 hover:bg-surface-2"
               >
-                <Thumb url={p.thumbnail} name={p.name ?? ""} />
+                <Thumb src={p.thumbnail} size={40} />
                 <span className="min-w-0 flex-1 truncate text-label font-medium text-text">{p.name}</span>
                 <span className="shrink-0 text-label text-muted">{p.sku ?? "—"}</span>
                 {/* A word plus a direction beats a "+": it says what the
@@ -217,7 +195,7 @@ export function CompatibleProductsSection({
                   <div className="flex items-center gap-2 bg-surface px-2.5 py-2">
                     <DragHandle handle={handle} label={`Drag ${item.name ?? "product"} to reorder`} />
                     <span className="w-5 shrink-0 text-right text-label text-muted">{index + 1}.</span>
-                    <Thumb url={byId.get(item.dudaProductId)?.thumbnail ?? null} name={item.name} />
+                    <Thumb src={byId.get(item.dudaProductId)?.thumbnail ?? null} size={40} />
                     <span className="min-w-0 flex-1 truncate text-label font-medium text-text" title={item.name}>
                       {item.name}
                     </span>

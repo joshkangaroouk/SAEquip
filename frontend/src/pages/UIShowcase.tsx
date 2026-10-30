@@ -15,6 +15,7 @@ import {
   FileDropzone,
   FilePreview,
   Highlight,
+  ImageWell,
   Input,
   Loader,
   Modal,
@@ -39,6 +40,7 @@ import {
   THead,
   TR,
   Textarea,
+  Thumb,
   Toggle,
   ToggleTrack,
   toast,
@@ -108,6 +110,7 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
       <Surfaces />
       <Tables />
       <Overlays />
+      <Thumbs />
       <Files />
       <Editing />
     </section>
@@ -572,6 +575,45 @@ function Overlays() {
           <Input defaultValue="Hire/Purchase" />
         </Field>
       </Modal>
+    </Section>
+  );
+}
+
+/** A tall drawing, so `contain` (letterboxed on paper) and `cover` (cropped) look different. */
+const TALL_IMAGE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="120"><rect width="60" height="120" fill="#4a4a48"/><rect x="10" y="10" width="40" height="40" fill="#fed217"/><circle cx="30" cy="85" r="18" fill="#c9c9c5"/></svg>',
+  );
+
+function Thumbs() {
+  return (
+    <Section title="Thumb and ImageWell">
+      <Row label="40 / 56 / 100">
+        <span data-kit="thumb:image">
+          <Thumb src="/sa-favicon.jpg" size={40} />
+        </span>
+        <Thumb src="/sa-favicon.jpg" size={56} />
+        <Thumb src="/sa-favicon.jpg" size={100} />
+      </Row>
+      <Row label="contain / cover">
+        <Thumb src={TALL_IMAGE} size={56} />
+        <Thumb src={TALL_IMAGE} size={56} fit="cover" />
+      </Row>
+      <Row label="fallbacks">
+        <span data-kit="thumb:none">
+          <Thumb src={null} size={40} />
+        </span>
+        <Thumb src={null} size={56} fallback="box" />
+        {/* A URL that fails, so onError swaps in the fallback. */}
+        <Thumb src="/kit-missing-image.png" size={56} />
+        <Thumb src={null} size={100} fallback="box" />
+      </Row>
+      <div className="grid max-w-md grid-cols-3 gap-3">
+        <ImageWell src="/saequip-no-image.jpg" className="h-24" />
+        <ImageWell src={TALL_IMAGE} aspect="square" />
+        <ImageWell src={null} aspect="square" />
+      </div>
     </Section>
   );
 }

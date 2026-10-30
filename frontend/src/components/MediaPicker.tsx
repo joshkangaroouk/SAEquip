@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { uploadFile } from "../lib/upload";
-import { Button, FilePreview, Input, Pagination, Select, Skeleton } from "./ui";
+import { ImageWell, Button, FilePreview, Input, Pagination, Select, Skeleton } from "./ui";
 import { MEDIA_SORT_OPTIONS, useMediaLibrary } from "../lib/useMediaLibrary";
 import type { MediaAsset } from "../lib/types";
 
@@ -162,12 +162,7 @@ export function MediaPicker({
                     className="flex flex-col items-center rounded-lg border border-border p-2 hover:border-text"
                   >
                     {a.kind === "image" ? (
-                      <img
-                        src={a.url ?? undefined}
-                        alt={a.alt || a.filename}
-                        loading="lazy"
-                        className="h-24 w-full bg-paper object-contain"
-                      />
+                      <ImageWell src={a.url} alt={a.alt || a.filename} className="h-24" />
                     ) : (
                       <FilePreview
                         thumbnailUrl={a.thumbnailUrl}

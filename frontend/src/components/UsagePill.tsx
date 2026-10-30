@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, ImageOff } from "lucide-react";
-import { Alert, Modal, Skeleton } from "./ui";
+import { ChevronRight } from "lucide-react";
+import { Thumb, Alert, Modal, Skeleton } from "./ui";
 import type { AssetUsage, UsageProduct } from "../lib/types";
 
 const PILL = "rounded-full bg-surface-2 px-2 py-0.5 text-label text-muted";
@@ -157,25 +157,12 @@ export function UsageDialog({
 }
 
 function ProductRow({ product: p, showVia }: { product: UsageProduct; showVia: boolean }) {
-  const [broken, setBroken] = useState(false);
   return (
     <Link
       to={`/products/${p.dudaProductId}`}
       className="group flex items-center gap-3 px-2 py-2 transition-colors duration-[120ms] hover:bg-surface-2"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2">
-        {p.thumbnailUrl && !broken ? (
-          <img
-            src={p.thumbnailUrl}
-            alt=""
-            loading="lazy"
-            onError={() => setBroken(true)}
-            className="h-full w-full bg-paper object-contain"
-          />
-        ) : (
-          <ImageOff className="h-4 w-4 text-muted" aria-hidden="true" />
-        )}
-      </span>
+      <Thumb src={p.thumbnailUrl} size={40} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-body font-semibold text-text">{p.name || "Untitled product"}</span>
         <span className="block truncate text-label text-muted">

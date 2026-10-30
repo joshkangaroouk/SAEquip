@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
+import { Thumb, Alert, Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { languageName } from "../lib/language";
-import { ProductThumb } from "../components/ProductThumb";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -110,7 +109,7 @@ function QuoteDetail({ quote }: { quote: QuoteRequest }) {
               <TR key={item.id}>
                 <TD>
                   <div className="flex items-center gap-3">
-                    <ProductThumb url={item.imageUrl} />
+                    <Thumb src={item.imageUrl} size={56} />
                     {item.dudaProductId ? (
                       <Link
                         to={`/products/${item.dudaProductId}`}
