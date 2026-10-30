@@ -128,6 +128,10 @@
 
        Never synthesise a missing weight: render the nearest loaded one. */
     font-synthesis: none;
+    /* The shell's top bar is sticky (64px), so anything scrolled to — an
+       anchor like the save bar's #section-… links, or scrollIntoView — stops
+       16px below it rather than underneath it. */
+    scroll-padding-top: 5rem;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;

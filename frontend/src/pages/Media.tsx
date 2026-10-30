@@ -80,9 +80,10 @@ export default function Media() {
    *
    * ⚠️ Only when you have scrolled PAST the toolbar. If it is already on
    * screen there is nothing to return to, and forcing the scroll would push
-   * the upload card out of view for no reason. The threshold is the element's
-   * own scroll-margin, so the mobile sticky header (which the margin clears)
-   * counts as "out of view" too.
+   * the upload card out of view for no reason. The threshold is where the
+   * scroll would put it — the page's scroll padding (the sticky top bar) plus
+   * the element's own scroll-margin — so a toolbar under the top bar counts
+   * as "out of view" too.
    *
    * Scrolls on the click, not when the data lands: the current page stays
    * mounted and dims while the next one loads, so moving now means nothing
@@ -93,7 +94,9 @@ export default function Media() {
     lib.setPage(page);
     const el = listTop.current;
     if (!el) return;
-    const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    const margin =
+      (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) +
+      (parseFloat(getComputedStyle(el).scrollMarginTop) || 0);
     if (el.getBoundingClientRect().top >= margin) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
@@ -201,7 +204,7 @@ export default function Media() {
       </form>
 
       {/* Kind tabs + search + sort. Also where paging scrolls back to — see goToPage. */}
-      <div ref={listTop} className="mt-6 flex scroll-mt-20 flex-wrap items-center gap-3 lg:scroll-mt-4">
+      <div ref={listTop} className="mt-6 flex flex-wrap items-center gap-3">
         <SegmentedControl ariaLabel="File type" value={kind} onChange={setKind} options={KIND_TABS} />
 
         {/*
