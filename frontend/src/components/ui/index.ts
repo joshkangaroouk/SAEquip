@@ -20,7 +20,7 @@ export { FilePreview, FileTypeIcon } from "./FilePreview";
 export { Thumb, ImageWell } from "./Thumb";
 export { Spinner, Loader } from "./Spinner";
 export { PageHeader } from "./PageHeader";
-export { Pagination } from "./Pagination";
+export { Pagination, usePagedList, type PageSize } from "./Pagination";
 export { DropdownMenu, type MenuAction } from "./DropdownMenu";
 export { SelectMenu, type SelectOption } from "./SelectMenu";
 export { SegmentedControl, type SegmentOption } from "./SegmentedControl";

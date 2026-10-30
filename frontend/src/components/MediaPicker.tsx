@@ -15,6 +15,8 @@ import type { MediaAsset } from "../lib/types";
  * picking one image cost the whole library. 12 per page here rather than the
  * page's 24, because the grid sits inside a max-h-[85vh] dialog.
  */
+const PICKER_PAGE_SIZE = 12;
+
 const KIND_LABEL: Record<"image" | "file" | "model", string> = {
   image: "an image",
   file: "a file",
@@ -30,7 +32,7 @@ export function MediaPicker({
   onPick: (asset: MediaAsset) => void;
   onClose: () => void;
 }) {
-  const lib = useMediaLibrary({ kind, pageSize: 12 });
+  const lib = useMediaLibrary({ kind, pageSize: PICKER_PAGE_SIZE });
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -179,10 +181,11 @@ export function MediaPicker({
               </div>
 
               <Pagination
+                className="mt-5"
                 page={lib.page}
-                pageCount={lib.pageCount}
                 total={lib.total}
-                onChange={lib.setPage}
+                pageSize={PICKER_PAGE_SIZE}
+                onPageChange={lib.setPage}
                 label={`${kind}s`}
               />
             </>

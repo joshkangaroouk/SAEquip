@@ -428,7 +428,6 @@ export default function Translations() {
       );
     });
   }, [items, kind, status, query, products]);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const shown = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const rtl = isRtl(locale);
 
@@ -719,7 +718,7 @@ export default function Translations() {
                     ))}
                   </TBody>
                 </Table>
-                <Pagination page={page} pageCount={pageCount} total={filtered.length} onChange={setPage} label="strings" />
+                <Pagination className="mt-5" page={page} total={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} label="strings" />
               </div>
             )}
           </>

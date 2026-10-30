@@ -64,10 +64,12 @@ function UsageNote({ asset }: { asset: MediaAsset }) {
   );
 }
 
+const MEDIA_PAGE_SIZE = 24;
+
 export default function Media() {
   const confirm = useConfirm();
   const [kind, setKind] = useState<"" | MediaKind>("");
-  const lib = useMediaLibrary({ kind: kind || undefined, pageSize: 24 });
+  const lib = useMediaLibrary({ kind: kind || undefined, pageSize: MEDIA_PAGE_SIZE });
 
   /**
    * Change page and bring the list back into view.
@@ -368,10 +370,11 @@ export default function Media() {
           </div>
 
           <Pagination
+            className="mt-5"
             page={lib.page}
-            pageCount={lib.pageCount}
             total={lib.total}
-            onChange={goToPage}
+            pageSize={MEDIA_PAGE_SIZE}
+            onPageChange={goToPage}
             label="assets"
           />
         </>

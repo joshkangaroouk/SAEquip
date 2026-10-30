@@ -20,6 +20,7 @@ import {
   Loader,
   Modal,
   PageHeader,
+  Pagination,
   RemoveButton,
   RichTextEditor,
   SegmentedControl,
@@ -45,6 +46,7 @@ import {
   ToggleTrack,
   toast,
   useConfirm,
+  usePagedList,
 } from "../components/ui";
 
 /**
@@ -110,6 +112,7 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
       <Surfaces />
       <Tables />
       <Overlays />
+      <Pages />
       <Thumbs />
       <Files />
       <Editing />
@@ -575,6 +578,34 @@ function Overlays() {
           <Input defaultValue="Hire/Purchase" />
         </Field>
       </Modal>
+    </Section>
+  );
+}
+
+const KIT_ROWS = Array.from({ length: 91 }, (_, i) => `Product ${i + 1}`);
+
+function Pages() {
+  const paged = usePagedList(KIT_ROWS);
+  const [serverPage, setServerPage] = useState(7);
+  return (
+    <Section title="Pagination">
+      <p className="t-help">
+        Client-side, 91 rows, rows per page — this page: {paged.pageItems[0]} … {paged.pageItems[paged.pageItems.length - 1]}
+      </p>
+      <div data-kit="pagination">
+        <Pagination
+          page={paged.page}
+          total={paged.total}
+          pageSize={paged.pageSize}
+          onPageChange={paged.setPage}
+          onPageSizeChange={paged.setPageSize}
+          label="products"
+        />
+      </div>
+      <p className="t-help">Server-paged (fixed 24), 485 assets</p>
+      <Pagination page={serverPage} total={485} pageSize={24} onPageChange={setServerPage} label="assets" />
+      <p className="t-help">One page</p>
+      <Pagination page={1} total={7} pageSize={24} onPageChange={() => {}} label="assets" />
     </Section>
   );
 }
