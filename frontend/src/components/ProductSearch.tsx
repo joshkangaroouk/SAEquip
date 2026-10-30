@@ -172,7 +172,9 @@ export function ProductSearch() {
                   onClick={() => go(p)}
                   className={cn(
                     "flex cursor-pointer items-center gap-3 px-3 py-1.5 transition-colors duration-[120ms]",
-                    i === active && "bg-surface-2",
+                    // The keyboard highlight: a fill alone is ~1.07:1 against the
+                    // menu, so it also carries the 3px selected-state bar.
+                    i === active && "bg-surface-2 shadow-[inset_3px_0_0_0_rgb(var(--selected-bar))]",
                   )}
                 >
                   <Thumb src={p.thumbnail} size={40} />

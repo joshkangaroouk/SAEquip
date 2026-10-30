@@ -132,7 +132,11 @@ function NavRow({ item, badge, onNavigate }: { item: NavItem; badge?: number; on
       className={cn(
         "flex h-10 items-center gap-3 px-3 text-body transition-colors duration-[120ms]",
         current
-          ? "bg-sidebar-active font-semibold text-sidebar-active-ink"
+          ? // The sidebar's yellow focus outline would vanish on the yellow
+            // current item, so there it is black — and 4px in rather than 2,
+            // or it sits against the black panel and only looks like the item
+            // shrank. (Important: the [data-sidebar] offset rule matches it.)
+            "bg-sidebar-active font-semibold text-sidebar-active-ink focus-visible:outline-sidebar-active-ink focus-visible:!outline-offset-[-4px]"
           : "font-medium text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-fg",
       )}
     >

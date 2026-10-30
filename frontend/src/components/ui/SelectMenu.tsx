@@ -265,7 +265,11 @@ export function SelectMenu({
                   className={cn(
                     "flex w-full cursor-pointer items-center gap-2 py-2 pr-3 text-left text-body transition-colors duration-[120ms]",
                     selected ? "font-semibold text-text" : "text-muted",
-                    i === active ? "bg-surface-2 text-text" : selected && "bg-surface-2/60",
+                    // The highlight (keyboard or pointer) also carries the 3px
+                    // selected-state bar: the fill alone is ~1.07:1 to the list.
+                    i === active
+                      ? "bg-surface-2 text-text shadow-[inset_3px_0_0_0_rgb(var(--selected-bar))]"
+                      : selected && "bg-surface-2/60",
                   )}
                 >
                   {/* Always rendered, so the labels do not shift by the width
