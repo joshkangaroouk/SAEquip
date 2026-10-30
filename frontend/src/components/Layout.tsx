@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Link, Outlet, useLocation, useMatches, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useMatches } from "react-router-dom";
 import {
   BarChart3,
   FileDown,
@@ -19,7 +19,8 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { useThemePreference } from "../hooks/useUserPreference";
 import { cn } from "../lib/cn";
-import { clearProductIndex, useProductIndex } from "../lib/productIndex";
+import { useProductIndex } from "../lib/productIndex";
+import { useSignOut } from "../hooks/useSignOut";
 import { initialsFrom } from "../lib/initials";
 import { CrumbProvider, TopBar } from "./TopBar";
 import { PageHeaderSlot, useDialog } from "./ui";
@@ -191,14 +192,8 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-
-  async function handleSignOut() {
-    await signOut();
-    clearProductIndex();
-    navigate("/login", { replace: true });
-  }
+  const { user } = useAuth();
+  const handleSignOut = useSignOut();
 
   return (
     <div className="flex h-full flex-col">

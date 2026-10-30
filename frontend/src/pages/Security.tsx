@@ -1,8 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { Factor } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthContext";
-import { PageHeader, Alert, Badge, Button, Card, Input, toast, useConfirm } from "../components/ui";
+import { useSignOut } from "../hooks/useSignOut";
+import { PageHeader, Alert, Badge, Button, ButtonLink, Card, CardHeader, Input, toast, useConfirm } from "../components/ui";
+
+/** One step of turning two-factor on, with its yellow square number (00). */
+function Step({ n, title, children }: { n: number; title: string; children?: ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span
+        aria-hidden="true"
+        className="flex h-6 w-6 shrink-0 items-center justify-center bg-accent text-label font-semibold text-accent-ink"
+      >
+        {n}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-text">
+          <span className="sr-only">Step {n}: </span>
+          {title}
+        </p>
+        {children}
+      </div>
+    </li>
+  );
+}
 
 /**
  * Two-factor setup for the signed-in user.
@@ -17,6 +39,7 @@ import { PageHeader, Alert, Badge, Button, Card, Input, toast, useConfirm } from
 export default function Security() {
   const { user } = useAuth();
   const confirm = useConfirm();
+  const signOut = useSignOut();
 
   const [factors, setFactors] = useState<Factor[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +137,10 @@ export default function Security() {
     await load();
   }
 
+  const on = verified.length > 0;
+  // The steps show while two-factor is off, and while another device is being added.
+  const showSteps = !on || !!enrolling;
+
   return (
     <>
       <PageHeader
@@ -125,99 +152,119 @@ export default function Security() {
         }
       />
 
-      {error && (
-        <Alert tone="danger" className="mt-6">
-          {error}
-        </Alert>
-      )}
+      {error && <Alert tone="danger">{error}</Alert>}
 
-      <Card className="mt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-body font-semibold text-text">Authenticator app</h2>
-            <p className="mt-1 text-body text-muted">
-              A 6-digit code from an app on your phone, on top of your password.
+      <div className="mt-5 space-y-5">
+        <Card>
+          <CardHeader
+            title="Two-factor authentication"
+            description="A 6-digit code from an app on your phone, on top of your password."
+            actions={on ? <Badge tone="ok">On</Badge> : <Badge tone="neutral">Off</Badge>}
+          />
+
+          {/* Existing factors */}
+          {factors && on && (
+            <ul className="space-y-2">
+              {verified.map((f) => (
+                <li
+                  key={f.id}
+                  className="flex flex-wrap items-center justify-between gap-2 border border-border bg-surface-2 px-3 py-2"
+                >
+                  <span className="text-body text-text">{f.friendly_name || "Authenticator"}</span>
+                  <Button variant="secondary" size="sm" onClick={() => remove(f)}>
+                    Turn off
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {showSteps && (
+            <ol className={on ? "mt-5 space-y-5 text-body" : "space-y-5 text-body"}>
+              <Step n={1} title="Get an authenticator app">
+                <p className="t-help mt-1">Google Authenticator, 1Password, Authy, Microsoft Authenticator — any of them.</p>
+              </Step>
+              <Step n={2} title="Scan the QR code with it">
+                {enrolling ? (
+                  <>
+                    {/* Supabase returns the QR as an SVG data URI. Always on --paper, or a phone may not read it. */}
+                    <img
+                      src={enrolling.qr}
+                      alt="Two-factor QR code"
+                      className="mt-3 h-44 w-44 border border-border bg-paper p-2"
+                    />
+                    <details className="mt-2">
+                      <summary className="t-label cursor-pointer hover:text-text">Can't scan it?</summary>
+                      <p className="t-help mt-1">Type this key in by hand:</p>
+                      <code className="t-code mt-1 block break-all border border-border bg-surface-2 px-2 py-1 text-text">
+                        {enrolling.secret}
+                      </code>
+                    </details>
+                  </>
+                ) : (
+                  <p className="t-help mt-1">It appears here when you start.</p>
+                )}
+              </Step>
+              <Step n={3} title="Enter the 6-digit code it shows">
+                {enrolling ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="w-32">
+                      <Input
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        placeholder="123456"
+                        aria-label="Authentication code"
+                      />
+                    </div>
+                    <Button variant="secondary" onClick={cancelEnrol} disabled={busy}>
+                      Cancel
+                    </Button>
+                    <Button onClick={confirmEnrol} disabled={busy || code.trim().length < 6}>
+                      {busy ? "Checking…" : "Confirm"}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="t-help mt-1">Two-factor is on once the code is accepted.</p>
+                )}
+              </Step>
+            </ol>
+          )}
+
+          {/* Start: the primary action while off; adding a second device is secondary. */}
+          {!enrolling && (
+            <div className="mt-5">
+              <Button variant={on ? "secondary" : "primary"} onClick={startEnrol} disabled={busy}>
+                {on ? "Add another device" : "Turn on two-factor"}
+              </Button>
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Password"
+            description="To change your password, we email you a link to set a new one."
+          />
+          {/* The existing reset flow, unchanged: the same page a signed-out user would use. */}
+          <ButtonLink href="/forgot-password" size="sm">
+            Reset your password
+          </ButtonLink>
+        </Card>
+
+        <Card>
+          <CardHeader title="Signed in" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-body text-muted">
+              Signed in as <span className="font-medium text-text">{user?.email}</span>
             </p>
-          </div>
-          {verified.length > 0 ? <Badge tone="success">On</Badge> : <Badge tone="neutral">Off</Badge>}
-        </div>
-
-        {/* Existing factors */}
-        {factors && verified.length > 0 && (
-          <ul className="mt-4 space-y-2">
-            {verified.map((f) => (
-              <li
-                key={f.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface-2 px-3 py-2"
-              >
-                <span className="text-body text-text">{f.friendly_name || "Authenticator"}</span>
-                <Button variant="secondary" size="sm" onClick={() => remove(f)}>
-                  Turn off
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* Enrolment */}
-        {!enrolling && (
-          <div className="mt-4">
-            <Button onClick={startEnrol} disabled={busy}>
-              {verified.length > 0 ? "Add another device" : "Turn on two-factor"}
+            <Button variant="secondary" size="sm" onClick={() => void signOut()}>
+              Sign out
             </Button>
           </div>
-        )}
-
-        {enrolling && (
-          <div className="mt-5 rounded-lg border border-border bg-surface-2 p-4">
-            <ol className="space-y-4 text-body text-text">
-              <li>
-                <p className="font-semibold">1. Scan this with your authenticator app</p>
-                <p className="mt-1 text-muted">
-                  Google Authenticator, 1Password, Authy, Microsoft Authenticator — any of them.
-                </p>
-                {/* Supabase returns the QR as an SVG data URI. */}
-                <img
-                  src={enrolling.qr}
-                  alt="Two-factor QR code"
-                  className="mt-3 h-44 w-44 rounded-md border border-border bg-paper p-2"
-                />
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-label text-muted hover:text-text">
-                    Can't scan it?
-                  </summary>
-                  <p className="mt-1 text-label text-muted">Type this key in by hand:</p>
-                  <code className="mt-1 block break-all rounded bg-surface px-2 py-1 text-label text-text">
-                    {enrolling.secret}
-                  </code>
-                </details>
-              </li>
-              <li>
-                <p className="font-semibold">2. Enter the 6-digit code it shows</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="w-32">
-                    <Input
-                      value={code}
-                      onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      placeholder="123456"
-                      aria-label="Authentication code"
-                    />
-                  </div>
-                  <Button onClick={confirmEnrol} disabled={busy || code.trim().length < 6}>
-                    {busy ? "Checking…" : "Confirm"}
-                  </Button>
-                  <Button variant="secondary" onClick={cancelEnrol} disabled={busy}>
-                    Cancel
-                  </Button>
-                </div>
-              </li>
-            </ol>
-          </div>
-        )}
-      </Card>
-
+        </Card>
+      </div>
     </>
   );
 }
