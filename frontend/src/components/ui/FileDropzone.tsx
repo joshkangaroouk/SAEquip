@@ -99,8 +99,9 @@ export function FileDropzone({
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center border border-dashed px-6 py-10 text-center",
           "transition-colors duration-[120ms]",
+          // Drag-over is the selected treatment (02a "Batch 8"), not a yellow tint.
           isDragActive
-            ? "border-accent bg-accent/10 text-text"
+            ? "border-selected-bar bg-selected text-text"
             : "border-border-strong bg-surface text-muted hover:border-text",
         )}
       >

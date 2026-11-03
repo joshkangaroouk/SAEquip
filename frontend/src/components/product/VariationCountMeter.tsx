@@ -21,17 +21,19 @@ export function VariationCountMeter({
   const changed = projected !== current;
 
   return (
+    // The Product options meter's tones (02a "Batch 8"), never yellow:
+    // muted, --warning above 80%, --danger over the limit.
     <div
       className={cn(
-        "rounded-md border px-3 py-1.5 text-help",
+        "border px-3 py-1.5 text-help",
         over
-          ? "border-danger/50 bg-danger/10 text-danger"
+          ? "border-danger bg-danger-bg text-danger"
           : near
-            ? "border-accent/50 bg-accent/10 text-text"
+            ? "border-warning bg-warning-bg text-warning"
             : "border-border bg-surface-2 text-muted",
       )}
     >
-      <span className="font-semibold text-text">
+      <span className={cn("font-mono font-semibold", over || near ? undefined : "text-text")}>
         {changed ? `${current} → ${projected}` : projected}
       </span>{" "}
       {projected === 1 ? "variation" : "variations"}

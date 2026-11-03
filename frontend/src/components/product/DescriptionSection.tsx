@@ -29,7 +29,7 @@ export function DescriptionSection({
     <Card id="section-description">
       <CardHeader
         title="Description"
-        description="Shown on the product page in Duda."
+        description="Shown in the Overview tab of the product page."
         actions={
           <>
             <SegmentedControl

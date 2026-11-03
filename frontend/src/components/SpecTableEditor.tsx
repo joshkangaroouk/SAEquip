@@ -84,7 +84,7 @@ export function SpecTableEditor({
     <Card id="section-specs">
       <CardHeader
         title="Technical Specs"
-        description="Rendered as a table on the product page. One label can carry several lines — use “+ Add line” for specs like PROTECTION that list more than one entry. Drag to reorder."
+        description="Shown as a table in the Technical Specs tab of the product page. One label can carry several lines — use “+ Add line” for specs like PROTECTION that list more than one entry. Drag to reorder."
         actions={
           <div className="flex items-center gap-2">
             {lineCount > 0 && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Card, CardHeader, SectionError, DragHandle, FilePreview, Input, Select, SortableList } from "../ui";
+import { Badge, Button, Card, CardHeader, SectionError, DragHandle, FilePreview, Input, Select, SortableList } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import type { MediaAsset } from "../../lib/types";
 import type { DownloadDraft } from "./productEditorTypes";
@@ -102,10 +102,7 @@ export function DownloadsSection({
       {value.length === 0 ? (
         <p className="text-body text-muted">No downloads on this product yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-md border border-border">
-          {/* overflow-hidden clips the rows' square backgrounds to the rounded
-              border; without it they paint over the corners, which is what
-              read as the edge being cut off. */}
+        <div className="border border-border">
           <SortableList
             as="div"
             className="divide-y divide-border"
@@ -113,15 +110,18 @@ export function DownloadsSection({
             getId={(d) => d.mediaAssetId}
             onReorder={onChange}
             renderItem={(d, handle) => (
-              <div className="flex items-center gap-2.5 bg-surface px-2.5 py-2">
+              // Wraps below sm: the file's fields take the row and Preview /
+              // Remove drop to a line of their own, rather than the row running
+              // off a phone.
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 bg-surface px-2.5 py-2 sm:flex-nowrap">
                 <DragHandle handle={handle} label={`Drag ${d.title || d.filename} to reorder`} />
                 <FilePreview
                   thumbnailUrl={d.thumbnailUrl}
                   filename={d.filename}
-                  className="h-14 w-11 shrink-0 rounded border border-border"
+                  className="h-14 w-11 shrink-0 border border-border"
                   iconClassName="h-9 w-7"
                 />
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-48">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="min-w-[10rem] flex-1">
                       <Input
@@ -181,28 +181,32 @@ export function DownloadsSection({
                   * rather than failing the whole editor — say so on its row,
                   * which is where the problem is.
                   */}
-                {d.url ? (
-                  <a
-                    href={d.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0 rounded px-1.5 text-body font-semibold text-muted hover:text-text"
+                <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+                  {d.url ? (
+                    <a
+                      href={d.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Preview ${d.title || d.filename} (opens in a new tab)`}
+                      className="inline-flex h-8.5 items-center px-2 text-body font-semibold text-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-text"
+                    >
+                      Preview
+                    </a>
+                  ) : (
+                    <span title="This file could not be found in storage.">
+                      <Badge tone="danger">File missing</Badge>
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onChange(value.filter((x) => x.mediaAssetId !== d.mediaAssetId))}
+                    aria-label={`Remove ${d.title || d.filename}`}
+                    title={`Remove ${d.title || d.filename}`}
+                    className="inline-flex h-8.5 items-center px-2 text-body font-semibold text-muted transition-colors duration-[120ms] hover:bg-danger-bg hover:text-danger"
                   >
-                    Preview
-                  </a>
-                ) : (
-                  <span className="shrink-0 px-1.5 text-help text-danger" title="This file could not be found in storage.">
-                    File missing
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onChange(value.filter((x) => x.mediaAssetId !== d.mediaAssetId))}
-                  title={`Remove ${d.title || d.filename}`}
-                  className="shrink-0 rounded px-1.5 text-body font-semibold text-muted hover:text-danger"
-                >
-                  Remove
-                </button>
+                    Remove
+                  </button>
+                </div>
               </div>
             )}
           />
