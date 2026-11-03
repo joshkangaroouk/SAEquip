@@ -224,7 +224,7 @@ export default function Logos() {
           ) : (
             <>No product carries {name} yet.</>
           )}{" "}
-          The label, alt text and order stay as they are, and the old image stays in the Media Centre.
+          The label, alt text and order stay as they are, and the old image stays in Media.
         </>
       ),
       confirmLabel: "Replace image",
@@ -254,7 +254,7 @@ export default function Logos() {
         <>
           This will remove the logo from the catalog and from{" "}
           <span className="font-semibold">{entry.usage} product(s)</span> that currently use it. The image
-          stays in the Media Centre.
+          stays in Media.
         </>
       ),
       confirmLabel: "Delete",
@@ -264,7 +264,7 @@ export default function Logos() {
     try {
       await apiJson(`/api/logos/${entry.id}`, { method: "DELETE" });
       setEntries((prev) => prev?.filter((e) => e.id !== entry.id) ?? null);
-      toast.success("Logo deleted (image kept in Media Centre)");
+      toast.success("Logo deleted (image kept in Media)");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
     }
@@ -326,7 +326,7 @@ export default function Logos() {
       {!loading && !error && entries && entries.length === 0 && (
         <EmptyState
           title="No logos in this catalog yet"
-          description="Add one from the Media Centre to get started."
+          description="Add one from Media to get started."
           action={
             <Button size="sm" onClick={() => setPickerOpen(true)}>
               <Plus size={16} aria-hidden="true" />

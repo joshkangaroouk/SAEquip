@@ -12,7 +12,7 @@ import type { MediaAsset } from "../../lib/types";
  * Uploads go to our Supabase media bucket first (via the existing POST
  * /api/media), which yields a public URL. On save, Duda fetches that URL and
  * re-hosts the image on its own CDN — so the Supabase copy is staging plus a
- * reusable Media Centre original, and the product ends up referencing Duda
+ * reusable original in Media, and the product ends up referencing Duda
  * only. That's why a newly-dropped image shows "Pending upload" until saved.
  *
  * The array is a full replacement and position IS the order, with index 0 as
@@ -66,7 +66,7 @@ export function ImagesSection({
           actions={
             <>
               <Button variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-                Add from Media Centre
+                Add from Media
               </Button>
             </>
           }
@@ -79,7 +79,7 @@ export function ImagesSection({
             // Inside the section, under its h2.
             as="h3"
             title="No images yet"
-            description="Drop an image below, or pick one from the Media Centre."
+            description="Drop an image below, or pick one from Media."
           />
         ) : (
           <SortableList

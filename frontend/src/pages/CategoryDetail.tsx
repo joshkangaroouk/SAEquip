@@ -386,7 +386,7 @@ export default function CategoryDetail() {
               )}
             </button>
             <p className="t-help mt-2">
-              Duda fetches the file and re-hosts its own copy, so the Media Centre original can
+              Duda fetches the file and re-hosts its own copy, so the original in Media can
               change later without breaking the page.
               {/*
                 * ⚠️ No Remove: a category image cannot be cleared once set.

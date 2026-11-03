@@ -151,7 +151,9 @@ export function MediaPicker({
                   className="flex flex-col items-center border border-border p-2 hover:border-text"
                 >
                   {a.kind === "image" ? (
-                    <ImageWell src={a.url} alt={a.alt || a.filename} className="h-24" />
+                    // Decorative: the filename under it names the tile (10 §6),
+                    // so a screen reader does not hear it twice.
+                    <ImageWell src={a.url} alt="" className="h-24" />
                   ) : (
                     <FilePreview
                       thumbnailUrl={a.thumbnailUrl}
