@@ -480,7 +480,11 @@ function ListPreview({ items }: { items: string[] }) {
  *
  * Mirrors tabsSection() in widget.js: one set of buttons serves both layouts,
  * with the disclosure pattern (aria-expanded + aria-controls) rather than tab
- * roles, and `hidden` rather than a class on the closed panels.
+ * roles. The open panel carries `.saeh-open` and the body sits in
+ * `.saeh-tab-c > .saeh-tab-b`, as the live widget builds it; the CSS hides the
+ * others. The first panel is open, as on the product page (10 §6) — the
+ * preview used the `hidden` attribute and never added the class, so the CSS
+ * hid every panel.
  */
 function TabsPreview() {
   const [open, setOpen] = useState(0);
@@ -511,13 +515,14 @@ function TabsPreview() {
               <span>{p.label}</span>
             </button>
             <div
-              className="saeh-tab-p"
+              className={i === open ? "saeh-tab-p saeh-open" : "saeh-tab-p"}
               id={`prev-${p.id}`}
               role="region"
               aria-labelledby={`prev-${p.id}-h`}
-              hidden={i !== open}
             >
-              {p.body}
+              <div className="saeh-tab-c">
+                <div className="saeh-tab-b">{p.body}</div>
+              </div>
             </div>
           </Fragment>
         ))}
