@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Languages, RefreshCw } from "lucide-react";
+import { Pencil, RefreshCw, Search } from "lucide-react";
 import {
   PageHeader,
   Alert,
@@ -13,6 +13,10 @@ import {
   SegmentedControl,
   SelectMenu,
   Skeleton,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs,
   Table,
   TBody,
   TD,
@@ -56,8 +60,11 @@ const STATUS_LABEL: Record<TranslationStatus, string> = {
   rejected: "Kept in English",
 };
 
+/**
+ * Per 02 §6: Missing and Machine are content (neutral; never yellow, 02a Q9),
+ * Edited is ok, and Kept in English is the validator's refusal (danger).
+ */
 function StatusBadge({ status }: { status: TranslationStatus }) {
-  // "Missing" is neutral, not yellow: yellow marks only the active or primary thing (02a Q9).
   const tone = status === "staff" ? "ok" : status === "rejected" ? "danger" : "neutral";
   return <Badge tone={tone}>{STATUS_LABEL[status]}</Badge>;
 }
@@ -151,13 +158,13 @@ function EditTranslation({
     >
       <div className="space-y-4">
         <div>
-          <div className="t-label mb-1 text-muted">English</div>
+          <div className="t-label mb-1">English</div>
           {html ? (
-            <div className="max-h-48 overflow-auto rounded-md border border-border bg-surface-2 p-3">
+            <div className="max-h-48 overflow-auto border border-border bg-surface-2 p-3">
               <RichHtml html={item.sourceText} />
             </div>
           ) : (
-            <p className="rounded-md border border-border bg-surface-2 px-3 py-2 text-body text-text">{item.sourceText}</p>
+            <p className="border border-border bg-surface-2 px-3 py-2 text-body text-text">{item.sourceText}</p>
           )}
         </div>
 
@@ -168,7 +175,7 @@ function EditTranslation({
         )}
 
         <div>
-          <label htmlFor="translation-text" className="t-label mb-1 block text-muted">
+          <label htmlFor="translation-text" className="t-label mb-1 block">
             {targetLabel(locale)}
             {html && <span className="ml-2 font-normal">HTML - keep every tag and link as it is</span>}
           </label>
@@ -185,13 +192,13 @@ function EditTranslation({
             className={html ? "font-mono text-help leading-relaxed" : undefined}
           />
           {html && text.trim() && (
-            <div className="mt-2 max-h-48 overflow-auto rounded-md border border-border p-3" lang={locale} dir={rtl ? "rtl" : "ltr"}>
+            <div className="mt-2 max-h-48 overflow-auto border border-border p-3" lang={locale} dir={rtl ? "rtl" : "ltr"}>
               <RichHtml html={text} />
             </div>
           )}
         </div>
 
-        <p className="text-help text-muted">
+        <p className="t-help">
           Numbers, certification marks (ATEX, IECEx, UKEX…), product codes and links must stay exactly as in the English,
           or the translation is refused - that is what keeps a rating from changing in translation.
         </p>
@@ -293,7 +300,7 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-2xl text-help text-muted">
+        <p className="t-help max-w-2xl">
           Product names and category titles are translated in Duda (the site's language settings), and copied here so the
           widgets' cards and lists say exactly what Duda's own pages say. After adding a language or changing a name in
           Duda, republish the site and press Refresh.
@@ -303,20 +310,21 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
           {refreshing && refreshing !== "…" ? `Copying ${refreshing}…` : "Refresh all languages from Duda"}
         </Button>
       </div>
-      {error && <Alert tone="danger" className="mt-6">{error}</Alert>}
+      {error && <Alert tone="danger" className="mt-5">{error}</Alert>}
       {!items && !error && (
-        <div className="mt-6" aria-busy="true" aria-label="Loading names">
+        <div className="mt-5" aria-busy="true" aria-label="Loading names">
           <Skeleton className="h-64 w-full" />
         </div>
       )}
       {items && (
         <>
+          {/* Why names show in English: information, not a fault (02 §6). */}
           {missing > 0 && (
-            <p className="mt-4 text-help text-muted">
+            <Alert tone="info" live="off" className="mt-5">
               {missing === items.length
                 ? `Nothing copied for ${targetLabel(locale)} yet. Add the language to the Duda site, wait for Duda to translate it, then press Refresh.`
                 : `${missing} still in English in Duda, so they show in English here too. Translate them in Duda, republish, then press Refresh.`}
-            </p>
+            </Alert>
           )}
           <div className="mt-4">
             <Table>
@@ -333,10 +341,20 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
                     <TD className="whitespace-nowrap text-help text-muted">{n.entity === "PRODUCT" ? "Product" : "Category"}</TD>
                     <TD>{n.english}</TD>
                     <TD lang={locale} dir={rtl ? "rtl" : "ltr"}>
-                      {n.text ?? <span className="text-muted">-</span>}
+                      {n.text ?? (
+                        <>
+                          <span aria-hidden="true" className="text-muted">
+                            —
+                          </span>
+                          <span className="sr-only" lang="en">
+                            Not translated
+                          </span>
+                        </>
+                      )}
+                      {/* Stale: the English moved on since Duda's copy (KEEP-F). */}
                       {n.stale && (
-                        <Badge tone="neutral" className="ms-2">
-                          English changed since
+                        <Badge tone="danger" className="ms-2">
+                          <span lang="en">English changed since</span>
                         </Badge>
                       )}
                     </TD>
@@ -536,10 +554,16 @@ export default function Translations() {
   const head = (
     <THead>
       <TR>
-        <TH className="w-36">Type</TH>
+        {/* On narrow screens Type folds under the English (below md) and
+            Status under the translation (below sm), rather than the table
+            scrolling sideways in its box. */}
+        <TH className="hidden w-40 md:table-cell">Type</TH>
         <TH>English</TH>
         <TH>{targetLabel(locale)}</TH>
-        <TH className="w-36">Status</TH>
+        <TH className="hidden w-px sm:table-cell">Status</TH>
+        <TH className="w-px">
+          <span className="sr-only">Edit</span>
+        </TH>
       </TR>
     </THead>
   );
@@ -547,22 +571,14 @@ export default function Translations() {
   return (
     <>
       <PageHeader
-        title={
-          <span className="flex items-center gap-2">
-            <Languages size={22} className="text-accent" aria-hidden="true" />
-            Translations
-          </span>
-        }
-        description={
-          <span className="block max-w-3xl">
-            Product content in the website's other languages. Anything missing or kept in English shows in English on
-            that language's pages. Machine translations are checked automatically; a correction made here is never
-            overwritten.
-          </span>
-        }
+        title="Translations"
+        // Three actions: beside the title only from xl, so at 1024 the
+        // description keeps the band's width instead of a narrow column.
+        actionsBeside="xl"
+        description="Product content in the website's other languages."
         actions={
           tab === "content" && (
-            <div className="flex flex-wrap gap-2">
+            <>
               <Button variant="secondary" size="sm" onClick={exportCsv} disabled={!filtered.length}>
                 Export CSV
               </Button>
@@ -580,158 +596,180 @@ export default function Translations() {
                   if (f) void importCsv(f);
                 }}
               />
+              {/* ⚠️ translateNow is called straight from the click: it needs the
+                  click's user activation (01 §6.1). */}
               <Button size="sm" onClick={translateNow} disabled={!data || counts.missing === 0}>
                 Translate missing ({counts.missing})
               </Button>
-            </div>
+            </>
           )
         }
       />
 
       <SegmentedControl<TargetLocale>
-        className="mt-6"
+        className="mb-5"
         ariaLabel="Language"
         value={locale}
         onChange={(v) => setParam("lang", v)}
         options={TARGETS.map((t) => ({ value: t.locale, label: t.label }))}
       />
 
-      <div className="mt-4 flex gap-4 border-b border-border text-body" role="tablist">
-        {(
-          [
-            ["content", "Product content"],
-            ["names", "Names from Duda"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setParam("tab", key === "content" ? null : key)}
-            className={`-mb-px border-b-2 px-1 pb-2 font-semibold ${
-              tab === key ? "border-accent text-text" : "border-transparent text-muted hover:text-text"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setParam("tab", v === "content" ? null : v)}>
+        <TabList aria-label="Translations">
+          <Tab value="content">Product content</Tab>
+          <Tab value="names">Names from Duda</Tab>
+        </TabList>
 
-      <div className="mt-5">
-        {tab === "names" ? (
+        <TabPanel value="names" className="pt-5">
           <DudaNames locale={locale} />
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-full sm:w-72">
-                <Input
-                  size="xs"
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search text or product…"
-                  aria-label="Search translations"
-                />
-              </div>
-              <SelectMenu
-                className="min-w-0 flex-1 sm:w-52 sm:flex-none"
-                ariaLabel="Filter by type"
-                value={kind}
-                onChange={(v) => setKind(v as "" | TranslationKind)}
-                options={[
-                  { value: "", label: "All types" },
-                  ...(Object.keys(KIND_LABEL) as TranslationKind[]).map((k) => ({ value: k, label: KIND_LABEL[k] })),
-                ]}
+        </TabPanel>
+
+        <TabPanel value="content" className="pt-5">
+          <p className="t-help mb-4 max-w-3xl">
+            Anything missing or kept in English shows in English on that language's pages. Machine translations are
+            checked automatically; a correction made here is never overwritten.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-full sm:w-72">
+              <label htmlFor="translations-search" className="sr-only">
+                Search translations by text or product
+              </label>
+              <Search
+                size={16}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
               />
-              <SelectMenu
-                className="min-w-0 flex-1 sm:w-52 sm:flex-none"
-                ariaLabel="Filter by status"
-                value={status}
-                onChange={(v) => setStatus(v as "" | TranslationStatus)}
-                options={[
-                  { value: "", label: `All statuses (${items.length})` },
-                  ...(Object.keys(STATUS_LABEL) as TranslationStatus[]).map((s) => ({
-                    value: s,
-                    label: `${STATUS_LABEL[s]} (${counts[s]})`,
-                  })),
-                ]}
+              <Input
+                id="translations-search"
+                size="sm"
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Text or product…"
+                className="pl-9"
               />
             </div>
+            <SelectMenu
+              className="min-w-0 flex-1 sm:w-52 sm:flex-none"
+              ariaLabel="Filter by type"
+              value={kind}
+              onChange={(v) => setKind(v as "" | TranslationKind)}
+              options={[
+                { value: "", label: "All types" },
+                ...(Object.keys(KIND_LABEL) as TranslationKind[]).map((k) => ({ value: k, label: KIND_LABEL[k] })),
+              ]}
+            />
+            <SelectMenu
+              className="min-w-0 flex-1 sm:w-52 sm:flex-none"
+              ariaLabel="Filter by status"
+              value={status}
+              onChange={(v) => setStatus(v as "" | TranslationStatus)}
+              options={[
+                { value: "", label: `All statuses (${items.length})` },
+                ...(Object.keys(STATUS_LABEL) as TranslationStatus[]).map((s) => ({
+                  value: s,
+                  label: `${STATUS_LABEL[s]} (${counts[s]})`,
+                })),
+              ]}
+            />
+          </div>
 
-            {error && (
-              <Alert tone="danger" className="mt-6">{error}</Alert>
-            )}
-            {!data && !error && (
-              <div className="mt-4" aria-busy="true" aria-live="polite" aria-label="Loading translations">
-                <Table>
-                  {head}
-                  <TBody>
-                    {Array.from({ length: 8 }, (_, i) => (
-                      <TR key={i}>
-                        <TD>
-                          <Skeleton className="h-4 w-24" />
-                        </TD>
-                        <TD>
-                          <Skeleton className="h-4 w-64" />
-                        </TD>
-                        <TD>
-                          <Skeleton className="h-4 w-64" />
-                        </TD>
-                        <TD>
-                          <Skeleton className="h-4 w-20" />
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              </div>
-            )}
-            {data && filtered.length === 0 && (
-              <EmptyState
-                className="mt-8"
-                title={items.length ? "Nothing matches" : "No content to translate"}
-                description={items.length ? "Try another filter or search." : undefined}
-              />
-            )}
-            {data && filtered.length > 0 && (
-              <div className="mt-4">
-                <Table>
-                  {head}
-                  <TBody>
-                    {shown.map((i) => (
-                      <TR key={`${i.kind}:${i.sourceHash}`} hover onClick={() => setEditing(i)}>
-                        <TD className="align-top text-help text-muted">
+          {error && (
+            <Alert tone="danger" className="mt-6">{error}</Alert>
+          )}
+          {!data && !error && (
+            <div className="mt-4" aria-busy="true" aria-live="polite" aria-label="Loading translations">
+              <Table>
+                {head}
+                <TBody>
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <TR key={i}>
+                      <TD className="hidden md:table-cell">
+                        <Skeleton className="h-4 w-24" />
+                      </TD>
+                      <TD>
+                        <Skeleton className="h-4 w-64" />
+                      </TD>
+                      <TD>
+                        <Skeleton className="h-4 w-64" />
+                      </TD>
+                      <TD className="hidden sm:table-cell">
+                        <Skeleton className="h-6.5 w-20" />
+                      </TD>
+                      <TD>
+                        <Skeleton className="h-8.5 w-8.5" />
+                      </TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+          )}
+          {data && filtered.length === 0 && (
+            <EmptyState
+              className="mt-8"
+              title={items.length ? "Nothing matches" : "No content to translate"}
+              description={items.length ? "Try another filter or search." : undefined}
+            />
+          )}
+          {data && filtered.length > 0 && (
+            <div className="mt-4">
+              <Table>
+                {head}
+                <TBody>
+                  {shown.map((i) => (
+                    <TR key={`${i.kind}:${i.sourceHash}`} hover onClick={() => setEditing(i)}>
+                      {/* The type, and the product it is used on. */}
+                      <TD className="hidden align-top md:table-cell">
+                        <span className="block text-help text-text">{KIND_LABEL[i.kind]}</span>
+                        <span className="mt-0.5 block truncate text-label text-muted" title={usedOn(i, products)}>
+                          {usedOn(i, products)}
+                        </span>
+                      </TD>
+                      <TD className="align-top">
+                        <span className="mb-1 block text-label text-muted md:hidden">
                           {KIND_LABEL[i.kind]}
-                          <div className="mt-0.5 truncate text-label text-muted" title={usedOn(i, products)}>
-                            {usedOn(i, products)}
-                          </div>
-                        </TD>
-                        <TD className="align-top">
-                          <button type="button" onClick={() => setEditing(i)} className="text-left">
-                            <span className="sr-only">Edit the translation of </span>
-                            <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText}</span>
-                          </button>
-                        </TD>
-                        <TD className="align-top" lang={locale} dir={rtl ? "rtl" : "ltr"}>
-                          {i.text ? (
-                            <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.text) : i.text}</span>
-                          ) : (
-                            <span className="text-muted">Shown in English</span>
-                          )}
-                        </TD>
-                        <TD className="align-top">
+                          {usedOn(i, products) && ` · ${usedOn(i, products)}`}
+                        </span>
+                        <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText}</span>
+                      </TD>
+                      {/* lang and dir, so Arabic reads right to left. */}
+                      <TD className="align-top" lang={locale} dir={rtl ? "rtl" : "ltr"}>
+                        {i.text ? (
+                          <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.text) : i.text}</span>
+                        ) : (
+                          <span className="text-muted" lang="en" dir="ltr">
+                            Shown in English
+                          </span>
+                        )}
+                        <span className="mt-1.5 block sm:hidden" lang="en" dir="ltr">
                           <StatusBadge status={i.status} />
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-                <Pagination className="mt-5" page={page} total={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} label="strings" />
-              </div>
-            )}
-          </>
-        )}
-      </div>
+                        </span>
+                      </TD>
+                      <TD className="hidden align-top sm:table-cell">
+                        <StatusBadge status={i.status} />
+                      </TD>
+                      {/* The keyboard way in: a row takes no focus. */}
+                      <TD className="py-1.5 align-top">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(i)}
+                          aria-label={`Edit the ${targetLabel(locale)} ${KIND_LABEL[i.kind].toLowerCase()}: ${(i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText).slice(0, 60)}`}
+                          title="Edit"
+                          className="inline-flex h-8.5 w-8.5 items-center justify-center text-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-text"
+                        >
+                          <Pencil size={16} aria-hidden="true" />
+                        </button>
+                      </TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+              <Pagination className="mt-5" page={page} total={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} label="strings" />
+            </div>
+          )}
+        </TabPanel>
+      </Tabs>
 
       {editing && (
         <EditTranslation

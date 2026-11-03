@@ -23,6 +23,11 @@ export function PageHeaderSlot({ value, children }: { value: Slot; children: Rea
  * one-line muted description, and the page's actions on the right with the
  * primary action last. `overline` is an optional label above the title.
  *
+ * `actionsBeside` is the width from which the actions sit beside the title
+ * rather than under it: `sm` by default, `xl` for a page with several actions
+ * (Translations), so the title and description keep the band's width at 1024
+ * instead of wrapping in a narrow column.
+ *
  * A page renders it first, wherever it likes; inside the shell it is drawn in
  * the slot under the top bar (a portal), so the band spans the whole main
  * column while its content lines up with the page's. Outside the shell (the
@@ -33,12 +38,14 @@ export function PageHeader({
   description,
   actions,
   overline,
+  actionsBeside = "sm",
   className,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   overline?: ReactNode;
+  actionsBeside?: "sm" | "xl";
   className?: string;
 }) {
   const slot = useContext(SlotContext);
@@ -46,7 +53,10 @@ export function PageHeader({
     <div className={cn("border-b border-border bg-surface", className)}>
       <div
         className={cn(
-          "flex flex-col gap-4 px-5 pb-5 pt-6 sm:flex-row sm:items-end sm:justify-between lg:px-10 lg:pb-7 lg:pt-8",
+          "flex flex-col gap-4 px-5 pb-5 pt-6 lg:px-10 lg:pb-7 lg:pt-8",
+          actionsBeside === "xl"
+            ? "xl:flex-row xl:items-end xl:justify-between"
+            : "sm:flex-row sm:items-end sm:justify-between",
           !slot?.full && "mx-auto max-w-6xl",
         )}
       >
