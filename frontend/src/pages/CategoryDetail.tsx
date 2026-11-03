@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, ImageOff } from "lucide-react";
+import { ImageOff, Plus } from "lucide-react";
 import {
   Thumb,
   Alert,
+  Badge,
   Button,
   Card,
   CardHeader,
@@ -11,6 +12,7 @@ import {
   Field,
   Input,
   Loader,
+  PageHeader,
   Select,
   SortableList,
   Textarea,
@@ -23,6 +25,7 @@ import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 import { usePageCrumb } from "../components/TopBar";
 import { AssignPickList } from "../components/product/AssignPickList";
 import { apiJson } from "../lib/api";
+import { cn } from "../lib/cn";
 import type { ProductSummary } from "../lib/types";
 
 const ROOT = "ROOT";
@@ -220,12 +223,48 @@ export default function CategoryDetail() {
     }
   }
 
-  if (loading) return <Loader label="Loading category…" />;
+  // The band shows from the first render, so it does not appear only once
+  // the category has loaded. No page breadcrumb: the top bar's says
+  // "Catalogue / Categories / <title>" (02a "After stage 5").
+  const header = (
+    <PageHeader
+      title={node?.title ?? baseline?.title ?? "Category"}
+      actions={
+        draft && (
+          <>
+            {dirty && <Badge dot="unsaved">Unsaved changes</Badge>}
+            <Button variant="secondary" size="sm" onClick={() => navigate("/categories")} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void save()}
+              loading={saving}
+              disabled={!dirty || !draft.title.trim() || !!slugError}
+            >
+              Save
+            </Button>
+          </>
+        )
+      }
+    />
+  );
+
+  if (loading) {
+    return (
+      <>
+        {header}
+        <Loader label="Loading category…" />
+      </>
+    );
+  }
   if (error) {
     return (
-      <Alert tone="danger" className="mt-4">
-        {error}
-      </Alert>
+      <>
+        {header}
+        <Alert tone="danger">{error}</Alert>
+      </>
     );
   }
   if (!draft) return null;
@@ -233,29 +272,10 @@ export default function CategoryDetail() {
   return (
     <>
       <UnsavedChangesModal blocker={blocker} onSave={save} />
-      <nav className="flex items-center gap-1.5 text-help text-muted">
-        <Link to="/categories" className="underline-offset-2 hover:text-text hover:underline">
-          Categories
-        </Link>
-        <ChevronRight size={13} />
-        <span className="text-text">{node?.title ?? draft.title}</span>
-      </nav>
+      {header}
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="t-h1 text-text">{node?.title ?? draft.title}</h1>
-        <div className="flex items-center gap-2">
-          {dirty && <span className="text-help text-muted">Unsaved changes</span>}
-          <Button variant="secondary" size="sm" onClick={() => navigate("/categories")} disabled={saving}>
-            Cancel
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => void save()} disabled={!dirty || saving || !draft.title.trim() || !!slugError}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-10">
-        <div className="space-y-4 lg:col-span-7">
+      <div className="grid gap-5 lg:grid-cols-10">
+        <div className="space-y-5 lg:col-span-7">
           <Card>
             <CardHeader title="Category info" />
             <div className="space-y-4">
@@ -296,10 +316,8 @@ export default function CategoryDetail() {
           </Card>
 
           <Card>
-            <CardHeader
-              title="Category products"
-              description="Stored in the Hub. Run duda:sync-categories to push it to Duda's storefront."
-            />
+            {/* No sync instructions: pushing to Duda is Kangaroo's job (02 §6: REMOVE). */}
+            <CardHeader title="Category products" />
             <AssignPickList
               items={products.map((p) => ({ id: p.id, label: p.name, imageUrl: p.thumbnail }))}
               selected={draft.productIds}
@@ -314,7 +332,8 @@ export default function CategoryDetail() {
               title="Subcategories"
               actions={
                 <Button variant="secondary" size="sm" onClick={() => navigate(`/categories?create=${id}`)}>
-                  + Create a subcategory
+                  <Plus size={16} aria-hidden="true" />
+                  New subcategory
                 </Button>
               }
             />
@@ -327,16 +346,15 @@ export default function CategoryDetail() {
                 className="divide-y divide-border"
                 onReorder={(next) => void reorderChildren(next.map((c) => c.id))}
                 renderItem={(c, handle: DragHandleProps) => (
-                  <div className="flex items-center gap-2 py-2">
+                  <div className="flex items-center gap-3 py-2">
                     <DragHandle handle={handle} label={`Drag ${c.title} to reorder`} />
                     <Thumb src={c.imageUrl} size={40} />
-                    <Link
-                      to={`/categories/${c.id}`}
-                      className="min-w-0 flex-1 truncate font-medium text-text underline-offset-2 hover:underline"
-                    >
+                    <Link to={`/categories/${c.id}`} className="min-w-0 flex-1 truncate font-medium text-text">
                       {c.title}
                     </Link>
-                    <span className="shrink-0 text-help text-muted">{c.hubProductCount} products</span>
+                    <span className="shrink-0 text-help text-muted">
+                      <span className="font-mono">{c.hubProductCount}</span> product{c.hubProductCount === 1 ? "" : "s"}
+                    </span>
                   </div>
                 )}
               />
@@ -344,24 +362,30 @@ export default function CategoryDetail() {
           </Card>
         </div>
 
-        <div className="space-y-4 lg:col-span-3">
+        <div className="space-y-5 lg:col-span-3">
           <Card>
             <CardHeader title="Category image" />
+            {/* Named either way: once an image is set its only content is the
+                picture, which is decorative here. */}
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-surface-2 text-muted transition-colors duration-[120ms] hover:border-text hover:text-text"
+              aria-label={draft.image_url ? "Replace the category image" : "Choose a category image"}
+              className={cn(
+                "flex aspect-square w-full items-center justify-center overflow-hidden border text-muted transition-colors duration-[120ms] hover:border-text hover:text-text",
+                draft.image_url ? "border-border bg-paper" : "border-dashed border-border-input bg-surface-2",
+              )}
             >
               {draft.image_url ? (
-                <img src={draft.image_url} alt="" className="h-full w-full bg-paper object-contain" />
+                <img src={draft.image_url} alt="" className="h-full w-full object-contain" />
               ) : (
-                <span className="flex flex-col items-center gap-2 text-help">
+                <span className="flex flex-col items-center gap-2 text-help" aria-hidden="true">
                   <ImageOff size={24} />
-                  Click to choose an image
+                  Choose an image
                 </span>
               )}
             </button>
-            <p className="mt-2 text-help text-muted">
+            <p className="t-help mt-2">
               Duda fetches the file and re-hosts its own copy, so the Media Centre original can
               change later without breaking the page.
               {/*
