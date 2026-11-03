@@ -96,7 +96,7 @@ export function TopBar({
   pageLabel: string | null;
 }) {
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface px-5 lg:gap-4 lg:px-10">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface px-5 sm:px-10 lg:gap-4">
       <Button
         ref={menuButtonRef}
         variant="ghost"

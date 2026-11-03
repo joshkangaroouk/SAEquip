@@ -242,9 +242,8 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
  */
 export function Layout({ children }: { children?: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // A route with `handle: { layout: "full" }` (the split views) drops the
-  // max-w-6xl column and, from lg, fills the viewport height so its panes can
-  // scroll on their own.
+  // A route with `handle: { layout: "full" }` (the split views), from lg,
+  // fills the viewport height so its panes can scroll on their own.
   const full = useMatches().some((m) => (m.handle as { layout?: string } | undefined)?.layout === "full");
   // Applies the account's light/dark choice once the session has loaded; the
   // top bar's toggle sets it (the only write the shell makes).
@@ -323,16 +322,18 @@ export function Layout({ children }: { children?: ReactNode }) {
         <CrumbProvider value={setPageLabel}>
           <PageHeaderSlot value={{ el: headerSlot, full }}>
             {/*
-              Content padding 32 40 56 (00). The first element's own top margin
-              is dropped: pages spaced their first block from a heading that is
-              now the band above, so the padding alone sets that gap.
+              Content padding 32 40 56 (00), full width and left-aligned at
+              every size (10 §1); 20px sides below 640. The first element's own
+              top margin is dropped: pages spaced their first block from a
+              heading that is now the band above, so the padding alone sets
+              that gap.
             */}
             <div
               className={cn(
                 "[&>:first-child]:mt-0",
                 full
-                  ? "px-5 py-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:px-10 lg:py-8"
-                  : "mx-auto max-w-6xl px-5 pb-14 pt-6 lg:px-10 lg:pt-8",
+                  ? "px-5 py-6 sm:px-10 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:py-8"
+                  : "px-5 pb-14 pt-8 sm:px-10",
               )}
             >
               {children ?? <Outlet />}

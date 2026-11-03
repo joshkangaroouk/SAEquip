@@ -4,8 +4,8 @@ import { cn } from "../../lib/cn";
 
 /**
  * Where the shell wants the page header: an element directly under the top
- * bar, spanning the main column (Layout provides it). `full` drops the
- * max-w-6xl column, as on the split-view pages.
+ * bar, spanning the main column (Layout provides it). `full` marks the
+ * split-view pages.
  */
 interface Slot {
   el: HTMLElement | null;
@@ -52,18 +52,20 @@ export function PageHeader({
   const band = (
     <div className={cn("border-b border-border bg-surface", className)}>
       <div
+        // Edge to edge, with the content's own side padding (40, or 20 below
+        // 640), so the band's left edge lines up with the page's (10 §1).
         className={cn(
-          "flex flex-col gap-4 px-5 pb-5 pt-6 lg:px-10 lg:pb-7 lg:pt-8",
+          "flex flex-col gap-4 px-5 pb-7 pt-8 sm:px-10",
           actionsBeside === "xl"
             ? "xl:flex-row xl:items-end xl:justify-between"
             : "sm:flex-row sm:items-end sm:justify-between",
-          !slot?.full && "mx-auto max-w-6xl",
         )}
       >
         <div className="min-w-0 space-y-2">
           {overline && <p className="t-overline">{overline}</p>}
           <h1 className="t-h1 text-text">{title}</h1>
-          {description && <p className="text-body text-muted">{description}</p>}
+          {/* Free-running prose: a reading width, now the band is full width. */}
+          {description && <p className="max-w-[72ch] text-body text-muted">{description}</p>}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}
       </div>

@@ -118,7 +118,7 @@ export default function ProductNew() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="max-w-2xl space-y-5">
       <UnsavedChangesModal blocker={blocker} />
       <TranslationProgressModal progress={translate.progress} onSkip={translate.skip} onDownload={translate.download} />
       <PageHeader
