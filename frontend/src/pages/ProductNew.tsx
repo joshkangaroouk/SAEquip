@@ -5,6 +5,8 @@ import { apiJson } from "../lib/api";
 import type { ProductDetail } from "../lib/types";
 import { useTranslateOnSave } from "../components/product/useTranslateOnSave";
 import { TranslationProgressModal } from "../components/TranslationProgressModal";
+import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
+import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 
 const NUMERIC = /^\d+(\.\d+)?$/;
 const TYPES = ["PHYSICAL", "DIGITAL", "SERVICE", "DONATION"];
@@ -61,6 +63,21 @@ export default function ProductNew() {
     (NUMERIC.test(form.compareAtPrice) && parseFloat(form.compareAtPrice) > parseFloat(form.price || "0"));
   const valid = nameOk && priceOk && compareOk;
 
+  /*
+   * The unsaved-changes guard the editor has (02a "Batch 8"): leaving a
+   * half-filled form asks first, and closing the tab gets the browser's
+   * prompt. Suppressed for the deliberate exit after "Create and edit" — read
+   * at navigation time, since the form is still filled when it navigates.
+   * No "Save and leave": creating needs the click (translate-on-save's
+   * begin() runs in it), so the dialog offers Stay or Discard.
+   */
+  const dirty = JSON.stringify(form) !== JSON.stringify(blank);
+  const leaving = useRef(false);
+  const blocker = useUnsavedChangesWarning({
+    when: dirty && !saving,
+    suppress: () => leaving.current,
+  });
+
   async function create(then: "edit" | "another") {
     if (!valid || saving) return;
     // A description is translated as soon as the product exists. ⚠️ Started
@@ -85,6 +102,7 @@ export default function ProductNew() {
       const note = await translate.finish(session, created.id);
       toast.success(`Created “${created.name}”${note ?? ""}`);
       if (then === "edit") {
+        leaving.current = true;
         navigate(`/products/${created.id}`, { replace: true });
       } else {
         setCreatedCount((n) => n + 1);
@@ -100,21 +118,20 @@ export default function ProductNew() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl space-y-5">
+      <UnsavedChangesModal blocker={blocker} />
       <TranslationProgressModal progress={translate.progress} onSkip={translate.skip} onDownload={translate.download} />
       <PageHeader
         title="New product"
         description="Creates the product in Duda with the fields it accepts at create time. Hidden by default, so a half-filled product never goes live."
         actions={
           createdCount > 0 ? (
-            <Badge tone="success">
-              {createdCount} created this session
-            </Badge>
+            <Badge tone="ok">{createdCount} created this session</Badge>
           ) : undefined
         }
       />
 
-      <Card className="mt-6">
+      <Card>
         <CardHeader title="Details" />
 
         <form
@@ -179,9 +196,10 @@ export default function ProductNew() {
             </Field>
 
             <Field label="Status" htmlFor="n-status">
+              {/* The values Duda takes, labelled as the rest of the Hub says them. */}
               <Select id="n-status" value={form.status} onChange={(e) => set("status", e.target.value)}>
-                <option value="HIDDEN">HIDDEN</option>
-                <option value="ACTIVE">ACTIVE</option>
+                <option value="HIDDEN">Hidden</option>
+                <option value="ACTIVE">Live</option>
               </Select>
             </Field>
           </div>
@@ -270,7 +288,7 @@ function NextSteps() {
   ];
 
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader
         title="Added after it exists"
         description="Duda only accepts the fields above when creating a product, and everything the Hub stores is keyed to the product id you get back. Create it first, then fill these in on the editor."
@@ -278,7 +296,8 @@ function NextSteps() {
       <ul className="space-y-2">
         {AFTER.map(([label, why]) => (
           <li key={label} className="flex gap-2 text-help">
-            <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+            {/* A muted square, not yellow: yellow marks only the active or primary thing. */}
+            <span className="mt-[8px] h-1 w-1 shrink-0 bg-muted" aria-hidden="true" />
             <span>
               <span className="font-medium text-text">{label}</span>
               <span className="text-muted"> — {why}</span>
