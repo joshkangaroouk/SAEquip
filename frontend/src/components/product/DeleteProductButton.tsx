@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Field, Input, Modal, toast } from "../ui";
+import { Trash2 } from "lucide-react";
+import { Button, Field, Input, Modal, toast } from "../ui";
 import { apiJson } from "../../lib/api";
 
 interface DeletePreview {
@@ -17,11 +18,17 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * Product deletion. Irreversible on Duda's side, so it's gated behind a
  * preview of exactly what goes and what stays, plus typing the product name.
  *
+ * WordPress-style since batch 12 (12 §2): a danger text button at the foot of
+ * the side panel's Visibility card, not a card of its own at the foot of
+ * Overview. The dialog, its typed check, the request and the navigation
+ * after it are as they were; on Cancel or Escape focus goes back to the
+ * button (Modal).
+ *
  * Captured leads and quote requests are NOT destroyed — leads survive via a
  * SetNull FK plus their capture-time snapshot, and quote requests never
  * referenced the product to begin with.
  */
-export function DangerZoneSection({
+export function DeleteProductButton({
   productId,
   productName,
   onBeforeNavigate,
@@ -78,23 +85,15 @@ export function DangerZoneSection({
 
   return (
     <>
-      {/* Not CardHeader: as a padded card's first child that draws a header
-          ROW, with a rule and room for a body below it, and this card has no
-          body — it left an empty band at the foot of Overview. */}
-      <Card id="section-danger" className="border-danger/40">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            {/* h2, like the editor's other sections (10 §6). */}
-            <h2 className="t-section text-text">Delete product</h2>
-            <p className="t-help">
-              Removes the product from Duda along with its Hub content. Captured leads and quote requests are kept.
-            </p>
-          </div>
-          <Button variant="danger" size="sm" onClick={() => void openDialog()}>
-            Delete…
-          </Button>
-        </div>
-      </Card>
+      {/* A danger text button: no border, an underline on hover, the global focus outline. */}
+      <button
+        type="button"
+        onClick={() => void openDialog()}
+        className="inline-flex items-center gap-2 text-body font-semibold text-danger underline-offset-2 hover:underline"
+      >
+        <Trash2 size={16} aria-hidden="true" />
+        Delete product
+      </button>
 
       <Modal
         open={open}

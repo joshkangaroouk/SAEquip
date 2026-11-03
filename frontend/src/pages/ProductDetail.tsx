@@ -22,7 +22,7 @@ import { TranslationProgressModal } from "../components/TranslationProgressModal
 import { CategoriesSection, useCategoryList, type CategoryNode } from "../components/product/CategoriesSection";
 import { AccessorySection } from "../components/product/AccessorySection";
 import { CompatibleProductsSection } from "../components/product/CompatibleProductsSection";
-import { DangerZoneSection } from "../components/product/DangerZoneSection";
+import { DeleteProductButton } from "../components/product/DeleteProductButton";
 import { DescriptionSection } from "../components/product/DescriptionSection";
 import { EditorSection } from "../components/product/EditorSection";
 import { ImagesSection } from "../components/product/ImagesSection";
@@ -47,7 +47,6 @@ import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { usePageCrumb } from "../components/TopBar";
 import { productPageUrl } from "../lib/site";
-import { cn } from "../lib/cn";
 
 /** From here the side panel (Visibility, Categories) sits beside the tabs. */
 const XL = "(min-width: 1280px)";
@@ -498,6 +497,11 @@ export default function ProductDetail() {
                   </div>
                   {/* Moved here from Overview (10 §3); the same `accessory` key. */}
                   <AccessorySection checked={draft.isAccessory} onChange={(next) => setSection("isAccessory", next)} />
+                  {/* Delete product, WordPress-style (12 §2): outside the save
+                      flow, under a rule that runs the card's full width. */}
+                  <div className="-mx-5 border-t border-border px-5 pt-4">
+                    <DeleteProductButton productId={product.id} productName={product.name} onBeforeNavigate={disarmGuard} />
+                  </div>
                 </div>
               </EditorSection>
               <CategoriesSection
@@ -510,10 +514,6 @@ export default function ProductDetail() {
               />
             </aside>
 
-            {/* Delete product: the foot of Overview, outside the save flow. */}
-            <div className={cn("min-w-0 xl:col-start-1 xl:row-start-2", tab !== "overview" && "hidden")}>
-              <DangerZoneSection productId={product.id} productName={product.name} onBeforeNavigate={disarmGuard} />
-            </div>
           </div>
         </Tabs>
       )}

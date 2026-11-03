@@ -6,6 +6,19 @@ import { EDITOR_GRID, sidePanelClass } from "./editorLayout";
 import type { EditorTab } from "./editorTabs";
 
 /**
+ * Words drawn as a bar: the grey is on this span and the words inside are
+ * `invisible`, so they keep their exact box but are never painted (nor read
+ * as low-contrast text).
+ */
+function Words({ children, className }: { children: string; className?: string }) {
+  return (
+    <span className={`animate-pulse bg-surface-2 motion-reduce:animate-none ${className ?? ""}`}>
+      <span className="invisible">{children}</span>
+    </span>
+  );
+}
+
+/**
  * The product editor while the product loads (11 §1), in place of a centred
  * spinner: the band, the section cards, and the side panel (Visibility,
  * Categories),
@@ -22,8 +35,7 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
         Loading product
       </p>
       <ProductBandSkeleton />
-      {/* In the editor's order: the panel's sections, the side panel, then
-          (Overview only) Delete product, where the grid puts each. */}
+      {/* In the editor's order: the panel's sections, then the side panel. */}
       <div className={EDITOR_GRID}>
         <div className="min-w-0 space-y-5 xl:col-start-1 xl:row-start-1">
           {/* Details: its header carries a meta line and a checkbox, which wrap
@@ -58,16 +70,29 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
 
         <div className={sidePanelClass(tab)}>
           <SectionSkeleton title="w-20">
-            <div className="space-y-5">
+            {/* The help lines are static copy, so they show as themselves and wrap as the real ones do. */}
+            <div className="space-y-5" aria-hidden="true">
               <div>
                 <Skeleton className="h-10 w-[152px]" />
-                <SkeletonLine text="t-help mt-2" className="h-[0.7em] w-52 max-w-full" />
+                <p className="t-help mt-2">Hidden products aren't shown in the store.</p>
               </div>
+              {/* The toggle and the Delete link are inline-flex on a text line,
+                  as the real ones are (Toggle's label, the link's text), so each
+                  row gets the same line box: the words are there, unpainted,
+                  on a bar. */}
               <div>
-                <Skeleton className="h-6 w-56 max-w-full" />
-                <div className="t-help mt-2">
-                  <Lines last="w-24" />
-                </div>
+                <span className="inline-flex items-center gap-2">
+                  <Skeleton className="h-6 w-10" />
+                  <Words className="text-body">This product is an accessory</Words>
+                </span>
+                <p className="t-help mt-2">Listing pages can hide accessories with "Hide accessories".</p>
+              </div>
+              {/* Delete product, under its full-width rule (12 §2). */}
+              <div className="-mx-5 border-t border-border px-5 pt-4">
+                <span className="inline-flex items-center gap-2 text-body font-semibold">
+                  <Skeleton className="h-4 w-4" />
+                  <Words>Delete product</Words>
+                </span>
               </div>
             </div>
           </SectionSkeleton>
@@ -75,14 +100,6 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
             <CategoriesSkeleton />
           </SectionSkeleton>
         </div>
-
-        {tab === "overview" && (
-          <div className="min-w-0 xl:col-start-1 xl:row-start-2">
-            <SectionSkeleton title="w-32" description>
-              <Skeleton className="h-8.5 w-24" />
-            </SectionSkeleton>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -130,20 +147,5 @@ function SectionSkeleton({
       </div>
       <div className="px-5 py-4">{children}</div>
     </div>
-  );
-}
-
-/** Help text in a narrow card: full lines, then a short one (two lines unless `count`). */
-function Lines({ last, count = 2 }: { last: string; count?: number }) {
-  return (
-    <>
-      {Array.from({ length: count - 1 }, (_, i) => (
-        <span key={i}>
-          <Skeleton className="inline-block h-[0.7em] w-full align-middle" />
-          <br />
-        </span>
-      ))}
-      <Skeleton className={`inline-block h-[0.7em] align-middle ${last}`} />
-    </>
   );
 }
