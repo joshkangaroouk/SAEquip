@@ -168,3 +168,66 @@ These answer the open questions at the end of `02-design-system.md`. Where this 
   - Do not try to detect paused languages.
 - **New chip on a selected row (light theme, 1.35:1):** accepted. The chip's text carries the meaning.
 - **Remote branch:** keep `origin/redesign/ui`; don't delete it. Push only when Josh says so. That will be after he has applied the migration, so the preview's enquiry pages work.
+
+## After 6c
+- **Approved 6c deviations:**
+  - `LIVE_SITE_ORIGIN` in lib/site.ts, plus the launch-checklist line
+  - the category slug from the mirror (read-only)
+  - Media with no Replace and read-only alt text
+  - both the inline "New value…" field and the dialog
+  - the Products tab order All / Live / Hidden, with All as the default
+  - Table `relative`, the Input `chip` size, PageHeader `actionsBeside`, the UsagePill `verb` prop
+  - Logos as rows
+  - Category titles as real links
+  - the Media selection as page state, shown as a dialog below 1280
+  - the Translations help line
+- **Logo and thumbnail tile frame (1.29:1):** accepted as decorative. The image is the content, and WCAG 1.4.11 doesn't require a visible boundary on an image container.
+- **Backlog after the redesign (not in batches 8 or 9):**
+  - Media Replace and alt-text editing, which need new backend routes.
+  - An `isLogo` flag on the media list, so a logo-only file's Delete is disabled up front.
+
+## Batch 8: the product editor to tabs (binding)
+- **Layout:**
+  - Header card: product name (`t-editor-title`), SKU in mono, Live/Hidden chip, "No longer in Duda" fault chip when it applies, and "View on website" via `productPageUrl()`. No Save button and no "← Back to products" link.
+  - Below it, the tabs (left) and a persistent right panel.
+  - Right panel, from 1280px: Visibility (the Live toggle, i.e. the existing Status field) and Categories (the existing section). Below 1280 the right panel stacks under the tabs as an "Overview" extra, so its controls are still reachable.
+- **Tab mapping:**
+
+  | Tab | Sections |
+  |---|---|
+  | Overview | Details (name, SKU, the commerce fields when shown), Accessory toggle, Delete product (danger card at the foot) |
+  | Content | Description, Technical specs, Key benefits, Applications, Compatible products |
+  | Compliance | SA logos, Certification logos |
+  | Options | Options, Variations (keep the lock while options are dirty) |
+  | Files & media | Images, 3D model, Downloads |
+  | SEO | the SEO fieldset (Title, Product URL slug, Meta description). Meta description becomes a Textarea. Add live counters (55 / 160) in the `--warning` tone when over, and a Google-style result preview (title, the site URL with the slug, description). Keep "Changing it breaks existing links." |
+
+- **Tab counts (mono, optional where cheap):** Content (specs + benefits + applications items), Options (attached options), Files & media (images + downloads + model).
+- **Per-tab state:**
+  - **Dirty dot:** for keys that live on one tab, use `dirty[key]`.
+    - The `details` key spans Overview, Content (description), SEO and the Visibility panel. Work out which tab is dirty by diffing that tab's fields against the saved values, not from the whole key.
+  - **Error dot:** shown when any key or field on that tab has `saveErrors[key] ?? validationErrors[key]`.
+  - Server save errors for `details` also show as an Alert at the top of Overview.
+  - Logo and description errors get a home: an Alert at the top of their tab's panel.
+- **Mounting:** mount a panel on its first visit, then keep it mounted and hidden. That preserves tiptap, dnd and form state. `aria-controls` must point at a panel element that always exists (render empty panel shells up front).
+- **URL:**
+  - The active tab lives in `?tab=` (values: overview, content, compliance, options, files, seo; the default is overview), set with replace.
+  - **Changing the tab must NOT trigger the unsaved-changes blocker.** The blocker ignores navigations that keep the same pathname.
+- **Save bar:**
+  - It stays the only Save.
+  - Failed-section pills switch to the tab that holds the section, then scroll and focus it (the 80px scroll padding still applies).
+  - Remove the duplicated Unsaved badges and counts inside panels; the tab dots and the save bar carry it.
+- **Chrome:** keep the AccordionBody context (or its replacement) around tab panels, so sections don't draw their own Card, title or Unsaved badge twice. Section titles inside a panel use the card heading role.
+- **Must not change:**
+  - translate-on-save `begin()` stays click-synchronous
+  - `hideCommerce` validation
+  - the variations lock
+  - the pending-upload URL test
+  - Model3DPreview's imperative ref
+  - the 12px paragraph spacing
+- **Yellow tints left in the editor:**
+  - variation meter: reuse the Product options meter tones
+  - option chips: neutral chip, selected chip = solid
+  - dropzone drag-over: `--selected-bg` plus a `--selected-bar` border
+- **Fix:** the Downloads rows at 390, and the stale copy "Shown on the product page in Duda." (the widget's Overview tab renders it).
+- **ProductNew:** a single-column form on the same cards and tokens (no tabs), plus an unsaved-changes guard like the editor's.
