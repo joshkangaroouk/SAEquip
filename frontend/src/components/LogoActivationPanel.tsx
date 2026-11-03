@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Badge, Card, CardHeader, ToggleTrack } from "./ui";
+import { cn } from "../lib/cn";
 import type { ProductLogoEntry } from "../lib/types";
 
 /**
@@ -68,9 +69,13 @@ export function LogoActivationPanel({
                 type="button"
                 onClick={() => onToggle(entry.id)}
                 aria-pressed={on}
-                className={`flex flex-col items-center border-2 p-2 text-left transition-colors duration-[120ms] ${
-                  on ? "border-accent bg-accent/10" : "border-border hover:border-border-strong"
-                }`}
+                // On is the selected treatment (02a "After 4a"), not a yellow
+                // tint: the --selected-bar edge on --selected-bg and a 600
+                // label, beside the toggle that carries the state.
+                className={cn(
+                  "flex flex-col items-center border-2 p-2 text-left transition-colors duration-[120ms]",
+                  on ? "border-selected-bar bg-selected" : "border-border hover:border-border-strong",
+                )}
               >
                 <div className="flex h-16 w-full items-center justify-center bg-paper">
                   <img
@@ -80,7 +85,10 @@ export function LogoActivationPanel({
                   />
                 </div>
                 <div className="mt-2 flex w-full items-center justify-between gap-1">
-                  <span className="truncate text-help text-muted" title={entry.label ?? ""}>
+                  <span
+                    className={cn("truncate text-help", on ? "font-semibold text-text" : "text-muted")}
+                    title={entry.label ?? ""}
+                  >
                     {entry.label || "—"}
                   </span>
                   {/* The card is the toggle (aria-pressed); this only draws its state. */}
