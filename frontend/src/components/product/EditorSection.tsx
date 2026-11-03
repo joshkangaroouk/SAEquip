@@ -60,7 +60,9 @@ export function EditorSection({
           {description && <p className="t-help">{description}</p>}
         </div>
         {(meta || actions) && (
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2">
+          // min-w-0, not shrink-0: on a phone the meta and the actions wrap
+          // inside the row rather than push the page sideways.
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
             {meta && <span className="text-label text-muted">{meta}</span>}
             {actions}
           </div>
