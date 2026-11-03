@@ -244,7 +244,7 @@ export function SelectMenu({
               visibility: pos ? undefined : "hidden",
             }}
             className={cn(
-              // z-50 clears the sticky table header and the product save bar.
+              // z-50 clears the sticky table header and the product editor's sticky band.
               "z-50 overflow-y-auto overscroll-contain border border-border",
               "bg-surface py-1 shadow-menu",
             )}

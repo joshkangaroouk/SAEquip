@@ -29,7 +29,7 @@ function ArrowRight() {
  * the WordPress screen it replaces: the catalogue on the left, this product's
  * chosen list on the right, click to move either way.
  *
- * Controlled: the parent owns the list and the unified save bar commits it.
+ * Controlled: the parent owns the list and the editor's one Save commits it.
  *
  * ⚠️ Both columns are driven by ONE fetch of the catalogue, searched in the
  * browser. At 96 products that is a single small request and an instant

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, RichTextEditor, Select, Toggle, toast } from "../components/ui";
+import { Badge, Button, Card, CardHeader, Field, Input, RichTextEditor, Select, StatusBadge, Toggle, toast } from "../components/ui";
 import { apiJson } from "../lib/api";
 import type { ProductDetail } from "../lib/types";
 import { useTranslateOnSave } from "../components/product/useTranslateOnSave";
+import { ProductBand } from "../components/product/ProductBand";
 import { TranslationProgressModal } from "../components/TranslationProgressModal";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
@@ -46,6 +47,7 @@ export default function ProductNew() {
   const [saving, setSaving] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
   const translate = useTranslateOnSave();
+  const formId = useId();
 
   useEffect(() => {
     nameRef.current?.focus();
@@ -121,20 +123,55 @@ export default function ProductNew() {
     <div className="max-w-2xl space-y-5">
       <UnsavedChangesModal blocker={blocker} />
       <TranslationProgressModal progress={translate.progress} onSkip={translate.skip} onDownload={translate.download} />
-      <PageHeader
-        title="New product"
-        description="Creates the product in Duda with the fields it accepts at create time. Hidden by default, so a half-filled product never goes live."
+      {/*
+        The editor's band (10 §2), with no tabs and no "Loaded": what is being
+        made, and the create buttons where the editor has Save. Create and
+        edit is the form's submit button from out here (`form`), so a click,
+        or Enter in a field, still submits it in the click — translate-on-save's
+        begin() needs that.
+      */}
+      <ProductBand
+        imageUrl={null}
+        overline={form.name.trim() ? "New product" : undefined}
+        title={form.name.trim() || "New product"}
+        meta={
+          <>
+            <span className="text-help text-muted">
+              SKU <span className="t-code text-text">{form.sku.trim() || "—"}</span>
+            </span>
+            <StatusBadge status={form.status} />
+            {createdCount > 0 && <Badge tone="ok">{createdCount} created this session</Badge>}
+          </>
+        }
         actions={
-          createdCount > 0 ? (
-            <Badge tone="ok">{createdCount} created this session</Badge>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+            <Button type="button" variant="ghost" onClick={() => navigate("/")} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void create("another")}
+              disabled={!valid || saving}
+            >
+              Create and add another
+            </Button>
+            {/* First in its row below lg, so it is always in view (10 §2). */}
+            <Button type="submit" form={formId} variant="primary" disabled={!valid} loading={saving} className="max-lg:order-first">
+              Create and edit
+            </Button>
+          </div>
         }
       />
 
       <Card>
-        <CardHeader title="Details" />
+        <CardHeader
+          title="Details"
+          description="Creates the product in Duda with the fields it accepts at create time. Hidden by default, so a half-filled product never goes live."
+        />
 
         <form
+          id={formId}
           className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
@@ -236,23 +273,6 @@ export default function ProductNew() {
               onChange={(html) => set("description", html)}
             />
           </Field>
-
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Button type="submit" variant="primary" disabled={!valid} loading={saving}>
-              Create and edit
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void create("another")}
-              disabled={!valid || saving}
-            >
-              Create and add another
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => navigate("/")} disabled={saving}>
-              Cancel
-            </Button>
-          </div>
         </form>
       </Card>
 

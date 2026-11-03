@@ -129,12 +129,20 @@
        Never synthesise a missing weight: render the nearest loaded one. */
     font-synthesis: none;
     /* The shell's top bar is sticky (64px), so anything scrolled to — an
-       anchor like the save bar's #section-… links, or scrollIntoView — stops
+       anchor like the save area's failed-section pills, or scrollIntoView — stops
        16px below it rather than underneath it. */
     scroll-padding-top: 5rem;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+
+  /* …and below a sticky band too (the product editor's, from lg), whose
+     height the band writes to --sticky-band while it is on screen. */
+  @media (min-width: 1024px) {
+    html {
+      scroll-padding-top: calc(5rem + var(--sticky-band, 0px));
+    }
   }
 
   body {

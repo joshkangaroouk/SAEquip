@@ -161,8 +161,9 @@ export function editorTabState({
 }
 
 /**
- * The tab to open for a failed section's save-bar pill. Null when the section
- * is in the side panel and the panel is on screen beside every tab.
+ * The tab to open for a failed section's pill (the band's save area). Null
+ * when the section is in the side panel and the panel is on screen beside
+ * every tab.
  */
 export function tabForKey(key: SectionKey, state: EditorTabState, panelInOverview: boolean): EditorTab | null {
   if (key === "details") return state.detailsErrorTabs[0] ?? "overview";

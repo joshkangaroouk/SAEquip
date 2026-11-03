@@ -12,7 +12,7 @@ import { AccordionBodyProvider, SectionError } from "../ui";
  * SectionError stay silent and nothing is drawn twice. Its error shows here,
  * at the top of the body, once.
  *
- * The dirty state is NOT shown here: the tab's dot and the save bar carry it.
+ * The dirty state is NOT shown here: the tab's dot and the band's save area carry it.
  */
 export function EditorSection({
   id,
@@ -32,7 +32,7 @@ export function EditorSection({
 }) {
   const headingId = useId();
   return (
-    // tabIndex -1: the save bar's failed pills move focus here (focus() needs
+    // tabIndex -1: the save area's failed pills move focus here (focus() needs
     // a focusable element); scroll-mt clears the sticky top bar.
     <section
       id={id}

@@ -33,6 +33,19 @@ export function PageHeaderSlot({ value, children }: { value: Slot; children: Rea
  * column while its content lines up with the page's. Outside the shell (the
  * /ui kit) it renders in place.
  */
+/**
+ * Draws `children` in the shell's header slot, under the top bar, so a band
+ * spans the whole main column; in place outside the shell (the /ui kit).
+ * PageHeader uses it, and so does the product editor's own band.
+ */
+export function HeaderSlotPortal({ children }: { children: ReactNode }) {
+  const slot = useContext(SlotContext);
+  if (!slot) return <>{children}</>;
+  // The slot's element is attached in the same commit as the page; until it
+  // is (the first render), nothing — the next render, before paint, portals.
+  return slot.el ? createPortal(children, slot.el) : null;
+}
+
 export function PageHeader({
   title,
   description,
@@ -48,31 +61,28 @@ export function PageHeader({
   actionsBeside?: "sm" | "xl";
   className?: string;
 }) {
-  const slot = useContext(SlotContext);
-  const band = (
-    <div className={cn("border-b border-border bg-surface", className)}>
-      <div
-        // Edge to edge, with the content's own side padding (40, or 20 below
-        // 640), so the band's left edge lines up with the page's (10 §1).
-        className={cn(
-          "flex flex-col gap-4 px-5 pb-7 pt-8 sm:px-10",
-          actionsBeside === "xl"
-            ? "xl:flex-row xl:items-end xl:justify-between"
-            : "sm:flex-row sm:items-end sm:justify-between",
-        )}
-      >
-        <div className="min-w-0 space-y-2">
-          {overline && <p className="t-overline">{overline}</p>}
-          <h1 className="t-h1 text-text">{title}</h1>
-          {/* Free-running prose: a reading width, now the band is full width. */}
-          {description && <p className="max-w-[72ch] text-body text-muted">{description}</p>}
+  return (
+    <HeaderSlotPortal>
+      <div className={cn("border-b border-border bg-surface", className)}>
+        <div
+          // Edge to edge, with the content's own side padding (40, or 20 below
+          // 640), so the band's left edge lines up with the page's (10 §1).
+          className={cn(
+            "flex flex-col gap-4 px-5 pb-7 pt-8 sm:px-10",
+            actionsBeside === "xl"
+              ? "xl:flex-row xl:items-end xl:justify-between"
+              : "sm:flex-row sm:items-end sm:justify-between",
+          )}
+        >
+          <div className="min-w-0 space-y-2">
+            {overline && <p className="t-overline">{overline}</p>}
+            <h1 className="t-h1 text-text">{title}</h1>
+            {/* Free-running prose: a reading width, now the band is full width. */}
+            {description && <p className="max-w-[72ch] text-body text-muted">{description}</p>}
+          </div>
+          {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}
       </div>
-    </div>
+    </HeaderSlotPortal>
   );
-  if (!slot) return band;
-  // The slot's element is attached in the same commit as the page; until it
-  // is (the first render), nothing — the next render, before paint, portals.
-  return slot.el ? createPortal(band, slot.el) : null;
 }

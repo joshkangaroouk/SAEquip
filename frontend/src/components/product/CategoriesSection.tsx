@@ -3,13 +3,32 @@ import { apiJson } from "../../lib/api";
 import { EditorSection } from "./EditorSection";
 import { AssignPickList } from "./AssignPickList";
 
-interface CategoryNode {
+export interface CategoryNode {
   id: string;
   title: string;
   depth: number;
   /** Duda's own key. Top-level rows carry the sentinel "ROOT", not null. */
   parent_id: string;
   products_count?: number;
+}
+
+/**
+ * The category tree from /api/categories, loaded once by the editor: the side
+ * panel lists it, and the band's overline names the product type from it.
+ */
+export function useCategoryList(): { cats: CategoryNode[] | null; loadError: string | null } {
+  const [cats, setCats] = useState<CategoryNode[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiJson<{ categories: CategoryNode[] }>("/api/categories")
+      .then((d) => !cancelled && setCats(d.categories))
+      .catch((e) => !cancelled && setLoadError(e instanceof Error ? e.message : "Failed to load categories"));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return { cats, loadError };
 }
 
 /**
@@ -23,11 +42,16 @@ interface CategoryNode {
  * Duda's; only the assignment is ours.
  */
 export function CategoriesSection({
+  cats,
+  loadError,
   selected,
   onChange,
   error,
   onStaleCount,
 }: {
+  /** From useCategoryList(). */
+  cats: CategoryNode[] | null;
+  loadError: string | null;
   selected: string[];
   onChange: (next: string[]) => void;
   error?: string;
@@ -38,19 +62,6 @@ export function CategoriesSection({
    */
   onStaleCount?: (n: number) => void;
 }) {
-  const [cats, setCats] = useState<CategoryNode[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiJson<{ categories: CategoryNode[] }>("/api/categories")
-      .then((d) => !cancelled && setCats(d.categories))
-      .catch((e) => !cancelled && setLoadError(e instanceof Error ? e.message : "Failed to load categories"));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const stale = cats ? selected.filter((id) => !cats.some((c) => c.id === id)).length : 0;
   useEffect(() => {
     if (cats) onStaleCount?.(stale);

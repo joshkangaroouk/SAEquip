@@ -3,7 +3,7 @@ import type { TextItemDraft } from "./product/productEditorTypes";
 
 /**
  * Ordered text list, used for both Key Benefits and Applications. Controlled —
- * the parent owns the items and the unified save bar commits them.
+ * the parent owns the items and the editor's one Save commits them.
  */
 export function TextItemListEditor({
   id,

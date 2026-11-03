@@ -9,7 +9,7 @@ import type { ProductLogoEntry } from "../lib/types";
  *
  * Toggling used to apply immediately (PUT/DELETE per click). It is now part of
  * the page's unified save, so a toggle only stages a change — the "Unsaved"
- * badge and the save bar are what tell the user it hasn't committed yet.
+ * badge and the band's save area are what tell the user it hasn't committed yet.
  */
 export function LogoActivationPanel({
   id,

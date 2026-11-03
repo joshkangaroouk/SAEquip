@@ -72,13 +72,14 @@ export const router = createBrowserRouter([
       {
         path: "/products/new",
         element: <ProductNew />,
-        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "New product" } },
+        // A product band rather than a page header: 24px to the first card (10 §4).
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "New product" }, layout: "band" },
       },
       {
         path: "/products/:id",
         element: <ProductDetail />,
         // The editor names the product (usePageCrumb); "Product" until it loads.
-        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "Product" } },
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "Product" }, layout: "band" },
       },
       { path: "/categories", element: <Categories />, handle: { crumbs: { group: "Catalogue", title: "Categories" } } },
       {

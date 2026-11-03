@@ -7,6 +7,7 @@ type Fallback = "image" | "box" | ReactNode;
 const SIZE = {
   40: { box: "h-10 w-10", icon: 16 },
   56: { box: "h-14 w-14", icon: 20 },
+  64: { box: "h-16 w-16", icon: 24 },
   100: { box: "h-[100px] w-[100px]", icon: 28 },
 } as const;
 
@@ -53,7 +54,8 @@ function Picture({
 /**
  * A product, category or logo thumbnail: a square box with a 1px --border, the
  * image on --paper, and an icon on --surface-2 when there is no image or it
- * fails to load. Sizes 40 (lists and pickers), 56 (product rows) and 100.
+ * fails to load. Sizes 40 (lists and pickers), 56 (product rows), 64 (the
+ * product editor's band) and 100.
  *
  * Decorative by default (`alt=""`) — the name beside it says what it is. Pass
  * `alt` when the image is the only content of a control.
@@ -68,7 +70,7 @@ export function Thumb({
 }: {
   src?: string | null;
   alt?: string;
-  size: 40 | 56 | 100;
+  size: 40 | 56 | 64 | 100;
   fit?: "contain" | "cover";
   fallback?: Fallback;
   className?: string;

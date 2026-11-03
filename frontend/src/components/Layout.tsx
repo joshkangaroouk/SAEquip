@@ -34,7 +34,7 @@ import { LG, useMediaQuery } from "../hooks/useMediaQuery";
  * container turns focus yellow and draws it inside the item (02a Q5).
  *
  * Its width is `sidebar` (272px) in tailwind.config.js — the one value the
- * aside, the main column's offset and the product save bar all use.
+ * aside and the main column's offset both use.
  */
 const SIDEBAR = "bg-sidebar text-sidebar-fg";
 const SIDEBAR_BORDER = "border-sidebar-border";
@@ -244,7 +244,10 @@ export function Layout({ children }: { children?: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // A route with `handle: { layout: "full" }` (the split views), from lg,
   // fills the viewport height so its panes can scroll on their own.
-  const full = useMatches().some((m) => (m.handle as { layout?: string } | undefined)?.layout === "full");
+  const layout = useMatches()
+    .map((m) => (m.handle as { layout?: string } | undefined)?.layout)
+    .find(Boolean);
+  const full = layout === "full";
   // Applies the account's light/dark choice once the session has loaded; the
   // top bar's toggle sets it (the only write the shell makes).
   const { theme, setTheme } = useThemePreference();
@@ -318,7 +321,17 @@ export function Layout({ children }: { children?: ReactNode }) {
           menuOpen={drawerOpen}
           pageLabel={pageLabel}
         />
-        <div ref={setHeaderSlot} className="shrink-0" />
+        {/*
+          The page header slot. It sticks under the top bar from lg when it
+          holds a sticky band (the product editor's, 10 §2): the slot, not the
+          band, because a sticky element only sticks within its parent, and
+          the slot's parent is the whole main column. Under the top bar (z-20)
+          and its menus; above a sticky table head (z-10).
+        */}
+        <div
+          ref={setHeaderSlot}
+          className="shrink-0 lg:has-[[data-sticky-band]]:sticky lg:has-[[data-sticky-band]]:top-16 lg:has-[[data-sticky-band]]:z-[15]"
+        />
         <CrumbProvider value={setPageLabel}>
           <PageHeaderSlot value={{ el: headerSlot, full }}>
             {/*
@@ -333,7 +346,8 @@ export function Layout({ children }: { children?: ReactNode }) {
                 "[&>:first-child]:mt-0",
                 full
                   ? "px-5 py-6 sm:px-10 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:py-8"
-                  : "px-5 pb-14 pt-8 sm:px-10",
+                  : // Under a product band (the editor, New product), 24 to the first card (10 §4).
+                    cn("px-5 pb-14 sm:px-10", layout === "band" ? "pt-6" : "pt-8"),
               )}
             >
               {children ?? <Outlet />}
