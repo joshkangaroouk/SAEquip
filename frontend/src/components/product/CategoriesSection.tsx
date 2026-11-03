@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { apiJson } from "../../lib/api";
-import { Alert, Badge, Button, Modal, RemoveButton } from "../ui";
+import { Alert, Badge, Button, Modal, RemoveButton, Skeleton, SkeletonLine } from "../ui";
 import { EditorSection } from "./EditorSection";
 import { AssignPickList } from "./AssignPickList";
 
@@ -118,7 +118,15 @@ export function CategoriesSection({
         </Alert>
       )}
       {!groups ? (
-        !loadError && <p className="text-help text-muted">Loading categories…</p>
+        // The card's own load (11 §1: a card that loads gets a skeleton).
+        !loadError && (
+          <div aria-busy="true">
+            <p role="status" className="sr-only">
+              Loading categories
+            </p>
+            <CategoriesSkeleton />
+          </div>
+        )
       ) : (
         <div className="space-y-4">
           <Group label="Product type">
@@ -221,6 +229,27 @@ function ChipText({ children }: { children: string }) {
 }
 
 /** One labelled group of chips. */
+/**
+ * The summary's groups as blocks: Product type, Site challenges, Industries,
+ * each a label's line and its chips. Also the editor skeleton's Categories card.
+ */
+export function CategoriesSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      {[["w-48"], ["w-52", "w-40", "w-44"], ["w-28"]].map((chips, g) => (
+        <div key={g}>
+          <SkeletonLine text="t-label" className="h-[0.8em] w-24" />
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {chips.map((w) => (
+              <Skeleton key={w} className={`h-6.5 max-w-full ${w}`} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>

@@ -9,7 +9,8 @@ import {
   EmptyState,
   Field,
   Input,
-  Loader,
+  Skeleton,
+  SkeletonLine,
   Modal,
   PageHeader,
   RemoveButton,
@@ -292,11 +293,14 @@ export default function ProductOptions() {
 
       {catalog && <OptionsMeter count={catalog.count} max={catalog.max_options} />}
 
-      {loading && <Loader label="Loading options…" />}
+      {/* The skeleton is for the FIRST load only. Every change reloads the
+          catalogue, and the cards stay while it does, dimmed and inert, rather
+          than vanishing behind a placeholder each time. */}
+      {loading && !catalog && <OptionsSkeleton />}
       {error && <Alert tone="danger">{error}</Alert>}
 
-      {!loading && !error && catalog && (
-        <>
+      {!error && catalog && (
+        <div aria-busy={loading || undefined} className={cn(loading && "pointer-events-none opacity-50")}>
           {catalog.options.length === 0 ? (
             <EmptyState
               title="No options yet"
@@ -365,7 +369,7 @@ export default function ProductOptions() {
               })}
             </div>
           )}
-        </>
+        </div>
       )}
 
       <Modal
@@ -522,6 +526,62 @@ function OptionsMeter({ count, max }: { count: number; max: number | null }) {
         Options are shared across every product — a product chooses which of their values it offers.
       </p>
     </section>
+  );
+}
+
+/**
+ * The page while the catalogue first loads (11 §1): the meter and two option
+ * cards, with the static copy as itself and blocks where the data goes. One
+ * polite announcement; the blocks are aria-hidden.
+ */
+function OptionsSkeleton() {
+  return (
+    <div aria-busy="true">
+      <p role="status" className="sr-only">
+        Loading options
+      </p>
+      <div aria-hidden="true">
+        <div className="mb-5 border border-border bg-surface px-5 py-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <span className="t-label">Options used</span>
+            {/* Inter round a mono run, as the count is: the two fonts' line boxes together. */}
+            <span className="text-body">
+              {"\u200b"}
+              <span className="font-mono">
+                {"\u200b"}
+                <Skeleton className="inline-block h-[0.8em] w-14 align-middle" />
+              </span>
+            </span>
+          </div>
+          <Skeleton className="mt-2 h-2.5 w-full" />
+          <p className="t-help mt-2">
+            Options are shared across every product — a product chooses which of their values it offers.
+          </p>
+        </div>
+        <div className="grid gap-5 xl:grid-cols-2">
+          {/* Chips about as wide as real values (with "Pre-selected" and a
+              count), so they wrap where the real ones do. */}
+          {[["w-[150px]", "w-[110px]", "w-[90px]"], ["w-[240px]", "w-[70px]"]].map((chips, i) => (
+            <Card key={i}>
+              {/* CardHeader's row in a padded card, centred as the option cards' is. */}
+              <div className="-mx-5 -mt-5 mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+                <SkeletonLine text="t-section" className="h-[0.8em] w-32" />
+                <div className="flex shrink-0 items-center gap-2">
+                  <Skeleton className="h-6.5 w-24" />
+                  <Skeleton className="h-8.5 w-8.5" />
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {chips.map((w) => (
+                  <Skeleton key={w} className={`h-6.5 ${w}`} />
+                ))}
+                <Skeleton className="h-7 w-36" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

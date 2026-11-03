@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Globe } from "lucide-react";
-import { Alert, Badge, Button, ButtonLink, Card, EmptyState, Loader, PageHeader, toast } from "../components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  EmptyState,
+  PageHeader,
+  Skeleton,
+  SkeletonLine,
+  toast,
+} from "../components/ui";
 import { apiJson } from "../lib/api";
 import { languageName } from "../lib/language";
 
@@ -63,6 +74,66 @@ function HomepagePreview({ src, alt }: { src: string | null; alt: string }) {
           <Globe size={32} className="text-muted" aria-hidden="true" />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The page while the access check and the site read run (11 §1): the site's
+ * card (its header row and two buttons, the homepage preview, the status
+ * grid with its labels as themselves) and the note under it. One polite
+ * announcement, as the old spinner made; the blocks are aria-hidden.
+ */
+function WebsiteSkeleton() {
+  return (
+    <div aria-busy="true">
+      <p role="status" className="sr-only">
+        Checking your website access
+      </p>
+      <div className="space-y-5" aria-hidden="true">
+        <Card padded={false}>
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-5 py-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <SkeletonLine text="t-section" className="h-[0.8em] w-20" />
+                <Skeleton className="h-6.5 w-20" />
+              </div>
+              <SkeletonLine text="t-help mt-1" className="h-[0.7em] w-64 max-w-full" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Skeleton className="h-10 w-[148px]" />
+              <Skeleton className="h-10 w-[178px]" />
+            </div>
+          </div>
+          <div className="p-5">
+            <Skeleton className="aspect-[16/9] max-h-[420px] w-full" />
+          </div>
+          <dl className="grid grid-cols-1 border-t border-border sm:grid-cols-3">
+            {["Search engines", "Languages", "Address"].map((label, i) => (
+              <div key={label} className={i ? "border-t border-border px-5 py-4 sm:border-l sm:border-t-0" : "px-5 py-4"}>
+                <dt className="t-label">{label}</dt>
+                <dd className="mt-1">
+                  <SkeletonLine text="text-body" className="h-[0.8em] w-40 max-w-full" />
+                  {/* Languages, as SiteLanguages shows a site with more than one:
+                      the list (two words' worth, so it wraps), and its note. */}
+                  {label === "Languages" && (
+                    <>
+                      <div className="mt-0.5 text-help">
+                        <Skeleton className="inline-block h-[0.7em] w-48 max-w-full align-middle" />{" "}
+                        <Skeleton className="inline-block h-[0.7em] w-44 max-w-full align-middle" />
+                      </div>
+                      <p className="t-help mt-1">
+                        Languages switched off in Duda still count here. Check the language menu in the Duda editor.
+                      </p>
+                    </>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+        <SkeletonLine text="t-help" className="h-[0.7em] w-[28rem] max-w-full" />
+      </div>
     </div>
   );
 }
@@ -170,7 +241,7 @@ export default function WebsiteEditor() {
         description="Open the SAEquip website in Duda's editor to change pages, content and layout."
       />
 
-      {loading && <Loader label="Checking your website access…" />}
+      {loading && <WebsiteSkeleton />}
 
       {error && <Alert tone="danger">{error}</Alert>}
 

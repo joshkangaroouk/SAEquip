@@ -11,7 +11,9 @@ import {
   DragHandle,
   Field,
   Input,
-  Loader,
+  Skeleton,
+  SkeletonField,
+  SkeletonLine,
   PageHeader,
   Select,
   SortableList,
@@ -230,7 +232,14 @@ export default function CategoryDetail() {
     <PageHeader
       title={node?.title ?? baseline?.title ?? "Category"}
       actions={
-        draft && (
+        // Placeholders while it loads, so Cancel and Save arriving cannot
+        // push the page down (they wrap under the title on a phone).
+        loading ? (
+          <>
+            <Skeleton className="h-8.5 w-[74px]" />
+            <Skeleton className="h-8.5 w-[58px]" />
+          </>
+        ) : draft && (
           <>
             {dirty && <Badge dot="unsaved">Unsaved changes</Badge>}
             <Button variant="secondary" size="sm" onClick={() => navigate("/categories")} disabled={saving}>
@@ -255,7 +264,7 @@ export default function CategoryDetail() {
     return (
       <>
         {header}
-        <Loader label="Loading category…" />
+        <CategoryDetailSkeleton />
       </>
     );
   }
@@ -453,6 +462,80 @@ export default function CategoryDetail() {
         />
       )}
     </>
+  );
+}
+
+/**
+ * The page while the category loads (11 §1): its cards, with their real
+ * titles, and blocks where the data goes, so nothing moves when it lands.
+ * One polite announcement; the blocks are aria-hidden.
+ */
+function CategoryDetailSkeleton() {
+  return (
+    <div aria-busy="true">
+      <p role="status" className="sr-only">
+        Loading category
+      </p>
+      <div className="grid gap-5 lg:grid-cols-10">
+        <div className="space-y-5 lg:col-span-7">
+          <Card>
+            <CardHeader title="Category info" />
+            <div className="space-y-4">
+              <SkeletonField label="Category name" />
+              <SkeletonField label="Parent category" hint="Top level sits at the root of the store." />
+              <SkeletonField label="Description" control="h-24 w-full" textarea hint="HTML, shown on the category page." />
+            </div>
+          </Card>
+          <Card>
+            <CardHeader title="Category products" />
+            {/* AssignPickList: the search, the "Only show selected" row, and its 320px list. */}
+            <div aria-hidden="true">
+              <Skeleton className="mb-2 h-10 w-full" />
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <Skeleton className="h-6 w-44" />
+                <SkeletonLine text="text-help" className="h-[0.8em] w-20" />
+              </div>
+              <div className="h-80 overflow-hidden border border-border">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-2 border-b border-border px-2.5 py-2">
+                    <Skeleton className="h-5 w-5 shrink-0" />
+                    <Skeleton className="h-10 w-10 shrink-0" />
+                    <Skeleton className="h-3 w-48 max-w-full" />
+                  </div>
+                ))}
+              </div>
+              <SkeletonLine text="mt-2 text-body" className="h-[0.8em] w-24" />
+            </div>
+          </Card>
+          <Card>
+            <CardHeader title="Subcategories" actions={<Skeleton className="h-8.5 w-40" />} />
+            <SkeletonLine text="text-help" className="h-[0.8em] w-40" />
+          </Card>
+        </div>
+        <div className="space-y-5 lg:col-span-3">
+          <Card>
+            <CardHeader title="Category image" />
+            <Skeleton className="aspect-square w-full" />
+            {/* Static copy, so it shows as itself and wraps where the real one will. */}
+            <p className="t-help mt-2" aria-hidden="true">
+              Duda fetches the file and re-hosts its own copy, so the original in Media can change later without
+              breaking the page.
+            </p>
+          </Card>
+          <Card>
+            <CardHeader title="SEO" />
+            <div className="space-y-4">
+              <SkeletonField
+                label="Page URL"
+                hint="The live category page address. Changing it breaks existing links."
+              />
+              <SkeletonField label="Title" />
+              <SkeletonField label="Meta description" control="h-20 w-full" textarea />
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }
 

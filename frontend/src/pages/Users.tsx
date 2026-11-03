@@ -1,7 +1,21 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../lib/api";
 import { initialsFrom } from "../lib/initials";
-import { PageHeader, Alert, Badge, Button, Loader, Table, TBody, TD, TH, THead, TR, toast } from "../components/ui";
+import {
+  PageHeader,
+  Alert,
+  Badge,
+  Button,
+  Skeleton,
+  SkeletonLine,
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  toast,
+} from "../components/ui";
 
 interface StaffUser {
   id: string;
@@ -72,6 +86,81 @@ const DudaEditor = ({ yes }: { yes: boolean }) =>
     </>
   );
 
+/**
+ * The page while the staff list loads (11 §1): the table from xl and the
+ * cards below it, as the page lays them out, with the static labels as
+ * themselves and blocks for each person. One polite announcement; the
+ * blocks are aria-hidden.
+ */
+function UsersSkeleton() {
+  const text = (w: string) => <SkeletonLine text="text-body" className={`h-[0.8em] ${w}`} />;
+  const who = (
+    <span className="flex min-w-0 items-center gap-3">
+      <Skeleton className="h-8 w-8 shrink-0" />
+      <Skeleton className="h-3.5 w-56 max-w-full" />
+    </span>
+  );
+  return (
+    <div aria-busy="true">
+      <p role="status" className="sr-only">
+        Loading users
+      </p>
+      <div aria-hidden="true">
+        <div className="hidden xl:block">
+          <Table>
+            <THead>
+              <TR>
+                <TH>User</TH>
+                <TH>Two-factor</TH>
+                <TH>Last sign-in</TH>
+                <TH>Added</TH>
+                <TH>Duda editor</TH>
+                <TH className="w-px">
+                  <span className="sr-only">Actions</span>
+                </TH>
+              </TR>
+            </THead>
+            <TBody>
+              {[0, 1].map((i) => (
+                <TR key={i}>
+                  <TD>{who}</TD>
+                  <TD>
+                    <Skeleton className="h-6.5 w-10" />
+                  </TD>
+                  <TD>{text("w-20")}</TD>
+                  <TD>{text("w-20")}</TD>
+                  <TD>
+                    <Skeleton className="h-6.5 w-10" />
+                  </TD>
+                  <TD className="w-px">
+                    <Skeleton className="h-8.5 w-[140px]" />
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        </div>
+        <ul className="grid gap-3 md:grid-cols-2 xl:hidden">
+          {[0, 1].map((i) => (
+            <li key={i} className="border border-border bg-surface p-4">
+              {who}
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                {["Two-factor", "Duda editor", "Last sign-in", "Added"].map((label, j) => (
+                  <div key={label}>
+                    <dt className="t-label">{label}</dt>
+                    <dd className="mt-1">{j < 2 ? <Skeleton className="h-6.5 w-10" /> : text("w-20")}</dd>
+                  </div>
+                ))}
+              </dl>
+              <Skeleton className="mt-4 h-8.5 w-full" />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export default function Users() {
   const [users, setUsers] = useState<StaffUser[] | null>(null);
   const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
@@ -128,7 +217,7 @@ export default function Users() {
 
       {error && <Alert tone="danger">{error}</Alert>}
 
-      {!users && !error && <Loader label="Loading users…" />}
+      {!users && !error && <UsersSkeleton />}
 
       {users && (
         <>

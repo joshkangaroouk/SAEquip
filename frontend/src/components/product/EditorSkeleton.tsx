@@ -1,18 +1,16 @@
 import type { ReactNode } from "react";
-import { Skeleton } from "../ui";
+import { Skeleton, SkeletonField, SkeletonLine } from "../ui";
 import { ProductBandSkeleton } from "./ProductBand";
+import { CategoriesSkeleton } from "./CategoriesSection";
 import { EDITOR_GRID, sidePanelClass } from "./editorLayout";
 import type { EditorTab } from "./editorTabs";
 
-/** An inline bar on its type role's line box: the row is exactly that role's height. */
-const BAR = "inline-block align-middle";
-
 /**
  * The product editor while the product loads (11 §1), in place of a centred
- * spinner: the band, two section cards, and the side panel (the Images card
+ * spinner: the band, the section cards, and the side panel (the Images card
  * with its featured block and a row of thumbnails, Visibility, Categories),
- * on the editor's own grid (`editorLayout`), so nothing jumps when the
- * product lands.
+ * on the editor's own grid (`editorLayout`) and in its order, so nothing
+ * jumps when the product lands.
  *
  * `aria-busy` on the region and ONE polite announcement; the blocks are
  * aria-hidden. Skeleton's pulse stops under reduced motion.
@@ -36,23 +34,23 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
             aside={
               <>
                 <span className="text-label">
-                  <Skeleton className={`${BAR} h-[0.8em] w-[151px]`} />
+                  <Skeleton className="inline-block h-[0.8em] w-[151px] align-middle" />
                 </span>
                 <Skeleton className="h-[21px] w-[199px]" />
               </>
             }
           >
             <div className="space-y-3">
-              <FieldSkeleton />
-              <FieldSkeleton input="w-56 max-w-full" />
+              <SkeletonField />
+              <SkeletonField control="h-8.5 w-56 max-w-full" />
             </div>
           </SectionSkeleton>
           {tab !== "overview" && (
             <SectionSkeleton title="w-32" description>
               <div className="space-y-3">
-                <FieldSkeleton />
-                <FieldSkeleton />
-                <FieldSkeleton input="w-56 max-w-full" />
+                <SkeletonField />
+                <SkeletonField />
+                <SkeletonField control="h-8.5 w-56 max-w-full" />
               </div>
             </SectionSkeleton>
           )}
@@ -62,15 +60,11 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
           <SectionSkeleton title="w-16" meta>
             <div className="space-y-4">
               <div>
-                <div className="t-overline mb-2">
-                  <Skeleton className={`${BAR} h-[0.8em] w-16`} />
-                </div>
+                <SkeletonLine text="t-overline mb-2" className="h-[0.8em] w-16" />
                 <Skeleton className="aspect-[4/3] w-full" />
               </div>
               <div>
-                <div className="t-overline">
-                  <Skeleton className={`${BAR} h-[0.8em] w-14`} />
-                </div>
+                <SkeletonLine text="t-overline" className="h-[0.8em] w-14" />
                 <div className="t-help mb-2 mt-1">
                   <Lines last="w-28" />
                 </div>
@@ -94,9 +88,7 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
               <div className="space-y-5">
                 <div>
                   <Skeleton className="h-10 w-[152px]" />
-                  <div className="t-help mt-2">
-                    <Skeleton className={`${BAR} h-[0.7em] w-52 max-w-full`} />
-                  </div>
+                  <SkeletonLine text="t-help mt-2" className="h-[0.7em] w-52 max-w-full" />
                 </div>
                 <div>
                   <Skeleton className="h-6 w-56 max-w-full" />
@@ -107,11 +99,7 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
               </div>
             </SectionSkeleton>
             <SectionSkeleton title="w-24" meta>
-              <div className="space-y-4">
-                <ChipsSkeleton chips={["w-48"]} />
-                <ChipsSkeleton chips={["w-52", "w-40", "w-44"]} />
-                <ChipsSkeleton chips={["w-28"]} />
-              </div>
+              <CategoriesSkeleton />
             </SectionSkeleton>
           </div>
         </div>
@@ -148,13 +136,12 @@ function SectionSkeleton({
     <div className="border border-border bg-surface">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
         <div className="min-w-0 space-y-1">
-          <div className="t-section">
-            <Skeleton className={`${BAR} h-[0.8em] ${title}`} />
-          </div>
+          <SkeletonLine text="t-section" className={`h-[0.8em] ${title}`} />
           {/* Two bars, about a sentence long, so it wraps on a phone as the real one does. */}
           {description && (
             <div className="t-help">
-              <Skeleton className={`${BAR} h-[0.7em] w-40`} /> <Skeleton className={`${BAR} h-[0.7em] w-[154px]`} />
+              <Skeleton className="inline-block h-[0.7em] w-40 align-middle" />{" "}
+              <Skeleton className="inline-block h-[0.7em] w-[154px] align-middle" />
             </div>
           )}
         </div>
@@ -162,7 +149,7 @@ function SectionSkeleton({
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
             {meta && (
               <span className="text-label">
-                <Skeleton className={`${BAR} h-[0.8em] w-12`} />
+                <Skeleton className="inline-block h-[0.8em] w-12 align-middle" />
               </span>
             )}
             {aside}
@@ -174,45 +161,17 @@ function SectionSkeleton({
   );
 }
 
-/** A Field: its label's line, then a 34px (sm) input, as in Details. */
-function FieldSkeleton({ input = "w-full" }: { input?: string }) {
-  return (
-    <div className="space-y-1.5">
-      <div className="t-label">
-        <Skeleton className={`${BAR} h-[0.8em] w-16`} />
-      </div>
-      <Skeleton className={`h-8.5 ${input}`} />
-    </div>
-  );
-}
-
 /** Help text in a narrow card: full lines, then a short one (two lines unless `count`). */
 function Lines({ last, count = 2 }: { last: string; count?: number }) {
   return (
     <>
       {Array.from({ length: count - 1 }, (_, i) => (
         <span key={i}>
-          <Skeleton className={`${BAR} h-[0.7em] w-full`} />
+          <Skeleton className="inline-block h-[0.7em] w-full align-middle" />
           <br />
         </span>
       ))}
-      <Skeleton className={`${BAR} h-[0.7em] ${last}`} />
+      <Skeleton className={`inline-block h-[0.7em] align-middle ${last}`} />
     </>
-  );
-}
-
-/** A Categories group: its label's line, then 26px chips. */
-function ChipsSkeleton({ chips }: { chips: string[] }) {
-  return (
-    <div>
-      <div className="t-label">
-        <Skeleton className={`${BAR} h-[0.8em] w-24`} />
-      </div>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {chips.map((w, i) => (
-          <Skeleton key={i} className={`h-6.5 max-w-full ${w}`} />
-        ))}
-      </div>
-    </div>
   );
 }
