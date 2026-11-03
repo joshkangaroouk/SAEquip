@@ -11,7 +11,7 @@ export { Table, THead, TBody, TR, TH, TD } from "./Table";
 export { Modal, ConfirmProvider, useConfirm, useDialog, type ModalProps } from "./Modal";
 export { Badge, StatusBadge } from "./Badge";
 export { Toaster, toast } from "./Toast";
-export { FileDropzone, type FileDropzoneProps } from "./FileDropzone";
+export { FileDropzone, UploadList, useUploadQueue, type FileDropzoneProps, type UploadItem } from "./FileDropzone";
 export { FileInput } from "./FileInput";
 export { SortableList, DragHandle, type DragHandleProps } from "./SortableList";
 export { EmptyState } from "./EmptyState";

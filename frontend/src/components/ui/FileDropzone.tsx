@@ -4,7 +4,7 @@ import { uploadFile } from "../../lib/upload";
 import { cn } from "../../lib/cn";
 import { toast } from "./Toast";
 
-interface UploadItem {
+export interface UploadItem {
   id: string;
   name: string;
   progress: number; // 0–100
@@ -29,23 +29,21 @@ export interface FileDropzoneProps {
 }
 
 /**
- * Drag-and-drop uploader. Each file uploads independently, with a per-file
- * progress bar. Fires success/error toasts and calls onUploaded(asset) for
- * each completed upload.
+ * The upload queue behind FileDropzone: each file uploads independently, with
+ * its own progress, fires a success or error toast, and calls the CURRENT
+ * `onUploaded(asset)` when it completes. Split out so a surface that is not a
+ * dashed box (the product editor's Images card, which takes a drop anywhere
+ * on it) uploads exactly as the box does; render its `items` with
+ * `UploadList`.
  *
  * The bytes go browser → Supabase directly and never through the API; see
  * `lib/upload.ts` for why (a serverless request body caps at 4.5MB, and a
  * model can be up to 50MB).
  */
-export function FileDropzone({
+export function useUploadQueue({
   onUploaded,
-  accept,
-  multiple = true,
-  label = "Drop files here or click to browse",
-  hint,
-  className,
   upload = uploadFile,
-}: FileDropzoneProps) {
+}: Pick<FileDropzoneProps, "onUploaded" | "upload">): { items: UploadItem[]; onDrop: (accepted: File[]) => void } {
   const [items, setItems] = useState<UploadItem[]>([]);
   // An upload finishes after later renders, so it calls the CURRENT handler,
   // not the one captured when the file was dropped.
@@ -90,6 +88,23 @@ export function FileDropzone({
     [uploadOne],
   );
 
+  return { items, onDrop };
+}
+
+/**
+ * Drag-and-drop uploader: a dashed box that takes a drop or a click, and a
+ * progress row per file (`useUploadQueue`).
+ */
+export function FileDropzone({
+  onUploaded,
+  accept,
+  multiple = true,
+  label = "Drop files here or click to browse",
+  hint,
+  className,
+  upload = uploadFile,
+}: FileDropzoneProps) {
+  const { items, onDrop } = useUploadQueue({ onUploaded, upload });
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept, multiple });
 
   return (
@@ -116,8 +131,16 @@ export function FileDropzone({
         {hint && <p className="t-help mt-1">{hint}</p>}
       </div>
 
+      <UploadList items={items} />
+    </div>
+  );
+}
+
+/** One row per file in the queue, with its progress; announced as files finish or fail. */
+export function UploadList({ items }: { items: UploadItem[] }) {
+  return (
+    <>
       {items.length > 0 && (
-        // Announced as files finish or fail.
         <ul className="space-y-2" aria-live="polite">
           {items.map((it) => (
             <li key={it.id} className="border border-border bg-surface px-4 py-3">
@@ -149,6 +172,6 @@ export function FileDropzone({
           ))}
         </ul>
       )}
-    </div>
+    </>
   );
 }
