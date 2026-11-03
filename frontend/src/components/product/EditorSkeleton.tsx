@@ -62,7 +62,8 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
           {tab === "overview" ? (
             <SectionSkeleton
               title="w-28"
-              description="Shown in the Overview tab of the product page."
+              // One bar, the width of its real line (about 294px), so it stays one line as that does.
+              description="w-[294px]"
               aside={
                 <>
                   <span className="text-label">
@@ -72,7 +73,9 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
                 </>
               }
             >
-              <div className="border border-border-input">
+              {/* The card border, as Details' cards use: the editor's own darker
+                  input border read as too dark among the blocks. */}
+              <div className="border border-border">
                 <div className="flex h-[43px] items-center gap-2 border-b border-border px-2">
                   {Array.from({ length: 8 }, (_, i) => (
                     <Skeleton key={i} className="h-5 w-5" />
@@ -141,7 +144,10 @@ function SectionSkeleton({
 }: {
   /** The title bar's width class. */
   title: string;
-  /** A description line; its real text when the section's is static copy. */
+  /**
+   * A description line: two bars about a sentence long, or, given a width
+   * class, one bar that wide (for a sentence that must stay on one line).
+   */
   description?: boolean | string;
   meta?: boolean;
   /** Anything else on the header's right (Details' checkbox). */
@@ -155,7 +161,9 @@ function SectionSkeleton({
           <SkeletonLine text="t-section" className={`h-[0.8em] ${title}`} />
           {/* Two bars, about a sentence long, so it wraps on a phone as the real one does. */}
           {typeof description === "string" ? (
-            <p className="t-help">{description}</p>
+            <div className="t-help">
+              <Skeleton className={`inline-block h-[0.7em] max-w-full align-middle ${description}`} />
+            </div>
           ) : description && (
             <div className="t-help">
               <Skeleton className="inline-block h-[0.7em] w-40 align-middle" />{" "}
