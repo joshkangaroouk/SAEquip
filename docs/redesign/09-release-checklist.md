@@ -1,11 +1,11 @@
 # Release checklist: `redesign/ui` → `main`
 
 **For:** Josh, on release day.
-**What ships:** the whole dashboard redesign (batches 1 to 10), plus the batch 6 backend pieces: the handled routes, `GET /api/enquiries/counts`, the slug on `GET /api/products`, and the site's SEO and languages on `/api/website/sites`. The public widget and the Duda widgets are not part of it.
+**What ships:** the whole dashboard redesign (batches 1 to 11), plus the batch 6 backend pieces: the handled routes, `GET /api/enquiries/counts`, the slug on `GET /api/products`, and the site's SEO and languages on `/api/website/sites`. The public widget and the Duda widgets are not part of it.
 
 Work through the steps in order, and don't skip ahead: the order is what keeps production working. If more commits land on `redesign/ui` before you release, run steps 2 and 3 again on the newest preview.
 
-⚠️ **Batch 10 changed where things are in the product editor**, and this checklist now describes it: Save is in the band at the top of the editor (not a bar along the bottom), and the Accessory toggle and the categories are in the side panel. The branch on GitHub stops at batch 9 (906a3e5); batch 10 is local until step 2.
+⚠️ **Batches 10 and 11 changed where things are in the product editor**, and this checklist now describes it: Save is in the band at the top of the editor (not a bar along the bottom), and the images, the Accessory toggle and the categories are in the side panel. The images are the side panel's top card (batch 11), not on Files & media. The branch on GitHub stops at batch 9 (906a3e5); batches 10 and 11 are local until step 2.
 
 Run every command from the repo root unless a step says otherwise.
 
@@ -34,7 +34,7 @@ git checkout redesign/ui
 git push origin redesign/ui
 ```
 
-- The push is a fast-forward of `origin/redesign/ui` (it carries batch 10). The pre-push hook runs `npm run check` first (about 12 seconds).
+- The push is a fast-forward of `origin/redesign/ui` (it carries batches 10 and 11). The pre-push hook runs `npm run check` first (about 12 seconds).
 - Vercel builds a **Preview** deployment of the branch. Find its URL in the Vercel dashboard (project `sa-equip-backend` → Deployments), or in the deployment status on the branch in GitHub.
 
 ## 3. Check the preview with your real login
@@ -68,7 +68,7 @@ Sign in with your own account (and your 2FA code). Then:
      - Name `ZZ-AUDIT-DELETE-ME`, SKU `ZZ-AUDIT`. Leave the status **Hidden**.
      - Type one sentence in Description, then press **Create and edit**.
      - In Chrome a "Saving for multi-languages…" dialog opens. Press **Skip for now**, so no translations of test text are stored.
-   - In the editor, make one change on every tab and in the side panel, then press **Save changes** once. It is in the band at the top of the editor, which stays in view as you scroll (from 1024px wide):
+   - In the editor, make one change on every tab and in the side panel, then press **Save changes** once. It is in the band at the top of the editor, which stays in view as you scroll (from 1280px wide; on a narrower window scroll back up to it):
 
      | Tab | Change |
      |---|---|
@@ -76,9 +76,9 @@ Sign in with your own account (and your 2FA code). Then:
      | Content | Add a description sentence, a technical spec row, a key benefit and an application. Add one compatible product. |
      | Compliance | Switch on one SA logo and one certification logo. |
      | Options | **Attach option** → Hire/Purchase, then untick one of its values. ⚠️ Don't type in **New value…**: that adds a value to the shared option for every product, straight away. |
-     | Files & media | **Add from Media** → pick an existing image. **+ Add download** → pick an existing PDF and choose its type. Don't upload new files: uploads stay in Media after the product is deleted. |
+     | Files & media | **+ Add download** → pick an existing PDF and choose its type. Don't upload new files: uploads stay in Media after the product is deleted. |
      | SEO | Edit the title. The counters and the search preview should update as you type. |
-     | Side panel | Visibility: leave **Hidden** selected, and switch on "This product is an accessory". Categories: **Edit** → tick one site challenge → **Done**; it shows as a chip. |
+     | Side panel | Images: **Add from Media** → pick an existing image (it becomes the featured image, the first). Click its thumbnail, type alt text in the Image dialog, then **Done**. Don't use **Upload**, for the same reason as above. Visibility: leave **Hidden** selected, and switch on "This product is an accessory". Categories: **Edit** → tick one site challenge → **Done**; it shows as a chip. |
 
    - Each tab's dot should show while it has unsaved changes, and the band should count the unsaved sections. Pressing Save should report "Saved N sections", clear every dot and the count. Press **Skip for now** if the translation dialog opens.
    - Reload the page. Every change should still be there.

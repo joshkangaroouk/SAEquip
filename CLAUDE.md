@@ -2436,27 +2436,35 @@ syncing made Duda report `products_count: 2` **and** made the product's own `cat
 array list the category; a second run was a clean no-op; removing the Hub rows and
 re-syncing emptied both sides.
 
-### Product editor layout (tabs, redesign batches 8 and 10, 2026-11)
+### Product editor layout (tabs, redesign batches 8, 10 and 11, 2026-11)
 
-A header band holding the tabs and the one Save, the sections in six tabs, and a side panel (`docs/redesign/02a-decisions.md` "Batch 8", `docs/redesign/10-fidelity-spec.md`):
-- **Band** (`ProductBand`), edge to edge under the top bar, sticky from lg:
+A header band holding the tabs and the one Save, the sections in six tabs, and a side panel (`docs/redesign/02a-decisions.md` "Batch 8", `docs/redesign/10-fidelity-spec.md`, `docs/redesign/11-editor-refinements.md`):
+- **Band** (`ProductBand`), edge to edge under the top bar, sticky from 1280 (batch 11; below that it scrolls with the page):
   - left: a 64px picture on paper; an overline (the SA range from the saved SA logos' alt text, Rental left out, then the product type); the saved name, which is the page's h1; then SKU, the Live / Hidden chip, an "N categories no longer in Duda" fault chip, and the load time with Refresh (disabled while dirty);
   - right, the save area (`ProductSaveArea`, the old bottom bar's logic moved, not rewritten): the unsaved count, the failed pills, View on website via `productPageUrl()` (an icon button below 640), Discard while dirty, and Save changes. Below lg it wraps under the title with Save first;
   - the tab row on its bottom rule. No back link. New product uses the same band, with its create buttons.
-- ⚠️ **The band sticks because the shell's header SLOT does** (`lg:has-[[data-sticky-band]]:sticky` in Layout): a sticky element sticks only within its parent, and the band is portalled into the slot. It writes its height to `--sticky-band`, which index.css adds to `scroll-padding-top` from lg, so a failed pill's section, or a focused field, stops below it. Anything else made sticky in the editor must clear `top-16` plus that height.
+- ⚠️ **The band sticks because the shell's header SLOT does** (`xl:has-[[data-sticky-band]]:sticky` in Layout): a sticky element sticks only within its parent, and the band is portalled into the slot. It writes its height to `--sticky-band`, which index.css adds to `scroll-padding-top` from 1280, so a failed pill's section, or a focused field, stops below it. The two breakpoints must stay the same, or a pill scrolls its section under the band (or short of it). Anything else made sticky in the editor must clear `top-16` plus that height.
 - **Tabs**, in `?tab=` (written with replace; an unknown value reads as Overview):
   - Overview: Details, and Delete product at the foot.
   - Content: Description, Technical specs, Key benefits, Applications, Compatible products.
   - Compliance: SA logos, Certification logos.
   - Options: Options, Variations (still locked while options are dirty).
-  - Files & media: Images, 3D model, Downloads.
+  - Files & media: 3D model, Downloads (its count is those two; the images moved to the side panel in batch 11).
   - SEO: `SeoSection` (title, slug, meta description) with 55 / 160 counters and a result preview.
-- **Side panel**, from 1280px (18rem):
+- **Side panel**, from 1280px at `clamp(18rem, 28%, 30rem)` of the grid (`EDITOR_GRID` and `sidePanelClass()` in `components/product/editorLayout.ts`, shared with the loading skeleton):
+  - Images (`ImagesSection`, batch 11), WordPress-style:
+    - the featured image large, in a 4:3 box on paper;
+    - the gallery as 3-up square thumbnails, dragged by their handle (pointer or keyboard);
+    - a thumbnail opens the "Image" dialog: alt text, Set as featured, Remove. Focus returns to the thumbnail, or after Remove to the one now in its place;
+    - Add from Media, Upload (the file chooser), and a drop anywhere on the card, through the dashed dropzone's own queue (`useUploadQueue`).
+    - ⚠️ **The featured image IS the first image.** There is no primary flag (Duda's image is only `{url, alt}`, and `images[0]` is the thumbnail), so Set as featured is `arrayMove(i, 0)`, exactly what dragging it first does. The payload, the validation and the pending-upload test did not change.
+    - The chips and handle on a photo sit in a `data-theme="light"` scope, so a solid chip or a focus ring cannot turn near-white on the white paper in the dark theme.
   - Visibility: an Active / Hidden segmented control (the `status` field of `details`, same save key) and the Accessory toggle (the `accessory` key, moved from Overview in batch 10).
   - Categories, a summary: the product type, site challenges with × to remove, industries. Edit and + Add open the unchanged `AssignPickList` in a "Categories" dialog, which edits the same state as you tick (no separate save).
-  - Below 1280 it shows under the tabs with Overview only. ⚠️ It is rendered once and hidden with CSS, so Categories stays mounted. The category list is loaded once, by `useCategoryList()`, for the panel and the band's overline.
+  - Below 1280 it shows under the tabs with Overview only, in two columns from 640 (Images beside Visibility and Categories), so the featured image keeps about its side-panel width. ⚠️ It is rendered once and hidden with CSS, so Categories stays mounted; on another tab it is plain `hidden`, never `hidden` plus `sm:grid`, which would win from 640. The category list is loaded once, by `useCategoryList()`, for the panel and the band's overline.
 - ⚠️ **A panel mounts on its first visit, then stays mounted and hidden** (`Tabs keepMounted="visited"`): tiptap, dnd and form state survive a tab switch, and the compatible picker does not refetch. Unvisited panels are empty `tabpanel` shells, so every `aria-controls` resolves.
-- ⚠️ **A tab's dot comes from `editorTabState()` (`components/product/editorTabs.ts`), not from whole keys.** `details` spans Overview, Content (the description), SEO and the side panel's status, so each tab's dirty dot is ITS fields diffed against the baseline (`DETAIL_FIELDS`). Errors are `saveErrors[k] ?? validationErrors[k]`: a details server error goes on Overview and every tab whose fields changed, and a details validation error on its field's tab (the slug → SEO): `validate()` returns the field with the message (`detailsField`) and `fieldTab()` maps it, so rewording a message cannot move it (batch 9; it used to match the message text). Side-panel keys (`accessory`, `categories`) count toward Overview only below 1280, and their pills switch no tab while the panel is in view. **A new `details` field must go into `DETAIL_FIELDS`**, or no tab ever shows it dirty.
+- ⚠️ **A tab's dot comes from `editorTabState()` (`components/product/editorTabs.ts`), not from whole keys.** `details` spans Overview, Content (the description), SEO and the side panel's status, so each tab's dirty dot is ITS fields diffed against the baseline (`DETAIL_FIELDS`). Errors are `saveErrors[k] ?? validationErrors[k]`: a details server error goes on Overview and every tab whose fields changed, and a details validation error on its field's tab (the slug → SEO): `validate()` returns the field with the message (`detailsField`) and `fieldTab()` maps it, so rewording a message cannot move it (batch 9; it used to match the message text). Side-panel keys (`images`, `accessory`, `categories`) count toward Overview only below 1280, and their pills switch no tab while the panel is in view. **A new `details` field must go into `DETAIL_FIELDS`**, or no tab ever shows it dirty.
+- **While the product loads, `ProductEditorSkeleton`** (`EditorSkeleton.tsx`, batch 11) stands where the page will: the band (`ProductBandSkeleton`, built on the same frame as `ProductBand`), the cards and the side panel, in the page's own order and on its grid. Measured against the loaded page: the band is the same height at 1440, 1280, 1024 and 390 (181, 181, 223, 279). Keep them in step through the shared frame and `editorLayout`, not by copying sizes.
 - ⚠️ **Switching tabs must not trip the unsaved-changes blocker.** It changes only the query, and `useUnsavedChangesWarning` compares pathnames.
 - **The failed pills are buttons** (in the band's save area). `tabForKey()` picks the tab; the editor switches to it, waits for the render, then scrolls to and focuses the section (`sectionAnchor()`).
 - **`EditorSection` replaced the collapsible `AccordionCard`** (deleted in batch 9): a heading, a description, the section's error, and `AccordionBodyProvider`. Sections no longer draw their own Unsaved badge: the tab dots and the band's save area carry it. It takes `meta` (a muted 12px fact on the header's right: "Synced with Duda on save", the word count, "N specs · N rows") and `as`, the heading level: h2 by default, as for `CardHeader` and `EmptyState` (batch 10: the page title is h1, a card under it h2, a nested section h3). A details error is an Alert at the top of each tab it belongs to, and a logos error at the top of Compliance; neither had a home before.
@@ -2579,10 +2587,12 @@ that hit Duda's duplicate-title rule and was created on a retry — so it corrob
 than contradicts. `createdFromUlid()` returns null for anything that is not a ULID and the
 route falls back to the Hub row.
 
-### Loading states: skeletons on list pages, spinner elsewhere
+### Loading states: a skeleton wherever a page or a card loads
 
-`Skeleton` (`components/ui/Skeleton.tsx`) is **just the primitive**; each page composes its
-own from the same `Table`/`Card`/grid components the real content uses, so the two cannot
+`Skeleton` (`components/ui/Skeleton.tsx`) is **just primitives**: the block, `SkeletonLine`
+(a bar on a type role's line box, so a row is exactly that text's height) and `SkeletonField`
+(label, control, hint). Each page composes its own from the same `Table`/`Card`/grid
+components the real content uses, so the two cannot
 drift. A generic "table skeleton" would have to be told the column widths anyway, and would
 become a second place to keep them right.
 
@@ -2591,8 +2601,13 @@ the point is that nothing moves when the data lands, so a differently-sized plac
 worse than "Loading…" text, because it shifts the page as well as delaying it. The product
 table's placeholder thumbnail is 100px because the real one is.
 
-Applied on the list pages, which have a repeating structure to mimic: **Products**,
-**Categories**, **Quotes**, **Media**, **Logos**.
+Applied on the list pages (**Products**, **Categories**, **Quotes**, **Media**, **Logos**) and,
+since batch 11, on every other page or card that loads: the **product editor**, **Category**,
+**Product options**, **Users**, **Website editor**, and the editor's **Categories** card. Static
+copy (card titles, field labels, hints, help text) shows as itself and only the data is
+blocks, which is also what makes the wrapping match. Each was measured against its loaded
+page in the harness. Left as text: the list loaders inside a control (the Compatible products
+pane, ProductSearch) and the auth checks (ProtectedRoute, ResetPassword).
 
 ⚠️ **A skeleton is for the FIRST load, never for paging.** `useMediaLibrary` exposes
 `isInitialLoad` (`loading && data === null`) alongside `loading` for exactly this. Gating the
@@ -2600,12 +2615,13 @@ grid on `loading` unmounted it on every page click — the Media Centre dialog c
 height of a one-line "Loading…" and sprang back, taking the pager with it so the buttons
 moved out from under the cursor. Swapping the tiles for skeletons is the same flash in a
 different costume, because the grid still empties and refills. The current page stays
-mounted and dims (`opacity-50 pointer-events-none`, `aria-busy`) until the next one lands. `Loader` (the spinner) deliberately stays
-on **ProductDetail**, **ProductOptions** and **WebsiteEditor** — a single object with no
-repeating rows has no shape to stand in for, so a skeleton there would be inventing one.
+mounted and dims (`opacity-50 pointer-events-none`, `aria-busy`) until the next one lands.
+Product options does the same since batch 11: every change reloads the catalogue, and the
+cards stay, dimmed, instead of vanishing behind a spinner each time.
 
-The container carries `aria-busy` + `aria-live` + a label; the blocks themselves are
-`aria-hidden`, so the state is announced once rather than as a dozen grey rectangles.
+The container carries `aria-busy` and one polite announcement (a visually hidden
+`role="status"` line, or `aria-live` and a label); the blocks themselves are `aria-hidden`, so
+the state is announced once rather than as a dozen grey rectangles.
 
 ## Launch checklist (staging → saequip.com)
 
