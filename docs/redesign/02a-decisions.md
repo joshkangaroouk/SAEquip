@@ -231,3 +231,50 @@ These answer the open questions at the end of `02-design-system.md`. Where this 
   - dropzone drag-over: `--selected-bg` plus a `--selected-bar` border
 - **Fix:** the Downloads rows at 390, and the stale copy "Shown on the product page in Duda." (the widget's Overview tab renders it).
 - **ProductNew:** a single-column form on the same cards and tokens (no tabs), plus an unsaved-changes guard like the editor's.
+
+## After batch 8
+- **Approved batch 8 deviations:**
+  - 7.4 and 7.5 folded into 7.3
+  - the 7.9 tab padding and the 18rem side panel
+  - "Loaded … · Refresh" kept in the header
+  - the stock/type chips and "Hide pricing & stock fields" in the Details header
+  - the side panel and Delete product hidden with CSS below 1280 unless Overview is open
+  - the error-dot rules
+  - `dirty` props removed
+  - theme colours in the search preview
+  - New product's guard with Stay/Discard only
+  - Hidden / Live wording on New product
+- **Save-bar labels:** switch to sentence case in batch 9 ("Logos failed" is already fine; check the rest).
+- **Details validation:** in batch 9, route validation errors to tabs by FIELD, not by message text. Have the validator return a field key alongside each message (frontend only, in normalize.ts or its caller; same messages, same blocking behaviour), and map field → tab in editorTabs.ts.
+- **Tab row at 390:** scrolling inside its own row is accepted.
+- **AccordionCard:** delete it in batch 9, along with its kit section, once nothing else imports it.
+
+## Batch 9: tidy, accessibility, QA and release prep (binding)
+- **Tidy:**
+  - remove leftover `rounded*` classes and dead code
+  - remove stale comments (01 §7 batch 9: the `ui/index.ts` header, the AssignPickList "Tags" note)
+  - delete AccordionCard
+  - update the /ui kit with every new piece (EditorSection, tab dots and names, the Input `chip` size, PageHeader `actionsBeside`, SplitView items, FileInput)
+- **Widgets page:** wrap the previews in `.saeh-root` so they render as on the live site, on paper in both themes. Don't touch `WIDGET_CSS`.
+- **Translations:** fix the Names tab table at 390 (cards or stacked rows, not an inner sideways scroll).
+- **Accessibility:**
+  - an automated axe pass on every page, both themes, in the fixtures harness. Load axe in the harness only; don't add it to package.json.
+  - a manual keyboard and screen-reader-name pass
+  - a reduced-motion check
+  - zoom to 200% at 1440 with no loss of content
+  - fix everything serious or critical, and list the rest with reasons
+- **Enquiry route tests:** only if they can be added without editing backend/package.json, which has Josh's uncommitted edits. Otherwise leave them for after the merge and note it.
+- **QA sweep:** all pages at 1440 / 1280 / 1024 / 390, both themes, with no console errors and no sideways scroll. Re-run payload comparisons against main for: a product save across every save key, New product create, Categories reorder, Logos reorder, mark handled.
+- **Release checklist:** write `docs/redesign/09-release-checklist.md` for Josh:
+  1. Apply the migration (runbook).
+  2. Push `redesign/ui`.
+  3. On the Vercel preview, with Josh's real login:
+     - check the theme toggle saves to his account
+     - check the 2FA QR on paper (start setup, then Cancel)
+     - one real save on a throwaway product ZZ-AUDIT-DELETE-ME (create, edit each tab, save, delete)
+     - mark one enquiry handled and back
+     - look at every page in both themes
+  4. Merge to main (a fast-forward or merge commit, Josh's choice) and watch the production deploy.
+  5. Post-merge checks.
+  6. Rollback plan (revert the merge; the migration can stay, since it's harmless to old code).
+  7. Launch-day items: `LIVE_SITE_ORIGIN` to the custom domain, plus the existing launch checklist in CLAUDE.md.
