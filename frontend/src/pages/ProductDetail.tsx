@@ -74,6 +74,7 @@ export default function ProductDetail() {
     skipTranslation,
     downloadLanguage,
     validationErrors,
+    detailsInvalidField,
     dirty,
     isDirty,
     isValid,
@@ -115,7 +116,15 @@ export default function ProductDetail() {
   // Below 1280 the side panel is part of Overview, so its edits count there.
   const tabState =
     draft && baseline
-      ? editorTabState({ draft, baseline, dirty, saveErrors, validationErrors, panelInOverview: !wide })
+      ? editorTabState({
+          draft,
+          baseline,
+          dirty,
+          saveErrors,
+          validationErrors,
+          detailsInvalidField,
+          panelInOverview: !wide,
+        })
       : null;
   const counts = draft ? tabCounts(draft) : {};
 

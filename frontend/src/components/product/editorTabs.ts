@@ -79,12 +79,13 @@ const fieldsDiffer = (draft: NativeForm, baseline: NativeForm, fields: (keyof Na
   fields.some((f) => draft[f] !== baseline[f]);
 
 /**
- * Where a details VALIDATION message belongs. validate() checks name, the
- * slug, then price, compare-at and quantity, one message at a time; only the
- * slug's are on SEO.
+ * The tab that shows a `details` field. The side panel's status is on
+ * Overview when the panel is (it is never invalid anyway).
  */
-function validationTab(message: string): EditorTab {
-  return /URL slug/i.test(message) ? "seo" : "overview";
+export function fieldTab(field: keyof NativeForm): EditorTab {
+  if (DETAIL_FIELDS.content.includes(field)) return "content";
+  if (DETAIL_FIELDS.seo.includes(field)) return "seo";
+  return "overview";
 }
 
 export function editorTabState({
@@ -93,6 +94,7 @@ export function editorTabState({
   dirty,
   saveErrors,
   validationErrors,
+  detailsInvalidField,
   panelInOverview,
 }: {
   draft: EditorSnapshot;
@@ -100,6 +102,8 @@ export function editorTabState({
   dirty: DirtyMap;
   saveErrors: ErrorMap;
   validationErrors: ErrorMap;
+  /** The field `validationErrors.details` is about, from validate(). */
+  detailsInvalidField: keyof NativeForm | null;
   /**
    * Below 1280px the side panel (Visibility, Categories) is part of Overview,
    * so its edits and errors count there. From 1280 it is on screen beside
@@ -142,7 +146,7 @@ export function editorTabState({
     detailsErrorTabs = EDITOR_TABS.map((t) => t.value).filter((t) => t === "overview" || detailTabs.includes(t));
     for (const tab of detailsErrorTabs) mark(tab, saveErrors.details);
   } else if (validationErrors.details) {
-    detailsErrorTabs = [validationTab(validationErrors.details)];
+    detailsErrorTabs = [detailsInvalidField ? fieldTab(detailsInvalidField) : "overview"];
     mark(detailsErrorTabs[0], validationErrors.details);
   }
 

@@ -297,8 +297,69 @@ export const textItemValid = (i: TextItemDraft): boolean =>
 
 const PRICE_DELTA = /^-?\d+(\.\d+)?$/;
 
+export interface Validation {
+  /** Per-section messages; an empty object means the draft is saveable. */
+  errors: ErrorMap;
+  /**
+   * The field `errors.details` is about. `details` is one save key whose
+   * fields sit on several tabs, so the editor shows the message on the tab
+   * holding this field (editorTabs.ts).
+   */
+  detailsField: keyof NativeForm | null;
+}
+
 /**
- * Per-section validation messages; an empty object means the draft is saveable.
+ * The first problem with the native fields, one at a time: name, the slug,
+ * then price, compare-at and quantity. Mirrors the PATCH route.
+ */
+function detailsProblem(
+  d: NativeForm,
+  hideCommerce: boolean,
+): { field: keyof NativeForm; message: string } | null {
+  const priceOk = NUMERIC.test(d.price) && parseFloat(d.price) >= 0;
+  const compareOk =
+    d.compare_at_price === "" ||
+    (NUMERIC.test(d.compare_at_price) &&
+      priceOk &&
+      parseFloat(d.compare_at_price) > parseFloat(d.price));
+  const quantityOk =
+    !d.managed_inventory ||
+    d.quantity === "" ||
+    (/^\d+$/.test(d.quantity) && parseInt(d.quantity, 10) >= 0);
+
+  // The slug is the live page URL; Duda renders "&" as "---", so repeated
+  // hyphens are real and allowed.
+  const slug = d.seo_product_url.trim();
+
+  if (!d.name.trim()) return { field: "name", message: "Name is required." };
+  if (!slug)
+    return {
+      field: "seo_product_url",
+      message: "The URL slug cannot be blank — it is the product page's address.",
+    };
+  if (!/^[a-z0-9-]+$/.test(slug))
+    return {
+      field: "seo_product_url",
+      message: "The URL slug may only contain lowercase letters, numbers and hyphens.",
+    };
+  if (slug.length > 200)
+    return { field: "seo_product_url", message: "The URL slug must be 200 characters or fewer." };
+  // Pricing/quantity are only validated while visible. A hidden field is never
+  // edited, so it never becomes dirty and never gets sent — and blocking Save on
+  // a field the user can't see or reach would be an unfixable dead end.
+  if (hideCommerce) return null;
+  if (!priceOk) return { field: "price", message: "Price must be a number ≥ 0." };
+  if (!compareOk)
+    return {
+      field: "compare_at_price",
+      message: "Compare-at price must be a number greater than the price.",
+    };
+  if (!quantityOk) return { field: "quantity", message: "Quantity must be a whole number ≥ 0." };
+  return null;
+}
+
+/**
+ * Per-section validation messages, plus the field the `details` one is about.
  *
  * `maxVariations` comes from the store so the cartesian cap is enforced
  * client-side, rather than letting Duda reject the save with a raw error.
@@ -307,9 +368,8 @@ export function validate(
   draft: EditorSnapshot,
   maxVariations?: number | null,
   { hideCommerce = false }: { hideCommerce?: boolean } = {},
-): ErrorMap {
+): Validation {
   const errors: ErrorMap = {};
-  const d = draft.details;
 
   if (draft.options.length > 20) errors.options = "Max 20 options.";
   else if (draft.options.some((o) => o.choiceIds.length === 0))
@@ -327,34 +387,8 @@ export function validate(
   else if (!hideCommerce && !draft.variations.every((v) => PRICE_DELTA.test(v.price_difference)))
     errors.variations = "Every price difference must be a number (negatives allowed).";
 
-  const priceOk = NUMERIC.test(d.price) && parseFloat(d.price) >= 0;
-  const compareOk =
-    d.compare_at_price === "" ||
-    (NUMERIC.test(d.compare_at_price) &&
-      priceOk &&
-      parseFloat(d.compare_at_price) > parseFloat(d.price));
-  const quantityOk =
-    !d.managed_inventory ||
-    d.quantity === "" ||
-    (/^\d+$/.test(d.quantity) && parseInt(d.quantity, 10) >= 0);
-
-  // Mirrors the PATCH route. The slug is the live page URL; Duda renders "&"
-  // as "---", so repeated hyphens are real and allowed.
-  const slug = d.seo_product_url.trim();
-
-  if (!d.name.trim()) errors.details = "Name is required.";
-  else if (!slug) errors.details = "The URL slug cannot be blank — it is the product page's address.";
-  else if (!/^[a-z0-9-]+$/.test(slug))
-    errors.details = "The URL slug may only contain lowercase letters, numbers and hyphens.";
-  else if (slug.length > 200) errors.details = "The URL slug must be 200 characters or fewer.";
-  // Pricing/quantity are only validated while visible. A hidden field is never
-  // edited, so it never becomes dirty and never gets sent — and blocking Save on
-  // a field the user can't see or reach would be an unfixable dead end.
-  else if (!hideCommerce && !priceOk) errors.details = "Price must be a number ≥ 0.";
-  else if (!hideCommerce && !compareOk)
-    errors.details = "Compare-at price must be a number greater than the price.";
-  else if (!hideCommerce && !quantityOk)
-    errors.details = "Quantity must be a whole number ≥ 0.";
+  const details = detailsProblem(draft.details, hideCommerce);
+  if (details) errors.details = details.message;
 
   if (draft.images.length > 50) errors.images = "Max 50 images.";
   else if (!draft.images.every((i) => /^https?:\/\//i.test(i.url)))
@@ -392,7 +426,7 @@ export function validate(
   else if (!draft.applications.every(textItemValid))
     errors.applications = "Every item is required and must be ≤500 characters.";
 
-  return errors;
+  return { errors, detailsField: details?.field ?? null };
 }
 
 /**
