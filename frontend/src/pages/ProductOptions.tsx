@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 import {
   Alert,
-  Badge,
   Button,
   Card,
   CardHeader,
@@ -19,7 +18,7 @@ import {
 } from "../components/ui";
 import { apiJson } from "../lib/api";
 import { cn } from "../lib/cn";
-import { UsageDialog } from "../components/UsagePill";
+import { UsagePill } from "../components/UsagePill";
 import type { CatalogOption, OptionCatalog } from "../components/product/productEditorTypes";
 
 /**
@@ -602,45 +601,23 @@ function NewValueField({
 
 /**
  * "N products", which opens the list of them: picture, name and SKU, each
- * linking to that product's editor, as the Media Centre's "Used N×". The
- * catalogue response already carries the list, so nothing is fetched. At 0 it
- * is a plain neutral chip — an unused option is not a fault (02 §6), and a
- * popup listing nothing is a click wasted.
+ * linking to that product's editor — the shared UsagePill, as on Media and
+ * Logos. The catalogue response already carries the list, so nothing is
+ * fetched. At 0 (or with no list) it is a plain neutral chip: an unused option
+ * is not a fault (02 §6), and a popup listing nothing is a click wasted.
  */
 function IncludedIn({ option }: { option: CatalogOption }) {
-  const [open, setOpen] = useState(false);
-  const close = useCallback(() => setOpen(false), []);
   const label = `${option.usage} ${option.usage === 1 ? "product" : "products"}`;
-  if (option.usage === 0 || option.products.length === 0) {
-    return <Badge tone="neutral">{label}</Badge>;
-  }
   const products = [...option.products]
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((p) => ({ dudaProductId: p.id, name: p.name, sku: p.sku, thumbnailUrl: p.thumbnailUrl ?? null, via: [] }));
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-        title="See which products use this option"
-        className="group"
-      >
-        {/* Darker as a whole on hover: the fill takes the border's own colour,
-            so the chip reads as one shape. */}
-        <Badge tone="neutral" className="cursor-pointer transition-colors group-hover:bg-border group-hover:text-text">
-          {label}
-        </Badge>
-      </button>
-      {open && (
-        <UsageDialog
-          count={option.usage}
-          subject={`Option: ${option.name}`}
-          verb="Included in"
-          load={() => Promise.resolve({ products })}
-          onClose={close}
-        />
-      )}
-    </>
+    <UsagePill
+      count={products.length > 0 ? option.usage : 0}
+      label={label}
+      subject={`Option: ${option.name}`}
+      verb="Included in"
+      load={() => Promise.resolve({ products })}
+    />
   );
 }
