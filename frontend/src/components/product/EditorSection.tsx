@@ -45,13 +45,11 @@ export function EditorSection({
   const headingId = useId();
   return (
     // tabIndex -1: the save area's failed pills move focus here (focus() needs
-    // a focusable element); scroll-mt clears the sticky top bar.
-    <section
-      id={id}
-      aria-labelledby={headingId}
-      tabIndex={-1}
-      className="scroll-mt-20 border border-border bg-surface"
-    >
+    // a focusable element). No scroll margin: the page's scroll-padding
+    // (index.css) already clears the top bar, and from 1280 the band at its
+    // current height, by 16px. A scroll-mt here ADDED to that, and a pill's
+    // section landed 96px below the band instead of 16 (12 §5).
+    <section id={id} aria-labelledby={headingId} tabIndex={-1} className="border border-border bg-surface">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
         <div className="min-w-0 space-y-1">
           <Heading id={headingId} className="t-section text-text">
