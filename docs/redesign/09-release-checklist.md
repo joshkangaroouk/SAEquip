@@ -1,9 +1,11 @@
 # Release checklist: `redesign/ui` → `main`
 
 **For:** Josh, on release day.
-**What ships:** the whole dashboard redesign (batches 1 to 9), plus the batch 6 backend pieces: the handled routes, `GET /api/enquiries/counts`, the slug on `GET /api/products`, and the site's SEO and languages on `/api/website/sites`. The public widget and the Duda widgets are not part of it.
+**What ships:** the whole dashboard redesign (batches 1 to 10), plus the batch 6 backend pieces: the handled routes, `GET /api/enquiries/counts`, the slug on `GET /api/products`, and the site's SEO and languages on `/api/website/sites`. The public widget and the Duda widgets are not part of it.
 
-Work through the steps in order, and don't skip ahead: the order is what keeps production working. If more commits land on `redesign/ui` before you release (batch 10, say), run steps 2 and 3 again on the newest preview.
+Work through the steps in order, and don't skip ahead: the order is what keeps production working. If more commits land on `redesign/ui` before you release, run steps 2 and 3 again on the newest preview.
+
+⚠️ **Batch 10 changed where things are in the product editor**, and this checklist now describes it: Save is in the band at the top of the editor (not a bar along the bottom), and the Accessory toggle and the categories are in the side panel. The branch on GitHub stops at batch 9 (906a3e5); batch 10 is local until step 2.
 
 Run every command from the repo root unless a step says otherwise.
 
@@ -32,7 +34,7 @@ git checkout redesign/ui
 git push origin redesign/ui
 ```
 
-- The push is a fast-forward of `origin/redesign/ui`. The pre-push hook runs `npm run check` first (about 12 seconds).
+- The push is a fast-forward of `origin/redesign/ui` (it carries batch 10). The pre-push hook runs `npm run check` first (about 12 seconds).
 - Vercel builds a **Preview** deployment of the branch. Find its URL in the Vercel dashboard (project `sa-equip-backend` → Deployments), or in the deployment status on the branch in GitHub.
 
 ## 3. Check the preview with your real login
@@ -66,19 +68,19 @@ Sign in with your own account (and your 2FA code). Then:
      - Name `ZZ-AUDIT-DELETE-ME`, SKU `ZZ-AUDIT`. Leave the status **Hidden**.
      - Type one sentence in Description, then press **Create and edit**.
      - In Chrome a "Saving for multi-languages…" dialog opens. Press **Skip for now**, so no translations of test text are stored.
-   - In the editor, make one change on every tab, then press **Save changes** once:
+   - In the editor, make one change on every tab and in the side panel, then press **Save changes** once. It is in the band at the top of the editor, which stays in view as you scroll (from 1024px wide):
 
      | Tab | Change |
      |---|---|
-     | Overview | Change the name to `ZZ-AUDIT-DELETE-ME 2`. Tick "This product is an accessory". |
+     | Overview | Change the name to `ZZ-AUDIT-DELETE-ME 2`. |
      | Content | Add a description sentence, a technical spec row, a key benefit and an application. Add one compatible product. |
      | Compliance | Switch on one SA logo and one certification logo. |
      | Options | **Attach option** → Hire/Purchase, then untick one of its values. ⚠️ Don't type in **New value…**: that adds a value to the shared option for every product, straight away. |
-     | Files & media | **Add from Media Centre** → pick an existing image. **+ Add download** → pick an existing PDF and choose its type. Don't upload new files: uploads stay in Media after the product is deleted. |
+     | Files & media | **Add from Media** → pick an existing image. **+ Add download** → pick an existing PDF and choose its type. Don't upload new files: uploads stay in Media after the product is deleted. |
      | SEO | Edit the title. The counters and the search preview should update as you type. |
-     | Side panel | Tick one category. Leave Visibility on Hidden. |
+     | Side panel | Visibility: leave **Hidden** selected, and switch on "This product is an accessory". Categories: **Edit** → tick one site challenge → **Done**; it shows as a chip. |
 
-   - Each tab's dot should show while it has unsaved changes. Pressing Save should report "Saved N sections" and clear every dot. Press **Skip for now** if the translation dialog opens.
+   - Each tab's dot should show while it has unsaved changes, and the band should count the unsaved sections. Pressing Save should report "Saved N sections", clear every dot and the count. Press **Skip for now** if the translation dialog opens.
    - Reload the page. Every change should still be there.
    - **Overview → Delete product → Delete…**, type the name exactly, then **Delete permanently**. You should land back on Products, with the product gone from the list.
 4. **Mark one enquiry handled, then back.**
@@ -185,12 +187,7 @@ git push origin main
 
 ## Known items that ship with this release (none block it)
 
-- **Moderate accessibility issues** (heading order):
-  - Card headings are `h3` directly under the page's `h1` on New product, a category's page, Product options, Security and Status.
-  - The split views' empty state ("Select a quote request") is also an `h3`.
-- **Inner sideways scroll** in three tables. The page itself never scrolls sideways.
-  - The quote items table in the detail pane, at 1024 and at phone width.
-  - The variations table at phone width.
-  - The Translations content table at phone width.
-- **The Widgets page's Tabs preview shows no open panel.** Its markup predates the widget's `.saeh-open` class (01 §5.15).
+- **The live widget's body text is below AA contrast**: `#878787` on white, 3.59:1. axe flags it on the `/widgets` previews, which copy the widget's CSS exactly. CLAUDE.md records it as a deliberate brand choice; changing it is a change to the live widget (`#767676` is the darkest grey that passes).
+- **Menus portalled outside the page landmarks** (axe "region", moderate): the More menu and select lists are placed at the end of the page so nothing clips them.
+- **Inner sideways scroll in the variations table at phone width.** Accepted (10 §6): it's a data grid. The page itself never scrolls sideways, and the editor's tab row scrolls in its own row (02a).
 - **Enquiry route tests are still a scratch test.** They become a repo test once `backend/package.json` is free.
