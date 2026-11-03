@@ -273,6 +273,18 @@ export function Layout({ children }: { children?: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg text-text">
+      {/*
+        Skip link (10 §6): the first thing Tab reaches on every page, so a
+        keyboard user can pass the sidebar's links. Hidden until focused,
+        then shown over the top bar.
+      */}
+      <a
+        href="#main"
+        className="sr-only bg-accent text-body font-semibold text-accent-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[60] focus:px-4 focus:py-2.5"
+      >
+        Skip to main content
+      </a>
+
       {/* Desktop sidebar */}
       <aside
         data-sidebar
@@ -312,7 +324,12 @@ export function Layout({ children }: { children?: ReactNode }) {
       )}
 
       {/* Main content */}
-      <main className={cn("lg:pl-sidebar", full && "lg:flex lg:h-dvh lg:flex-col")}>
+      {/* tabIndex -1: the skip link moves focus here; no ring round the whole page. */}
+      <main
+        id="main"
+        tabIndex={-1}
+        className={cn("focus-visible:outline-none lg:pl-sidebar", full && "lg:flex lg:h-dvh lg:flex-col")}
+      >
         <TopBar
           theme={theme}
           onThemeChange={setTheme}
