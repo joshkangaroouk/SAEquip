@@ -54,6 +54,9 @@ import {
   useSelection,
 } from "../components/ui";
 import { EditorSection } from "../components/product/EditorSection";
+import { ProductBand } from "../components/product/ProductBand";
+import { ProductSaveArea } from "../components/product/ProductSaveArea";
+import { CategoriesSection, type CategoryNode } from "../components/product/CategoriesSection";
 import { EDITOR_TABS, type EditorTab } from "../components/product/editorTabs";
 import { Lockup } from "../components/Lockup";
 import {
@@ -445,22 +448,59 @@ const KIT_TAB_STATE: Partial<Record<EditorTab, { count?: number; indicator?: "di
 
 function EditorDemo({ theme }: { theme: string }) {
   return (
-    <Section title="Product editor: tabs and EditorSection">
+    <Section title="Product editor: band, tabs and EditorSection">
       <p className="t-help">
-        The editor's tab names (from <span className="t-code-sm">EDITOR_TABS</span>) with counts and dots. Each tab's
-        spoken name carries its count and state, e.g. "Content, 23, unsaved changes".
+        The band (10 §2): picture, overline, name and meta; the save area (unsaved count, failed pills, View on
+        website, Discard, Save changes); the tabs on its bottom rule, with counts and dots. In the app it sits under the
+        top bar and sticks from lg; here it is in place. Each tab's spoken name carries its count and state, e.g.
+        "Content, 23, unsaved changes".
       </p>
-      <div data-kit="editor-tabs">
+      <div data-kit="editor-tabs" className="border border-border bg-bg">
         <Tabs defaultValue="compliance">
-          <TabList aria-label={`Product sections (kit, ${theme})`}>
-            {EDITOR_TABS.map((t) => (
-              <Tab key={t.value} value={t.value} count={KIT_TAB_STATE[t.value]?.count} indicator={KIT_TAB_STATE[t.value]?.indicator}>
-                {t.label}
-              </Tab>
-            ))}
-          </TabList>
+          <ProductBand
+            imageUrl="/sa-favicon.jpg"
+            overline="SA Flexiheat · Climate Control and Heating"
+            title="EX Heater"
+            meta={
+              <>
+                <span className="text-help text-muted">
+                  SKU <span className="t-code text-text">SAPH18440</span>
+                </span>
+                <StatusBadge status="ACTIVE" />
+                <span className="t-help">Loaded 10:00 · Refresh</span>
+              </>
+            }
+            actions={
+              <ProductSaveArea
+                dirtyLabels={["Details", "Logos"]}
+                isValid
+                saving={false}
+                savingLabel={null}
+                saveErrors={{ logos: "Duda refused the save. Try again." }}
+                validationErrors={{}}
+                onSave={() => toast.success("Kit only — nothing saved")}
+                onReset={() => {}}
+                onOpenSection={() => {}}
+                viewOnWebsite={
+                  <Button variant="secondary">
+                    <ExternalLink size={16} aria-hidden="true" />
+                    View on website
+                  </Button>
+                }
+              />
+            }
+            tabs={
+              <TabList aria-label={`Product sections (kit, ${theme})`} className="-ml-3 shadow-none">
+                {EDITOR_TABS.map((t) => (
+                  <Tab key={t.value} value={t.value} count={KIT_TAB_STATE[t.value]?.count} indicator={KIT_TAB_STATE[t.value]?.indicator}>
+                    {t.label}
+                  </Tab>
+                ))}
+              </TabList>
+            }
+          />
           {EDITOR_TABS.map((t) => (
-            <TabPanel key={t.value} value={t.value} className="space-y-4 pt-4">
+            <TabPanel key={t.value} value={t.value} className="space-y-5 p-5">
               {t.value === "compliance" ? (
                 <>
                   <EditorSection
@@ -482,16 +522,66 @@ function EditorDemo({ theme }: { theme: string }) {
                 <EditorSection
                   title={`${t.label} section`}
                   description="A short description under the card heading."
+                  meta="14 specs · 14 rows"
                   actions={<Button size="sm" variant="secondary">Action</Button>}
                 >
-                  <p className="text-body">Section body.</p>
+                  <p className="text-body">Section body, with meta in the header (10 §4).</p>
                 </EditorSection>
               )}
             </TabPanel>
           ))}
         </Tabs>
       </div>
+      <p className="t-help">New product: the same band, with no tabs and no "Loaded", and its create buttons.</p>
+      <div className="border border-border">
+        <ProductBand
+          imageUrl={null}
+          overline="New product"
+          title="ZZ Harness Heater"
+          meta={
+            <>
+              <span className="text-help text-muted">
+                SKU <span className="t-code text-text">ZZH-1</span>
+              </span>
+              <StatusBadge status="HIDDEN" />
+            </>
+          }
+          actions={
+            <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+              <Button variant="ghost">Cancel</Button>
+              <Button variant="secondary">Create and add another</Button>
+              <Button className="max-lg:order-first">Create and edit</Button>
+            </div>
+          }
+        />
+      </div>
+      <KitCategories />
     </Section>
+  );
+}
+
+/** A small category tree for the side panel's summary card. */
+const KIT_CATS: CategoryNode[] = [
+  { id: "p", title: "Products", depth: 0, parent_id: "ROOT" },
+  { id: "p1", title: "Lighting and Power", depth: 1, parent_id: "p" },
+  { id: "p2", title: "Climate Control and Heating", depth: 1, parent_id: "p" },
+  { id: "s", title: "Site Challenges", depth: 0, parent_id: "ROOT" },
+  { id: "s1", title: "Welding Fume Control", depth: 1, parent_id: "s" },
+  { id: "s2", title: "Shutdown and Turnaround Packages", depth: 1, parent_id: "s" },
+  { id: "s3", title: "Hazardous-Area Lighting", depth: 1, parent_id: "s" },
+  { id: "i", title: "Industries", depth: 0, parent_id: "ROOT" },
+  { id: "i1", title: "Oil & Gas", depth: 1, parent_id: "i" },
+  { id: "i2", title: "Aviation & Aerospace", depth: 1, parent_id: "i" },
+  { id: "i3", title: "Nuclear", depth: 1, parent_id: "i" },
+];
+
+function KitCategories() {
+  const [selected, setSelected] = useState(["p", "p2", "s", "s1", "s2", "i", "i1", "i2", "i3"]);
+  return (
+    <div className="max-w-[18rem]">
+      <p className="t-help mb-2">The side panel's Categories card (10 §3), 18rem wide. Local state only.</p>
+      <CategoriesSection cats={KIT_CATS} loadError={null} selected={selected} onChange={setSelected} />
+    </div>
   );
 }
 
