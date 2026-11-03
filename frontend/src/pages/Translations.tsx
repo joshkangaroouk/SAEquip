@@ -221,6 +221,30 @@ interface DudaName {
   fetchedAt: string | null;
 }
 
+/** A name's translation as Duda has it, or a dash; flagged when the English moved on since. */
+function DudaNameText({ n }: { n: DudaName }) {
+  return (
+    <>
+      {n.text ?? (
+        <>
+          <span aria-hidden="true" className="text-muted">
+            —
+          </span>
+          <span className="sr-only" lang="en">
+            Not translated
+          </span>
+        </>
+      )}
+      {/* Stale: the English moved on since Duda's copy (KEEP-F). */}
+      {n.stale && (
+        <Badge tone="danger" className="ms-2">
+          <span lang="en">English changed since</span>
+        </Badge>
+      )}
+    </>
+  );
+}
+
 function DudaNames({ locale }: { locale: TargetLocale }) {
   const [items, setItems] = useState<DudaName[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -326,7 +350,8 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
                 : `${missing} still in English in Duda, so they show in English here too. Translate them in Duda, republish, then press Refresh.`}
             </Alert>
           )}
-          <div className="mt-4">
+          {/* From sm, the table. Below it, stacked rows: three columns need ~490px, and a table scrolling sideways inside its own box is the thing to avoid (02a "Batch 9"). */}
+          <div className="mt-4 hidden sm:block">
             <Table>
               <THead>
                 <TR>
@@ -341,28 +366,25 @@ function DudaNames({ locale }: { locale: TargetLocale }) {
                     <TD className="whitespace-nowrap text-help text-muted">{n.entity === "PRODUCT" ? "Product" : "Category"}</TD>
                     <TD>{n.english}</TD>
                     <TD lang={locale} dir={rtl ? "rtl" : "ltr"}>
-                      {n.text ?? (
-                        <>
-                          <span aria-hidden="true" className="text-muted">
-                            —
-                          </span>
-                          <span className="sr-only" lang="en">
-                            Not translated
-                          </span>
-                        </>
-                      )}
-                      {/* Stale: the English moved on since Duda's copy (KEEP-F). */}
-                      {n.stale && (
-                        <Badge tone="danger" className="ms-2">
-                          <span lang="en">English changed since</span>
-                        </Badge>
-                      )}
+                      <DudaNameText n={n} />
                     </TD>
                   </TR>
                 ))}
               </TBody>
             </Table>
           </div>
+          <ul className="mt-4 border border-border bg-surface sm:hidden">
+            {items.map((n) => (
+              <li key={`${n.entity}:${n.dudaId}`} className="border-b border-border px-4 py-3 last:border-b-0">
+                <p className="t-label">{n.entity === "PRODUCT" ? "Product" : "Category"}</p>
+                <p className="mt-1 text-body text-text">{n.english}</p>
+                <p className="mt-2 t-label">{targetLabel(locale)}</p>
+                <p className="mt-1 text-body text-text" lang={locale} dir={rtl ? "rtl" : "ltr"}>
+                  <DudaNameText n={n} />
+                </p>
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </>
