@@ -295,7 +295,7 @@ export default function Products() {
             // The store headroom (02a "After stage 5"), in the warning tone
             // when 10 or fewer remain.
             <span className={lowHeadroom ? "font-medium text-warning" : undefined}>
-              <span className="font-mono">
+              <span className="tabular-nums">
                 {store.product_count} / {store.max_products ?? "?"}
               </span>{" "}
               products used

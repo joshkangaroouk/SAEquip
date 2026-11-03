@@ -177,6 +177,10 @@ function Typography() {
         Options"); product and category names as entered; everything else in sentence case (buttons, tabs, card
         headings, labels, help text, modal titles, empty states).
       </p>
+      <p className="t-help" data-kit="type:fonts">
+        Barlow for headings, Inter for everything else: codes, SKUs and slugs too, and counts with tabular figures
+        so numbers line up (12.16). The system monospace is for the HTML code editors only.
+      </p>
       <p className="t-h1" data-kit="type:h1">Page title 36</p>
       <p className="t-editor-title">Editor title 28</p>
       <p className="t-detail-title">Detail title 24</p>
@@ -189,7 +193,11 @@ function Typography() {
       <p className="t-help" data-kit="type:help">Help text 13, muted.</p>
       <p className="t-th">Table head 12</p>
       <p>
-        <span className="t-code">SAPH18440</span> <span className="t-code-sm text-muted">ex-heater · 12</span>
+        <span className="t-code">SAPH18440</span> <span className="t-code-sm text-muted">ex-heater · 12</span>{" "}
+        <span className="t-help">Code 13 / 12: Inter; numbers that line up add tabular figures</span>
+      </p>
+      <p className="font-mono text-help text-muted" data-kit="type:html-editor">
+        {"<p>HTML code editors only: the system monospace.</p>"}
       </p>
       <p className="text-body">
         Search highlight: <Highlight text="EX Heater on a trolley" query="heater" />

@@ -362,7 +362,7 @@ export default function CategoryDetail() {
                       {c.title}
                     </Link>
                     <span className="shrink-0 text-help text-muted">
-                      <span className="font-mono">{c.hubProductCount}</span> product{c.hubProductCount === 1 ? "" : "s"}
+                      <span className="tabular-nums">{c.hubProductCount}</span> product{c.hubProductCount === 1 ? "" : "s"}
                     </span>
                   </div>
                 )}

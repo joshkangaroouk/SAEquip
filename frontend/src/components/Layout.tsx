@@ -143,7 +143,7 @@ function NavRow({
       {badge?.count ? (
         <span
           className={cn(
-            "t-code-sm inline-flex h-5 min-w-5 shrink-0 items-center justify-center px-1.5",
+            "t-code-sm inline-flex h-5 min-w-5 shrink-0 items-center justify-center px-1.5 tabular-nums",
             current ? "bg-sidebar-active-ink text-sidebar-active" : "bg-sidebar-badge text-sidebar-badge-ink",
           )}
         >

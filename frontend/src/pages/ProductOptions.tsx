@@ -494,7 +494,7 @@ function OptionsMeter({ count, max }: { count: number; max: number | null }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <span className="t-label">Options used</span>
         <span className={cn("text-body", tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning" : "text-text")}>
-          <span className="font-mono">
+          <span className="tabular-nums">
             {count} of {max ?? "?"}
           </span>
           {atCap && <span className="font-medium"> · at the limit</span>}
@@ -542,13 +542,9 @@ function OptionsSkeleton() {
         <div className="mb-5 border border-border bg-surface px-5 py-4">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <span className="t-label">Options used</span>
-            {/* Inter round a mono run, as the count is: the two fonts' line boxes together. */}
-            <span className="text-body">
-              {"\u200b"}
-              <span className="font-mono">
-                {"\u200b"}
-                <Skeleton className="inline-block h-[0.8em] w-14 align-middle" />
-              </span>
+            {/* The count's line: Inter with tabular figures, as the meter's is. */}
+            <span className="text-body tabular-nums">
+              <Skeleton className="inline-block h-[0.8em] w-14 align-middle" />
             </span>
           </div>
           <Skeleton className="mt-2 h-2.5 w-full" />

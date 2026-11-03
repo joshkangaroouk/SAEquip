@@ -33,7 +33,7 @@ export function VariationCountMeter({
             : "border-border bg-surface-2 text-muted",
       )}
     >
-      <span className={cn("font-mono font-semibold", over || near ? undefined : "text-text")}>
+      <span className={cn("font-semibold tabular-nums", over || near ? undefined : "text-text")}>
         {changed ? `${current} → ${projected}` : projected}
       </span>{" "}
       {projected === 1 ? "variation" : "variations"}

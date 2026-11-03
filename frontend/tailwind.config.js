@@ -6,7 +6,7 @@ export default {
   darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     // REPLACES the theme: only the weights index.html loads. Barlow and Inter
-    // ship 400/500/600/700, JetBrains Mono 400/500 — so `font-medium` is a
+    // ship 400/500/600/700 — so `font-medium` is a
     // real 500 again (under DIN 2014 it had to be mapped down to 400). A
     // weight a family lacks renders at the nearest loaded one, never a fake
     // one: index.css sets `font-synthesis: none`.
@@ -107,7 +107,11 @@ export default {
         heading: ['"Barlow"', "ui-sans-serif", "system-ui", "sans-serif"],
         body: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
         sans: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        // The system monospace, for the HTML code editors ONLY (Description's
+        // HTML mode, the Translations HTML field, a category's description),
+        // where raw HTML wants fixed-width characters. Codes, SKUs and counts
+        // are Inter with tabular figures (.t-code, `tabular-nums`; 12.16).
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       // The design's px sizes that Tailwind's 4px grid lacks (16px root).
       // 4.5 → `px-4.5`, 8.5 → `h-8.5` and so on.

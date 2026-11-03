@@ -45,7 +45,7 @@ The accent is the same in both themes: `--accent: #FED217` and `--accent-ink: #0
 | Field label | Inter | 12px, 600 | letter-spacing 0.02em, muted |
 | Help text | Inter | 13px | muted |
 | Table header | Inter | 12px, 600 | muted, on surface-2 |
-| Codes (SKU, slug, counts, kbd, page numbers) | JetBrains Mono | 12–13px | |
+| Codes (SKU, slug, counts, kbd, page numbers) | Inter (tabular figures on numbers that line up) | 12–13px | was JetBrains Mono until batch 12 (12.16); the HTML code editors alone use the system monospace |
 
 ## Components (sizes in px)
 - **Primary button:** height 40, padding 0 18, Inter 14/600, yellow background, black text, 1px yellow border.

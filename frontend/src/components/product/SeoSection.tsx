@@ -55,7 +55,6 @@ export function SeoSection({
           <Input
             id="p-seo-url"
             size="sm"
-            className="font-mono"
             value={value.seo_product_url}
             onChange={(e) => set("seo_product_url", e.target.value)}
           />
@@ -76,7 +75,7 @@ export function SeoSection({
         {/* Roughly how a search result reads. Theme colours, not Google's. */}
         <section aria-label="Search result preview" className="border border-border bg-surface-2 p-4">
           <p className="t-overline mb-2">Search result preview</p>
-          <p className="truncate font-mono text-label text-muted">
+          <p className="truncate text-label text-muted">
             {host} › product › {slug || "…"}
           </p>
           <p className="mt-1 text-[1.125rem] font-medium leading-snug text-text">{clip(title, TITLE_LIMIT + 5)}</p>
@@ -93,7 +92,7 @@ export function SeoSection({
 function Counter({ id, count, limit }: { id: string; count: number; limit: number }) {
   const over = count > limit;
   return (
-    <p id={id} className={cn("-mt-2 text-right font-mono text-label", over ? "text-warning" : "text-muted")}>
+    <p id={id} className={cn("-mt-2 text-right text-label tabular-nums", over ? "text-warning" : "text-muted")}>
       {count} / {limit}
       <span className="sr-only">
         {" "}

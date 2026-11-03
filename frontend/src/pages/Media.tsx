@@ -591,7 +591,7 @@ function AssetTable({
                 </div>
               </TD>
               <TD className="hidden whitespace-nowrap text-muted sm:table-cell">{typeLabel(a)}</TD>
-              <TD className="t-code hidden whitespace-nowrap text-muted md:table-cell">{formatBytes(a.sizeBytes)}</TD>
+              <TD className="t-code hidden whitespace-nowrap text-muted tabular-nums md:table-cell">{formatBytes(a.sizeBytes)}</TD>
               <TD className="hidden whitespace-nowrap text-label text-muted md:table-cell">
                 <UsageNote asset={a} />
               </TD>
@@ -679,7 +679,7 @@ function MediaDetail({
         </div>
         <div>
           <dt className="t-label">Size</dt>
-          <dd className="mt-0.5 font-mono text-help text-text">{formatBytes(a.sizeBytes)}</dd>
+          <dd className="mt-0.5 text-help text-text tabular-nums">{formatBytes(a.sizeBytes)}</dd>
         </div>
         <div className="col-span-2">
           <dt className="t-label">Alt text</dt>

@@ -5,9 +5,10 @@
    The sidebar is always dark; the main panel has a light and a dark theme,
    switched by `data-theme` on <html>. Source of truth for the values:
    docs/redesign/00-design-reference.md and 02a-decisions.md.
-   Typefaces: Barlow (headings), Inter (body), JetBrains Mono (codes) — from
-   Google Fonts via the <link> in index.html. Weights: Barlow and Inter
-   400/500/600/700, JetBrains Mono 400/500.
+   Typefaces: Barlow (headings) and Inter (everything else) — from Google
+   Fonts via the <link> in index.html, 400/500/600/700. Codes and counts are
+   Inter with tabular figures; only the HTML code editors use a monospace,
+   the system's (`font-mono`).
    ========================================================================== */
 
 @tailwind base;
@@ -222,8 +223,11 @@
   .t-label { @apply font-body text-label font-semibold tracking-[0.02em] text-muted; line-height: 1.3; } /* field label */
   .t-help { @apply font-body text-help text-muted; line-height: 1.5; }
   .t-th { @apply font-body text-label font-semibold text-muted; line-height: 1.3; } /* table head */
-  .t-code { @apply font-mono text-help; } /* 13 — SKU, slug, page numbers in cells and inline values */
-  .t-code-sm { @apply font-mono text-label; } /* 12 — under-text slugs, counts in badges/segments, kbd */
+  /* Codes in Inter since 12.16. Add `tabular-nums` where they show NUMBERS that
+     must line up (counts, quantities, sizes, dates): not on the roles, because
+     Inter's tabular figures also widen the hyphen, so "air-mover" read "air - mover". */
+  .t-code { @apply font-body text-help; } /* 13 — SKU, slug, page numbers in cells and inline values */
+  .t-code-sm { @apply font-body text-label; } /* 12 — under-text slugs, counts in badges/segments, kbd */
 
   /* One-off headings (02a Q7) */
   .t-modal-title { @apply font-heading font-bold; font-size: 1.375rem; line-height: 1.15; } /* 22 */

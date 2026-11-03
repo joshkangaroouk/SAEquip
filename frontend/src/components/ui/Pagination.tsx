@@ -72,10 +72,10 @@ export function Pagination({
     <nav aria-label="Pagination" className={cn("flex flex-wrap items-center justify-between gap-x-6 gap-y-3", className)}>
       <p className="text-body text-muted" aria-live="polite">
         Showing{" "}
-        <span className="font-mono text-text">
+        <span className="text-text tabular-nums">
           {from === to ? from : `${from}–${to}`}
         </span>{" "}
-        of <span className="font-mono text-text">{total}</span> {label}
+        of <span className="text-text tabular-nums">{total}</span> {label}
       </p>
 
       {onPageSizeChange && (
@@ -105,7 +105,7 @@ export function Pagination({
         </Button>
         {pageList(current, pageCount).map((p, i) =>
           p === "gap" ? (
-            <span key={`gap-${i}`} aria-hidden="true" className="inline-flex h-8.5 w-6 items-center justify-center font-mono text-help text-muted">
+            <span key={`gap-${i}`} aria-hidden="true" className="inline-flex h-8.5 w-6 items-center justify-center text-help text-muted tabular-nums">
               …
             </span>
           ) : (
@@ -116,7 +116,7 @@ export function Pagination({
               aria-current={p === current ? "page" : undefined}
               onClick={() => p !== current && onPageChange(p)}
               className={cn(
-                "inline-flex h-8.5 min-w-8.5 items-center justify-center border px-1.5 font-mono text-help transition-colors duration-[120ms]",
+                "inline-flex h-8.5 min-w-8.5 items-center justify-center border px-1.5 text-help tabular-nums transition-colors duration-[120ms]",
                 p === current
                   ? "border-accent bg-accent font-medium text-accent-ink"
                   : "border-transparent text-text hover:bg-surface-2",

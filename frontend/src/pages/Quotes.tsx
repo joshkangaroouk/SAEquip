@@ -174,7 +174,7 @@ function QuoteDetail({
                     </TD>
                     <TD className="t-code">{item.sku || "—"}</TD>
                     <TD className="text-muted">{formatOptions(item.options) ?? "—"}</TD>
-                    <TD className="t-code text-right">{item.quantity}</TD>
+                    <TD className="t-code text-right tabular-nums">{item.quantity}</TD>
                   </TR>
                 ))}
               </TBody>
@@ -198,7 +198,7 @@ function QuoteDetail({
                   <dt className="text-muted">Options</dt>
                   <dd className="text-muted">{formatOptions(item.options) ?? "—"}</dd>
                   <dt className="text-muted">Qty</dt>
-                  <dd className="t-code text-text">{item.quantity}</dd>
+                  <dd className="t-code text-text tabular-nums">{item.quantity}</dd>
                 </dl>
               </li>
             ))}

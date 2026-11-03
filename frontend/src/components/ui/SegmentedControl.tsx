@@ -137,7 +137,7 @@ export function SegmentedControl<T extends string>({
               </span>
             )}
             {o.count !== undefined && (
-              <span className={cn("font-mono text-micro font-normal", on ? "text-accent-ink" : "text-muted")}>
+              <span className={cn("text-micro font-normal tabular-nums", on ? "text-accent-ink" : "text-muted")}>
                 {o.count}
               </span>
             )}

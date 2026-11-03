@@ -196,7 +196,7 @@ export function Tab({
         </span>
         <span className="col-start-1 row-start-1">{children}</span>
       </span>
-      {count !== undefined && <span className="t-code-sm text-muted">{count}</span>}
+      {count !== undefined && <span className="t-code-sm text-muted tabular-nums">{count}</span>}
       {indicator && (
         <>
           <span

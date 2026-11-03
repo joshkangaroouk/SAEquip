@@ -205,7 +205,7 @@ export function SplitListItem({
     >
       <span className="flex items-baseline justify-between gap-3">
         <span className={cn("min-w-0 truncate text-body text-text", selected && "font-semibold")}>{title}</span>
-        {meta && <span className="t-code-sm shrink-0 text-muted">{meta}</span>}
+        {meta && <span className="t-code-sm shrink-0 text-muted tabular-nums">{meta}</span>}
       </span>
       {(subtitle || badge) && (
         <span className="mt-0.5 flex items-center justify-between gap-3">

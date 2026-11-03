@@ -449,7 +449,7 @@ function CategoryTree({
             {n.slug && <span className="t-code-sm block truncate text-muted">{n.slug}</span>}
           </div>
         </div>
-        <span className="hidden font-mono text-help text-muted sm:block">{n.subcategoryCount}</span>
+        <span className="hidden text-help text-muted tabular-nums sm:block">{n.subcategoryCount}</span>
         {/*
           * ⚠️ The HUB's count, not Duda's. The two differ by design between
           * syncs, and showing Duda's made this column report a product the
@@ -457,7 +457,7 @@ function CategoryTree({
           * widget. The sync is Kangaroo's job, so the staff screen no longer
           * flags the difference (02 §6).
           */}
-        <span className="font-mono text-help text-text">{n.hubProductCount}</span>
+        <span className="text-help text-text tabular-nums">{n.hubProductCount}</span>
         <DropdownMenu
           label={`Actions for ${n.title}`}
           actions={[
