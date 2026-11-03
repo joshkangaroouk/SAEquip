@@ -15,14 +15,17 @@ const fieldBase =
 
 /**
  * Control density: "md" is the design's 40px field; "sm" and "xs" are the
- * 34px dense field for toolbars and the packed product editor (02a Q11).
- * Every density is 14px type and 12px side padding.
+ * 34px dense field for toolbars and the packed product editor (02a Q11);
+ * "chip" is 28px, for a field that sits in a row of 26px chips (Product
+ * options' "New value…"). Every density is 14px type; "chip" has 10px side
+ * padding, the rest 12px.
  *
  * Pick the density here rather than passing a height through `className`.
  */
-export type FieldSize = "xs" | "sm" | "md";
+export type FieldSize = "chip" | "xs" | "sm" | "md";
 
 export const fieldSizes: Record<FieldSize, string> = {
+  chip: "h-7 px-2.5 text-body",
   xs: "h-8.5 px-3 text-body",
   sm: "h-8.5 px-3 text-body",
   md: "h-10 px-3 text-body",
