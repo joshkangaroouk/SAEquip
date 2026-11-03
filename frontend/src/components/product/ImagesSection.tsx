@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { rectSortingStrategy } from "@dnd-kit/sortable";
-import { Badge, Button, Card, CardHeader, SectionError, EmptyState, FileDropzone, SortableList, toast } from "../ui";
+import { Button, Card, CardHeader, SectionError, EmptyState, FileDropzone, SortableList, toast } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import { ImageCard } from "./ImageCard";
 import type { ImageDraft } from "./productEditorTypes";
@@ -21,13 +21,11 @@ import type { MediaAsset } from "../../lib/types";
 export function ImagesSection({
   images,
   onChange,
-  dirty,
   error,
 }: {
   images: ImageDraft[];
   /** A value, or a function of the gallery as it is when the change lands. */
   onChange: (next: ImageDraft[] | ((prev: ImageDraft[]) => ImageDraft[])) => void;
-  dirty: boolean;
   error?: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -67,7 +65,6 @@ export function ImagesSection({
           description="Drag to reorder — the first image is the product thumbnail."
           actions={
             <>
-              {dirty && <Badge dot="unsaved">Unsaved</Badge>}
               <Button variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
                 Add from Media Centre
               </Button>

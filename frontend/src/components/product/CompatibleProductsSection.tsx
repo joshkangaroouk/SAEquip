@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../../lib/api";
-import { Thumb, Alert, Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
+import { Thumb, Alert, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
 import type { CompatibleDraft } from "./productEditorTypes";
 import type { ProductSummary } from "../../lib/types";
 
@@ -45,13 +45,11 @@ export function CompatibleProductsSection({
   productId,
   items,
   onChange,
-  dirty,
   error,
 }: {
   productId: string;
   items: CompatibleDraft[];
   onChange: (next: CompatibleDraft[]) => void;
-  dirty: boolean;
   error?: string;
 }) {
   const [all, setAll] = useState<ProductSummary[] | null>(null);
@@ -99,7 +97,6 @@ export function CompatibleProductsSection({
       <CardHeader
         title="Compatible Products"
         description="Shown on the product page as a carousel. Click a product on the left to add it; drag the right-hand list to set the order it appears in."
-        actions={dirty ? <Badge dot="unsaved">Unsaved</Badge> : undefined}
       />
 
       <SectionError message={error} />

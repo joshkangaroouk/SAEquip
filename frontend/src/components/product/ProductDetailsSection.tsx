@@ -1,25 +1,25 @@
-import { Alert, Badge, Card, CardHeader, Checkbox, Field, Input, Select } from "../ui";
+import { Card, CardHeader, Checkbox, Field, Input, Select } from "../ui";
 import type { NativeForm } from "./productEditorTypes";
 
 const TYPES = ["PHYSICAL", "DIGITAL", "SERVICE", "DONATION"];
-const STATUSES = ["ACTIVE", "HIDDEN"];
 const STOCK = ["IN_STOCK", "OUT_OF_STOCK"];
 
 /**
- * Native Duda product fields. Controlled — the parent owns the draft and the
- * unified save bar commits it.
+ * Native Duda product fields on Overview: name, SKU and, unless hidden, the
+ * commerce fields. Controlled — the parent owns the draft and the unified save
+ * bar commits it.
+ *
+ * The rest of the same `details` key lives elsewhere (02a "Batch 8"): status
+ * is the side panel's Live toggle, the SEO fields are the SEO tab, and the
+ * description is on Content. Its errors show at the top of the panel.
  */
 export function ProductDetailsSection({
   value,
   onChange,
-  dirty,
-  error,
   hideCommerce = false,
 }: {
   value: NativeForm;
   onChange: (next: NativeForm) => void;
-  dirty: boolean;
-  error?: string;
   /**
    * Hides the native-commerce fields (type, stock, pricing, quantity, shipping,
    * inventory). They're still on the product and still saved untouched — a
@@ -32,17 +32,7 @@ export function ProductDetailsSection({
 
   return (
     <Card id="section-details">
-      <CardHeader
-        title="Details"
-        description="Native Duda fields. These sync straight to the store."
-        actions={dirty ? <Badge dot="unsaved">Unsaved</Badge> : undefined}
-      />
-
-      {error && (
-        <Alert tone="danger" className="mb-4">
-          {error}
-        </Alert>
-      )}
+      <CardHeader title="Details" description="Native Duda fields. These sync straight to the store." />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Name" htmlFor="p-name" className="sm:col-span-2 lg:col-span-3">
@@ -64,16 +54,6 @@ export function ProductDetailsSection({
           </Select>
         </Field>
         )}
-
-        <Field label="Status" htmlFor="p-status" hint="Hidden products aren't shown in the store.">
-          <Select size="sm" id="p-status" value={value.status} onChange={(e) => set("status", e.target.value)}>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </Select>
-        </Field>
 
         {!hideCommerce && (
           <>
@@ -148,39 +128,6 @@ export function ProductDetailsSection({
           </>
         )}
       </div>
-
-      <fieldset className="mt-4 rounded-lg border border-border p-3">
-        <legend className="px-1.5 text-help font-medium text-muted">
-          SEO
-        </legend>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Title" htmlFor="p-seo-title">
-            <Input size="sm"
-              id="p-seo-title"
-              value={value.seo_title}
-              onChange={(e) => set("seo_title", e.target.value)}
-            />
-          </Field>
-          <Field
-            label="Product URL slug"
-            htmlFor="p-seo-url"
-            hint="The public widget finds this product by its slug — changing it changes the live URL."
-          >
-            <Input size="sm"
-              id="p-seo-url"
-              value={value.seo_product_url}
-              onChange={(e) => set("seo_product_url", e.target.value)}
-            />
-          </Field>
-          <Field label="Meta description" htmlFor="p-seo-desc" className="sm:col-span-3">
-            <Input size="sm"
-              id="p-seo-desc"
-              value={value.seo_description}
-              onChange={(e) => set("seo_description", e.target.value)}
-            />
-          </Field>
-        </div>
-      </fieldset>
     </Card>
   );
 }

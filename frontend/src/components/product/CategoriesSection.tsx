@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../../lib/api";
-import { AccordionCard } from "../ui";
+import { EditorSection } from "./EditorSection";
 import { AssignPickList } from "./AssignPickList";
 
 interface CategoryNode {
@@ -25,13 +25,18 @@ interface CategoryNode {
 export function CategoriesSection({
   selected,
   onChange,
-  dirty,
   error,
+  onStaleCount,
 }: {
   selected: string[];
   onChange: (next: string[]) => void;
-  dirty: boolean;
   error?: string;
+  /**
+   * How many selected categories Duda no longer has, once the list has
+   * loaded — the editor header's "No longer in Duda" chip. From the list this
+   * section already loads, so no second fetch.
+   */
+  onStaleCount?: (n: number) => void;
 }) {
   const [cats, setCats] = useState<CategoryNode[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -46,15 +51,18 @@ export function CategoriesSection({
     };
   }, []);
 
+  const stale = cats ? selected.filter((id) => !cats.some((c) => c.id === id)).length : 0;
+  useEffect(() => {
+    if (cats) onStaleCount?.(stale);
+  }, [cats, stale, onStaleCount]);
+
   return (
-    <AccordionCard
+    // Not collapsible any more: it sits in the editor's side panel (02a "Batch 8").
+    <EditorSection
       id="section-categories"
       title="Categories"
       description="Which Duda categories this product belongs to."
-      summary={selected.length ? `${selected.length} selected` : undefined}
-      dirty={dirty}
-      error={error ?? loadError ?? undefined}
-      defaultOpen
+      error={error ?? loadError}
     >
       {!cats && !loadError ? (
         <p className="text-help text-muted">Loading categories…</p>
@@ -74,6 +82,6 @@ export function CategoriesSection({
           emptyText="No categories yet — create them on the Categories page."
         />
       )}
-    </AccordionCard>
+    </EditorSection>
   );
 }

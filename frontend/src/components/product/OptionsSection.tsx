@@ -120,7 +120,6 @@ export function OptionsSection({
           }
           actions={
             <>
-              {dirty && <Badge dot="unsaved">Unsaved</Badge>}
               <VariationCountMeter
                 current={currentVariationCount}
                 projected={projected}

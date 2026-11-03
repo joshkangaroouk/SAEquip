@@ -1,4 +1,5 @@
-import { AccordionCard, Toggle } from "../ui";
+import { Toggle } from "../ui";
+import { EditorSection } from "./EditorSection";
 
 /**
  * Whether this product is an accessory (a bracket, film, charger, trolley…)
@@ -8,25 +9,20 @@ import { AccordionCard, Toggle } from "../ui";
 export function AccessorySection({
   checked,
   onChange,
-  dirty,
   error,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
-  dirty: boolean;
   error?: string;
 }) {
   return (
-    <AccordionCard
+    <EditorSection
       id="section-accessory"
       title="Accessory"
       description='Listing pages can hide accessories with "Hide accessories".'
-      summary={checked ? "Accessory" : undefined}
-      dirty={dirty}
       error={error}
-      defaultOpen
     >
       <Toggle id="product-is-accessory" checked={checked} onChange={onChange} label="This product is an accessory" />
-    </AccordionCard>
+    </EditorSection>
   );
 }

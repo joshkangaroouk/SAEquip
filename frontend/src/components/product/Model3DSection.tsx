@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, SectionError, RemoveButton } from "../ui";
+import { Button, Card, CardHeader, SectionError, RemoveButton } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import { Model3DPreview } from "./Model3DPreview";
 import type { MediaAsset } from "../../lib/types";
@@ -14,12 +14,10 @@ import type { Model3DDraft } from "./productEditorTypes";
 export function Model3DSection({
   value,
   onChange,
-  dirty,
   error,
 }: {
   value: Model3DDraft;
   onChange: (next: Model3DDraft) => void;
-  dirty: boolean;
   error?: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -34,7 +32,6 @@ export function Model3DSection({
       <CardHeader
         title="3D Model"
         description="Upload a .glb file to show an interactive 3D viewer on the product page."
-        actions={dirty && <Badge dot="unsaved">Unsaved</Badge>}
       />
 
       <SectionError message={error} />

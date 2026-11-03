@@ -18,7 +18,6 @@ export function LogoActivationPanel({
   entries,
   activeIds,
   onToggle,
-  dirty,
 }: {
   id: string;
   kind: "SA_LOGO" | "CERT_LOGO";
@@ -26,7 +25,6 @@ export function LogoActivationPanel({
   entries: ProductLogoEntry[];
   activeIds: string[];
   onToggle: (logoId: string) => void;
-  dirty: boolean;
 }) {
   const active = new Set(activeIds);
 
@@ -45,7 +43,6 @@ export function LogoActivationPanel({
         }
         actions={
           <>
-            {dirty && <Badge dot="unsaved">Unsaved</Badge>}
             {entries.length > 0 && <Badge tone="neutral">{active.size} active</Badge>}
           </>
         }

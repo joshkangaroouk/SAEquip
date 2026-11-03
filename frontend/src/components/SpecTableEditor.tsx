@@ -1,4 +1,4 @@
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, RemoveButton, SortableList } from "./ui";
+import { Button, Card, CardHeader, SectionError, DragHandle, Input, RemoveButton, SortableList } from "./ui";
 import type { SpecRowDraft } from "./product/productEditorTypes";
 import {
   flattenSpecGroups,
@@ -33,12 +33,10 @@ import {
 export function SpecTableEditor({
   rows,
   onChange,
-  dirty,
   error,
 }: {
   rows: SpecRowDraft[];
   onChange: (next: SpecRowDraft[]) => void;
-  dirty: boolean;
   error?: string;
 }) {
   const groups = groupSpecRows(rows);
@@ -95,7 +93,6 @@ export function SpecTableEditor({
                 {lineCount === 1 ? "" : "s"}
               </span>
             )}
-            {dirty ? <Badge dot="unsaved">Unsaved</Badge> : null}
           </div>
         }
       />

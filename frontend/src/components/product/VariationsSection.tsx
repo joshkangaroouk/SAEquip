@@ -18,7 +18,6 @@ export function VariationsSection({
   variations,
   options,
   lockedByOptions,
-  dirty,
   error,
   onChange,
   onChangeAll,
@@ -27,7 +26,6 @@ export function VariationsSection({
   variations: VariationDraft[];
   options: OptionRefDraft[];
   lockedByOptions: boolean;
-  dirty: boolean;
   error?: string;
   onChange: (id: string, patch: Partial<VariationDraft>) => void;
   onChangeAll: (patch: Partial<VariationDraft>) => void;
@@ -49,7 +47,6 @@ export function VariationsSection({
         }
         actions={
           <>
-            {dirty && <Badge dot="unsaved">Unsaved</Badge>}
             <Badge tone="neutral">{variations.length}</Badge>
           </>
         }

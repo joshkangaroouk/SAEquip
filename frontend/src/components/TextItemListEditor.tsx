@@ -1,4 +1,4 @@
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, RemoveButton, SortableList } from "./ui";
+import { Button, Card, CardHeader, SectionError, DragHandle, Input, RemoveButton, SortableList } from "./ui";
 import type { TextItemDraft } from "./product/productEditorTypes";
 
 /**
@@ -11,7 +11,6 @@ export function TextItemListEditor({
   description,
   items,
   onChange,
-  dirty,
   error,
   placeholder = "Enter text…",
 }: {
@@ -20,7 +19,6 @@ export function TextItemListEditor({
   description?: string;
   items: TextItemDraft[];
   onChange: (next: TextItemDraft[]) => void;
-  dirty: boolean;
   error?: string;
   placeholder?: string;
 }) {
@@ -34,7 +32,6 @@ export function TextItemListEditor({
       <CardHeader
         title={title}
         description={description}
-        actions={dirty ? <Badge dot="unsaved">Unsaved</Badge> : undefined}
       />
 
       <SectionError message={error} />

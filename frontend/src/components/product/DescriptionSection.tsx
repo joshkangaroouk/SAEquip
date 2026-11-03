@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Badge, Card, CardHeader, RichTextEditor, SegmentedControl, Textarea } from "../ui";
+import { Alert, Card, CardHeader, RichTextEditor, SegmentedControl, Textarea } from "../ui";
 
 /**
  * Product description editor — a WYSIWYG (tiptap) with a raw-HTML escape hatch.
@@ -32,7 +32,6 @@ export function DescriptionSection({
         description="Shown on the product page in Duda."
         actions={
           <>
-            {dirty && <Badge dot="unsaved">Unsaved</Badge>}
             <SegmentedControl
               ariaLabel="Description editor"
               value={mode}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, FilePreview, Input, Select, SortableList } from "../ui";
+import { Button, Card, CardHeader, SectionError, DragHandle, FilePreview, Input, Select, SortableList } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import type { MediaAsset } from "../../lib/types";
 import type { DownloadDraft } from "./productEditorTypes";
@@ -42,12 +42,10 @@ function formatBytes(n: number): string {
 export function DownloadsSection({
   value,
   onChange,
-  dirty,
   error,
 }: {
   value: DownloadDraft[];
   onChange: (next: DownloadDraft[]) => void;
-  dirty: boolean;
   error?: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -91,7 +89,6 @@ export function DownloadsSection({
         description="Datasheets, user manuals and certificates for this product. The type decides which resources page lists each file. Drag to set the order."
         actions={
           <div className="flex items-center gap-2">
-            {dirty && <Badge dot="unsaved">Unsaved</Badge>}
             <Button type="button" size="sm" onClick={() => setPickerOpen(true)}>
               + Add download
             </Button>
