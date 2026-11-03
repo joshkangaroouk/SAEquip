@@ -1349,7 +1349,7 @@ See `backend/.env.example` and `frontend/.env.example` for the full annotated li
 - **Variations send only the CHANGED rows.** `PUT /variations` makes one Duda call per row it is sent, and a product can have 300, so sending every row on each save risked a timeout for an edit to one SKU.
 - ⚠️ **Anything that completes later updates the draft with a FUNCTION of the current slice** (`setSection(key, prev => …)`, fixed 2026-10-12). Uploads finish seconds after the drop, and appending to the gallery as captured at the drop kept only the LAST of several dropped images, and undid alt text typed meanwhile. `ImagesSection`'s append/alt/remove use the function form, and `FileDropzone` calls the current `onUploaded` through a ref.
 - **A gallery save refreshes `HubProduct.thumbnailUrl`** (`PUT /images` calls `syncHubProduct`), so a new primary image reaches the compatible carousel on other products' pages without waiting for this product to be reopened.
-- The unsaved-changes guard (`hooks/useUnsavedChangesWarning.ts`) needs the **data router**: `useBlocker` calls `useDataRouterContext()` and throws under `<BrowserRouter>`. That's why `App.tsx` exports `createBrowserRouter`. It also pairs a `beforeunload` listener, which `useBlocker` does not cover. ⚠️ **A deliberate exit is suppressed through `suppress()`, read at NAVIGATION time** (fixed 2026-10-12). `when` is captured by the last render, so the disarm ref flipped just before the post-delete navigation was not seen: the dialog appeared for a deleted product, and "Save and leave" would PATCH it.
+- The unsaved-changes guard (`hooks/useUnsavedChangesWarning.ts`) needs the **data router**: `useBlocker` calls `useDataRouterContext()` and throws under `<BrowserRouter>`. That's why `App.tsx` exports `createBrowserRouter`. It also pairs a `beforeunload` listener, which `useBlocker` does not cover. ⚠️ **A deliberate exit is suppressed through `suppress()`, read at NAVIGATION time** (fixed 2026-10-12). `when` is captured by the last render, so the disarm ref flipped just before the post-delete navigation was not seen: the dialog appeared for a deleted product, and "Save and leave" would PATCH it. **New product has the guard too** (2026-11): Stay or Discard only, since creating needs the click that translate-on-save's `begin()` runs in, and suppressed for the navigation after "Create and edit".
 - ⚠️ **Paragraph spacing is a WYSIWYG contract, and as of 2026-09-09 the value is 12px — set by US, not by Duda.** The description now renders through the widget's **Overview tab**, so `.saeh-prose p + p{margin-top:12px}` in `widget.js` is the authority, and `RichTextEditor.tsx` + `RichHtml.tsx` match it. **Change one, change all three** or the editor stops being trustworthy.
 
   ⚠️ **Use `mt-[12px]`, never `mt-3`.** Tailwind's spacing scale is rem-based, so `mt-3` depends on the root font size: under the old 110% root it resolved to **13.2px** while the widget renders a literal 12px. The root has been 100% since the 2026-10 redesign, but the literal stays, because only absolute px on both sides keeps them equal whatever the root. Same trap as the old `1em` one.
@@ -2436,17 +2436,27 @@ syncing made Duda report `products_count: 2` **and** made the product's own `cat
 array list the category; a second run was a clean no-op; removing the Hub rows and
 re-syncing emptied both sides.
 
-### Product editor layout
+### Product editor layout (tabs, redesign batch 8, 2026-11)
 
-70/30 two-column (`lg:grid-cols-10`, 7 + 3). Left is the product; right is classification. **Grid, not flex**, so a long accordion opening on the left cannot drag the right column's panels down.
+A header card, the sections in six tabs, and a side panel (`docs/redesign/02a-decisions.md`, "Batch 8"):
+- **Header:** the saved name, SKU, the Live / Hidden chip, an "N categories no longer in Duda" fault chip, the load time with Refresh (disabled while dirty), and View on website via `productPageUrl()`. No Save (the save bar is the one Save) and no back link.
+- **Tabs**, in `?tab=` (written with replace; an unknown value reads as Overview):
+  - Overview: Details, Accessory, and Delete product at the foot.
+  - Content: Description, Technical specs, Key benefits, Applications, Compatible products.
+  - Compliance: SA logos, Certification logos.
+  - Options: Options, Variations (still locked while options are dirty).
+  - Files & media: Images, 3D model, Downloads.
+  - SEO: `SeoSection` (title, slug, meta description) with 55 / 160 counters and a result preview.
+- **Side panel**, from 1280px: Visibility (the Live toggle, which is the `status` field of `details`, same save key) and Categories. Below 1280 it shows under the tabs with Overview only. ⚠️ It is rendered once and hidden with CSS, so Categories stays mounted.
+- ⚠️ **A panel mounts on its first visit, then stays mounted and hidden** (`Tabs keepMounted="visited"`): tiptap, dnd and form state survive a tab switch, and the compatible picker does not refetch. Unvisited panels are empty `tabpanel` shells, so every `aria-controls` resolves.
+- ⚠️ **A tab's dot comes from `editorTabState()` (`components/product/editorTabs.ts`), not from whole keys.** `details` spans Overview, Content (the description), SEO and the side panel's status, so each tab's dirty dot is ITS fields diffed against the baseline (`DETAIL_FIELDS`). Errors are `saveErrors[k] ?? validationErrors[k]`: a details server error goes on Overview and every tab whose fields changed, and a details validation error on its field's tab (the slug → SEO). Side-panel keys count toward Overview only below 1280. **A new `details` field must go into `DETAIL_FIELDS`**, or no tab ever shows it dirty.
+- ⚠️ **Switching tabs must not trip the unsaved-changes blocker.** It changes only the query, and `useUnsavedChangesWarning` compares pathnames.
+- **Save-bar pills are buttons.** `tabForKey()` picks the tab; the editor switches to it, waits for the render, then scrolls to and focuses the section (`sectionAnchor()`).
+- **`EditorSection` replaces `AccordionCard` in the editor**, minus the collapse: a heading, a description, the section's error, and `AccordionBodyProvider`. Sections no longer draw their own Unsaved badge: the tab dots and the save bar carry it. A details error is an Alert at the top of each tab it belongs to, and a logos error at the top of Compliance; neither had a home before.
 
-⚠️ **Details and Description are deliberately NOT collapsible** — they are what you came to edit, and hiding them behind a click buys the least valuable scroll at the cost of the most common task.
+⚠️ **The section's error is printed ONCE, by the `EditorSection` (or accordion) around it.** Every section renders `SectionError`, which stays silent inside the provider (context, like `Card`); before that, each failing section showed the same sentence in two boxes, one above the other.
 
-`AccordionCard` **unmounts** its body when closed rather than hiding it: these bodies are not cheap (the compatible picker fetches the whole catalogue, the 3D section mounts a `model-viewer`), and twelve open at once is what this change exists to avoid. It also **opens itself when a section becomes dirty or errors, and only on that transition** — always-open-while-dirty could never be collapsed again. A collapsed section still shows an **Error / Unsaved badge** in its header, because an editor that can hide a failed section without trace is how you lose work.
-
-⚠️ **The section's error is printed ONCE, by the accordion.** Every section renders `SectionError`, which stays silent inside an accordion body (context, like `Card`); before that, each failing section showed the same sentence in two boxes, one above the other.
-
-⚠️ **A section's `CardHeader` renders ONLY its actions inside an accordion.** The accordion header already carries the title, dirty badge, summary and description, so the section's own header repeated all of it — the same sentence twice, each with a bottom margin.
+⚠️ **A section's `CardHeader` renders ONLY its actions inside the provider.** The wrapper already carries the title and description, so the section's own header repeated them.
 
 ⚠️ **`AccordionCard` declares its own card chrome instead of using `<Card className="p-0">`.** `cn()` is a **plain string join, not tailwind-merge**, so `p-0` landed in the class list *alongside* Card's `p-5` and lost on stylesheet order — leaving 22px of padding wrapping every accordion, header included. **Any `w-*`/`p-*`/`text-*` passed to a UI component can silently lose to that component's own base class.** Either swap `cn` for `tailwind-merge` (one dependency, fixes it everywhere — but existing overrides that are currently no-ops would start applying, so it needs a pass) or express the intent as a real PROP, which is the only form that cannot lose.
 
@@ -2463,7 +2473,7 @@ re-syncing emptied both sides.
 
 That last one is a different failure and worth knowing separately: **`Table` draws its border on its WRAPPER div while `className` goes to the inner `<table>`**, so `border-0` was never going to reach it. And because `Table` is already a bordered, rounded surface, **a `Table` must not be wrapped in a `Card`** — that is a literal box inside a box, which is what it looked like on Users, ProductOptions and Categories. `Card padded={false}` is for flush content that has no chrome of its own, like the category tree's grid.
 
-⚠️ **`Card`/`CardHeader` render bare inside an accordion, via React context** (`AccordionBodyProvider`). Every section renders its own Card, so nesting would draw a card in a card and print the title twice. The alternative was threading a `bare` prop through eight unrelated section components; the accordion already knows, so it tells them.
+⚠️ **`Card`/`CardHeader` render bare inside an `EditorSection` (or accordion), via React context** (`AccordionBodyProvider`). Every section renders its own Card, so nesting would draw a card in a card and print the title twice. The alternative was threading a `bare` prop through eight unrelated section components; the wrapper already knows, so it tells them.
 
 ### SEO titles and descriptions (written 2026-09-11)
 
