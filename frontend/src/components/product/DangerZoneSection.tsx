@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, CardHeader, Field, Input, Modal, toast } from "../ui";
+import { Button, Card, Field, Input, Modal, toast } from "../ui";
 import { apiJson } from "../../lib/api";
 
 interface DeletePreview {
@@ -78,16 +78,21 @@ export function DangerZoneSection({
 
   return (
     <>
+      {/* Not CardHeader: as a padded card's first child that draws a header
+          ROW, with a rule and room for a body below it, and this card has no
+          body — it left an empty band at the foot of Overview. */}
       <Card id="section-danger" className="border-danger/40">
-        <CardHeader
-          title="Delete product"
-          description="Removes the product from Duda along with its Hub content. Captured leads and quote requests are kept."
-          actions={
-            <Button variant="danger" size="sm" onClick={() => void openDialog()}>
-              Delete…
-            </Button>
-          }
-        />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h3 className="t-section text-text">Delete product</h3>
+            <p className="t-help">
+              Removes the product from Duda along with its Hub content. Captured leads and quote requests are kept.
+            </p>
+          </div>
+          <Button variant="danger" size="sm" onClick={() => void openDialog()}>
+            Delete…
+          </Button>
+        </div>
       </Card>
 
       <Modal
