@@ -26,6 +26,11 @@ import { Input } from "./Input";
 export interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
+  /**
+   * The editable area's accessible name. Required: tiptap's surface is a
+   * contenteditable div, not a form control, so no <label> can point at it.
+   */
+  ariaLabel: string;
   className?: string;
   /** Called once after mount with whether tiptap's parse differs from `value`. */
   onNormalisedDiffers?: (differs: boolean) => void;
@@ -75,6 +80,7 @@ function ToolbarButton({
 export function RichTextEditor({
   value,
   onChange,
+  ariaLabel,
   className,
   onNormalisedDiffers,
 }: RichTextEditorProps) {
@@ -100,6 +106,10 @@ export function RichTextEditor({
     content: value,
     editorProps: {
       attributes: {
+        // Announced as a named, multi-line text field rather than an unnamed group.
+        role: "textbox",
+        "aria-multiline": "true",
+        "aria-label": ariaLabel,
         class:
           "min-h-[10rem] max-h-[26rem] overflow-y-auto px-3 py-2.5 text-body leading-relaxed text-text focus:outline-none " +
           // ⚠ Paragraph spacing MUST mirror how the description actually

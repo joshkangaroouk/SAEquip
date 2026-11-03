@@ -945,7 +945,7 @@ function Editing() {
   const [html, setHtml] = useState("<p>First paragraph.</p><p>Second paragraph, 12px below.</p>");
   return (
     <Section title="Rich text">
-      <RichTextEditor value={html} onChange={setHtml} />
+      <RichTextEditor ariaLabel="Rich text (kit)" value={html} onChange={setHtml} />
     </Section>
   );
 }

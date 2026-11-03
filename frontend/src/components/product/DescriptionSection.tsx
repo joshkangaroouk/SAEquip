@@ -55,6 +55,7 @@ export function DescriptionSection({
 
       {mode === "rich" ? (
         <RichTextEditor
+          ariaLabel="Description"
           value={value}
           onChange={onChange}
           onNormalisedDiffers={setWouldReformat}
@@ -62,6 +63,7 @@ export function DescriptionSection({
       ) : (
         <Textarea
           size="sm"
+          aria-label="Description HTML"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="h-56 font-mono"

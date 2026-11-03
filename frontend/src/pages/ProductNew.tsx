@@ -231,6 +231,7 @@ export default function ProductNew() {
               a dangling reference — worse than no association at all. */}
           <Field label="Description" hint="Optional — you can add or change this later.">
             <RichTextEditor
+              ariaLabel="Description"
               value={form.description}
               onChange={(html) => set("description", html)}
             />
