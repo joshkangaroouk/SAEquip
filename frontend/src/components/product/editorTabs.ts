@@ -24,11 +24,11 @@ export function parseTab(value: string | null): EditorTab {
 }
 
 /**
- * The keys in the side panel (Images, Visibility's accessory toggle,
- * Categories), on no tab of their own. Images moved here from Files & media
- * in batch 11 (11 §2).
+ * The keys in the side panel (Visibility's accessory toggle, Categories), on
+ * no tab of their own. Images were here in batch 11 and went back to Files &
+ * media in batch 12 (12 §1).
  */
-const PANEL_KEYS = ["images", "accessory", "categories"] as const;
+const PANEL_KEYS = ["accessory", "categories"] as const;
 type PanelKey = (typeof PANEL_KEYS)[number];
 const isPanelKey = (key: SectionKey): key is PanelKey => (PANEL_KEYS as readonly SectionKey[]).includes(key);
 
@@ -44,6 +44,7 @@ export const KEY_TAB: Record<Exclude<SectionKey, "details" | PanelKey>, EditorTa
   logos: "compliance",
   options: "options",
   variations: "options",
+  images: "files",
   model3d: "files",
   downloads: "files",
 };
@@ -112,7 +113,7 @@ export function editorTabState({
   /** The field `validationErrors.details` is about, from validate(). */
   detailsInvalidField: keyof NativeForm | null;
   /**
-   * Below 1280px the side panel (Images, Visibility, Categories) is part of Overview,
+   * Below 1280px the side panel (Visibility, Categories) is part of Overview,
    * so its edits and errors count there. From 1280 it is on screen beside
    * every tab and belongs to none.
    */
@@ -180,14 +181,11 @@ export function tabForKey(key: SectionKey, state: EditorTabState, panelInOvervie
   return KEY_TAB[key];
 }
 
-/**
- * The tab labels' counts: items on Content, attached options, files on Files
- * & media (the downloads and the 3D model; images are in the side panel).
- */
+/** The tab labels' counts: items on Content, attached options, files on Files & media. */
 export function tabCounts(draft: EditorSnapshot): Partial<Record<EditorTab, number>> {
   return {
     content: draft.specs.length + draft.benefits.length + draft.applications.length,
     options: draft.options.length,
-    files: draft.downloads.length + (draft.model3d.mediaAssetId ? 1 : 0),
+    files: draft.images.length + draft.downloads.length + (draft.model3d.mediaAssetId ? 1 : 0),
   };
 }

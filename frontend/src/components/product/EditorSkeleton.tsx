@@ -7,8 +7,8 @@ import type { EditorTab } from "./editorTabs";
 
 /**
  * The product editor while the product loads (11 §1), in place of a centred
- * spinner: the band, the section cards, and the side panel (the Images card
- * with its featured block and a row of thumbnails, Visibility, Categories),
+ * spinner: the band, the section cards, and the side panel (Visibility,
+ * Categories),
  * on the editor's own grid (`editorLayout`) and in its order, so nothing
  * jumps when the product lands.
  *
@@ -57,51 +57,23 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
         </div>
 
         <div className={sidePanelClass(tab)}>
-          <SectionSkeleton title="w-16" meta>
-            <div className="space-y-4">
+          <SectionSkeleton title="w-20">
+            <div className="space-y-5">
               <div>
-                <SkeletonLine text="t-overline mb-2" className="h-[0.8em] w-16" />
-                <Skeleton className="aspect-[4/3] w-full" />
+                <Skeleton className="h-10 w-[152px]" />
+                <SkeletonLine text="t-help mt-2" className="h-[0.7em] w-52 max-w-full" />
               </div>
               <div>
-                <SkeletonLine text="t-overline" className="h-[0.8em] w-14" />
-                <div className="t-help mb-2 mt-1">
-                  <Lines last="w-28" />
+                <Skeleton className="h-6 w-56 max-w-full" />
+                <div className="t-help mt-2">
+                  <Lines last="w-24" />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <Skeleton className="aspect-square w-full" />
-                  <Skeleton className="aspect-square w-full" />
-                  <Skeleton className="aspect-square w-full" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Skeleton className="h-8.5 w-full" />
-                <Skeleton className="h-8.5 w-full" />
-              </div>
-              <div className="t-help">
-                <Lines last="w-24" count={3} />
               </div>
             </div>
           </SectionSkeleton>
-          <div className="min-w-0 space-y-5">
-            <SectionSkeleton title="w-20">
-              <div className="space-y-5">
-                <div>
-                  <Skeleton className="h-10 w-[152px]" />
-                  <SkeletonLine text="t-help mt-2" className="h-[0.7em] w-52 max-w-full" />
-                </div>
-                <div>
-                  <Skeleton className="h-6 w-56 max-w-full" />
-                  <div className="t-help mt-2">
-                    <Lines last="w-24" />
-                  </div>
-                </div>
-              </div>
-            </SectionSkeleton>
-            <SectionSkeleton title="w-24" meta>
-              <CategoriesSkeleton />
-            </SectionSkeleton>
-          </div>
+          <SectionSkeleton title="w-24" meta>
+            <CategoriesSkeleton />
+          </SectionSkeleton>
         </div>
 
         {tab === "overview" && (

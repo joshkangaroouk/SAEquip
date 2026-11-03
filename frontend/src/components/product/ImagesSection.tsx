@@ -28,10 +28,12 @@ const isDudaHosted = (url: string) => url.includes("cdn-website.com");
 const ACCEPT = { "image/png": [], "image/jpeg": [], "image/webp": [] };
 
 /**
- * The product gallery: the Images card at the top of the editor's side panel
- * (11 §2), WordPress-style. The featured image large, the whole gallery
- * underneath as thumbnails to drag into order, and a thumbnail opens an
- * "Image" dialog for its alt text, Set as featured and Remove.
+ * The product gallery, WordPress-style (11 §2): the first section of the
+ * Files & media tab (12 §1). The featured image large, and the whole gallery
+ * as thumbnails to drag into order, beside it from lg (the featured image at
+ * about 40%, the gallery 4 across) and under it below (3 across). A
+ * thumbnail opens an "Image" dialog for its alt text, Set as featured and
+ * Remove.
  *
  * ⚠️ The featured image IS the first one. There is no primary flag: Duda's
  * image shape is only {url, alt}, the array is a full replacement and
@@ -105,7 +107,7 @@ export function ImagesSection({
   // row, toasts, and the CURRENT addAsset when each one lands.
   const queue = useUploadQueue({ onUploaded: (asset: MediaAsset) => addAsset(asset), upload });
   // The whole card takes a drop. noClick and noKeyboard: the card holds its
-  // own controls, and Upload (below) is the keyboard and click way in.
+  // own controls, and Upload (in the header) is the keyboard and click way in.
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop: queue.onDrop,
     accept: ACCEPT,
@@ -136,10 +138,23 @@ export function ImagesSection({
       <EditorSection
         id="section-images"
         title="Images"
+        description="The first image is the featured image."
         meta={images.length ? `${images.length} ${images.length === 1 ? "image" : "images"}` : undefined}
+        actions={
+          <>
+            <Button ref={addButton} variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
+              Add from Media
+            </Button>
+            <Button variant="secondary" size="sm" onClick={open}>
+              <Upload size={16} aria-hidden="true" />
+              Upload
+            </Button>
+          </>
+        }
         error={error}
       >
-        <div className="space-y-4">
+        {/* From lg the featured image (about 40%) beside the gallery; stacked below. */}
+        <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-5 lg:space-y-0">
           <div>
             <p className="t-overline mb-2">Featured</p>
             {featured ? (
@@ -160,16 +175,18 @@ export function ImagesSection({
             )}
           </div>
 
-          {images.length > 0 && (
-            <div>
-              <p className="t-overline">Gallery</p>
-              <p className="t-help mb-2 mt-1">Drag to reorder. The first image is the featured image.</p>
+          <div>
+            <p className="t-overline">Gallery</p>
+            <p className="t-help mb-2 mt-1">Drag a thumbnail by its handle to reorder.</p>
+            {images.length === 0 ? (
+              <p className="t-help">No images yet. Add one from Media, upload one, or drop one on this card.</p>
+            ) : (
               <SortableList
                 items={images}
                 getId={(img) => img.key}
                 onReorder={onChange}
                 strategy={rectSortingStrategy}
-                className="grid grid-cols-3 gap-2"
+                className="grid grid-cols-3 gap-2 lg:grid-cols-4"
                 renderItem={(img, handle, index) => {
                   const pending = !isDudaHosted(img.url);
                   const n = index + 1;
@@ -220,24 +237,18 @@ export function ImagesSection({
                   );
                 }}
               />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button ref={addButton} variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-              Add from Media
-            </Button>
-            <Button variant="secondary" size="sm" onClick={open}>
-              <Upload size={16} aria-hidden="true" />
-              Upload
-            </Button>
+            )}
           </div>
-          <p className="t-help">
-            Or drop images on this card. PNG, JPEG or WebP, up to 25MB. They upload now and transfer to Duda when you
-            save.
-          </p>
-          <UploadList items={queue.items} />
         </div>
+        <p className="t-help mt-4">
+          Or drop images on this card. PNG, JPEG or WebP, up to 25MB. They upload now and transfer to Duda when you
+          save.
+        </p>
+        {queue.items.length > 0 && (
+          <div className="mt-3">
+            <UploadList items={queue.items} />
+          </div>
+        )}
       </EditorSection>
 
       {/* The drop target's selected treatment (02a "Batch 8"), over the whole card. */}
