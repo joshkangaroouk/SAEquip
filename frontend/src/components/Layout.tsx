@@ -23,7 +23,7 @@ import { useProductIndex } from "../lib/productIndex";
 import { useEnquiryCounts } from "../lib/enquiryCounts";
 import { useSignOut } from "../hooks/useSignOut";
 import { initialsFrom } from "../lib/initials";
-import { Lockup } from "./Lockup";
+import logo from "../assets/saequip-logo-unframed.svg";
 import { CrumbProvider, TopBar } from "./TopBar";
 import { PageHeaderSlot, useDialog } from "./ui";
 import { LG, useMediaQuery } from "../hooks/useMediaQuery";
@@ -197,10 +197,14 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      {/* The lockup row is 64px with a rule under it, level with the top bar's. */}
+      {/* The logo row is 64px with a rule under it, level with the top bar's:
+          the real SA Equip logo (its white frame removed, so it sits on the
+          dark sidebar) at 44px, and "Product Hub" beside it. The logo says
+          "SA Equip", so the words don't. */}
       <div className={cn("flex h-16 shrink-0 items-center border-b px-4", SIDEBAR_BORDER)}>
-        <Link to="/" onClick={onNavigate} className="block">
-          <Lockup />
+        <Link to="/" onClick={onNavigate} className="flex items-center gap-3">
+          <img src={logo} alt="SA Equip" width={140} height={141} className="h-11 w-auto shrink-0" />
+          <span className="text-label text-sidebar-muted">Product Hub</span>
         </Link>
       </div>
 
