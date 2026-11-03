@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import {
   Thumb,
   Alert,
@@ -17,16 +17,11 @@ import {
   SortableList,
   DragHandle,
   type DragHandleProps,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
   toast,
-  TR,
   useConfirm,
 } from "../components/ui";
 import { apiJson } from "../lib/api";
+import { cn } from "../lib/cn";
 
 const ROOT = "ROOT";
 
@@ -42,6 +37,8 @@ interface CategoryNode {
   subcategoryCount: number;
   /** The HUB's count — see the note on the backend type. */
   hubProductCount: number;
+  /** The category page's slug, from the mirror. Null if never mirrored. */
+  slug?: string | null;
 }
 
 interface FormState {
@@ -221,79 +218,60 @@ export default function Categories() {
         description="Create product categories to help store visitors find what they want to buy."
         actions={
           <Button variant="primary" size="sm" onClick={() => openCreate()}>
-            + Create New Category
+            <Plus size={16} aria-hidden="true" />
+            New category
           </Button>
         }
       />
 
-      {/* The real Card and Table, so only the cell contents change on load. */}
+      {/* The same Card, header and grid rows as the tree, so only the
+          contents change on load. Three rows: the top level starts collapsed. */}
       {loading && (
-        <div className="mt-4" aria-busy="true" aria-live="polite" aria-label="Loading categories">
-          <Table>
-            <THead>
-              <TR>
-                <TH className="w-10" />
-                <TH>Category title</TH>
-                <TH className="w-32">Subcategories</TH>
-                <TH className="w-24">Products</TH>
-                <TH className="w-12" />
-              </TR>
-            </THead>
-            <TBody>
-              {Array.from({ length: 8 }, (_, i) => (
-                <TR key={i}>
-                  <TD />
-                  <TD>
-                    {/* Alternating indent, so the placeholder reads as the
-                        tree it is about to become rather than a flat list. */}
-                    <div style={{ paddingLeft: i % 3 === 0 ? 0 : "1.5rem" }}>
-                      <Skeleton className="h-4 w-56" />
-                    </div>
-                  </TD>
-                  <TD>
-                    <Skeleton className="h-4 w-8" />
-                  </TD>
-                  <TD>
-                    <Skeleton className="h-4 w-8" />
-                  </TD>
-                  <TD />
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        </div>
-      )}
-      {error && (
-        <Alert tone="danger" className="mt-4">
-          {error}
-        </Alert>
-      )}
-
-      {!loading && !error && nodes && (
-        <Card className="mt-4" padded={false}>
-          {nodes.length === 0 ? (
-            <div className="p-5">
-              <EmptyState
-                title="No categories yet"
-                description="Group products so visitors can browse them."
-                action={
-                  <Button variant="primary" size="sm" onClick={() => openCreate()}>
-                    + Create New Category
-                  </Button>
-                }
-              />
+        <Card padded={false} aria-busy="true" aria-live="polite" aria-label="Loading categories">
+          <TreeHeader />
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className={cn(COLS, "border-t border-border py-2.5")}>
+              <Skeleton className="h-8.5 w-8.5" />
+              <div className="flex min-w-0 items-center gap-2">
+                <Skeleton className="h-7 w-7 shrink-0" />
+                <Skeleton className="hidden h-10 w-10 shrink-0 sm:block" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-40 max-w-full" />
+                  <Skeleton className="h-3 w-28 max-w-full" />
+                </div>
+              </div>
+              <Skeleton className="hidden h-4 w-6 sm:block" />
+              <Skeleton className="h-4 w-6" />
+              <Skeleton className="h-8.5 w-8.5" />
             </div>
-          ) : (
-            <CategoryTree
-              nodes={nodes}
-              collapsed={collapsed}
-              onToggle={toggle}
-              onEdit={(n) => navigate(`/categories/${n.id}`)}
-              onAddChild={(id) => openCreate(id)}
-              onRemove={(n) => void remove(n)}
-              onReorder={reorder}
-            />
-          )}
+          ))}
+        </Card>
+      )}
+      {error && <Alert tone="danger">{error}</Alert>}
+
+      {!loading && !error && nodes && nodes.length === 0 && (
+        <EmptyState
+          title="No categories yet"
+          description="Group products so visitors can browse them."
+          action={
+            <Button variant="primary" size="sm" onClick={() => openCreate()}>
+              <Plus size={16} aria-hidden="true" />
+              New category
+            </Button>
+          }
+        />
+      )}
+      {!loading && !error && nodes && nodes.length > 0 && (
+        <Card padded={false}>
+          <CategoryTree
+            nodes={nodes}
+            collapsed={collapsed}
+            onToggle={toggle}
+            onEdit={(n) => navigate(`/categories/${n.id}`)}
+            onAddChild={(id) => openCreate(id)}
+            onRemove={(n) => void remove(n)}
+            onReorder={reorder}
+          />
         </Card>
       )}
 
@@ -328,7 +306,6 @@ export default function Categories() {
           <Field label="Title" htmlFor="cat-title">
             <Input
               id="cat-title"
-              size="sm"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               autoFocus
@@ -337,7 +314,6 @@ export default function Categories() {
           <Field label="Parent category" htmlFor="cat-parent" hint="Top level sits at the root of the store.">
             <Select
               id="cat-parent"
-              size="sm"
               value={form.parent_id}
               onChange={(e) => setForm((f) => ({ ...f, parent_id: e.target.value }))}
             >
@@ -359,11 +335,31 @@ export default function Categories() {
   );
 }
 
-/** Grid template shared by the header and every row, so they cannot drift. */
-const COLS = "grid grid-cols-[2rem_1fr_7rem_5rem_3rem] items-center gap-2 px-3";
+/**
+ * Grid template shared by the header, the skeleton and every row, so they
+ * cannot drift: drag handle, category, subcategories, products, actions.
+ * Below `sm` the subcategories column drops out (its cells are `hidden`), so
+ * the category keeps a usable width on a phone.
+ */
+const COLS =
+  "grid grid-cols-[2.125rem_minmax(0,1fr)_3.5rem_2.125rem] items-center gap-x-3 px-3 " +
+  "sm:grid-cols-[2.125rem_minmax(0,1fr)_6.5rem_5rem_2.125rem]";
+
+function TreeHeader() {
+  return (
+    <div className={cn(COLS, "t-th h-10 bg-surface-2")} aria-hidden="true">
+      <span />
+      <span>Category</span>
+      <span className="hidden sm:block">Subcategories</span>
+      <span>Products</span>
+      <span />
+    </div>
+  );
+}
 
 /**
- * The category tree, drag-reorderable.
+ * The category tree, drag-reorderable: the three top-level groups (Products,
+ * Site Challenges, Industries), each opening onto its subcategories.
  *
  * ⚠️ TWO NESTED SortableLists, and the nesting is what enforces the rule.
  * `SortableList` renders its own `DndContext`, so a drag started among a
@@ -376,6 +372,10 @@ const COLS = "grid grid-cols-[2rem_1fr_7rem_5rem_3rem] items-center gap-2 px-3";
  * context, and a tree needs a parent row and its children in the SAME visual
  * sequence but DIFFERENT contexts — which multiple tbodies cannot express.
  * The grid reproduces the columns exactly.
+ *
+ * ⚠️ Every row draws its own TOP border. Each sits inside its own drag
+ * wrapper, so it is always that wrapper's last child: `last:border-b-0`
+ * removed the separator under almost every row.
  */
 function CategoryTree({
   nodes,
@@ -401,50 +401,46 @@ function CategoryTree({
     const isCollapsed = collapsed.has(n.id);
     const kids = childrenOf(n.id);
     return (
-      <div className={`${COLS} border-b border-border py-2.5 last:border-b-0 hover:bg-surface-2`}>
+      <div className={cn(COLS, "border-t border-border py-2.5 transition-colors duration-[120ms] hover:bg-surface-2")}>
         <DragHandle handle={handle} label={`Drag ${n.title} to reorder`} />
-        <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: child ? "1.5rem" : 0 }}>
+        <div className={cn("flex min-w-0 items-center gap-2", child && "pl-4 sm:pl-9")}>
           {kids.length > 0 ? (
             <button
               type="button"
               onClick={() => onToggle(n.id)}
-              aria-label={isCollapsed ? "Expand" : "Collapse"}
+              aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${n.title}`}
               aria-expanded={!isCollapsed}
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted transition-colors hover:bg-surface hover:text-text"
+              className="flex h-7 w-7 shrink-0 items-center justify-center text-muted transition-colors duration-[120ms] hover:bg-surface hover:text-text"
             >
-              {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              {isCollapsed ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
             </button>
           ) : (
-            <span className="h-5 w-5 shrink-0" />
+            !child && <span className="h-7 w-7 shrink-0" />
           )}
-          <Thumb src={n.imageUrl} size={40} />
-          {/* The title is the edit affordance — it is what you click when you
-              mean "open this", and the ⋯ menu keeps the other actions. */}
-          <button
-            type="button"
-            onClick={() => onEdit(n)}
-            className="truncate text-left font-medium text-text underline-offset-2 hover:underline"
-          >
-            {n.title}
-          </button>
+          {/* From `sm`: on a phone the title needs the width more. */}
+          <Thumb src={n.imageUrl} size={40} className="hidden sm:flex" />
+          <div className="min-w-0">
+            {/* The title is the edit affordance — what you click when you
+                mean "open this" — and a real link, so it opens in a new tab. */}
+            <Link
+              to={`/categories/${n.id}`}
+              // Wraps on a phone, where truncating left about ten characters.
+              className={cn("block text-text sm:truncate", child ? "font-medium" : "font-semibold")}
+            >
+              {n.title}
+            </Link>
+            {n.slug && <span className="t-code-sm block truncate text-muted">{n.slug}</span>}
+          </div>
         </div>
-        <span className="text-muted">{n.subcategoryCount}</span>
+        <span className="hidden font-mono text-help text-muted sm:block">{n.subcategoryCount}</span>
         {/*
           * ⚠️ The HUB's count, not Duda's. The two differ by design between
           * syncs, and showing Duda's made this column report a product the
           * edit page could not find — it reads the Hub, as does the public
-          * widget. The dot says a sync is pending rather than leaving the
-          * difference invisible.
+          * widget. The sync is Kangaroo's job, so the staff screen no longer
+          * flags the difference (02 §6).
           */}
-        <span className="flex items-center gap-1.5 text-muted">
-          {n.hubProductCount}
-          {n.hubProductCount !== n.products_count && (
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-              title={`Duda has ${n.products_count}. Run duda:sync-categories to push the Hub's ${n.hubProductCount}.`}
-            />
-          )}
-        </span>
+        <span className="font-mono text-help text-text">{n.hubProductCount}</span>
         <DropdownMenu
           label={`Actions for ${n.title}`}
           actions={[
@@ -459,13 +455,7 @@ function CategoryTree({
 
   return (
     <div>
-      <div className={`${COLS} border-b border-border py-2 text-help font-semibold text-muted`}>
-        <span />
-        <span>Category title</span>
-        <span>Subcategories</span>
-        <span>Products</span>
-        <span />
-      </div>
+      <TreeHeader />
 
       <SortableList
         items={topLevel}
