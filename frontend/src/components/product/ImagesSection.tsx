@@ -76,6 +76,8 @@ export function ImagesSection({
 
         {images.length === 0 ? (
           <EmptyState
+            // Inside the section, under its h2.
+            as="h3"
             title="No images yet"
             description="Drop an image below, or pick one from the Media Centre."
           />

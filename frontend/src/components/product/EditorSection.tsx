@@ -20,6 +20,7 @@ export function EditorSection({
   description,
   meta,
   actions,
+  as: Heading = "h2",
   error,
   children,
 }: {
@@ -33,6 +34,11 @@ export function EditorSection({
    */
   meta?: ReactNode;
   actions?: ReactNode;
+  /**
+   * The heading level (10 §6): h2 under the page's h1 (the product name in
+   * the band), the default; h3 for a section nested inside another.
+   */
+  as?: "h2" | "h3";
   error?: string | null;
   children: ReactNode;
 }) {
@@ -48,9 +54,9 @@ export function EditorSection({
     >
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
         <div className="min-w-0 space-y-1">
-          <h2 id={headingId} className="t-section text-text">
+          <Heading id={headingId} className="t-section text-text">
             {title}
-          </h2>
+          </Heading>
           {description && <p className="t-help">{description}</p>}
         </div>
         {(meta || actions) && (

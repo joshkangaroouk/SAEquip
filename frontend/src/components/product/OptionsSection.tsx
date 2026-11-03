@@ -144,6 +144,8 @@ export function OptionsSection({
 
         {options.length === 0 ? (
           <EmptyState
+            // Inside the section, under its h2.
+            as="h3"
             title="No options on this product"
             description="Attach one to generate purchasable variations, or leave it as a single-variant product."
           />

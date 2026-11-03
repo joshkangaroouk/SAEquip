@@ -62,6 +62,8 @@ export function VariationsSection({
 
       {variations.length === 0 ? (
         <EmptyState
+          // Inside the section, under its h2.
+          as="h3"
           title="No variations"
           description={
             options.length === 0

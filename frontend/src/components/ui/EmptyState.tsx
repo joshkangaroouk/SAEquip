@@ -4,14 +4,15 @@ import { cn } from "../../lib/cn";
  * Centred empty-state block: optional icon, title, description, action.
  * Square, a dashed --border on --surface; the title is the design's
  * empty-state title (Inter 16/600, 02a Q7). `as` sets the heading level so a
- * page's outline stays in order (default h3).
+ * page's outline stays in order (10 §6): h2 under a page title, the default;
+ * h3 inside a card or editor section that has its own h2.
  */
 export function EmptyState({
   title,
   description,
   icon,
   action,
-  as: Heading = "h3",
+  as: Heading = "h2",
   className,
 }: {
   title: string;

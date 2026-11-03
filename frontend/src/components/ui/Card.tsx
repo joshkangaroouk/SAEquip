@@ -52,11 +52,17 @@ export function CardHeader({
   title,
   description,
   actions,
+  as: Heading = "h2",
   className,
 }: {
   title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
+  /**
+   * The heading level (10 §6): h2 for a card directly under the page title,
+   * the default; h3 for a card inside a section that has its own h2.
+   */
+  as?: "h2" | "h3";
   className?: string;
 }) {
   const bare = useInAccordionBody();
@@ -88,7 +94,7 @@ export function CardHeader({
       )}
     >
       <div className="space-y-1">
-        <h3 className="t-section text-text">{title}</h3>
+        <Heading className="t-section text-text">{title}</Heading>
         {description && <p className="t-help">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

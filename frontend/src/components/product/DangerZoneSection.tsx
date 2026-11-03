@@ -84,7 +84,8 @@ export function DangerZoneSection({
       <Card id="section-danger" className="border-danger/40">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <h3 className="t-section text-text">Delete product</h3>
+            {/* h2, like the editor's other sections (10 §6). */}
+            <h2 className="t-section text-text">Delete product</h2>
             <p className="t-help">
               Removes the product from Duda along with its Hub content. Captured leads and quote requests are kept.
             </p>
