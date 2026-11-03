@@ -56,7 +56,9 @@ export function Alert({
       <Icon size={16} strokeWidth={2} aria-hidden="true" className={cn("mt-0.5 shrink-0", ink)} />
       <div className="min-w-0 flex-1">
         {title && <p className={cn("font-semibold", ink)}>{title}</p>}
-        {children && <div className={title ? "mt-0.5" : undefined}>{children}</div>}
+        {/* A reading width on the prose (10 §1), not on the column, so an
+            action still sits at the far right of a full-width page. */}
+        {children && <div className={cn("max-w-[72ch]", title ? "mt-0.5" : undefined)}>{children}</div>}
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
     </div>

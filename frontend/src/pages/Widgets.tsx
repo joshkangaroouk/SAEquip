@@ -625,7 +625,7 @@ export default function Widgets() {
       {/* No top margin: the <style> above is the column's first child, so the shell's first-child rule can't take one off this. */}
       <Card>
         <h2 className="text-body font-semibold text-text">How it works</h2>
-        <ul className="mt-2 list-disc space-y-1.5 pl-5 text-body text-muted">
+        <ul className="mt-2 max-w-[72ch] list-disc space-y-1.5 pl-5 text-body text-muted">
           <li>
             All five are already built and placed on the Duda product template. Nothing needs pasting or
             configuring here — edit a product and the widgets follow.
