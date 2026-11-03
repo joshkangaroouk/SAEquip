@@ -50,7 +50,7 @@ export default function Status() {
   // Reachable by URL only, like /widgets: not in the nav (02a Q16).
   return (
     <>
-      <PageHeader title="System status" description="Whether this dashboard can reach its API, and as whom." />
+      <PageHeader title="System Status" description="Whether this dashboard can reach its API, and as whom." />
 
       {failed && (
         <Alert tone="danger" className="mb-5">

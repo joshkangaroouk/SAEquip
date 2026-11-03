@@ -64,8 +64,10 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     // `handle.crumbs` is each page's place in the top bar's breadcrumb (TopBar.tsx).
+    // Page names in Title Case, as in the sidebar and each page's title (12.11);
+    // product and category names show as entered.
     children: [
-      { path: "/website", element: <WebsiteEditor />, handle: { crumbs: { title: "Website editor" } } },
+      { path: "/website", element: <WebsiteEditor />, handle: { crumbs: { title: "Website Editor" } } },
       { path: "/", element: <Products />, handle: { crumbs: { group: "Catalogue", title: "Products" } } },
       // Static segments outrank dynamic ones in v7's route ranking, so
       // /products/new wins over /products/:id regardless of declaration order.
@@ -73,7 +75,7 @@ export const router = createBrowserRouter([
         path: "/products/new",
         element: <ProductNew />,
         // A product band rather than a page header: 24px to the first card (10 §4).
-        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "New product" }, layout: "band" },
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "New Product" }, layout: "band" },
       },
       {
         path: "/products/:id",
@@ -87,7 +89,7 @@ export const router = createBrowserRouter([
         element: <CategoryDetail />,
         handle: { crumbs: { group: "Catalogue", parent: { title: "Categories", to: "/categories" }, title: "Category" } },
       },
-      { path: "/options", element: <ProductOptions />, handle: { crumbs: { group: "Catalogue", title: "Product options" } } },
+      { path: "/options", element: <ProductOptions />, handle: { crumbs: { group: "Catalogue", title: "Product Options" } } },
       { path: "/media", element: <Media />, handle: { crumbs: { group: "Catalogue", title: "Media" } } },
       { path: "/logos", element: <Logos />, handle: { crumbs: { group: "Catalogue", title: "Logos" } } },
       { path: "/widgets", element: <Widgets />, handle: { crumbs: { title: "Widgets" } } },
@@ -95,12 +97,12 @@ export const router = createBrowserRouter([
         path: "/quotes",
         element: <Quotes />,
         // A split view: full width, and the panes scroll on their own (Layout).
-        handle: { crumbs: { group: "Enquiries", title: "Quote requests" }, layout: "full" },
+        handle: { crumbs: { group: "Enquiries", title: "Quote Requests" }, layout: "full" },
       },
       {
         path: "/resource-requests",
         element: <ResourceRequests />,
-        handle: { crumbs: { group: "Enquiries", title: "Resource requests" }, layout: "full" },
+        handle: { crumbs: { group: "Enquiries", title: "Resource Requests" }, layout: "full" },
       },
       { path: "/translations", element: <Translations />, handle: { crumbs: { group: "Catalogue", title: "Translations" } } },
       { path: "/users", element: <UsersPage />, handle: { crumbs: { group: "Admin", title: "Users" } } },

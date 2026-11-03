@@ -171,6 +171,12 @@ function Row({ label, children }: { label?: string; children: React.ReactNode })
 function Typography() {
   return (
     <Section title="Type roles">
+      {/* Casing (12.11). */}
+      <p className="t-help" data-kit="type:casing">
+        Page names in Title Case (the sidebar, the breadcrumb and each page's title: "Quote Requests", "Product
+        Options"); product and category names as entered; everything else in sentence case (buttons, tabs, card
+        headings, labels, help text, modal titles, empty states).
+      </p>
       <p className="t-h1" data-kit="type:h1">Page title 36</p>
       <p className="t-editor-title">Editor title 28</p>
       <p className="t-detail-title">Detail title 24</p>
@@ -535,7 +541,7 @@ function EditorDemo({ theme }: { theme: string }) {
         <ProductBand
           compact={false}
           imageUrl={null}
-          overline="New product"
+          overline="New Product"
           title="ZZ Harness Heater"
           meta={
             <>

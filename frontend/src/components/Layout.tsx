@@ -66,7 +66,7 @@ interface NavGroup {
  * The development-only /ui kit is not routed in production at all.
  */
 const NAV: NavGroup[] = [
-  { items: [{ to: "/website", label: "Website editor", icon: Globe }] },
+  { items: [{ to: "/website", label: "Website Editor", icon: Globe }] },
   {
     label: "Catalogue",
     items: [
@@ -79,7 +79,7 @@ const NAV: NavGroup[] = [
         badge: "liveProducts",
       },
       { to: "/categories", label: "Categories", icon: FolderTree },
-      { to: "/options", label: "Product options", icon: SlidersHorizontal },
+      { to: "/options", label: "Product Options", icon: SlidersHorizontal },
       { to: "/media", label: "Media", icon: Images },
       { to: "/logos", label: "Logos", icon: ShieldCheck },
       { to: "/translations", label: "Translations", icon: Languages },
@@ -88,8 +88,8 @@ const NAV: NavGroup[] = [
   {
     label: "Enquiries",
     items: [
-      { to: "/quotes", label: "Quote requests", icon: BarChart3, badge: "newQuotes" },
-      { to: "/resource-requests", label: "Resource requests", icon: FileDown, badge: "newResourceRequests" },
+      { to: "/quotes", label: "Quote Requests", icon: BarChart3, badge: "newQuotes" },
+      { to: "/resource-requests", label: "Resource Requests", icon: FileDown, badge: "newResourceRequests" },
     ],
   },
   {

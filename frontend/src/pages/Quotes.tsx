@@ -260,7 +260,7 @@ export default function Quotes() {
         * independently of email, which is what makes leaving it off safe.
         */}
       <PageHeader
-        title="Quote requests"
+        title="Quote Requests"
         description="Submissions captured from the public basket-page widget. Every request is stored here regardless of any notification setup."
         actions={
           <Button

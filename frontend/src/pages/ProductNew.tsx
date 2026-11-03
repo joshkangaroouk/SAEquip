@@ -132,8 +132,8 @@ export default function ProductNew() {
       */}
       <ProductBand
         imageUrl={null}
-        overline={form.name.trim() ? "New product" : undefined}
-        title={form.name.trim() || "New product"}
+        overline={form.name.trim() ? "New Product" : undefined}
+        title={form.name.trim() || "New Product"}
         meta={
           <>
             <span className="text-help text-muted">
