@@ -508,7 +508,9 @@ function OptionsMeter({ count, max }: { count: number; max: number | null }) {
           aria-valuemax={max}
           aria-valuenow={count}
           aria-valuetext={`${count} of ${max} options used`}
-          className="mt-2 h-2 bg-surface-2"
+          // The track's edge is --border-input (3:1): on --surface-2 alone the
+          // empty part was 1.07:1, so the meter's full length could not be seen.
+          className="mt-2 h-2.5 border border-border-input bg-surface-2"
         >
           <div
             className={cn("h-full", tone === "danger" ? "bg-danger" : tone === "warning" ? "bg-warning" : "bg-text")}
