@@ -59,7 +59,8 @@ const SplitContext = createContext<SplitState | null>(null);
  * height, or `flex-1 min-h-0` inside a full-height page (route handle
  * `layout: "full"`).
  *
- * Below lg it is one column (02a Q23): the list alone until something is
+ * Below xl (1280) it is one column (02a Q23, moved from lg by 10 §6, so the
+ * detail has the full width at 1024): the list alone until something is
  * selected, then the detail full-width with "Back to list".
  *
  * When the selection changes, focus moves to the detail's heading (rendered
@@ -86,7 +87,7 @@ export function SplitView({
   /** The right pane for the selection — start it with `SplitDetailHeader`. Null shows `emptyDetail`. */
   detail: ReactNode | null;
   emptyDetail?: ReactNode;
-  /** Below lg, "Back to list" — usually `() => select(null)`. */
+  /** Below xl, "Back to list" — usually `() => select(null)`. */
   onBack: () => void;
   className?: string;
 }) {
@@ -94,7 +95,7 @@ export function SplitView({
   const headingId = useId();
   const navRef = useRef<HTMLElement>(null);
   const previous = useRef(selectedId);
-  // The row to return focus to after "Back to list" (below lg).
+  // The row to return focus to after "Back to list" (below xl).
   const backTo = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -137,7 +138,9 @@ export function SplitView({
     <SplitContext.Provider value={{ headingRef, headingId }}>
       <div
         className={cn(
-          "border border-border bg-surface lg:grid lg:min-h-0 lg:grid-cols-[theme(spacing.95)_minmax(0,1fr)] lg:grid-rows-1",
+          // From lg the page is full height and the shown pane scrolls on its
+          // own; from xl the two panes sit side by side.
+          "border border-border bg-surface lg:grid lg:min-h-0 lg:grid-rows-1 xl:grid-cols-[theme(spacing.95)_minmax(0,1fr)]",
           className,
         )}
       >
@@ -145,16 +148,16 @@ export function SplitView({
           ref={navRef}
           aria-label={listLabel}
           onKeyDown={onListKey}
-          className={cn("min-h-0 lg:block lg:overflow-y-auto lg:border-r lg:border-border", showing && "hidden")}
+          className={cn("min-h-0 lg:overflow-y-auto xl:block xl:border-r xl:border-border", showing && "hidden")}
         >
           {list}
         </nav>
         <section
           aria-labelledby={detail ? headingId : undefined}
           aria-label={detail ? undefined : "Details"}
-          className={cn("min-h-0 lg:block lg:overflow-y-auto", !showing && "hidden")}
+          className={cn("min-h-0 lg:overflow-y-auto xl:block", !showing && "hidden")}
         >
-          <div className="border-b border-border px-5 py-2 lg:hidden">
+          <div className="border-b border-border px-5 py-2 xl:hidden">
             <Button variant="ghost" size="sm" onClick={back}>
               <ArrowLeft size={16} />
               Back to list
