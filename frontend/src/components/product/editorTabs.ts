@@ -23,12 +23,14 @@ export function parseTab(value: string | null): EditorTab {
   return EDITOR_TABS.some((t) => t.value === value) ? (value as EditorTab) : "overview";
 }
 
+/** The keys in the side panel (Visibility's accessory toggle, Categories), on no tab of their own. */
+const PANEL_KEYS = ["accessory", "categories"] as const;
+
 /**
  * The tab each single-tab key lives on. `details` spans several tabs (see
- * DETAIL_FIELDS) and `categories` lives in the side panel, so neither is here.
+ * DETAIL_FIELDS) and the side panel's keys are on none, so neither is here.
  */
-export const KEY_TAB: Record<Exclude<SectionKey, "details" | "categories">, EditorTab> = {
-  accessory: "overview",
+export const KEY_TAB: Record<Exclude<SectionKey, "details" | (typeof PANEL_KEYS)[number]>, EditorTab> = {
   specs: "content",
   benefits: "content",
   applications: "content",
@@ -150,11 +152,13 @@ export function editorTabState({
     mark(detailsErrorTabs[0], validationErrors.details);
   }
 
-  // The side panel's own key.
+  // The side panel's own keys.
   if (panelInOverview) {
-    if (dirty.categories) mark("overview");
-    const err = saveErrors.categories ?? validationErrors.categories;
-    if (err) mark("overview", err);
+    for (const key of PANEL_KEYS) {
+      if (dirty[key]) mark("overview");
+      const err = saveErrors[key] ?? validationErrors[key];
+      if (err) mark("overview", err);
+    }
   }
 
   return { tabs, detailsErrorTabs };
@@ -167,7 +171,7 @@ export function editorTabState({
  */
 export function tabForKey(key: SectionKey, state: EditorTabState, panelInOverview: boolean): EditorTab | null {
   if (key === "details") return state.detailsErrorTabs[0] ?? "overview";
-  if (key === "categories") return panelInOverview ? "overview" : null;
+  if (key === "categories" || key === "accessory") return panelInOverview ? "overview" : null;
   return KEY_TAB[key];
 }
 

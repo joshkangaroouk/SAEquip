@@ -13,7 +13,7 @@ import {
   TabList,
   TabPanel,
   Tabs,
-  Toggle,
+  SegmentedControl,
 } from "../components/ui";
 import { LogoActivationPanel } from "../components/LogoActivationPanel";
 import { SpecTableEditor } from "../components/SpecTableEditor";
@@ -284,11 +284,6 @@ export default function ProductDetail() {
                     hideCommerce={hideCommerce}
                   />
                 </EditorSection>
-                <AccessorySection
-                  checked={draft.isAccessory}
-                  onChange={(next) => setSection("isAccessory", next)}
-                  error={saveErrors.accessory ?? validationErrors.accessory}
-                />
               </TabPanel>
 
               <TabPanel value="content" className="space-y-5">
@@ -495,16 +490,25 @@ export default function ProductDetail() {
                 tab !== "overview" && "hidden xl:block",
               )}
             >
-              <EditorSection title="Visibility">
-                {/* The Status field (ACTIVE / HIDDEN) as a toggle: same field,
-                    same save key (02a Q28). */}
-                <Toggle
-                  id="p-live"
-                  checked={draft.details.status === "ACTIVE"}
-                  onChange={(on) => setSection("details", (d) => ({ ...d, status: on ? "ACTIVE" : "HIDDEN" }))}
-                  label="Live on the website"
-                />
-                <p className="t-help mt-2">Hidden products aren't shown in the store.</p>
+              <EditorSection title="Visibility" error={saveErrors.accessory ?? validationErrors.accessory}>
+                <div className="space-y-5">
+                  <div>
+                    {/* The Status field (ACTIVE / HIDDEN), as Active / Hidden
+                        (10 §3): the same field and save key as before. */}
+                    <SegmentedControl
+                      ariaLabel="Visibility"
+                      value={draft.details.status === "ACTIVE" ? "ACTIVE" : "HIDDEN"}
+                      onChange={(v) => setSection("details", (d) => ({ ...d, status: v }))}
+                      options={[
+                        { value: "ACTIVE", label: "Active" },
+                        { value: "HIDDEN", label: "Hidden" },
+                      ]}
+                    />
+                    <p className="t-help mt-2">Hidden products aren't shown in the store.</p>
+                  </div>
+                  {/* Moved here from Overview (10 §3); the same `accessory` key. */}
+                  <AccessorySection checked={draft.isAccessory} onChange={(next) => setSection("isAccessory", next)} />
+                </div>
               </EditorSection>
               <CategoriesSection
                 cats={cats}
