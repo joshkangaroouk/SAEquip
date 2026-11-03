@@ -48,10 +48,14 @@ function useTabs(part: string): TabsState {
  * activation: one tab stop, arrows move and select, Home/End.
  *
  * `keepMounted` decides what happens to a panel that is not showing:
- *   "visited" (default) mounts a panel the first time it is shown, then keeps
- *     it mounted but `hidden` — so a section that fetches, or a 3D viewer, is
- *     not rebuilt on every switch, and nothing mounts up front;
+ *   "visited" (default) — mount after the first visit: a panel mounts the
+ *     first time it is shown, then stays mounted but `hidden`, so a section
+ *     that fetches, a rich-text editor or a 3D viewer is not rebuilt on every
+ *     switch (and keeps its state), and nothing mounts up front;
  *   true mounts every panel at once; false keeps only the active one.
+ *
+ * A panel that is not mounted still renders an empty, hidden `tabpanel` shell,
+ * so every tab's `aria-controls` points at an element that exists.
  */
 export function Tabs({
   value: controlled,
@@ -155,11 +159,21 @@ export function Tab({
 }) {
   const { value: active, select, idFor } = useTabs("Tab");
   const on = value === active;
+  // A text label gets a spoken name with its count and state, comma-separated
+  // ("Content, 42, unsaved changes"): the flex layout would otherwise run the
+  // parts together. A non-text label falls back to the sr-only text below.
+  const name =
+    typeof children === "string"
+      ? [children, count, indicator === "error" ? "error" : indicator === "dirty" ? "unsaved changes" : null]
+          .filter((x) => x !== null && x !== undefined)
+          .join(", ")
+      : undefined;
   return (
     <button
       type="button"
       role="tab"
       id={idFor("tab", value)}
+      aria-label={name}
       aria-selected={on}
       aria-controls={idFor("panel", value)}
       tabIndex={on ? 0 : -1}
@@ -209,7 +223,8 @@ export function TabPanel({
   const { value: active, idFor, keepMounted, visited } = useTabs("TabPanel");
   const on = value === active;
   const mounted = on || keepMounted === true || (keepMounted === "visited" && visited.has(value));
-  if (!mounted) return null;
+  // Not mounted yet: an empty shell, so the tab's aria-controls resolves.
+  if (!mounted) return <div role="tabpanel" id={idFor("panel", value)} aria-labelledby={idFor("tab", value)} hidden />;
   return (
     <div
       role="tabpanel"
