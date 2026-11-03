@@ -580,6 +580,7 @@ const WIDGETS = [
     what: "The main product widget: Overview, Technical Specs, Key Benefits and Applications. Tabs on desktop, an accordion on mobile.",
     source: "Description, Technical Specs, Key Benefits and Applications in the product editor.",
     preview: <TabsPreview />,
+    wide: true,
   },
   {
     section: "compatible",
@@ -587,6 +588,7 @@ const WIDGETS = [
     what: "A carousel of products and accessories that go with this one — 4 across on desktop, 3 on tablet, 2 on mobile. Arrows appear only when there is more than fits.",
     source: "Compatible Products in the product editor.",
     preview: <CompatiblePreview />,
+    wide: true,
   },
   {
     section: "3d-viewer",
@@ -640,7 +642,18 @@ export default function Widgets() {
               <span className="font-semibold">Comes from:</span> {w.source}
             </p>
 
-            <div className="mt-4 border border-border bg-paper p-4">{w.preview}</div>
+            {/*
+              The widget's own root, as widget.js builds it: .saeh-root sets the
+              fonts, the 16px size and the #1a1a1a text, so the preview reads as
+              on the live page in either theme. The accordion and the carousel
+              opt out of the 920px cap (saeh-wide) there too. On paper, since the
+              live page is white.
+            */}
+            <div className="mt-4 border border-border bg-paper p-4">
+              <div lang="en" className={w.wide ? "saeh-root saeh-wide" : "saeh-root"}>
+                {w.preview}
+              </div>
+            </div>
           </Card>
         ))}
       </div>
