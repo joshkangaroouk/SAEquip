@@ -345,6 +345,23 @@ const COLS =
   "grid grid-cols-[2.125rem_minmax(0,1fr)_3.5rem_2.125rem] items-center gap-x-3 px-3 " +
   "sm:grid-cols-[2.125rem_minmax(0,1fr)_6.5rem_5rem_2.125rem]";
 
+/**
+ * The tree's indent (12.14): 24px per level, on the chevron, thumbnail and
+ * name group only (the drag handle keeps its column). Every row keeps a
+ * chevron slot, so a level's thumbnails line up whether or not they have
+ * children. The product editor's Categories dialog (AssignPickList) uses
+ * the same 24px.
+ */
+const TREE_INDENT = 24;
+
+/**
+ * A nested group's guide line: 1px of --border down its left, under the
+ * parent's chevron (the row's 12px padding, the 34px handle column, the
+ * 12px gap, then the middle of the 28px chevron, plus the parent's own
+ * indent). Drawn above the rows, so a row's hover background cannot hide it.
+ */
+const guideLeft = (parentDepth: number) => 12 + 34 + 12 + 14 + parentDepth * TREE_INDENT;
+
 function TreeHeader() {
   return (
     <div className={cn(COLS, "t-th h-10 bg-surface-2")} aria-hidden="true">
@@ -403,7 +420,7 @@ function CategoryTree({
     return (
       <div className={cn(COLS, "border-t border-border py-2.5 transition-colors duration-[120ms] hover:bg-surface-2")}>
         <DragHandle handle={handle} label={`Drag ${n.title} to reorder`} />
-        <div className={cn("flex min-w-0 items-center gap-2", child && "pl-4 sm:pl-9")}>
+        <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: n.depth * TREE_INDENT }}>
           {kids.length > 0 ? (
             <button
               type="button"
@@ -415,7 +432,7 @@ function CategoryTree({
               {isCollapsed ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
             </button>
           ) : (
-            !child && <span className="h-7 w-7 shrink-0" />
+            <span className="h-7 w-7 shrink-0" />
           )}
           {/* From `sm`: on a phone the title needs the width more. */}
           <Thumb src={n.imageUrl} size={40} className="hidden sm:flex" />
@@ -466,13 +483,21 @@ function CategoryTree({
           <>
             {row(n, handle, false)}
             {!collapsed.has(n.id) && childrenOf(n.id).length > 0 && (
-              <SortableList
-                items={childrenOf(n.id)}
-                getId={(c) => c.id}
-                className=" "
-                onReorder={(next) => onReorder(n.id, next.map((c) => c.id))}
-                renderItem={(c, h) => row(c, h, true)}
-              />
+              // The children's own sortable list, with its guide line.
+              <div className="relative">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 z-[2] w-px bg-border"
+                  style={{ left: guideLeft(n.depth) }}
+                />
+                <SortableList
+                  items={childrenOf(n.id)}
+                  getId={(c) => c.id}
+                  className=" "
+                  onReorder={(next) => onReorder(n.id, next.map((c) => c.id))}
+                  renderItem={(c, h) => row(c, h, true)}
+                />
+              </div>
             )}
           </>
         )}

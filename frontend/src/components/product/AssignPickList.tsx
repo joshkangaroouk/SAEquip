@@ -30,6 +30,9 @@ export interface PickItem {
  * nothing and the thing you just clicked moved out from under the cursor.
  * Position is how you find a category again, so it has to be stable.
  */
+/** The tree's indent per level: the Categories page's 24px (12.14). */
+const INDENT = 24;
+
 export function AssignPickList({
   items,
   selected,
@@ -174,11 +177,24 @@ export function AssignPickList({
           {rows.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-2 border-b border-border px-2.5 py-2 last:border-b-0 hover:bg-surface-2"
+              className="relative flex items-center gap-2 border-b border-border px-2.5 py-2 last:border-b-0 hover:bg-surface-2"
               // Indent only in the natural order; during a search the parent
               // may be filtered out, so an indent would point at nothing.
-              style={{ paddingLeft: query.trim() ? undefined : 10 + (item.depth ?? 0) * 16 }}
+              // 24px per level, as the Categories tree (12.14).
+              style={{ paddingLeft: query.trim() ? undefined : 10 + (item.depth ?? 0) * INDENT }}
             >
+              {/* The guide line of each level above it, under that level's
+                  checkbox (16px), so a child reads as its parent's. Rows sit
+                  edge to edge, so the pieces join into one line. */}
+              {!query.trim() &&
+                Array.from({ length: item.depth ?? 0 }, (_, level) => (
+                  <span
+                    key={level}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 w-px bg-border"
+                    style={{ left: 10 + level * INDENT + 8 }}
+                  />
+                ))}
               <Checkbox
                 checked={chosen.has(item.id)}
                 onChange={() => toggle(item.id)}
