@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   Alert,
   Button,
@@ -13,6 +13,7 @@ import {
   SkeletonLine,
   Modal,
   PageHeader,
+  Badge,
   RemoveButton,
   toast,
   useConfirm,
@@ -313,7 +314,9 @@ export default function ProductOptions() {
               }
             />
           ) : (
-            <div className="grid gap-5 xl:grid-cols-2">
+            // One column, full width (12.15): a long value ("Not sure – please
+            // advise") stays on one line.
+            <div className="grid gap-5">
               {catalog.options.map((o) => {
                 const full = maxChoices != null && o.choices.length >= maxChoices;
                 return (
@@ -337,33 +340,27 @@ export default function ProductOptions() {
                         </>
                       }
                     />
-                    <ul className="flex flex-wrap items-center gap-2" aria-label={`Values of ${o.name}`}>
-                      {o.choices.length === 0 && <li className="text-help text-muted">No values yet</li>}
+                    {/* The values as rows (12.15), in the option's order. */}
+                    <ul className="divide-y divide-border border-y border-border" aria-label={`Values of ${o.name}`}>
+                      {o.choices.length === 0 && <li className="flex min-h-11 items-center text-help text-muted">No values yet</li>}
                       {o.choices.map((c, i) => (
-                        <li key={c.id}>
-                          <ValueChip
-                            value={c.value}
-                            usage={c.usage}
-                            preselected={i === 0}
-                            onRemove={() => void deleteValue(o, c)}
-                            removeTitle={
-                              o.choices.length <= 1
-                                ? "An option must keep at least one value — delete the option instead"
-                                : c.usage > 0
-                                  ? `Delete “${c.value}” and the variations using it on ${c.usage} product(s)`
-                                  : `Delete “${c.value}”`
-                            }
-                          />
-                        </li>
-                      ))}
-                      <li>
-                        <NewValueField
-                          optionName={o.name}
-                          disabled={full}
-                          onAdd={(v) => addChoice(o, v)}
+                        <ValueRow
+                          key={c.id}
+                          value={c.value}
+                          usage={c.usage}
+                          preselected={i === 0}
+                          onRemove={() => void deleteValue(o, c)}
+                          removeTitle={
+                            o.choices.length <= 1
+                              ? "An option must keep at least one value — delete the option instead"
+                              : c.usage > 0
+                                ? `Delete “${c.value}” and the variations using it on ${c.usage} product(s)`
+                                : `Delete “${c.value}”`
+                          }
                         />
-                      </li>
+                      ))}
                     </ul>
+                    <AddValueForm optionName={o.name} disabled={full} onAdd={(v) => addChoice(o, v)} />
                   </Card>
                 );
               })}
@@ -531,7 +528,8 @@ function OptionsMeter({ count, max }: { count: number; max: number | null }) {
 
 /**
  * The page while the catalogue first loads (11 §1): the meter and two option
- * cards, with the static copy as itself and blocks where the data goes. One
+ * cards (one column of value rows, 12.15), with the static copy as itself and
+ * blocks where the data goes. One
  * polite announcement; the blocks are aria-hidden.
  */
 function OptionsSkeleton() {
@@ -558,10 +556,9 @@ function OptionsSkeleton() {
             Options are shared across every product — a product chooses which of their values it offers.
           </p>
         </div>
-        <div className="grid gap-5 xl:grid-cols-2">
-          {/* Chips about as wide as real values (with "Pre-selected" and a
-              count), so they wrap where the real ones do. */}
-          {[["w-[150px]", "w-[110px]", "w-[90px]"], ["w-[240px]", "w-[70px]"]].map((chips, i) => (
+        <div className="grid gap-5">
+          {/* The value rows (12.15): a name, "Default" on the first, Delete; then the add field. */}
+          {[["w-16", "w-24", "w-12"], ["w-44", "w-14"]].map((rows, i) => (
             <Card key={i}>
               {/* CardHeader's row in a padded card, centred as the option cards' is. */}
               <div className="-mx-5 -mt-5 mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
@@ -571,11 +568,20 @@ function OptionsSkeleton() {
                   <Skeleton className="h-8.5 w-8.5" />
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {chips.map((w) => (
-                  <Skeleton key={w} className={`h-6.5 ${w}`} />
+              <div className="divide-y divide-border border-y border-border">
+                {rows.map((w, j) => (
+                  <div key={w} className="flex min-h-11 items-center gap-3 py-1">
+                    <span className="min-w-0 flex-1">
+                      <SkeletonLine text="text-body" className={`h-[0.8em] ${w}`} />
+                    </span>
+                    {j === 0 && <Skeleton className="h-6.5 w-16" />}
+                    <Skeleton className="h-8.5 w-8.5" />
+                  </div>
                 ))}
-                <Skeleton className="h-7 w-36" />
+              </div>
+              <div className="mt-4 flex items-center gap-2">
+                <Skeleton className="h-10 flex-1" />
+                <Skeleton className="h-10 w-16" />
               </div>
             </Card>
           ))}
@@ -586,11 +592,16 @@ function OptionsSkeleton() {
 }
 
 /**
- * A value: a 26px chip with its 20px remove button (02a Q11). The first value
- * carries "Pre-selected": Duda pre-selects a product's first offered value, in
- * the option's order.
+ * A value as a row (12.15): its name, "Default" on the value Duda
+ * pre-selects, and Delete. ⚠️ The pre-selected value is the FIRST, by
+ * position: Duda pre-selects a product's first offered value, in the
+ * option's order, and there is no flag. Nothing here reorders values (the
+ * Hub has no route for it), so it cannot be changed from this page.
+ *
+ * No rename: the Hub has no route that renames a value (only the option's
+ * own name, from the ⋯ menu).
  */
-function ValueChip({
+function ValueRow({
   value,
   usage,
   preselected,
@@ -604,29 +615,29 @@ function ValueChip({
   removeTitle: string;
 }) {
   return (
-    <span
-      className="inline-flex h-6.5 items-center gap-1.5 border border-border bg-chip pl-2.5 pr-0.5 text-help text-text"
+    <li
+      className="flex min-h-11 items-center gap-3 py-1"
       title={usage > 0 ? `Offered by ${usage} product(s)` : "Not used by any product"}
     >
-      {value}
+      <span className="min-w-0 flex-1 text-body text-text [overflow-wrap:anywhere]">{value}</span>
       {preselected && (
-        <span
-          className="inline-flex h-4.5 items-center bg-text px-1.5 font-heading text-micro font-semibold uppercase text-surface"
-          title="Duda pre-selects this value on product pages that offer it"
-        >
-          Pre-selected
+        <span title="Duda pre-selects this value on product pages that offer it">
+          <Badge tone="neutral">Default</Badge>
         </span>
       )}
-      <RemoveButton onClick={onRemove} title={removeTitle} size="sm" />
-    </span>
+      {/* 34px; named for the value, with the reason (in use, or the last one) as its tooltip. */}
+      <Button variant="ghost" icon size="sm" onClick={onRemove} aria-label={`Delete ${value}`} title={removeTitle}>
+        <Trash2 size={16} aria-hidden="true" />
+      </Button>
+    </li>
   );
 }
 
 /**
- * The card's inline "New value…" field (28px, so it sits in the row of
- * chips). Enter adds it, through the same call as the dialog.
+ * Add a value: a 40px field and an Add button under the rows (12.15); Enter
+ * adds too. The same call as the ⋯ menu's "Add value…" dialog.
  */
-function NewValueField({
+function AddValueForm({
   optionName,
   disabled,
   onAdd,
@@ -645,18 +656,20 @@ function NewValueField({
     setSaving(false);
     if (ok) setText("");
   }
+  const why = disabled ? "This option has as many values as the store allows" : undefined;
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex items-center">
+    <form onSubmit={(e) => void submit(e)} className="mt-4 flex items-center gap-2">
       <Input
-        size="chip"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="New value…"
         aria-label={`New value for ${optionName}`}
         disabled={disabled || saving}
-        title={disabled ? "This option has as many values as the store allows" : "Type a value and press Enter"}
-        className="w-36"
+        title={why}
       />
+      <Button type="submit" variant="secondary" disabled={disabled || saving || !text.trim()} title={why}>
+        Add
+      </Button>
     </form>
   );
 }
