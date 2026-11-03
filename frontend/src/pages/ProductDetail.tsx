@@ -285,15 +285,16 @@ export default function ProductDetail() {
                     hideCommerce={hideCommerce}
                   />
                 </EditorSection>
-              </TabPanel>
-
-              <TabPanel value="content" className="space-y-5">
-                {detailsAlert("content")}
+                {/* After Details (12 §3): the same `details` key, its own dot on Overview. */}
                 <DescriptionSection
                   value={draft.details.description}
                   onChange={(html) => setSection("details", { ...draft.details, description: html })}
                   dirty={dirty.details}
                 />
+              </TabPanel>
+
+              {/* "Content" until batch 12 (12 §3): the description moved to Overview. */}
+              <TabPanel value="extra" className="space-y-5">
                 <EditorSection
                   title="Technical specs"
                   description="Shown as a table in the Technical Specs tab of the product page."
@@ -523,11 +524,11 @@ export default function ProductDetail() {
 
 /**
  * The element a failed-section pill scrolls to. Most keys have a `section-<key>`
- * anchor; `details` has one per tab (its fields are on three), and logos is
- * the first of its two panels.
+ * anchor; `details` has one per tab (its fields are on Overview and SEO), and
+ * logos is the first of its two panels.
  */
 function sectionAnchor(key: SectionKey, tab: EditorTab): string {
-  if (key === "details") return tab === "content" ? "section-description" : tab === "seo" ? "section-seo" : "section-details";
+  if (key === "details") return tab === "seo" ? "section-seo" : "section-details";
   return `section-${key}`;
 }
 

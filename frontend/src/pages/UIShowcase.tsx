@@ -444,7 +444,7 @@ function TabsDemo({ theme }: { theme: string }) {
 
 /** The editor's six tabs, as the product editor shows them: counts, and a dot for unsaved or failed. */
 const KIT_TAB_STATE: Partial<Record<EditorTab, { count?: number; indicator?: "dirty" | "error" }>> = {
-  content: { count: 23, indicator: "dirty" },
+  extra: { count: 23, indicator: "dirty" },
   compliance: { indicator: "error" },
   options: { count: 1 },
   files: { count: 12 },
@@ -458,7 +458,7 @@ function EditorDemo({ theme }: { theme: string }) {
         The band (10 §2): picture, overline, name and meta; the save area (unsaved count, failed pills, View on
         website, Discard, Save changes); the tabs on its bottom rule, with counts and dots. In the app it sits under the
         top bar and sticks from 1280 (11 §4); here it is in place. Each tab's spoken name carries its count and state, e.g.
-        "Content, 23, unsaved changes".
+        "Extra details, 23, unsaved changes".
       </p>
       <div data-kit="editor-tabs" className="border border-border bg-bg">
         <Tabs defaultValue="compliance">

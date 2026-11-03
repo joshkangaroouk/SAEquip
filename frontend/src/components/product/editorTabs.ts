@@ -7,19 +7,24 @@ import type { DirtyMap, EditorSnapshot, ErrorMap, NativeForm, SectionKey } from 
  * Pure — no React — so the aggregation can be tested on its own.
  */
 
-export type EditorTab = "overview" | "content" | "compliance" | "options" | "files" | "seo";
+export type EditorTab = "overview" | "extra" | "compliance" | "options" | "files" | "seo";
 
 export const EDITOR_TABS: { value: EditorTab; label: string }[] = [
   { value: "overview", label: "Overview" },
-  { value: "content", label: "Content" },
+  // "Content" until batch 12 (12 §3); `?tab=content` still opens it (useEditorTab).
+  { value: "extra", label: "Extra details" },
   { value: "compliance", label: "Compliance" },
   { value: "options", label: "Options" },
   { value: "files", label: "Files & media" },
   { value: "seo", label: "SEO" },
 ];
 
-/** The `?tab=` value, or Overview for a missing or unknown one. */
+/** Old `?tab=` values that still open their tab, rewritten by useEditorTab (12 §3). */
+export const TAB_ALIASES: Record<string, EditorTab> = { content: "extra" };
+
+/** The `?tab=` value, or Overview for a missing or unknown one; an alias reads as its tab. */
 export function parseTab(value: string | null): EditorTab {
+  if (value && TAB_ALIASES[value]) return TAB_ALIASES[value];
   return EDITOR_TABS.some((t) => t.value === value) ? (value as EditorTab) : "overview";
 }
 
@@ -37,10 +42,10 @@ const isPanelKey = (key: SectionKey): key is PanelKey => (PANEL_KEYS as readonly
  * DETAIL_FIELDS) and the side panel's keys are on none, so neither is here.
  */
 export const KEY_TAB: Record<Exclude<SectionKey, "details" | PanelKey>, EditorTab> = {
-  specs: "content",
-  benefits: "content",
-  applications: "content",
-  compatible: "content",
+  specs: "extra",
+  benefits: "extra",
+  applications: "extra",
+  compatible: "extra",
   logos: "compliance",
   options: "options",
   variations: "options",
@@ -51,10 +56,11 @@ export const KEY_TAB: Record<Exclude<SectionKey, "details" | PanelKey>, EditorTa
 
 /**
  * Which part of the editor shows each `details` field. One save key, one
- * PATCH — but its fields sit on Overview, Content, SEO and the side panel's
- * Visibility, so a tab's dot comes from ITS fields, not the whole key.
+ * PATCH — but its fields sit on Overview, SEO and the side panel's
+ * Visibility, so a tab's dot comes from ITS fields, not the whole key. The
+ * description is on Overview since batch 12 (12 §3); it was on Content.
  */
-export const DETAIL_FIELDS: Record<"overview" | "content" | "seo" | "panel", (keyof NativeForm)[]> = {
+export const DETAIL_FIELDS: Record<"overview" | "seo" | "panel", (keyof NativeForm)[]> = {
   overview: [
     "name",
     "sku",
@@ -65,8 +71,8 @@ export const DETAIL_FIELDS: Record<"overview" | "content" | "seo" | "panel", (ke
     "quantity",
     "requires_shipping",
     "managed_inventory",
+    "description",
   ],
-  content: ["description"],
   seo: ["seo_title", "seo_description", "seo_product_url"],
   panel: ["status"],
 };
@@ -91,7 +97,6 @@ const fieldsDiffer = (draft: NativeForm, baseline: NativeForm, fields: (keyof Na
  * Overview when the panel is (it is never invalid anyway).
  */
 export function fieldTab(field: keyof NativeForm): EditorTab {
-  if (DETAIL_FIELDS.content.includes(field)) return "content";
   if (DETAIL_FIELDS.seo.includes(field)) return "seo";
   return "overview";
 }
@@ -140,7 +145,6 @@ export function editorTabState({
   const b = baseline.details;
   const detailTabs: EditorTab[] = [];
   if (fieldsDiffer(d, b, DETAIL_FIELDS.overview)) detailTabs.push("overview");
-  if (fieldsDiffer(d, b, DETAIL_FIELDS.content)) detailTabs.push("content");
   if (fieldsDiffer(d, b, DETAIL_FIELDS.seo)) detailTabs.push("seo");
   const statusChanged = fieldsDiffer(d, b, DETAIL_FIELDS.panel);
   if (statusChanged && panelInOverview && !detailTabs.includes("overview")) detailTabs.unshift("overview");
@@ -181,10 +185,14 @@ export function tabForKey(key: SectionKey, state: EditorTabState, panelInOvervie
   return KEY_TAB[key];
 }
 
-/** The tab labels' counts: items on Content, attached options, files on Files & media. */
+/**
+ * The tab labels' counts: items on Extra details (spec rows, benefits,
+ * applications and compatible products, 12 §3), attached options, files on
+ * Files & media.
+ */
 export function tabCounts(draft: EditorSnapshot): Partial<Record<EditorTab, number>> {
   return {
-    content: draft.specs.length + draft.benefits.length + draft.applications.length,
+    extra: draft.specs.length + draft.benefits.length + draft.applications.length + draft.compatible.length,
     options: draft.options.length,
     files: draft.images.length + draft.downloads.length + (draft.model3d.mediaAssetId ? 1 : 0),
   };

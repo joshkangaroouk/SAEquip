@@ -20,8 +20,8 @@ function Words({ children, className }: { children: string; className?: string }
 
 /**
  * The product editor while the product loads (11 §1), in place of a centred
- * spinner: the band, the section cards, and the side panel (Visibility,
- * Categories),
+ * spinner: the band, the section cards (Details and Description on
+ * Overview), and the side panel (Visibility, Categories),
  * on the editor's own grid (`editorLayout`) and in its order, so nothing
  * jumps when the product lands.
  *
@@ -57,7 +57,33 @@ export function ProductEditorSkeleton({ tab }: { tab: EditorTab }) {
               <SkeletonField control="h-8.5 w-56 max-w-full" />
             </div>
           </SectionSkeleton>
-          {tab !== "overview" && (
+          {/* Overview: the Description after Details (12 §3), its editor at its
+              160px minimum (a longer description is taller once it lands). */}
+          {tab === "overview" ? (
+            <SectionSkeleton
+              title="w-28"
+              description="Shown in the Overview tab of the product page."
+              aside={
+                <>
+                  <span className="text-label">
+                    <Skeleton className="inline-block h-[0.8em] w-14 align-middle" />
+                  </span>
+                  <Skeleton className="h-10 w-[160px]" />
+                </>
+              }
+            >
+              <div className="border border-border-input">
+                <div className="flex h-[43px] items-center gap-2 border-b border-border px-2">
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <Skeleton key={i} className="h-5 w-5" />
+                  ))}
+                </div>
+                <div className="h-40 px-3 py-2.5">
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              </div>
+            </SectionSkeleton>
+          ) : (
             <SectionSkeleton title="w-32" description>
               <div className="space-y-3">
                 <SkeletonField />
@@ -115,7 +141,8 @@ function SectionSkeleton({
 }: {
   /** The title bar's width class. */
   title: string;
-  description?: boolean;
+  /** A description line; its real text when the section's is static copy. */
+  description?: boolean | string;
   meta?: boolean;
   /** Anything else on the header's right (Details' checkbox). */
   aside?: ReactNode;
@@ -127,7 +154,9 @@ function SectionSkeleton({
         <div className="min-w-0 space-y-1">
           <SkeletonLine text="t-section" className={`h-[0.8em] ${title}`} />
           {/* Two bars, about a sentence long, so it wraps on a phone as the real one does. */}
-          {description && (
+          {typeof description === "string" ? (
+            <p className="t-help">{description}</p>
+          ) : description && (
             <div className="t-help">
               <Skeleton className="inline-block h-[0.7em] w-40 align-middle" />{" "}
               <Skeleton className="inline-block h-[0.7em] w-[154px] align-middle" />
