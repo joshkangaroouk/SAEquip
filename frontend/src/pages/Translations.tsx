@@ -573,16 +573,29 @@ export default function Translations() {
     load();
   }
 
+  /** A string's edit button: the keyboard way in, since a row takes no focus. */
+  const editButton = (i: SourceItem) => (
+    <button
+      type="button"
+      onClick={() => setEditing(i)}
+      aria-label={`Edit the ${targetLabel(locale)} ${KIND_LABEL[i.kind].toLowerCase()}: ${(i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText).slice(0, 60)}`}
+      title="Edit"
+      className="inline-flex h-8.5 w-8.5 shrink-0 items-center justify-center text-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-text"
+    >
+      <Pencil size={16} aria-hidden="true" />
+    </button>
+  );
+
   const head = (
     <THead>
       <TR>
-        {/* On narrow screens Type folds under the English (below md) and
-            Status under the translation (below sm), rather than the table
-            scrolling sideways in its box. */}
+        {/* The table shows from sm (stacked rows below it). Between sm and md
+            Type folds under the English, rather than the table scrolling
+            sideways in its box. */}
         <TH className="hidden w-40 md:table-cell">Type</TH>
         <TH>English</TH>
         <TH>{targetLabel(locale)}</TH>
-        <TH className="hidden w-px sm:table-cell">Status</TH>
+        <TH className="w-px">Status</TH>
         <TH className="w-px">
           <span className="sr-only">Edit</span>
         </TH>
@@ -701,30 +714,33 @@ export default function Translations() {
           )}
           {!data && !error && (
             <div className="mt-4" aria-busy="true" aria-live="polite" aria-label="Loading translations">
-              <Table>
-                {head}
-                <TBody>
-                  {Array.from({ length: 8 }, (_, i) => (
-                    <TR key={i}>
-                      <TD className="hidden md:table-cell">
-                        <Skeleton className="h-4 w-24" />
-                      </TD>
-                      <TD>
-                        <Skeleton className="h-4 w-64" />
-                      </TD>
-                      <TD>
-                        <Skeleton className="h-4 w-64" />
-                      </TD>
-                      <TD className="hidden sm:table-cell">
-                        <Skeleton className="h-6.5 w-20" />
-                      </TD>
-                      <TD>
-                        <Skeleton className="h-8.5 w-8.5" />
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
+              <Skeleton className="h-96 w-full sm:hidden" />
+              <div className="max-sm:hidden">
+                <Table>
+                  {head}
+                  <TBody>
+                    {Array.from({ length: 8 }, (_, i) => (
+                      <TR key={i}>
+                        <TD className="hidden md:table-cell">
+                          <Skeleton className="h-4 w-24" />
+                        </TD>
+                        <TD>
+                          <Skeleton className="h-4 w-64" />
+                        </TD>
+                        <TD>
+                          <Skeleton className="h-4 w-64" />
+                        </TD>
+                        <TD>
+                          <Skeleton className="h-6.5 w-20" />
+                        </TD>
+                        <TD>
+                          <Skeleton className="h-8.5 w-8.5" />
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
             </div>
           )}
           {data && filtered.length === 0 && (
@@ -736,27 +752,62 @@ export default function Translations() {
           )}
           {data && filtered.length > 0 && (
             <div className="mt-4">
-              <Table>
-                {head}
-                <TBody>
-                  {shown.map((i) => (
-                    <TR key={`${i.kind}:${i.sourceHash}`} hover onClick={() => setEditing(i)}>
-                      {/* The type, and the product it is used on. */}
-                      <TD className="hidden align-top md:table-cell">
-                        <span className="block text-help text-text">{KIND_LABEL[i.kind]}</span>
-                        <span className="mt-0.5 block truncate text-label text-muted" title={usedOn(i, products)}>
-                          {usedOn(i, products)}
-                        </span>
-                      </TD>
-                      <TD className="align-top">
-                        <span className="mb-1 block text-label text-muted md:hidden">
-                          {KIND_LABEL[i.kind]}
-                          {usedOn(i, products) && ` · ${usedOn(i, products)}`}
-                        </span>
-                        <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText}</span>
-                      </TD>
-                      {/* lang and dir, so Arabic reads right to left. */}
-                      <TD className="align-top" lang={locale} dir={rtl ? "rtl" : "ltr"}>
+              {/* From sm, the table. Below it, stacked rows (10 §6), as on
+                  the Names tab: not a table scrolling sideways in its box. */}
+              {/* Table puts className on the inner <table>, so the wrapper does the hiding. */}
+              <div className="max-sm:hidden">
+                <Table>
+                  {head}
+                  <TBody>
+                    {shown.map((i) => (
+                      <TR key={`${i.kind}:${i.sourceHash}`} hover onClick={() => setEditing(i)}>
+                        {/* The type, and the product it is used on. */}
+                        <TD className="hidden align-top md:table-cell">
+                          <span className="block text-help text-text">{KIND_LABEL[i.kind]}</span>
+                          <span className="mt-0.5 block truncate text-label text-muted" title={usedOn(i, products)}>
+                            {usedOn(i, products)}
+                          </span>
+                        </TD>
+                        <TD className="align-top">
+                          <span className="mb-1 block text-label text-muted md:hidden">
+                            {KIND_LABEL[i.kind]}
+                            {usedOn(i, products) && ` · ${usedOn(i, products)}`}
+                          </span>
+                          <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText}</span>
+                        </TD>
+                        {/* lang and dir, so Arabic reads right to left. */}
+                        <TD className="align-top" lang={locale} dir={rtl ? "rtl" : "ltr"}>
+                          {i.text ? (
+                            <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.text) : i.text}</span>
+                          ) : (
+                            <span className="text-muted" lang="en" dir="ltr">
+                              Shown in English
+                            </span>
+                          )}
+                        </TD>
+                        <TD className="align-top">
+                          <StatusBadge status={i.status} />
+                        </TD>
+                        {/* The keyboard way in: a row takes no focus. */}
+                        <TD className="py-1.5 align-top">{editButton(i)}</TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+              <ul className="border border-border bg-surface sm:hidden">
+                {shown.map((i) => (
+                  <li key={`${i.kind}:${i.sourceHash}`} className="flex items-start gap-3 border-b border-border px-4 py-3 last:border-b-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="t-label truncate" title={usedOn(i, products)}>
+                        {KIND_LABEL[i.kind]}
+                        {usedOn(i, products) && ` · ${usedOn(i, products)}`}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-body text-text">
+                        {i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText}
+                      </p>
+                      <p className="mt-2 t-label">{targetLabel(locale)}</p>
+                      <p className="mt-1 text-body text-text" lang={locale} dir={rtl ? "rtl" : "ltr"}>
                         {i.text ? (
                           <span className="line-clamp-2">{i.kind === "DESCRIPTION" ? plain(i.text) : i.text}</span>
                         ) : (
@@ -764,29 +815,15 @@ export default function Translations() {
                             Shown in English
                           </span>
                         )}
-                        <span className="mt-1.5 block sm:hidden" lang="en" dir="ltr">
-                          <StatusBadge status={i.status} />
-                        </span>
-                      </TD>
-                      <TD className="hidden align-top sm:table-cell">
+                      </p>
+                      <span className="mt-2 block">
                         <StatusBadge status={i.status} />
-                      </TD>
-                      {/* The keyboard way in: a row takes no focus. */}
-                      <TD className="py-1.5 align-top">
-                        <button
-                          type="button"
-                          onClick={() => setEditing(i)}
-                          aria-label={`Edit the ${targetLabel(locale)} ${KIND_LABEL[i.kind].toLowerCase()}: ${(i.kind === "DESCRIPTION" ? plain(i.sourceText) : i.sourceText).slice(0, 60)}`}
-                          title="Edit"
-                          className="inline-flex h-8.5 w-8.5 items-center justify-center text-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-text"
-                        >
-                          <Pencil size={16} aria-hidden="true" />
-                        </button>
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
+                      </span>
+                    </div>
+                    {editButton(i)}
+                  </li>
+                ))}
+              </ul>
               <Pagination className="mt-5" page={page} total={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} label="strings" />
             </div>
           )}

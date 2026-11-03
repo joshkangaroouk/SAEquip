@@ -75,6 +75,26 @@ function formatOptions(options: Record<string, unknown> | null): string | null {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/** A basket line's product: its picture, and a link to its editor when it matched one. */
+function ItemName({ item }: { item: QuoteRequest["items"][number] }) {
+  return (
+    <div className="flex items-center gap-3">
+      <Thumb src={item.imageUrl} size={40} />
+      {item.dudaProductId ? (
+        <Link
+          to={`/products/${item.dudaProductId}`}
+          className="font-medium text-text underline-offset-2 hover:underline"
+          title="Open this product in the editor"
+        >
+          {item.name}
+        </Link>
+      ) : (
+        <span>{item.name}</span>
+      )}
+    </div>
+  );
+}
+
 function QuoteDetail({
   quote,
   busy,
@@ -91,6 +111,7 @@ function QuoteDetail({
    */
   const address = [quote.address, quote.postcode, quote.country].filter(Boolean).join("\n");
   const units = quote.items.reduce((n, item) => n + item.quantity, 0);
+  const total = `${plural(quote.items.length, "item", "items")} · ${plural(units, "unit", "units")}`;
   return (
     <>
       <SplitDetailHeader
@@ -132,50 +153,57 @@ function QuoteDetail({
           <h3 id="quote-items" className="t-overline mb-2">
             Items
           </h3>
-          {/* No price column: SAEquip quotes prices, so the basket never carries one. */}
-          <Table>
-            <THead>
-              <TR>
-                <TH>Product</TH>
-                <TH>SKU</TH>
-                <TH>Options</TH>
-                <TH className="text-right">Qty</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {quote.items.map((item) => (
-                <TR key={item.id}>
-                  <TD>
-                    <div className="flex items-center gap-3">
-                      <Thumb src={item.imageUrl} size={40} />
-                      {item.dudaProductId ? (
-                        <Link
-                          to={`/products/${item.dudaProductId}`}
-                          className="font-medium text-text underline-offset-2 hover:underline"
-                          title="Open this product in the editor"
-                        >
-                          {item.name}
-                        </Link>
-                      ) : (
-                        <span>{item.name}</span>
-                      )}
-                    </div>
-                  </TD>
-                  <TD className="t-code">{item.sku || "—"}</TD>
-                  <TD className="text-muted">{formatOptions(item.options) ?? "—"}</TD>
-                  <TD className="t-code text-right">{item.quantity}</TD>
+          {/* No price column: SAEquip quotes prices, so the basket never carries one.
+              From sm, the table; below it, stacked rows (10 §6), not a table
+              scrolling sideways inside its box. */}
+          <div className="hidden sm:block">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Product</TH>
+                  <TH>SKU</TH>
+                  <TH>Options</TH>
+                  <TH className="text-right">Qty</TH>
                 </TR>
-              ))}
-            </TBody>
-            {/* Units only: no prices (02a Q17). */}
-            <tfoot className="border-t border-border bg-surface-2">
-              <tr>
-                <td colSpan={4} className="px-5 py-2.5 text-right text-body font-semibold text-text">
-                  {plural(quote.items.length, "item", "items")} · {plural(units, "unit", "units")}
-                </td>
-              </tr>
-            </tfoot>
-          </Table>
+              </THead>
+              <TBody>
+                {quote.items.map((item) => (
+                  <TR key={item.id}>
+                    <TD>
+                      <ItemName item={item} />
+                    </TD>
+                    <TD className="t-code">{item.sku || "—"}</TD>
+                    <TD className="text-muted">{formatOptions(item.options) ?? "—"}</TD>
+                    <TD className="t-code text-right">{item.quantity}</TD>
+                  </TR>
+                ))}
+              </TBody>
+              {/* Units only: no prices (02a Q17). */}
+              <tfoot className="border-t border-border bg-surface-2">
+                <tr>
+                  <td colSpan={4} className="px-5 py-2.5 text-right text-body font-semibold text-text">
+                    {total}
+                  </td>
+                </tr>
+              </tfoot>
+            </Table>
+          </div>
+          <ul className="border border-border sm:hidden">
+            {quote.items.map((item) => (
+              <li key={item.id} className="border-b border-border px-4 py-3">
+                <ItemName item={item} />
+                <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-help">
+                  <dt className="text-muted">SKU</dt>
+                  <dd className="t-code text-text">{item.sku || "—"}</dd>
+                  <dt className="text-muted">Options</dt>
+                  <dd className="text-muted">{formatOptions(item.options) ?? "—"}</dd>
+                  <dt className="text-muted">Qty</dt>
+                  <dd className="t-code text-text">{item.quantity}</dd>
+                </dl>
+              </li>
+            ))}
+            <li className="bg-surface-2 px-4 py-2.5 text-right text-body font-semibold text-text">{total}</li>
+          </ul>
         </section>
       </div>
     </>
