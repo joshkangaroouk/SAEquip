@@ -7,7 +7,6 @@ import {
   Button,
   ButtonLink,
   Checkbox,
-  Loader,
   StatusBadge,
   Tab,
   TabList,
@@ -38,6 +37,8 @@ import { ProductBand } from "../components/product/ProductBand";
 import { useProductEditor } from "../components/product/useProductEditor";
 import { useEditorTab } from "../components/product/useEditorTab";
 import { EDITOR_TABS, editorTabState, tabCounts, tabForKey, type EditorTab } from "../components/product/editorTabs";
+import { EDITOR_GRID, sidePanelClass } from "../components/product/editorLayout";
+import { ProductEditorSkeleton } from "../components/product/EditorSkeleton";
 import type { SectionKey, SpecRowDraft } from "../components/product/productEditorTypes";
 import { groupSpecRows } from "../components/product/normalize";
 import type { ProductLogoEntry } from "../lib/types";
@@ -169,7 +170,7 @@ export default function ProductDetail() {
       <UnsavedChangesModal blocker={blocker} onSave={save} dirtyLabels={dirtyLabels} />
       <TranslationProgressModal progress={translation} onSkip={skipTranslation} onDownload={downloadLanguage} />
 
-      {loading && <Loader label="Loading product…" />}
+      {loading && <ProductEditorSkeleton tab={tab} />}
       {loadError && <Alert tone="danger">{loadError}</Alert>}
 
       {!loading && !loadError && product && draft && baseline && context && tabState && (
@@ -260,12 +261,9 @@ export default function ProductDetail() {
             and show with Overview only — rendered once either way, so the
             Categories section stays mounted.
           */}
-          {/* Rows auto then 1fr: the side panel spans both and is often the
-              taller, and the extra height must go below Delete product, not
-              between the tabs and it. The panel is clamp(18rem, 28%, 30rem)
-              of the grid (11 §3): about 305px at 1440, never under 288 or
-              over 480. */}
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_clamp(18rem,28%,30rem)] xl:grid-rows-[auto_1fr] xl:items-start">
+          {/* The grid and the side panel's classes are shared with the
+              loading skeleton (editorLayout). */}
+          <div className={EDITOR_GRID}>
             <div className="min-w-0 xl:col-start-1 xl:row-start-1">
               <TabPanel value="overview" className="space-y-5">
                 {detailsAlert("overview")}
@@ -474,18 +472,8 @@ export default function ProductDetail() {
               </TabPanel>
             </div>
 
-            {/* The side panel: Images (11 §2), Visibility and Categories.
-                Under Overview below 1280 it is two columns from sm, Images
-                beside the other two, so each card keeps about the width it has
-                beside the tabs (a full-width 4:3 featured image was ~500px tall). */}
-            <aside
-              aria-label="Images, visibility and categories"
-              className={cn(
-                "min-w-0 space-y-5 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:block xl:space-y-5",
-                // Not `hidden` plus sm:grid: sm:grid would win from 640 and show it on every tab.
-                tab === "overview" ? "sm:grid sm:grid-cols-2 sm:items-start sm:gap-5 sm:space-y-0" : "hidden",
-              )}
-            >
+            {/* The side panel: Images (11 §2), Visibility and Categories. */}
+            <aside aria-label="Images, visibility and categories" className={sidePanelClass(tab)}>
               {/* The gallery, featured image first (11 §2): its own card, as Categories is. */}
               <ImagesSection
                 images={draft.images}
