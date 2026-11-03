@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Redo2, Undo2 } from "lucide-react";
+import {
+  Bold,
+  Heading2,
+  Heading3,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  Pilcrow,
+  Redo2,
+  RemoveFormatting,
+  Underline,
+  Undo2,
+} from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Button } from "./Button";
 import { Input } from "./Input";
@@ -37,13 +50,15 @@ export interface RichTextEditorProps {
 }
 
 /*
- * Toolbar buttons: 34px squares (wider for word labels), Inter 12/600.
- * Active formats are yellow (an active state). A disabled button is drawn in
- * --border-input — no opacity (02a "After 3b").
+ * Toolbar buttons: 34px squares holding a 16px icon (10 §4). Active formats
+ * are yellow (an active state). A disabled button is drawn in --border-input
+ * — no opacity (02a "After 3b").
  */
 const btn =
-  "inline-flex h-8.5 min-w-8.5 items-center justify-center px-2 text-label font-semibold " +
+  "inline-flex h-8.5 w-8.5 items-center justify-center " +
   "transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:text-border-input";
+
+const ICON = { size: 16, strokeWidth: 2, "aria-hidden": true } as const;
 
 function ToolbarButton({
   editor,
@@ -198,6 +213,12 @@ export function RichTextEditor({
         className,
       )}
     >
+      {/*
+        Icon buttons (10 §4), each 34px with its name as aria-label and a
+        tooltip: the formats, then Paragraph and Clear formatting (kept from
+        the word toolbar), with Undo and Redo on the right. Underline is in
+        tiptap's StarterKit and the widget's prose allowlist (<u>).
+      */}
       <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-1 py-1">
         <ToolbarButton
           editor={editor}
@@ -205,7 +226,7 @@ export function RichTextEditor({
           active={editor?.isActive("bold")}
           onClick={() => editor?.chain().focus().toggleBold().run()}
         >
-          <span className="font-bold">B</span>
+          <Bold {...ICON} />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
@@ -213,29 +234,40 @@ export function RichTextEditor({
           active={editor?.isActive("italic")}
           onClick={() => editor?.chain().focus().toggleItalic().run()}
         >
-          <span className="italic">I</span>
+          <Italic {...ICON} />
+        </ToolbarButton>
+        <ToolbarButton
+          editor={editor}
+          title="Underline"
+          active={editor?.isActive("underline")}
+          onClick={() => editor?.chain().focus().toggleUnderline().run()}
+        >
+          <Underline {...ICON} />
         </ToolbarButton>
 
         <span className="mx-1 h-4 w-px bg-border" />
 
-        {([2, 3] as const).map((level) => (
-          <ToolbarButton
-            key={level}
-            editor={editor}
-            title={`Heading ${level}`}
-            active={editor?.isActive("heading", { level })}
-            onClick={() => editor?.chain().focus().toggleHeading({ level }).run()}
-          >
-            H{level}
-          </ToolbarButton>
-        ))}
+        {([2, 3] as const).map((level) => {
+          const Icon = level === 2 ? Heading2 : Heading3;
+          return (
+            <ToolbarButton
+              key={level}
+              editor={editor}
+              title={`Heading ${level}`}
+              active={editor?.isActive("heading", { level })}
+              onClick={() => editor?.chain().focus().toggleHeading({ level }).run()}
+            >
+              <Icon {...ICON} />
+            </ToolbarButton>
+          );
+        })}
         <ToolbarButton
           editor={editor}
           title="Paragraph"
           active={editor?.isActive("paragraph")}
           onClick={() => editor?.chain().focus().setParagraph().run()}
         >
-          ¶
+          <Pilcrow {...ICON} />
         </ToolbarButton>
 
         <span className="mx-1 h-4 w-px bg-border" />
@@ -246,7 +278,7 @@ export function RichTextEditor({
           active={editor?.isActive("bulletList")}
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
         >
-          • List
+          <List {...ICON} />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
@@ -254,7 +286,7 @@ export function RichTextEditor({
           active={editor?.isActive("orderedList")}
           onClick={() => editor?.chain().focus().toggleOrderedList().run()}
         >
-          1. List
+          <ListOrdered {...ICON} />
         </ToolbarButton>
 
         <span className="mx-1 h-4 w-px bg-border" />
@@ -268,14 +300,14 @@ export function RichTextEditor({
             setLinkOpen((o) => !o);
           }}
         >
-          Link
+          <LinkIcon {...ICON} />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
           title="Clear formatting"
           onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
         >
-          Clear
+          <RemoveFormatting {...ICON} />
         </ToolbarButton>
 
         <span className="flex-1" />
@@ -286,7 +318,7 @@ export function RichTextEditor({
           disabled={!editor?.can().undo()}
           onClick={() => editor?.chain().focus().undo().run()}
         >
-          <Undo2 size={16} strokeWidth={2} aria-hidden="true" />
+          <Undo2 {...ICON} />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
@@ -294,7 +326,7 @@ export function RichTextEditor({
           disabled={!editor?.can().redo()}
           onClick={() => editor?.chain().focus().redo().run()}
         >
-          <Redo2 size={16} strokeWidth={2} aria-hidden="true" />
+          <Redo2 {...ICON} />
         </ToolbarButton>
       </div>
 

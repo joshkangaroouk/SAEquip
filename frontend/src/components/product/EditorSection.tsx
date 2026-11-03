@@ -18,6 +18,7 @@ export function EditorSection({
   id,
   title,
   description,
+  meta,
   actions,
   error,
   children,
@@ -26,6 +27,11 @@ export function EditorSection({
   id?: string;
   title: string;
   description?: ReactNode;
+  /**
+   * A short fact on the right of the header, muted 12px (10 §4): "Synced
+   * with Duda on save", a word count, "14 specs · 14 rows".
+   */
+  meta?: ReactNode;
   actions?: ReactNode;
   error?: string | null;
   children: ReactNode;
@@ -47,7 +53,12 @@ export function EditorSection({
           </h2>
           {description && <p className="t-help">{description}</p>}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        {(meta || actions) && (
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2">
+            {meta && <span className="text-label text-muted">{meta}</span>}
+            {actions}
+          </div>
+        )}
       </div>
       <div className="px-5 py-4">
         {/* Outside the provider, so this one renders; the copies the sections

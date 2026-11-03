@@ -38,7 +38,8 @@ import { ProductBand } from "../components/product/ProductBand";
 import { useProductEditor } from "../components/product/useProductEditor";
 import { useEditorTab } from "../components/product/useEditorTab";
 import { EDITOR_TABS, editorTabState, tabCounts, tabForKey, type EditorTab } from "../components/product/editorTabs";
-import type { SectionKey } from "../components/product/productEditorTypes";
+import type { SectionKey, SpecRowDraft } from "../components/product/productEditorTypes";
+import { groupSpecRows } from "../components/product/normalize";
 import type { ProductLogoEntry } from "../lib/types";
 import { useHideCommerceFields } from "../hooks/useUserPreference";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
@@ -269,6 +270,7 @@ export default function ProductDetail() {
                 <EditorSection
                   title="Details"
                   description="Native Duda fields. These sync straight to the store."
+                  meta="Synced with Duda on save"
                   actions={
                     <Checkbox
                       className="text-muted"
@@ -288,16 +290,15 @@ export default function ProductDetail() {
 
               <TabPanel value="content" className="space-y-5">
                 {detailsAlert("content")}
-                <EditorSection title="Description" description="Shown in the Overview tab of the product page.">
-                  <DescriptionSection
-                    value={draft.details.description}
-                    onChange={(html) => setSection("details", { ...draft.details, description: html })}
-                    dirty={dirty.details}
-                  />
-                </EditorSection>
+                <DescriptionSection
+                  value={draft.details.description}
+                  onChange={(html) => setSection("details", { ...draft.details, description: html })}
+                  dirty={dirty.details}
+                />
                 <EditorSection
                   title="Technical specs"
                   description="Shown as a table in the Technical Specs tab of the product page."
+                  meta={specsMeta(draft.specs)}
                   error={saveErrors.specs ?? validationErrors.specs}
                 >
                   <SpecTableEditor
@@ -566,6 +567,12 @@ function ViewOnWebsite({ url, status }: { url: string | null; status: string }) 
       <span className="max-sm:sr-only">View on website</span>
     </Button>
   );
+}
+
+/** The Technical specs header's meta (10 §4): specs (label groups) and rows. */
+function specsMeta(rows: SpecRowDraft[]): string {
+  const specs = groupSpecRows(rows).length;
+  return `${specs} ${specs === 1 ? "spec" : "specs"} · ${rows.length} ${rows.length === 1 ? "row" : "rows"}`;
 }
 
 /**
