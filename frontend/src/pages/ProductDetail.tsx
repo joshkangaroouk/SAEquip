@@ -48,13 +48,13 @@ import { usePageCrumb } from "../components/TopBar";
 import { productPageUrl } from "../lib/site";
 import { cn } from "../lib/cn";
 
-/** From here the side panel (Visibility, Categories) sits beside the tabs. */
+/** From here the side panel (Images, Visibility, Categories) sits beside the tabs. */
 const XL = "(min-width: 1280px)";
 
 /**
- * The product editor (02a "Batch 8", 10 §2): a header band with the tabs on
- * its bottom edge and the one Save in it, the sections below, and a side
- * panel with Visibility and Categories. One draft and one Save for all of it
+ * The product editor (02a "Batch 8", 10 §2, 11): a header band with the tabs
+ * on its bottom edge and the one Save in it, the sections below, and a side
+ * panel with Images, Visibility and Categories. One draft and one Save for all of it
  * — the tabs only decide what is on screen.
  */
 export default function ProductDetail() {
@@ -439,17 +439,6 @@ export default function ProductDetail() {
 
               <TabPanel value="files" className="space-y-5">
                 <EditorSection
-                  title="Images"
-                  description="Gallery for the product page; the first image is the thumbnail. Duda re-hosts each image on save."
-                  error={saveErrors.images ?? validationErrors.images}
-                >
-                  <ImagesSection
-                    images={draft.images}
-                    onChange={(next) => setSection("images", next)}
-                    error={saveErrors.images ?? validationErrors.images}
-                  />
-                </EditorSection>
-                <EditorSection
                   title="3D model"
                   description="One .glb file, shown by the 3D viewer widget."
                   error={saveErrors.model3d}
@@ -485,42 +474,54 @@ export default function ProductDetail() {
               </TabPanel>
             </div>
 
-            {/* The side panel: Visibility and Categories. */}
+            {/* The side panel: Images (11 §2), Visibility and Categories.
+                Under Overview below 1280 it is two columns from sm, Images
+                beside the other two, so each card keeps about the width it has
+                beside the tabs (a full-width 4:3 featured image was ~500px tall). */}
             <aside
-              aria-label="Visibility and categories"
+              aria-label="Images, visibility and categories"
               className={cn(
-                "min-w-0 space-y-5 xl:col-start-2 xl:row-span-2 xl:row-start-1",
-                tab !== "overview" && "hidden xl:block",
+                "min-w-0 space-y-5 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:block xl:space-y-5",
+                // Not `hidden` plus sm:grid: sm:grid would win from 640 and show it on every tab.
+                tab === "overview" ? "sm:grid sm:grid-cols-2 sm:items-start sm:gap-5 sm:space-y-0" : "hidden",
               )}
             >
-              <EditorSection title="Visibility" error={saveErrors.accessory ?? validationErrors.accessory}>
-                <div className="space-y-5">
-                  <div>
-                    {/* The Status field (ACTIVE / HIDDEN), as Active / Hidden
-                        (10 §3): the same field and save key as before. */}
-                    <SegmentedControl
-                      ariaLabel="Visibility"
-                      value={draft.details.status === "ACTIVE" ? "ACTIVE" : "HIDDEN"}
-                      onChange={(v) => setSection("details", (d) => ({ ...d, status: v }))}
-                      options={[
-                        { value: "ACTIVE", label: "Active" },
-                        { value: "HIDDEN", label: "Hidden" },
-                      ]}
-                    />
-                    <p className="t-help mt-2">Hidden products aren't shown in the store.</p>
-                  </div>
-                  {/* Moved here from Overview (10 §3); the same `accessory` key. */}
-                  <AccessorySection checked={draft.isAccessory} onChange={(next) => setSection("isAccessory", next)} />
-                </div>
-              </EditorSection>
-              <CategoriesSection
-                cats={cats}
-                loadError={catsError}
-                selected={draft.categoryIds}
-                onChange={(next) => setSection("categoryIds", next)}
-                error={saveErrors.categories ?? validationErrors.categories}
-                onStaleCount={setStaleCategories}
+              {/* The gallery, featured image first (11 §2): its own card, as Categories is. */}
+              <ImagesSection
+                images={draft.images}
+                onChange={(next) => setSection("images", next)}
+                error={saveErrors.images ?? validationErrors.images}
               />
+              <div className="min-w-0 space-y-5">
+                <EditorSection title="Visibility" error={saveErrors.accessory ?? validationErrors.accessory}>
+                  <div className="space-y-5">
+                    <div>
+                      {/* The Status field (ACTIVE / HIDDEN), as Active / Hidden
+                          (10 §3): the same field and save key as before. */}
+                      <SegmentedControl
+                        ariaLabel="Visibility"
+                        value={draft.details.status === "ACTIVE" ? "ACTIVE" : "HIDDEN"}
+                        onChange={(v) => setSection("details", (d) => ({ ...d, status: v }))}
+                        options={[
+                          { value: "ACTIVE", label: "Active" },
+                          { value: "HIDDEN", label: "Hidden" },
+                        ]}
+                      />
+                      <p className="t-help mt-2">Hidden products aren't shown in the store.</p>
+                    </div>
+                    {/* Moved here from Overview (10 §3); the same `accessory` key. */}
+                    <AccessorySection checked={draft.isAccessory} onChange={(next) => setSection("isAccessory", next)} />
+                  </div>
+                </EditorSection>
+                <CategoriesSection
+                  cats={cats}
+                  loadError={catsError}
+                  selected={draft.categoryIds}
+                  onChange={(next) => setSection("categoryIds", next)}
+                  error={saveErrors.categories ?? validationErrors.categories}
+                  onStaleCount={setStaleCategories}
+                />
+              </div>
             </aside>
 
             {/* Delete product: the foot of Overview, outside the save flow. */}

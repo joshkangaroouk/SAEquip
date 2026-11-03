@@ -23,14 +23,20 @@ export function parseTab(value: string | null): EditorTab {
   return EDITOR_TABS.some((t) => t.value === value) ? (value as EditorTab) : "overview";
 }
 
-/** The keys in the side panel (Visibility's accessory toggle, Categories), on no tab of their own. */
-const PANEL_KEYS = ["accessory", "categories"] as const;
+/**
+ * The keys in the side panel (Images, Visibility's accessory toggle,
+ * Categories), on no tab of their own. Images moved here from Files & media
+ * in batch 11 (11 §2).
+ */
+const PANEL_KEYS = ["images", "accessory", "categories"] as const;
+type PanelKey = (typeof PANEL_KEYS)[number];
+const isPanelKey = (key: SectionKey): key is PanelKey => (PANEL_KEYS as readonly SectionKey[]).includes(key);
 
 /**
  * The tab each single-tab key lives on. `details` spans several tabs (see
  * DETAIL_FIELDS) and the side panel's keys are on none, so neither is here.
  */
-export const KEY_TAB: Record<Exclude<SectionKey, "details" | (typeof PANEL_KEYS)[number]>, EditorTab> = {
+export const KEY_TAB: Record<Exclude<SectionKey, "details" | PanelKey>, EditorTab> = {
   specs: "content",
   benefits: "content",
   applications: "content",
@@ -38,7 +44,6 @@ export const KEY_TAB: Record<Exclude<SectionKey, "details" | (typeof PANEL_KEYS)
   logos: "compliance",
   options: "options",
   variations: "options",
-  images: "files",
   model3d: "files",
   downloads: "files",
 };
@@ -107,7 +112,7 @@ export function editorTabState({
   /** The field `validationErrors.details` is about, from validate(). */
   detailsInvalidField: keyof NativeForm | null;
   /**
-   * Below 1280px the side panel (Visibility, Categories) is part of Overview,
+   * Below 1280px the side panel (Images, Visibility, Categories) is part of Overview,
    * so its edits and errors count there. From 1280 it is on screen beside
    * every tab and belongs to none.
    */
@@ -171,15 +176,18 @@ export function editorTabState({
  */
 export function tabForKey(key: SectionKey, state: EditorTabState, panelInOverview: boolean): EditorTab | null {
   if (key === "details") return state.detailsErrorTabs[0] ?? "overview";
-  if (key === "categories" || key === "accessory") return panelInOverview ? "overview" : null;
+  if (isPanelKey(key)) return panelInOverview ? "overview" : null;
   return KEY_TAB[key];
 }
 
-/** The tab labels' counts: items on Content, attached options, files on Files & media. */
+/**
+ * The tab labels' counts: items on Content, attached options, files on Files
+ * & media (the downloads and the 3D model; images are in the side panel).
+ */
 export function tabCounts(draft: EditorSnapshot): Partial<Record<EditorTab, number>> {
   return {
     content: draft.specs.length + draft.benefits.length + draft.applications.length,
     options: draft.options.length,
-    files: draft.images.length + draft.downloads.length + (draft.model3d.mediaAssetId ? 1 : 0),
+    files: draft.downloads.length + (draft.model3d.mediaAssetId ? 1 : 0),
   };
 }
