@@ -197,14 +197,17 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      {/* The logo row is 64px with a rule under it, level with the top bar's:
-          the real SA Equip logo (its white frame removed, so it sits on the
-          dark sidebar) at 44px, and "Product Hub" beside it. The logo says
-          "SA Equip", so the words don't. */}
-      <div className={cn("flex h-16 shrink-0 items-center border-b px-4", SIDEBAR_BORDER)}>
+      {/* The logo row (12.13): the real SA Equip logo (its white frame
+          removed, so it sits on the dark sidebar) at 56px, and beside it,
+          centred on it, "SA Equip" over "Product Hub". 80px tall to fit, with
+          a rule under it. The words name the link, so the logo is decorative. */}
+      <div className={cn("flex h-20 shrink-0 items-center border-b px-4", SIDEBAR_BORDER)}>
         <Link to="/" onClick={onNavigate} className="flex items-center gap-3">
-          <img src={logo} alt="SA Equip" width={140} height={141} className="h-11 w-auto shrink-0" />
-          <span className="text-label text-sidebar-muted">Product Hub</span>
+          <img src={logo} alt="" width={140} height={141} className="h-14 w-auto shrink-0" />
+          <span className="min-w-0">
+            <span className="t-lockup-name block text-sidebar-fg">SA Equip</span>
+            <span className="block text-help text-sidebar-text">Product Hub</span>
+          </span>
         </Link>
       </div>
 

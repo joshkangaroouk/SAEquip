@@ -814,13 +814,17 @@ function Brand() {
     <Section title="Logo">
       <p className="t-help">
         The real SA Equip logo (assets/saequip-logo-unframed.svg: the original's white frame removed, the viewBox
-        cropped to the artwork) at 44px, with "Product Hub" beside it. In the sidebar, and above the sign-in card.
+        cropped to the artwork). In the sidebar at 56px with "SA Equip" over "Product Hub" (12.13); above the sign-in
+        card at 44px with "Product Hub".
       </p>
       <div className="flex flex-wrap gap-3">
         {/* The sidebar is always dark, so its words sit on the fixed sidebar tokens in both themes. */}
         <div className="flex items-center gap-3 bg-sidebar p-4" data-kit="logo:sidebar">
-          <img src={logo} alt="SA Equip" width={140} height={141} className="h-11 w-auto shrink-0" />
-          <span className="text-label text-sidebar-muted">Product Hub</span>
+          <img src={logo} alt="" width={140} height={141} className="h-14 w-auto shrink-0" />
+          <span className="min-w-0">
+            <span className="t-lockup-name block text-sidebar-fg">SA Equip</span>
+            <span className="block text-help text-sidebar-text">Product Hub</span>
+          </span>
         </div>
         {/* The sign-in pages are light only. */}
         <div className="flex items-center gap-3 border border-border bg-surface p-4" data-theme="light" data-kit="logo:light">
