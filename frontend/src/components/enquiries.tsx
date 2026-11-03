@@ -205,13 +205,17 @@ export function DefinitionGrid({ children }: { children: ReactNode }) {
   return <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">{children}</dl>;
 }
 
-/** One labelled value. "—" when empty, so a field is never silently missing. */
+/**
+ * One labelled value. "—" when empty, so a field is never silently missing.
+ * Long unbroken values (an email address) wrap rather than push the detail
+ * pane sideways — at 1024 the pane is under 300px wide.
+ */
 export function Detail({ label, children, wide = false }: { label: string; children?: ReactNode; wide?: boolean }) {
   const empty = children == null || children === "";
   return (
     <div className={wide ? "sm:col-span-2" : undefined}>
       <dt className="t-label">{label}</dt>
-      <dd className="mt-0.5 whitespace-pre-line text-body text-text">
+      <dd className="mt-0.5 whitespace-pre-line break-words text-body text-text">
         {empty ? (
           <>
             <span aria-hidden="true" className="text-muted">
