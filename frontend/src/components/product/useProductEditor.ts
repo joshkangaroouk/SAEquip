@@ -618,7 +618,7 @@ export function useProductEditor(
     if (dirty.downloads) {
       tasks.push({
         keys: ["downloads"],
-        label: "Downloads",
+        label: "downloads",
         run: async () => {
           // The whole list in display order. Keyed on the file server-side, so
           // a retry after a lost response converges instead of duplicating.
