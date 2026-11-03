@@ -20,6 +20,7 @@ import { MediaPicker } from "../MediaPicker";
 import { EditorSection } from "./EditorSection";
 import type { ImageDraft } from "./productEditorTypes";
 import type { MediaAsset } from "../../lib/types";
+import type { uploadFile } from "../../lib/upload";
 
 /** True for an image Duda has already ingested onto its CDN. */
 const isDudaHosted = (url: string) => url.includes("cdn-website.com");
@@ -49,11 +50,14 @@ export function ImagesSection({
   images,
   onChange,
   error,
+  upload,
 }: {
   images: ImageDraft[];
   /** A value, or a function of the gallery as it is when the change lands. */
   onChange: (next: ImageDraft[] | ((prev: ImageDraft[]) => ImageDraft[])) => void;
   error?: string;
+  /** The upload itself (the real one by default); the UI kit passes a local stand-in. */
+  upload?: typeof uploadFile;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   /** The image whose dialog is open, by its cosmetic key. */
@@ -99,7 +103,7 @@ export function ImagesSection({
 
   // The same queue as the dashed dropzone: one upload per file, its progress
   // row, toasts, and the CURRENT addAsset when each one lands.
-  const queue = useUploadQueue({ onUploaded: (asset: MediaAsset) => addAsset(asset) });
+  const queue = useUploadQueue({ onUploaded: (asset: MediaAsset) => addAsset(asset), upload });
   // The whole card takes a drop. noClick and noKeyboard: the card holds its
   // own controls, and Upload (below) is the keyboard and click way in.
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
@@ -125,7 +129,10 @@ export function ImagesSection({
 
   return (
     <div {...getRootProps({ className: "relative" })}>
-      <input {...getInputProps({ "aria-label": "Upload images" })} />
+      {/* The file chooser behind Upload. Out of the accessibility tree: the
+          visible Upload button is the way in, and the input (visually hidden,
+          not display:none) would otherwise read as a second, unseen button. */}
+      <input {...getInputProps({ "aria-hidden": true })} />
       <EditorSection
         id="section-images"
         title="Images"
@@ -246,6 +253,7 @@ export function ImagesSection({
       {pickerOpen && (
         <MediaPicker
           kind="image"
+          upload={upload}
           onPick={(asset) => {
             addAsset(asset);
             setPickerOpen(false);

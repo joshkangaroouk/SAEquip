@@ -27,10 +27,13 @@ export function MediaPicker({
   kind = "image",
   onPick,
   onClose,
+  upload = uploadFile,
 }: {
   kind?: "image" | "file" | "model";
   onPick: (asset: MediaAsset) => void;
   onClose: () => void;
+  /** The upload itself; the UI kit passes a local stand-in, as for FileDropzone. */
+  upload?: typeof uploadFile;
 }) {
   const lib = useMediaLibrary({ kind, pageSize: PICKER_PAGE_SIZE });
   const [file, setFile] = useState<File | null>(null);
@@ -45,7 +48,7 @@ export function MediaPicker({
     try {
       // Straight to Supabase via a signed URL, then confirmed with the API —
       // the file never passes through the backend. See lib/upload.ts.
-      onPick(await uploadFile(file));
+      onPick(await upload(file));
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : "Upload failed");
     } finally {

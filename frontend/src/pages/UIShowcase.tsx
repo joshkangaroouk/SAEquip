@@ -28,6 +28,8 @@ import {
   Select,
   SelectMenu,
   Skeleton,
+  SkeletonField,
+  SkeletonLine,
   SortableList,
   SplitDetailHeader,
   SplitListItem,
@@ -55,6 +57,9 @@ import {
 } from "../components/ui";
 import { EditorSection } from "../components/product/EditorSection";
 import { ProductBand } from "../components/product/ProductBand";
+import { ImagesSection } from "../components/product/ImagesSection";
+import { ProductEditorSkeleton } from "../components/product/EditorSkeleton";
+import type { ImageDraft } from "../components/product/productEditorTypes";
 import { ProductSaveArea } from "../components/product/ProductSaveArea";
 import { CategoriesSection, type CategoryNode } from "../components/product/CategoriesSection";
 import { EDITOR_TABS, type EditorTab } from "../components/product/editorTabs";
@@ -452,7 +457,7 @@ function EditorDemo({ theme }: { theme: string }) {
       <p className="t-help">
         The band (10 §2): picture, overline, name and meta; the save area (unsaved count, failed pills, View on
         website, Discard, Save changes); the tabs on its bottom rule, with counts and dots. In the app it sits under the
-        top bar and sticks from lg; here it is in place. Each tab's spoken name carries its count and state, e.g.
+        top bar and sticks from 1280 (11 §4); here it is in place. Each tab's spoken name carries its count and state, e.g.
         "Content, 23, unsaved changes".
       </p>
       <div data-kit="editor-tabs" className="border border-border bg-bg">
@@ -555,8 +560,51 @@ function EditorDemo({ theme }: { theme: string }) {
           }
         />
       </div>
-      <KitCategories />
+      <KitSidePanel />
+      <p className="t-help">
+        While the product loads (11 §1): the editor skeleton, the band and the cards in blocks on the editor's own
+        grid, announced once as "Loading product". The grid and the side panel follow the window, not this panel.
+      </p>
+      <div data-kit="editor-skeleton" className="border border-border bg-bg p-4">
+        <ProductEditorSkeleton tab="overview" />
+      </div>
     </Section>
+  );
+}
+
+/**
+ * The kit's gallery. Local images; the query on two of them only makes the
+ * pending-upload test (a Duda CDN host) read them as already on Duda.
+ */
+const KIT_IMAGES: ImageDraft[] = [
+  { key: "k1", url: "/sa-favicon.jpg?irp.cdn-website.com", alt: "SA Equip mark" },
+  { key: "k2", url: "/saequip-no-image.jpg?irp.cdn-website.com", alt: "" },
+  { key: "k3", url: "/saequip-no-image.jpg", alt: "Just added" },
+];
+
+/** The side panel's Images card (11 §2) with a gallery and empty, and its Categories card, at the panel's narrowest. */
+function KitSidePanel() {
+  const [images, setImages] = useState(KIT_IMAGES);
+  const [none, setNone] = useState<ImageDraft[]>([]);
+  return (
+    <div className="space-y-3">
+      <p className="t-help">
+        The side panel at its narrowest (18rem; from 1280 it is clamp(18rem, 28%, 30rem)). Images: the featured image is
+        the first, a thumbnail opens the Image dialog, drag by the handle. Local state only: uploads and drops are faked,
+        and Add from Media only reads the library.
+      </p>
+      <div className="flex flex-wrap items-start gap-5">
+        <div data-kit="images-card" className="w-[18rem] max-w-full">
+          <ImagesSection images={images} onChange={setImages} upload={kitImageUpload} />
+        </div>
+        <div data-kit="images-card-empty" className="w-[18rem] max-w-full">
+          <ImagesSection images={none} onChange={setNone} upload={kitImageUpload} />
+        </div>
+        <div className="w-[18rem] max-w-full">
+          <KitCategories />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -577,12 +625,7 @@ const KIT_CATS: CategoryNode[] = [
 
 function KitCategories() {
   const [selected, setSelected] = useState(["p", "p2", "s", "s1", "s2", "i", "i1", "i2", "i3"]);
-  return (
-    <div className="max-w-[18rem]">
-      <p className="t-help mb-2">The side panel's Categories card (10 §3), 18rem wide. Local state only.</p>
-      <CategoriesSection cats={KIT_CATS} loadError={null} selected={selected} onChange={setSelected} />
-    </div>
-  );
+  return <CategoriesSection cats={KIT_CATS} loadError={null} selected={selected} onChange={setSelected} />;
 }
 
 function Chips() {
@@ -683,6 +726,14 @@ function Surfaces() {
         <Skeleton className="h-10 w-40" />
         <Skeleton className="h-4 w-64" />
         <Spinner className="text-muted" />
+      </Card>
+      {/* SkeletonLine sits on a type role's line box; SkeletonField shows real copy when it is given. */}
+      <Card data-kit="skeleton-parts" className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <SkeletonLine text="t-section" className="h-[0.8em] w-28" />
+          <SkeletonLine text="t-help" className="h-[0.7em] w-56 max-w-full" />
+        </div>
+        <SkeletonField label="Page URL" hint="Real label and hint, block for the value." />
       </Card>
       <Loader label="Loading products…" />
     </Section>
@@ -995,6 +1046,14 @@ function Thumbs() {
     </Section>
   );
 }
+
+/** fakeUpload with a picture to show, for the Images card. */
+const kitImageUpload: typeof fakeUpload = async (file, opts) => ({
+  ...(await fakeUpload(file, opts)),
+  kind: "image",
+  url: "/saequip-no-image.jpg",
+  alt: null,
+});
 
 /** A stand-in for the real upload: fakes progress locally and never calls the API. */
 const fakeUpload: NonNullable<React.ComponentProps<typeof FileDropzone>["upload"]> = (file, opts) =>
