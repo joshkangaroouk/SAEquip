@@ -9,9 +9,9 @@ import { HeaderSlotPortal, Thumb } from "../ui";
  * given, sit flush with the bottom rule, so the active tab's 3px bar covers
  * it.
  *
- * Sticky under the top bar from lg (the shell's slot sticks when it holds a
- * `data-sticky-band`). Below lg it scrolls away, and the actions wrap under
- * the title. While it is on screen it writes its height to `--sticky-band`,
+ * Sticky under the top bar from 1280 (11 §4; the shell's slot sticks when it
+ * holds a `data-sticky-band`). Below that it scrolls away, and below lg the
+ * actions wrap under the title. While it is on screen it writes its height to `--sticky-band`,
  * which index.css adds to the page's scroll padding, so anything scrolled to
  * (the save area's failed pills, a focused field) stops below it rather than
  * underneath it.

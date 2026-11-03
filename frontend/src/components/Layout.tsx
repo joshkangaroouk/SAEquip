@@ -339,7 +339,7 @@ export function Layout({ children }: { children?: ReactNode }) {
           pageLabel={pageLabel}
         />
         {/*
-          The page header slot. It sticks under the top bar from lg when it
+          The page header slot. It sticks under the top bar from xl (1280, 11 §4) when it
           holds a sticky band (the product editor's, 10 §2): the slot, not the
           band, because a sticky element only sticks within its parent, and
           the slot's parent is the whole main column. Under the top bar (z-20)
@@ -347,7 +347,7 @@ export function Layout({ children }: { children?: ReactNode }) {
         */}
         <div
           ref={setHeaderSlot}
-          className="shrink-0 lg:has-[[data-sticky-band]]:sticky lg:has-[[data-sticky-band]]:top-16 lg:has-[[data-sticky-band]]:z-[15]"
+          className="shrink-0 xl:has-[[data-sticky-band]]:sticky xl:has-[[data-sticky-band]]:top-16 xl:has-[[data-sticky-band]]:z-[15]"
         />
         <CrumbProvider value={setPageLabel}>
           <PageHeaderSlot value={{ el: headerSlot, full }}>

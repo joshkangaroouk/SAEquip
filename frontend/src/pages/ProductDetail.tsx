@@ -262,8 +262,10 @@ export default function ProductDetail() {
           */}
           {/* Rows auto then 1fr: the side panel spans both and is often the
               taller, and the extra height must go below Delete product, not
-              between the tabs and it. */}
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] xl:grid-rows-[auto_1fr] xl:items-start">
+              between the tabs and it. The panel is clamp(18rem, 28%, 30rem)
+              of the grid (11 §3): about 305px at 1440, never under 288 or
+              over 480. */}
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_clamp(18rem,28%,30rem)] xl:grid-rows-[auto_1fr] xl:items-start">
             <div className="min-w-0 xl:col-start-1 xl:row-start-1">
               <TabPanel value="overview" className="space-y-5">
                 {detailsAlert("overview")}

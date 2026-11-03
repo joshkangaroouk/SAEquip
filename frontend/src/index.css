@@ -137,9 +137,10 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* …and below a sticky band too (the product editor's, from lg), whose
-     height the band writes to --sticky-band while it is on screen. */
-  @media (min-width: 1024px) {
+  /* …and below a sticky band too (the product editor's, from 1280: 11 §4),
+     whose height the band writes to --sticky-band while it is on screen.
+     The same breakpoint as the shell slot's `xl:` sticky rule in Layout. */
+  @media (min-width: 1280px) {
     html {
       scroll-padding-top: calc(5rem + var(--sticky-band, 0px));
     }

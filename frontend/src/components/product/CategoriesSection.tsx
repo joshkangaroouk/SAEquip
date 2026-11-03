@@ -211,7 +211,7 @@ export function CategoriesSection({
 const TEXT_BUTTON =
   "text-help font-semibold text-text underline-offset-2 enabled:hover:underline disabled:cursor-not-allowed disabled:text-muted";
 
-/** A chip's label: truncated inside the 18rem panel, the full name on hover. */
+/** A chip's label: truncated inside the side panel, the full name on hover. */
 function ChipText({ children }: { children: string }) {
   return (
     <span className="min-w-0 truncate" title={children}>
