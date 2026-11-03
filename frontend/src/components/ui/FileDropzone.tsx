@@ -105,7 +105,9 @@ export function FileDropzone({
             : "border-border-strong bg-surface text-muted hover:border-text",
         )}
       >
-        <input {...getInputProps()} />
+        {/* Hidden and out of the tab order (the box above is the control), but
+            still in the accessibility tree, so it carries the box's own words. */}
+        <input {...getInputProps({ "aria-label": label })} />
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="mb-3 text-muted">
           <path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="currentColor" strokeWidth="1.5" />
           <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="1.5" />

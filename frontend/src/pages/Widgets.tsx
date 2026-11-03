@@ -410,6 +410,12 @@ function SpecsTablePreview() {
  * Mirrors compatibleSection() in widget.js. Static here — the live arrows
  * appear only when the track actually overflows, which is measured from
  * rendered width, so a preview can't meaningfully show that.
+ *
+ * Each card is productCard()'s markup: a link (the product page live; inert
+ * here), the picture with an empty alt since the title names the card, an h4,
+ * and "View Product" with its chevron. The cards used to be spans on the
+ * carousel's retired `.saeh-cp-*` classes, so the track held nothing
+ * focusable and the styling was not the live one.
  */
 function CompatiblePreview() {
   return (
@@ -428,17 +434,24 @@ function CompatiblePreview() {
         </button>
         <div className="saeh-cp-track">
           {DUMMY.compatible.map((c) => (
-            <span key={c.name} className="saeh-cp-card">
-              <span className="saeh-cp-shot">
-                <img src={c.image} alt={c.name} />
-              </span>
-              <span className="saeh-cp-body">
-                <span className="saeh-cp-name">{c.name}</span>
-                <span className="saeh-cp-btn">
-                  <span>VIEW PRODUCT</span>
+            <a key={c.name} className="saeh-pl-card saeh-cp-card" href="#compatible" onClick={(e) => e.preventDefault()}>
+              <div className="saeh-pl-shot">
+                <img src={c.image} alt="" />
+              </div>
+              <div className="saeh-pl-body">
+                <h4 className="saeh-pl-name">{c.name}</h4>
+              </div>
+              <span className="saeh-pl-btn">
+                View Product
+                <span className="saeh-pl-chevwrap">
+                  <svg viewBox="0 0 24 24" width={19} height={19} fill="none" aria-hidden="true">
+                    {["M5 5l7 7-7 7", "M13 5l7 7-7 7"].map((d) => (
+                      <path key={d} d={d} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                    ))}
+                  </svg>
                 </span>
               </span>
-            </span>
+            </a>
           ))}
         </div>
         <button type="button" className="saeh-cp-nav" aria-label="Next products">
@@ -585,7 +598,7 @@ const WIDGETS = [
   {
     section: "compatible",
     name: "SA Compatible Products",
-    what: "A carousel of products and accessories that go with this one — 4 across on desktop, 3 on tablet, 2 on mobile. Arrows appear only when there is more than fits.",
+    what: "A carousel of products and accessories that go with this one — 4 across on desktop, 3 on tablet, 1 on mobile. Arrows appear only when there is more than fits.",
     source: "Compatible Products in the product editor.",
     preview: <CompatiblePreview />,
     wide: true,

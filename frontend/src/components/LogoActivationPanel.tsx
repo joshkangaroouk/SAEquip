@@ -75,9 +75,11 @@ export function LogoActivationPanel({
                 )}
               >
                 <div className="flex h-16 w-full items-center justify-center bg-paper">
+                  {/* The visible label names the button, so with one the image
+                      is decorative; without one the alt text is the name. */}
                   <img
                     src={entry.url}
-                    alt={entry.alt || entry.label || "logo"}
+                    alt={entry.label ? "" : entry.alt || "logo"}
                     className="max-h-16 max-w-full object-contain"
                   />
                 </div>
