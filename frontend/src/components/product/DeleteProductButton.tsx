@@ -15,6 +15,24 @@ interface DeletePreview {
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
+ * The trigger on its own (12 §2): a danger text button, no border, an
+ * underline on hover, the global focus outline. Separate so the UI kit can
+ * show it without the dialog and its requests.
+ */
+export function DeleteProductLink({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 text-body font-semibold text-danger underline-offset-2 hover:underline"
+    >
+      <Trash2 size={16} aria-hidden="true" />
+      Delete product
+    </button>
+  );
+}
+
+/**
  * Product deletion. Irreversible on Duda's side, so it's gated behind a
  * preview of exactly what goes and what stays, plus typing the product name.
  *
@@ -85,15 +103,7 @@ export function DeleteProductButton({
 
   return (
     <>
-      {/* A danger text button: no border, an underline on hover, the global focus outline. */}
-      <button
-        type="button"
-        onClick={() => void openDialog()}
-        className="inline-flex items-center gap-2 text-body font-semibold text-danger underline-offset-2 hover:underline"
-      >
-        <Trash2 size={16} aria-hidden="true" />
-        Delete product
-      </button>
+      <DeleteProductLink onClick={() => void openDialog()} />
 
       <Modal
         open={open}

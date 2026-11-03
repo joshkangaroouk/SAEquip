@@ -12,7 +12,6 @@ import {
   TabList,
   TabPanel,
   Tabs,
-  SegmentedControl,
 } from "../components/ui";
 import { LogoActivationPanel } from "../components/LogoActivationPanel";
 import { SpecTableEditor } from "../components/SpecTableEditor";
@@ -20,9 +19,9 @@ import { TextItemListEditor } from "../components/TextItemListEditor";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import { TranslationProgressModal } from "../components/TranslationProgressModal";
 import { CategoriesSection, useCategoryList, type CategoryNode } from "../components/product/CategoriesSection";
-import { AccessorySection } from "../components/product/AccessorySection";
 import { CompatibleProductsSection } from "../components/product/CompatibleProductsSection";
 import { DeleteProductButton } from "../components/product/DeleteProductButton";
+import { VisibilitySection } from "../components/product/VisibilitySection";
 import { DescriptionSection } from "../components/product/DescriptionSection";
 import { EditorSection } from "../components/product/EditorSection";
 import { ImagesSection } from "../components/product/ImagesSection";
@@ -480,31 +479,16 @@ export default function ProductDetail() {
 
             {/* The side panel: Visibility and Categories. */}
             <aside aria-label="Visibility and categories" className={sidePanelClass(tab)}>
-              <EditorSection title="Visibility" error={saveErrors.accessory ?? validationErrors.accessory}>
-                <div className="space-y-5">
-                  <div>
-                    {/* The Status field (ACTIVE / HIDDEN), as Active / Hidden
-                        (10 §3): the same field and save key as before. */}
-                    <SegmentedControl
-                      ariaLabel="Visibility"
-                      value={draft.details.status === "ACTIVE" ? "ACTIVE" : "HIDDEN"}
-                      onChange={(v) => setSection("details", (d) => ({ ...d, status: v }))}
-                      options={[
-                        { value: "ACTIVE", label: "Active" },
-                        { value: "HIDDEN", label: "Hidden" },
-                      ]}
-                    />
-                    <p className="t-help mt-2">Hidden products aren't shown in the store.</p>
-                  </div>
-                  {/* Moved here from Overview (10 §3); the same `accessory` key. */}
-                  <AccessorySection checked={draft.isAccessory} onChange={(next) => setSection("isAccessory", next)} />
-                  {/* Delete product, WordPress-style (12 §2): outside the save
-                      flow, under a rule that runs the card's full width. */}
-                  <div className="-mx-5 border-t border-border px-5 pt-4">
-                    <DeleteProductButton productId={product.id} productName={product.name} onBeforeNavigate={disarmGuard} />
-                  </div>
-                </div>
-              </EditorSection>
+              <VisibilitySection
+                status={draft.details.status}
+                onStatusChange={(v) => setSection("details", (d) => ({ ...d, status: v }))}
+                isAccessory={draft.isAccessory}
+                onAccessoryChange={(next) => setSection("isAccessory", next)}
+                error={saveErrors.accessory ?? validationErrors.accessory}
+                deleteControl={
+                  <DeleteProductButton productId={product.id} productName={product.name} onBeforeNavigate={disarmGuard} />
+                }
+              />
               <CategoriesSection
                 cats={cats}
                 loadError={catsError}

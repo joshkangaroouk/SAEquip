@@ -30,6 +30,7 @@ export function ProductBand({
   meta,
   actions,
   tabs,
+  compact: pinned,
 }: {
   imageUrl: string | null;
   overline?: ReactNode;
@@ -37,11 +38,18 @@ export function ProductBand({
   meta?: ReactNode;
   actions?: ReactNode;
   tabs?: ReactNode;
+  /**
+   * Holds the band in one state instead of following the scroll: the UI kit
+   * shows it expanded and compact, in place on a long page. The editor and
+   * New product never pass it.
+   */
+  compact?: boolean;
 }) {
   const sticky = useMediaQuery(STICKY);
   // Focus inside the meta row (Refresh) holds the band open until it leaves.
   const [metaFocused, setMetaFocused] = useState(false);
-  const compact = useCompactBand(sticky) && !metaFocused;
+  const scrolled = useCompactBand(sticky && pinned === undefined);
+  const compact = pinned ?? (scrolled && !metaFocused);
   return (
     <BandFrame
       compact={compact}

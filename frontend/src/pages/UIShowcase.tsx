@@ -58,6 +58,8 @@ import {
 import { EditorSection } from "../components/product/EditorSection";
 import { ProductBand } from "../components/product/ProductBand";
 import { ImagesSection } from "../components/product/ImagesSection";
+import { VisibilitySection } from "../components/product/VisibilitySection";
+import { DeleteProductLink } from "../components/product/DeleteProductButton";
 import { ProductEditorSkeleton } from "../components/product/EditorSkeleton";
 import type { ImageDraft } from "../components/product/productEditorTypes";
 import { ProductSaveArea } from "../components/product/ProductSaveArea";
@@ -457,53 +459,13 @@ function EditorDemo({ theme }: { theme: string }) {
       <p className="t-help">
         The band (10 §2): picture, overline, name and meta; the save area (unsaved count, failed pills, View on
         website, Discard, Save changes); the tabs on its bottom rule, with counts and dots. In the app it sits under the
-        top bar and sticks from 1280 (11 §4); here it is in place. Each tab's spoken name carries its count and state, e.g.
+        top bar and sticks from 1280 (11 §4), and shrinks as the page scrolls (12 §4); here it is in place, held in one
+        state. Each tab's spoken name carries its count and state, e.g.
         "Extra details, 23, unsaved changes".
       </p>
       <div data-kit="editor-tabs" className="border border-border bg-bg">
         <Tabs defaultValue="compliance">
-          <ProductBand
-            imageUrl="/sa-favicon.jpg"
-            overline="SA Flexiheat · Climate Control and Heating"
-            title="EX Heater"
-            meta={
-              <>
-                <span className="text-help text-muted">
-                  SKU <span className="t-code text-text">SAPH18440</span>
-                </span>
-                <StatusBadge status="ACTIVE" />
-                <span className="t-help">Loaded 10:00 · Refresh</span>
-              </>
-            }
-            actions={
-              <ProductSaveArea
-                dirtyLabels={["Details", "Logos"]}
-                isValid
-                saving={false}
-                savingLabel={null}
-                saveErrors={{ logos: "Duda refused the save. Try again." }}
-                validationErrors={{}}
-                onSave={() => toast.success("Kit only — nothing saved")}
-                onReset={() => {}}
-                onOpenSection={() => {}}
-                viewOnWebsite={
-                  <Button variant="secondary">
-                    <ExternalLink size={16} aria-hidden="true" />
-                    View on website
-                  </Button>
-                }
-              />
-            }
-            tabs={
-              <TabList aria-label={`Product sections (kit, ${theme})`} className="-ml-3 shadow-none">
-                {EDITOR_TABS.map((t) => (
-                  <Tab key={t.value} value={t.value} count={KIT_TAB_STATE[t.value]?.count} indicator={KIT_TAB_STATE[t.value]?.indicator}>
-                    {t.label}
-                  </Tab>
-                ))}
-              </TabList>
-            }
-          />
+          <KitBand theme={theme} compact={false} />
           {EDITOR_TABS.map((t) => (
             <TabPanel key={t.value} value={t.value} className="space-y-5 p-5">
               {t.value === "compliance" ? (
@@ -537,9 +499,25 @@ function EditorDemo({ theme }: { theme: string }) {
           ))}
         </Tabs>
       </div>
+      <p className="t-help">
+        Compact (12 §4): from 1280, once the page has scrolled past 120px (and until it is back under 24), the overline
+        and the meta row fold away (inert and hidden), the picture is 40px and the name 20px. The save area and the
+        tabs stay. 200ms ease-out; instant under reduced motion.
+      </p>
+      <div data-kit="editor-band-compact" className="border border-border bg-bg">
+        <Tabs defaultValue="extra">
+          <KitBand theme={theme} compact />
+          {EDITOR_TABS.map((t) => (
+            <TabPanel key={t.value} value={t.value} className="p-5">
+              <p className="text-body">The page under the band.</p>
+            </TabPanel>
+          ))}
+        </Tabs>
+      </div>
       <p className="t-help">New product: the same band, with no tabs and no "Loaded", and its create buttons.</p>
       <div className="border border-border">
         <ProductBand
+          compact={false}
           imageUrl={null}
           overline="New product"
           title="ZZ Harness Heater"
@@ -560,6 +538,7 @@ function EditorDemo({ theme }: { theme: string }) {
           }
         />
       </div>
+      <KitImages />
       <KitSidePanel />
       <p className="t-help">
         While the product loads (11 §1): the editor skeleton, the band and the cards in blocks on the editor's own
@@ -569,6 +548,55 @@ function EditorDemo({ theme }: { theme: string }) {
         <ProductEditorSkeleton tab="overview" />
       </div>
     </Section>
+  );
+}
+
+/** The kit's editor band, expanded or compact (12 §4: held in one state here, since it is in place on a long page). */
+function KitBand({ theme, compact }: { theme: string; compact: boolean }) {
+  return (
+    <ProductBand
+      compact={compact}
+      imageUrl="/sa-favicon.jpg"
+      overline="SA Flexiheat · Climate Control and Heating"
+      title="EX Heater"
+      meta={
+        <>
+          <span className="text-help text-muted">
+            SKU <span className="t-code text-text">SAPH18440</span>
+          </span>
+          <StatusBadge status="ACTIVE" />
+          <span className="t-help">Loaded 10:00 · Refresh</span>
+        </>
+      }
+      actions={
+        <ProductSaveArea
+          dirtyLabels={["Details", "Logos"]}
+          isValid
+          saving={false}
+          savingLabel={null}
+          saveErrors={{ logos: "Duda refused the save. Try again." }}
+          validationErrors={{}}
+          onSave={() => toast.success("Kit only — nothing saved")}
+          onReset={() => {}}
+          onOpenSection={() => {}}
+          viewOnWebsite={
+            <Button variant="secondary">
+              <ExternalLink size={16} aria-hidden="true" />
+              View on website
+            </Button>
+          }
+        />
+      }
+      tabs={
+        <TabList aria-label={`Product sections (kit, ${theme}${compact ? ", compact" : ""})`} className="-ml-3 shadow-none">
+          {EDITOR_TABS.map((t) => (
+            <Tab key={t.value} value={t.value} count={KIT_TAB_STATE[t.value]?.count} indicator={KIT_TAB_STATE[t.value]?.indicator}>
+              {t.label}
+            </Tab>
+          ))}
+        </TabList>
+      }
+    />
   );
 }
 
@@ -582,27 +610,46 @@ const KIT_IMAGES: ImageDraft[] = [
   { key: "k3", url: "/saequip-no-image.jpg", alt: "Just added" },
 ];
 
-/** The side panel's Images card (11 §2) with a gallery and empty, and its Categories card, at the panel's narrowest. */
-function KitSidePanel() {
+/** The Images section (12 §1: the first section of Files & media), with a gallery and empty. */
+function KitImages() {
   const [images, setImages] = useState(KIT_IMAGES);
   const [none, setNone] = useState<ImageDraft[]>([]);
   return (
     <div className="space-y-3">
       <p className="t-help">
-        The side panel at its narrowest (18rem; from 1280 it is clamp(18rem, 28%, 30rem)). Images: the featured image is
-        the first, a thumbnail opens the Image dialog, drag by the handle. Local state only: uploads and drops are faked,
-        and Add from Media only reads the library.
+        Images, the first section of Files &amp; media (12 §1): the featured image (the first) beside the gallery from
+        1024, under it below. A thumbnail opens the Image dialog; drag by the handle. Local state only: uploads and
+        drops are faked, and Add from Media only reads the library.
       </p>
-      <div className="flex flex-wrap items-start gap-5">
-        <div data-kit="images-card" className="w-[18rem] max-w-full">
-          <ImagesSection images={images} onChange={setImages} upload={kitImageUpload} />
-        </div>
-        <div data-kit="images-card-empty" className="w-[18rem] max-w-full">
-          <ImagesSection images={none} onChange={setNone} upload={kitImageUpload} />
-        </div>
-        <div className="w-[18rem] max-w-full">
-          <KitCategories />
-        </div>
+      <div data-kit="images-card">
+        <ImagesSection images={images} onChange={setImages} upload={kitImageUpload} />
+      </div>
+      <div data-kit="images-card-empty">
+        <ImagesSection images={none} onChange={setNone} upload={kitImageUpload} />
+      </div>
+    </div>
+  );
+}
+
+/** The side panel at its narrowest (18rem): Visibility, with Delete product at its foot (12 §2), and Categories. */
+function KitSidePanel() {
+  const [status, setStatus] = useState("ACTIVE");
+  const [accessory, setAccessory] = useState(false);
+  return (
+    <div className="space-y-3">
+      <p className="t-help">
+        The side panel at its narrowest (18rem; from 1280 it is clamp(18rem, 28%, 30rem)). Delete product opens the
+        typed confirmation in the editor; here it does nothing.
+      </p>
+      <div data-kit="side-panel" className="w-[18rem] max-w-full space-y-5">
+        <VisibilitySection
+          status={status}
+          onStatusChange={setStatus}
+          isAccessory={accessory}
+          onAccessoryChange={setAccessory}
+          deleteControl={<DeleteProductLink onClick={() => toast("Kit only — nothing is deleted")} />}
+        />
+        <KitCategories />
       </div>
     </div>
   );
