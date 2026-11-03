@@ -17,6 +17,7 @@ export function ProductSaveBar({
   validationErrors,
   onSave,
   onReset,
+  onOpenSection,
 }: {
   dirtyLabels: string[];
   isValid: boolean;
@@ -26,6 +27,12 @@ export function ProductSaveBar({
   validationErrors: ErrorMap;
   onSave: () => void;
   onReset: () => void;
+  /**
+   * A failed section's pill: the editor opens the tab that holds it, then
+   * scrolls to and focuses it. (Under tabs a plain `#section-*` link would
+   * point into a hidden panel, or one not mounted yet.)
+   */
+  onOpenSection: (key: SectionKey) => void;
 }) {
   const failedKeys = (Object.keys(saveErrors) as SectionKey[]).filter((k) => saveErrors[k]);
   const invalidKeys = (Object.keys(validationErrors) as SectionKey[]).filter(
@@ -77,16 +84,19 @@ export function ProductSaveBar({
           )}
 
           {failedKeys.length > 0 && !saving && (
-            <div className="mt-1 flex flex-wrap gap-1">
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
               {failedKeys.map((k) => (
-                <a
+                // The fault chip as a button, with --danger-bg (02a Q2: failed pills).
+                <button
                   key={k}
-                  href={`#section-${k}`}
-                  className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-help font-semibold text-danger hover:bg-danger/20"
+                  type="button"
+                  onClick={() => onOpenSection(k)}
+                  className="inline-flex h-6.5 items-center border border-danger bg-danger-bg px-2.5 text-help font-semibold text-danger transition-colors duration-[120ms] hover:bg-chip"
                   title={saveErrors[k]}
                 >
                   {SECTION_LABELS[k]} failed
-                </a>
+                  <span className="sr-only">: {saveErrors[k]}. Show the section</span>
+                </button>
               ))}
             </div>
           )}

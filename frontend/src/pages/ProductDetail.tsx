@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import {
@@ -37,7 +37,8 @@ import { SeoSection } from "../components/product/SeoSection";
 import { ProductSaveBar } from "../components/product/ProductSaveBar";
 import { useProductEditor } from "../components/product/useProductEditor";
 import { useEditorTab } from "../components/product/useEditorTab";
-import { EDITOR_TABS, editorTabState, tabCounts, type EditorTab } from "../components/product/editorTabs";
+import { EDITOR_TABS, editorTabState, tabCounts, tabForKey, type EditorTab } from "../components/product/editorTabs";
+import type { SectionKey } from "../components/product/productEditorTypes";
 import { useHideCommerceFields } from "../hooks/useUserPreference";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -127,6 +128,32 @@ export default function ProductDetail() {
       </Alert>
     ) : null;
   const logosError = saveErrors.logos ?? validationErrors.logos;
+
+  /*
+   * A save-bar pill: open the section's tab, then scroll to and focus the
+   * section. In two steps because the tab is a URL change (?tab=) and the
+   * section is only on screen once it has rendered, so the scroll waits for
+   * the tab to match.
+   */
+  const [opening, setOpening] = useState<{ key: SectionKey; tab: EditorTab } | null>(null);
+  function openSection(key: SectionKey) {
+    if (!tabState) return;
+    const target = tabForKey(key, tabState, !wide) ?? tab;
+    if (target !== tab) setTab(target);
+    setOpening({ key, tab: target });
+  }
+  useEffect(() => {
+    if (!opening || opening.tab !== tab) return;
+    const el = document.getElementById(sectionAnchor(opening.key, opening.tab));
+    // The EditorSection around it: focusable (tabIndex -1) and named by its heading.
+    const section = (el?.closest("section") ?? el) as HTMLElement | null;
+    if (section) {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      section.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+      section.focus({ preventScroll: true });
+    }
+    setOpening(null);
+  }, [opening, tab]);
 
   return (
     <>
@@ -448,12 +475,23 @@ export default function ProductDetail() {
               validationErrors={validationErrors}
               onSave={() => void save()}
               onReset={reset}
+              onOpenSection={openSection}
             />
           </div>
         )}
       </div>
     </>
   );
+}
+
+/**
+ * The element a save-bar pill scrolls to. Most keys have a `section-<key>`
+ * anchor; `details` has one per tab (its fields are on three), and logos is
+ * the first of its two panels.
+ */
+function sectionAnchor(key: SectionKey, tab: EditorTab): string {
+  if (key === "details") return tab === "content" ? "section-description" : tab === "seo" ? "section-seo" : "section-details";
+  return `section-${key}`;
 }
 
 /**
