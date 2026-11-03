@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Image, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Image, Plus, Trash2 } from "lucide-react";
 import {
   Alert,
   Badge,
   Button,
+  ButtonLink,
   Card,
   CardHeader,
   Checkbox,
@@ -52,10 +53,22 @@ import {
   usePagedList,
   useSelection,
 } from "../components/ui";
+import { EditorSection } from "../components/product/EditorSection";
+import { EDITOR_TABS, type EditorTab } from "../components/product/editorTabs";
+import { Lockup } from "../components/Lockup";
+import {
+  EnquiryActions,
+  EnquiryToolbar,
+  HandledStatus,
+  filterEnquiries,
+  isNew,
+  type EnquiryFilter,
+} from "../components/enquiries";
 
 /**
- * The living UI kit — every ui/ primitive, every variant and state, in the
- * light and the dark theme side by side. Development only: routed at /ui
+ * The living UI kit — every ui/ primitive, every variant and state, plus the
+ * shared pieces pages build from them (the editor's EditorSection and tabs,
+ * the Lockup, the enquiry list), in the light and the dark theme side by side. Development only: routed at /ui
  * when `import.meta.env.DEV` (see App.tsx), never in a production build.
  *
  * The two panels each set their own `data-theme`, which the token blocks in
@@ -111,9 +124,11 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
       <Choices />
       <Segments />
       <TabsDemo theme={theme} />
+      <EditorDemo theme={theme} />
       <Chips />
       <Alerts />
       <Surfaces />
+      <Brand />
       <Tables />
       <Overlays />
       <Pages />
@@ -198,6 +213,18 @@ function Buttons() {
           <Plus size={16} />
         </Button>
       </Row>
+      <Row label="link">
+        {/* ButtonLink: a real <a> styled as a button, for mailto and external links. */}
+        <ButtonLink href="#kit-link" data-kit="btnlink:secondary">
+          Open in Duda
+        </ButtonLink>
+        <ButtonLink href="#kit-link" variant="primary" size="sm" data-kit="btnlink:primary">
+          Reply by email
+        </ButtonLink>
+        <ButtonLink href="#kit-link" variant="ghost" size="sm" data-kit="btnlink:ghost">
+          View on website <ExternalLink size={14} aria-hidden="true" />
+        </ButtonLink>
+      </Row>
       <Row label="remove">
         <RemoveButton onClick={() => {}} title="Remove row" />
         <RemoveButton onClick={() => {}} title="Remove (disabled)" disabled />
@@ -241,6 +268,14 @@ function Fields() {
         <Field label="Textarea" hint="Grows with its content.">
           <Textarea rows={3} defaultValue="Multi-line text." />
         </Field>
+        <div className="space-y-1.5 sm:col-span-2">
+          <span className="t-label block">Chip size (28px), in a row of 26px chips</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge>Hire</Badge>
+            <Badge>Purchase</Badge>
+            <Input size="chip" placeholder="New value…" aria-label="New value for Hire/Purchase" className="w-36" data-kit="input:chip" />
+          </div>
+        </div>
         <div className="space-y-1.5">
           <span className="t-label block">SelectMenu</span>
           <SelectMenu
@@ -399,6 +434,67 @@ function TabsDemo({ theme }: { theme: string }) {
   );
 }
 
+/** The editor's six tabs, as the product editor shows them: counts, and a dot for unsaved or failed. */
+const KIT_TAB_STATE: Partial<Record<EditorTab, { count?: number; indicator?: "dirty" | "error" }>> = {
+  content: { count: 23, indicator: "dirty" },
+  compliance: { indicator: "error" },
+  options: { count: 1 },
+  files: { count: 12 },
+  seo: { indicator: "dirty" },
+};
+
+function EditorDemo({ theme }: { theme: string }) {
+  return (
+    <Section title="Product editor: tabs and EditorSection">
+      <p className="t-help">
+        The editor's tab names (from <span className="t-code-sm">EDITOR_TABS</span>) with counts and dots. Each tab's
+        spoken name carries its count and state, e.g. "Content, 23, unsaved changes".
+      </p>
+      <div data-kit="editor-tabs">
+        <Tabs defaultValue="compliance">
+          <TabList aria-label={`Product sections (kit, ${theme})`}>
+            {EDITOR_TABS.map((t) => (
+              <Tab key={t.value} value={t.value} count={KIT_TAB_STATE[t.value]?.count} indicator={KIT_TAB_STATE[t.value]?.indicator}>
+                {t.label}
+              </Tab>
+            ))}
+          </TabList>
+          {EDITOR_TABS.map((t) => (
+            <TabPanel key={t.value} value={t.value} className="space-y-4 pt-4">
+              {t.value === "compliance" ? (
+                <>
+                  <EditorSection
+                    title="SA logos"
+                    description="The SA range logos shown on this product."
+                    error="Duda refused the save. Try again."
+                  >
+                    {/* A section's own Card, CardHeader and SectionError stay silent in here. */}
+                    <Card>
+                      <CardHeader title="Never shown" actions={<Button size="sm" variant="secondary">Header action</Button>} />
+                      <p className="text-body">The section's body. Its error prints once, above.</p>
+                    </Card>
+                  </EditorSection>
+                  <EditorSection title="Certification logos" description="Certification marks shown on this product.">
+                    <p className="text-body">A clean section: heading, description, body.</p>
+                  </EditorSection>
+                </>
+              ) : (
+                <EditorSection
+                  title={`${t.label} section`}
+                  description="A short description under the card heading."
+                  actions={<Button size="sm" variant="secondary">Action</Button>}
+                >
+                  <p className="text-body">Section body.</p>
+                </EditorSection>
+              )}
+            </TabPanel>
+          ))}
+        </Tabs>
+      </div>
+    </Section>
+  );
+}
+
 function Chips() {
   return (
     <Section title="Chips">
@@ -468,6 +564,25 @@ function Surfaces() {
           </>
         }
       />
+      <p className="t-help">
+        <span className="t-code-sm">actionsBeside="xl"</span>: several actions sit under the title until 1280px wide.
+      </p>
+      <PageHeader
+        title="Translations"
+        description="Product content in the website's other languages."
+        actionsBeside="xl"
+        actions={
+          <>
+            <Button variant="secondary" size="sm">
+              Export CSV
+            </Button>
+            <Button variant="secondary" size="sm">
+              Import CSV
+            </Button>
+            <Button size="sm">Translate missing (12)</Button>
+          </>
+        }
+      />
       <Card data-kit="card">
         <CardHeader title="Card heading" description="Optional description." actions={<Button size="sm" variant="secondary">Action</Button>} />
         <p className="text-body">Card body on --surface with a 1px border.</p>
@@ -480,6 +595,23 @@ function Surfaces() {
         <Spinner className="text-muted" />
       </Card>
       <Loader label="Loading products…" />
+    </Section>
+  );
+}
+
+function Brand() {
+  return (
+    <Section title="Lockup">
+      <div className="flex flex-wrap gap-3">
+        {/* The sidebar is always dark, so its tone sits on the fixed sidebar tokens in both themes. */}
+        <div className="bg-sidebar p-4" data-kit="lockup:sidebar">
+          <Lockup />
+        </div>
+        {/* The sign-in pages are light only. */}
+        <div className="border border-border bg-surface p-4" data-theme="light" data-kit="lockup:light">
+          <Lockup tone="light" />
+        </div>
+      </div>
     </Section>
   );
 }
@@ -584,18 +716,38 @@ function Overlays() {
   );
 }
 
-const KIT_REQUESTS = [
-  { id: "q1", name: "Alex Example", company: "Example Refining Ltd", date: "29 Oct", isNew: true },
-  { id: "q2", name: "Sam Sample", company: "Sample Shipyards", date: "27 Oct", isNew: true },
-  { id: "q3", name: "Jo Tester", company: "Tester Rail", date: "21 Oct", isNew: false },
-  { id: "q4", name: "Pat Placeholder", company: "—", date: "18 Oct", isNew: false },
-  { id: "q5", name: "Lee Longname-Hyphenated", company: "A company with a long enough name to truncate", date: "2 Oct", isNew: false },
+const handled = { handledAt: "2026-10-30T10:00:00Z", handledBy: "kit@saequip.com" };
+const fresh = { handledAt: null, handledBy: null };
+const KIT_REQUESTS: {
+  id: string;
+  name: string;
+  company: string | null;
+  email: string;
+  date: string;
+  handledAt: string | null;
+  handledBy: string | null;
+}[] = [
+  { id: "q1", name: "Alex Example", company: "Example Refining Ltd", email: "alex@example.com", date: "29 Oct", ...fresh },
+  { id: "q2", name: "Sam Sample", company: "Sample Shipyards", email: "sam@example.org", date: "27 Oct", ...fresh },
+  { id: "q3", name: "Jo Tester", company: "Tester Rail", email: "jo@example.com", date: "21 Oct", ...handled },
+  // No company: the list shows the email instead, as Quotes does.
+  { id: "q4", name: "Pat Placeholder", company: null, email: "pat@example.net", date: "18 Oct", ...handled },
+  { id: "q5", name: "Lee Longname-Hyphenated", company: "A company with a long enough name to truncate", email: "lee@example.org", date: "2 Oct", ...handled },
 ];
 
 function Split({ theme }: { theme: string }) {
   // One URL param per panel, so the two demos don't select each other's rows.
   const { selectedId, select, hrefFor } = useSelection(`${theme}-id`);
-  const item = KIT_REQUESTS.find((r) => r.id === selectedId);
+  // Handled state is local: "Mark as handled" here changes nothing anywhere else.
+  const [requests, setRequests] = useState(KIT_REQUESTS);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<EnquiryFilter>("all");
+  const shown = filterEnquiries(requests, filter, query, (r) => [r.name, r.company, r.email]);
+  const item = requests.find((r) => r.id === selectedId);
+  const setHandled = (id: string, handled: boolean) =>
+    setRequests((rs) =>
+      rs.map((r) => (r.id === id ? { ...r, handledAt: handled ? "2026-11-03T10:00:00Z" : null, handledBy: handled ? "kit@saequip.com" : null } : r)),
+    );
   return (
     <Section title="Split view">
       <p className="t-help">
@@ -611,39 +763,61 @@ function Split({ theme }: { theme: string }) {
           listLabel="Quote requests (kit)"
           selectedId={selectedId}
           onBack={() => select(null)}
-          list={KIT_REQUESTS.map((r) => (
-            <SplitListItem
-              key={r.id}
-              to={hrefFor(r.id)}
-              selected={r.id === selectedId}
-              title={r.name}
-              subtitle={r.company}
-              meta={r.date}
-              badge={r.isNew ? <Badge tone="new">New</Badge> : undefined}
-            />
-          ))}
+          list={
+            <>
+              <EnquiryToolbar
+                all={requests}
+                query={query}
+                onQuery={setQuery}
+                filter={filter}
+                onFilter={setFilter}
+                searchLabel={`Search quote requests (kit, ${theme})`}
+              />
+              {shown.length === 0 ? (
+                <p className="px-5 py-6 text-body text-muted">No quote requests match.</p>
+              ) : (
+                <ul>
+                  {shown.map((r) => (
+                    <li key={r.id}>
+                      <SplitListItem
+                        to={hrefFor(r.id)}
+                        selected={r.id === selectedId}
+                        title={r.name}
+                        subtitle={r.company ?? r.email}
+                        meta={r.date}
+                        badge={isNew(r) ? <Badge tone="new">New</Badge> : undefined}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          }
           detail={
             selectedId === null ? null : item ? (
               <>
                 <SplitDetailHeader
                   title={item.name}
-                  subtitle={item.company}
+                  subtitle={item.company ?? undefined}
                   actions={
-                    <>
-                      <Button variant="secondary" size="sm">
-                        Mark as handled
-                      </Button>
-                      <Button size="sm">Reply by email</Button>
-                    </>
+                    <EnquiryActions
+                      kind="quote"
+                      enquiry={item}
+                      busy={false}
+                      onHandled={(handled) => setHandled(item.id, handled)}
+                      onExport={() => toast.success("Kit only — nothing exported")}
+                    />
                   }
                 />
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-5">
-                  {[
-                    ["Email", "alex@example.com"],
-                    ["Telephone", "+44 1234 567890"],
-                    ["When needed", "Within the next month"],
-                    ["Submitted", `${item.date} 2026, 10:00`],
-                  ].map(([k, v]) => (
+                  {(
+                    [
+                      ["Status", <HandledStatus key="s" enquiry={item} />],
+                      ["Email", item.email],
+                      ["When needed", "Within the next month"],
+                      ["Submitted", `${item.date} 2026, 10:00`],
+                    ] as const
+                  ).map(([k, v]) => (
                     <div key={k}>
                       <dt className="t-label">{k}</dt>
                       <dd className="mt-0.5 text-body text-text">{v}</dd>
@@ -665,7 +839,7 @@ function Split({ theme }: { theme: string }) {
   );
 }
 
-const KIT_ROWS =Array.from({ length: 91 }, (_, i) => `Product ${i + 1}`);
+const KIT_ROWS = Array.from({ length: 91 }, (_, i) => `Product ${i + 1}`);
 
 function Pages() {
   const paged = usePagedList(KIT_ROWS);
