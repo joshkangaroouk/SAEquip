@@ -180,7 +180,9 @@ export function Tab({
       data-value={value}
       onClick={() => !on && select(value)}
       className={cn(
-        "relative inline-flex h-11 shrink-0 items-center gap-2 px-4 text-body whitespace-nowrap transition-colors duration-[120ms]",
+        // 12px sides: the product editor's six tabs, with counts, fit beside
+        // its side panel at 1280.
+        "relative inline-flex h-11 shrink-0 items-center gap-2 px-3 text-body whitespace-nowrap transition-colors duration-[120ms]",
         "focus-visible:outline-offset-[-2px]",
         on
           ? "font-semibold text-text after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:bg-accent"

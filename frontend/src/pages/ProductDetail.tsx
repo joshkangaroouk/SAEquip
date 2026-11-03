@@ -190,7 +190,7 @@ export default function ProductDetail() {
             {/* Rows auto then 1fr: the side panel spans both and is often the
                 taller, and the extra height must go below Delete product, not
                 between the tabs and it. */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem] xl:grid-rows-[auto_1fr] xl:items-start">
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] xl:grid-rows-[auto_1fr] xl:items-start">
               <div className="min-w-0 xl:col-start-1 xl:row-start-1">
                 <Tabs value={tab} onValueChange={(v) => setTab(v as EditorTab)}>
                   <TabList aria-label="Product sections" className="mb-5">
