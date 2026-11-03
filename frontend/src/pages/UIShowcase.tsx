@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, Image, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Image, Moon, Plus, Sun, Trash2 } from "lucide-react";
 import {
   Alert,
   Badge,
@@ -340,6 +340,7 @@ function Segments() {
   const [status, setStatus] = useState<"all" | "live" | "hidden">("live");
   const [rows, setRows] = useState<"20" | "50" | "all">("20");
   const [mode, setMode] = useState<"rich" | "html">("rich");
+  const [colour, setColour] = useState<"light" | "dark">("light");
   return (
     <Section title="Segmented control">
       <Row label="counts">
@@ -367,6 +368,21 @@ function Segments() {
             { value: "all", label: "All" },
           ]}
         />
+      </Row>
+      <Row label="icons (the top bar's theme switch)">
+        {/* Kit only: this one changes nothing. The top bar's own switch sets the theme. */}
+        <span data-kit="segments:icons">
+          <SegmentedControl
+            ariaLabel="Colour theme (kit)"
+            value={colour}
+            onChange={setColour}
+            options={[
+              { value: "light", label: "Light theme", icon: <Sun aria-hidden="true" /> },
+              { value: "dark", label: "Dark theme", icon: <Moon aria-hidden="true" /> },
+            ]}
+          />
+        </span>
+        <span className="t-help">32×32 segments, a 16px icon; the name is the tooltip on hover and focus.</span>
       </Row>
       <Row label="disabled">
         <span data-kit="segments:disabled">

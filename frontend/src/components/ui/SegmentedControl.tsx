@@ -6,6 +6,12 @@ export interface SegmentOption<T extends string> {
   label: ReactNode;
   /** Shown inside the segment in mono, and read as part of its name ("Live, 88") when the label is a string. */
   count?: number;
+  /**
+   * Icon-only: the segment shows just this (a 16px icon) in a 32×32 square,
+   * and the label, which must be a string, becomes its accessible name and a
+   * tooltip on hover and keyboard focus. The top bar's theme switch.
+   */
+  icon?: ReactNode;
   disabled?: boolean;
 }
 
@@ -21,6 +27,10 @@ export interface SegmentOption<T extends string> {
  * Each label is laid out twice in the same grid cell — once invisibly at 600 —
  * so a segment is always as wide as its selected state and the row does not
  * shift by a few pixels as the selection moves.
+ *
+ * An option with an `icon` is icon-only (see SegmentOption). Its tooltip is
+ * drawn here, not by `title`, because a title shows on hover only, never on
+ * focus; it is aria-hidden, as the segment's name already says the same.
  */
 export function SegmentedControl<T extends string>({
   value,
@@ -71,6 +81,8 @@ export function SegmentedControl<T extends string>({
     >
       {options.map((o, i) => {
         const on = o.value === value;
+        const iconOnly = o.icon !== undefined;
+        const name = typeof o.label === "string" ? o.label : undefined;
         return (
           <button
             key={o.value}
@@ -82,25 +94,48 @@ export function SegmentedControl<T extends string>({
             aria-checked={on}
             // "Live, 88". Spelled out because the flex layout puts a stray
             // space before a visually hidden comma ("Live , 88").
-            aria-label={o.count !== undefined && typeof o.label === "string" ? `${o.label}, ${o.count}` : undefined}
+            aria-label={
+              iconOnly ? name : o.count !== undefined && typeof o.label === "string" ? `${o.label}, ${o.count}` : undefined
+            }
             disabled={o.disabled}
             tabIndex={i === tabStop ? 0 : -1}
             onClick={() => !on && onChange(o.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 px-3 text-body whitespace-nowrap transition-colors duration-[120ms]",
+              iconOnly && "group relative w-8 justify-center px-0",
               on
                 ? "bg-accent font-semibold text-accent-ink"
                 : "font-medium text-muted enabled:hover:text-text",
               "disabled:cursor-not-allowed disabled:text-border-input",
             )}
           >
-            <span className="grid justify-items-center">
-              <span aria-hidden="true" className="invisible col-start-1 row-start-1 font-semibold">
-                {o.label}
+            {iconOnly ? (
+              <>
+                <span aria-hidden="true" className="flex [&_svg]:h-4 [&_svg]:w-4">
+                  {o.icon}
+                </span>
+                {/* Under the segment, inside the screen: the first aligns to
+                    its left edge, the last to its right, any between centre. */}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "pointer-events-none absolute top-full z-30 mt-2 border border-border bg-surface px-2 py-1 text-label font-medium text-text opacity-0 shadow-menu",
+                    "transition-opacity duration-[120ms] group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none",
+                    i === 0 ? "left-0" : i === options.length - 1 ? "right-0" : "left-1/2 -translate-x-1/2",
+                  )}
+                >
+                  {o.label}
+                </span>
+              </>
+            ) : (
+              <span className="grid justify-items-center">
+                <span aria-hidden="true" className="invisible col-start-1 row-start-1 font-semibold">
+                  {o.label}
+                </span>
+                <span className="col-start-1 row-start-1">{o.label}</span>
               </span>
-              <span className="col-start-1 row-start-1">{o.label}</span>
-            </span>
+            )}
             {o.count !== undefined && (
               <span className={cn("font-mono text-micro font-normal", on ? "text-accent-ink" : "text-muted")}>
                 {o.count}

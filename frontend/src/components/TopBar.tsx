@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, type ReactNode, type Ref } from "react";
 import { Link, useMatches } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
 import { Button, SegmentedControl } from "./ui";
 import { ProductSearch } from "./ProductSearch";
 import type { Theme } from "../lib/theme";
@@ -75,7 +75,7 @@ function Breadcrumb({ pageLabel }: { pageLabel: string | null }) {
 /**
  * The top bar (00 "Top bar", 02a Q20/Q23): 64px on --surface with a bottom
  * rule. The breadcrumb on the left; the product search and the Light/Dark
- * toggle on the right. Below lg: the menu button for the sidebar drawer, the
+ * switch (icon-only: Sun, Moon) on the right. Below lg: the menu button for the sidebar drawer, the
  * page name, a search button and the toggle.
  *
  * Sticky, so a sticky table head sits under it (`top-16`).
@@ -112,13 +112,14 @@ export function TopBar({
         <Breadcrumb pageLabel={pageLabel} />
       </div>
       <ProductSearch />
+      {/* Icon-only (Sun, Moon), each named and with a tooltip: "Light theme", "Dark theme". */}
       <SegmentedControl<Theme>
-        ariaLabel="Theme"
+        ariaLabel="Colour theme"
         value={theme}
         onChange={onThemeChange}
         options={[
-          { value: "light", label: "Light" },
-          { value: "dark", label: "Dark" },
+          { value: "light", label: "Light theme", icon: <Sun aria-hidden="true" /> },
+          { value: "dark", label: "Dark theme", icon: <Moon aria-hidden="true" /> },
         ]}
       />
     </header>
