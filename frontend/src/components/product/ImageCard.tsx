@@ -18,14 +18,14 @@ export function ImageCard({
   onRemove: () => void;
 }) {
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-surface p-3">
+    <div className="flex flex-col border border-border bg-surface p-3">
       {/*
         Square, not a fixed height. Product photos arrive in mixed aspect
         ratios, and a fixed-height box let the cards' overall heights drift
         apart as the grid narrowed. A square well keeps every tile identical
         and matches how Duda crops the gallery thumbnail.
       */}
-      <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-paper">
+      <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-paper">
         <img
           src={image.url}
           alt={image.alt || "product image"}

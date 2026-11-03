@@ -90,7 +90,7 @@ export function CompatibleProductsSection({
   const remove = (id: string) => onChange(items.filter((i) => i.dudaProductId !== id));
 
   // Matched heights so moving a product between columns never shifts the page.
-  const PANE = "h-[22rem] overflow-y-auto rounded-md border border-border bg-surface";
+  const PANE = "h-[22rem] overflow-y-auto border border-border bg-surface";
 
   return (
     <Card id="section-compatible">
@@ -201,7 +201,7 @@ export function CompatibleProductsSection({
                       type="button"
                       onClick={() => remove(item.dudaProductId)}
                       title={`Remove ${item.name}`}
-                      className="shrink-0 rounded px-1.5 text-body font-semibold text-muted hover:text-danger"
+                      className="shrink-0 px-1.5 text-body font-semibold text-muted hover:text-danger"
                     >
                       Remove
                     </button>

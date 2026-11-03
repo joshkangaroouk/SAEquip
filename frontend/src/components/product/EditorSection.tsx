@@ -6,8 +6,8 @@ import { AccordionBodyProvider, SectionError } from "../ui";
  * section's heading (the card heading role), a short description, optional
  * header actions, its error, and the section itself.
  *
- * It replaces AccordionCard in the editor, minus the collapse (02a "Batch
- * 8"): tabs now do the hiding. Like the accordion it wraps the section in
+ * It replaced the collapsible accordion cards when the editor moved to tabs
+ * (02a "Batch 8"): tabs now do the hiding. It wraps the section in
  * AccordionBodyProvider, so the section's own Card, CardHeader title and
  * SectionError stay silent and nothing is drawn twice. Its error shows here,
  * at the top of the body, once.

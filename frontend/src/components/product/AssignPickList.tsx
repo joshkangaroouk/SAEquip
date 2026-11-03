@@ -4,7 +4,7 @@ import { Thumb, Alert, Button, Checkbox, Input, Toggle } from "../ui";
 export interface PickItem {
   id: string;
   label: string;
-  /** Nesting level — categories use it; grouped items get one automatically. */
+  /** Nesting level, for the category tree's indent. */
   depth?: number;
   /**
    * The item this one sits under. When present the list keeps the tree
@@ -12,13 +12,6 @@ export interface PickItem {
    * carry the sentinel `"ROOT"`, which matches no item and so ends the walk.
    */
   parentId?: string;
-  /** Small right-aligned note, e.g. how many products use a tag. */
-  hint?: string;
-  /**
-   * Heading this item sits under. When ANY item has one the list renders
-   * headings; categories pass none and render exactly as before.
-   */
-  group?: string;
   /**
    * Thumbnail. Opt-in per caller: the categories picker has no images, and a
    * column of empty placeholders is worse than no column.
@@ -26,12 +19,10 @@ export interface PickItem {
   imageUrl?: string | null;
 }
 
-/** A heading row, or a selectable item. Headings are never selectable. */
-type Row = { kind: "heading"; label: string } | { kind: "item"; item: PickItem };
-
 /**
- * A searchable checkbox list, shared by the Categories and Tags panels so the
- * two cannot drift into looking like different controls for the same job.
+ * A searchable checkbox list, shared by the product editor's Categories panel
+ * and a category's Products list, so the two cannot drift into looking like
+ * different controls for the same job.
  *
  * ⚠️ The order NEVER changes as you tick things. Selected items used to be
  * pinned to the top, which is fine for a flat list and wrong for a tree: a
@@ -64,37 +55,16 @@ export function AssignPickList({
    */
   const [onlySelected, setOnlySelected] = useState(false);
   const chosen = useMemo(() => new Set(selected), [selected]);
-  const grouped = useMemo(() => items.some((i) => i.group), [items]);
   const withImages = useMemo(() => items.some((i) => i.imageUrl !== undefined), [items]);
   // Same threshold as the search: a list short enough to read whole needs
   // neither control.
   const showTools = items.length >= searchThreshold;
 
-  const rows = useMemo<Row[]>(() => {
+  const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let matching = q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items;
-    if (onlySelected) matching = matching.filter((i) => chosen.has(i.id));
-
-    if (!grouped) return matching.map((item) => ({ kind: "item", item }) as Row);
-
-    // Buckets in first-seen order, which is the order the server sent — it
-    // already sorts groups then items, so no second ordering rule is needed.
-    const buckets = new Map<string, PickItem[]>();
-    for (const i of matching) {
-      const key = i.group ?? "";
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key)!.push(i);
-    }
-
-    const out: Row[] = [];
-    for (const [heading, bucket] of buckets) {
-      // A heading whose every item was filtered out would point at nothing.
-      if (!bucket.length) continue;
-      if (heading) out.push({ kind: "heading", label: heading });
-      for (const item of bucket) out.push({ kind: "item", item });
-    }
-    return out;
-  }, [items, query, chosen, grouped, onlySelected]);
+    const matching = q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items;
+    return onlySelected ? matching.filter((i) => chosen.has(i.id)) : matching;
+  }, [items, query, chosen, onlySelected]);
 
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const childrenOf = useMemo(() => {
@@ -200,58 +170,37 @@ export function AssignPickList({
               : "Nothing matches that search."}
         </p>
       ) : (
-        <div className="max-h-80 overflow-y-auto rounded-md border border-border">
-          {rows.map((row) =>
-            row.kind === "heading" ? (
-              // Sticky so you can still see which group you are in after
-              // scrolling past its heading — the list is capped at 80 and a
-              // long group otherwise loses its label off the top.
-              <div
-                key={`h:${row.label}`}
-                className="sticky top-0 z-10 border-b border-border bg-surface-2 px-2.5 py-1.5 t-overline text-muted"
-              >
-                {row.label}
-              </div>
-            ) : (
-              <div
-                key={row.item.id}
-                className="flex items-center gap-2 border-b border-border px-2.5 py-2 last:border-b-0 hover:bg-surface-2"
-                // Indent only in the natural order; during a search the parent
-                // may be filtered out, so an indent would point at nothing.
-                // Grouped items indent one level so they read as belonging to
-                // the heading above them.
-                style={{
-                  paddingLeft: query.trim()
-                    ? undefined
-                    : 10 + (row.item.depth ?? (row.item.group ? 1 : 0)) * 16,
-                }}
-              >
-                <Checkbox
-                  checked={chosen.has(row.item.id)}
-                  onChange={() => toggle(row.item.id)}
-                  /*
-                   * The thumbnail goes INSIDE the label, so the whole row stays
-                   * one click target rather than the image becoming dead space
-                   * beside the checkbox.
-                   */
-                  label={
-                    withImages ? (
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Thumb src={row.item.imageUrl} size={40} />
-                        <span className="min-w-0">{row.item.label}</span>
-                      </span>
-                    ) : (
-                      row.item.label
-                    )
-                  }
-                  className="min-w-0 flex-1 text-label"
-                />
-                {row.item.hint && (
-                  <span className="shrink-0 text-label text-muted">{row.item.hint}</span>
-                )}
-              </div>
-            ),
-          )}
+        <div className="max-h-80 overflow-y-auto border border-border">
+          {rows.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-2 border-b border-border px-2.5 py-2 last:border-b-0 hover:bg-surface-2"
+              // Indent only in the natural order; during a search the parent
+              // may be filtered out, so an indent would point at nothing.
+              style={{ paddingLeft: query.trim() ? undefined : 10 + (item.depth ?? 0) * 16 }}
+            >
+              <Checkbox
+                checked={chosen.has(item.id)}
+                onChange={() => toggle(item.id)}
+                /*
+                 * The thumbnail goes INSIDE the label, so the whole row stays
+                 * one click target rather than the image becoming dead space
+                 * beside the checkbox.
+                 */
+                label={
+                  withImages ? (
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Thumb src={item.imageUrl} size={40} />
+                      <span className="min-w-0">{item.label}</span>
+                    </span>
+                  ) : (
+                    item.label
+                  )
+                }
+                className="min-w-0 flex-1 text-label"
+              />
+            </div>
+          ))}
         </div>
       )}
 

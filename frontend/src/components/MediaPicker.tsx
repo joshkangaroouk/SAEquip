@@ -114,7 +114,7 @@ export function MediaPicker({
         {lib.isInitialLoad && (
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4" aria-busy="true" aria-label="Loading media">
             {Array.from({ length: 12 }, (_, i) => (
-              <div key={i} className="flex flex-col items-center rounded-lg border border-border p-2">
+              <div key={i} className="flex flex-col items-center border border-border p-2">
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="mt-2 h-3 w-4/5" />
               </div>
@@ -148,7 +148,7 @@ export function MediaPicker({
                 <button
                   key={a.id}
                   onClick={() => onPick(a)}
-                  className="flex flex-col items-center rounded-lg border border-border p-2 hover:border-text"
+                  className="flex flex-col items-center border border-border p-2 hover:border-text"
                 >
                   {a.kind === "image" ? (
                     <ImageWell src={a.url} alt={a.alt || a.filename} className="h-24" />
@@ -157,7 +157,7 @@ export function MediaPicker({
                       thumbnailUrl={a.thumbnailUrl}
                       filename={a.filename}
                       mimeType={a.mimeType}
-                      className="h-24 w-full rounded"
+                      className="h-24 w-full"
                     />
                   )}
                   <span className="mt-1 w-full text-center text-label text-muted [overflow-wrap:anywhere]" title={a.filename}>

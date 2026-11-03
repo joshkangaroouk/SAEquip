@@ -112,7 +112,7 @@ export function AttachOptionModal({
             return (
               <div
                 key={o.id}
-                className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3"
+                className="flex flex-wrap items-center gap-3 border border-border p-3"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">

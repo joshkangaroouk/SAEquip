@@ -3,7 +3,7 @@ import { cn } from "../../lib/cn";
 import { Alert } from "./Alert";
 import { useInAccordionBody } from "./AccordionBody";
 
-// The accordion-body context lives in AccordionBody.tsx; re-exported for existing imports.
+// The EditorSection-body context lives in AccordionBody.tsx; re-exported for existing imports.
 export { AccordionBodyProvider } from "./AccordionBody";
 
 /** True inside a padded Card, so a CardHeader can run edge to edge as its own row. */
@@ -25,8 +25,8 @@ export function Card({
   return (
     <div
       className={cn(
-        // Inside an accordion the chrome belongs to the accordion, so this
-        // collapses to a plain wrapper and keeps only a caller's own classes.
+        // Inside an EditorSection the chrome belongs to the EditorSection, so
+        // this collapses to a plain wrapper and keeps only a caller's own classes.
         bare ? "" : "border border-border bg-surface",
         bare ? "" : padded ? "p-5" : "overflow-hidden",
         className,
@@ -63,13 +63,12 @@ export function CardHeader({
   const row = useContext(InPaddedCard);
 
   /*
-   * Inside an accordion, only ACTIONS survive.
+   * Inside an EditorSection, only ACTIONS survive.
    *
-   * The accordion header already carries the title, the dirty badge, a summary
-   * and the description, so a section's own header repeated all of it — the
-   * same sentence twice, each with its own bottom margin. That duplication,
-   * not the container, was most of the "padding" around accordion content.
-   * Actions stay because they can be real controls rather than decoration.
+   * The EditorSection header already carries the title and the description,
+   * so a section's own header repeated them — the same sentence twice, each
+   * with its own bottom margin. Actions stay because they can be real
+   * controls rather than decoration.
    */
   if (bare) {
     if (!actions) return null;
@@ -101,12 +100,13 @@ export function CardHeader({
  * A section's error message — the ONE error box every editor section uses: a
  * danger `Alert` (role="alert").
  *
- * ⚠️ Renders nothing inside an accordion body, because the accordion prints the
- * same message itself, at the top of the body. Each section used to carry its
- * own copy of this box AND be wrapped in an accordion that carried another, so
- * every failing section showed the sentence twice, one box above the other.
- * The accordion keeps it rather than the section: it is the one place that
- * exists for every section, including those that render no box of their own.
+ * ⚠️ Renders nothing inside an EditorSection body, because the EditorSection
+ * prints the same message itself, at the top of the body. Each section used to
+ * carry its own copy of this box AND be wrapped in a container that carried
+ * another, so every failing section showed the sentence twice, one box above
+ * the other. The wrapper keeps it rather than the section: it is the one place
+ * that exists for every section, including those that render no box of their
+ * own.
  */
 export function SectionError({ message }: { message?: string | null }) {
   if (!message) return null;

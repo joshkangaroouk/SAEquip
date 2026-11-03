@@ -109,7 +109,7 @@ export function SpecTableEditor({
           getId={(g) => g.id}
           onReorder={commit}
           renderItem={(g, handle) => (
-            <div className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2">
+            <div className="flex items-start gap-2 border border-border bg-surface-2 p-2">
               <div className="pt-2">
                 <DragHandle handle={handle} />
               </div>
@@ -155,7 +155,7 @@ export function SpecTableEditor({
                 <button
                   type="button"
                   onClick={() => addLine(g.id)}
-                  className="rounded px-1 text-body font-semibold text-muted hover:text-text"
+                  className="px-1 text-body font-semibold text-muted hover:text-text"
                 >
                   + Add line
                 </button>

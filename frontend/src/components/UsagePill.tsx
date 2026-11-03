@@ -59,11 +59,8 @@ export function UsagePill({
   );
 }
 
-/**
- * The list of products behind a usage count, each opening its editor. Also
- * used on its own, by the Product Options page's "Included in" badge.
- */
-export function UsageDialog({
+/** The list of products behind a usage count, each opening its editor. */
+function UsageDialog({
   count,
   subject,
   load,

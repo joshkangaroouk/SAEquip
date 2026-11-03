@@ -49,7 +49,7 @@ export function TextItemListEditor({
             // edge against its own row and was hard to pick out; the contrast
             // between the two is what makes the field visible, so they must
             // not be set to the same token. Matches SpecTableEditor's rows.
-            <div className="flex items-center gap-3 rounded-md border border-border bg-surface-2 p-3">
+            <div className="flex items-center gap-3 border border-border bg-surface-2 p-3">
               <DragHandle handle={handle} />
               <span className="w-6 text-right text-label text-muted">{index + 1}.</span>
               <Input

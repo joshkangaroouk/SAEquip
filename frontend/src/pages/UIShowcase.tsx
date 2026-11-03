@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Image, Plus, Trash2 } from "lucide-react";
 import {
-  AccordionCard,
   Alert,
   Badge,
   Button,
@@ -473,9 +472,6 @@ function Surfaces() {
         <CardHeader title="Card heading" description="Optional description." actions={<Button size="sm" variant="secondary">Action</Button>} />
         <p className="text-body">Card body on --surface with a 1px border.</p>
       </Card>
-      <AccordionCard title="Accordion (until tabs)" description="Collapsible section" summary="3" dirty>
-        <p className="text-body">Body</p>
-      </AccordionCard>
       <EmptyState title="Nothing here yet" description="Add one below." icon={<Image />} action={<Button size="sm">Add</Button>} />
       {/* On a card, where skeletons sit in the app. */}
       <Card className="flex items-center gap-4">

@@ -100,9 +100,9 @@ export function TranslationProgressModal({
                 Chrome downloads each language once per computer, and only when you click.
               </Alert>
             )}
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+            <div className="mt-1.5 h-1.5 overflow-hidden bg-surface-2" aria-hidden="true">
               <div
-                className={`h-full rounded-full transition-[width] duration-300 ${p.phase === "failed" ? "bg-danger/60" : "bg-accent"}`}
+                className={`h-full transition-[width] duration-300 ${p.phase === "failed" ? "bg-danger/60" : "bg-accent"}`}
                 style={{ width: `${Math.round(fraction(p) * 100)}%` }}
               />
             </div>

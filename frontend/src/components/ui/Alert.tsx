@@ -23,8 +23,8 @@ const TONES: Record<AlertTone, { bar: string; ink: string; Icon: LucideIcon }> =
  * force one or the other.
  *
  * `section` is the editor-section error: it renders nothing inside an
- * accordion body, where the accordion prints the same message itself (see
- * SectionError).
+ * EditorSection body, where the EditorSection prints the same message itself
+ * (see SectionError).
  */
 export function Alert({
   tone = "info",

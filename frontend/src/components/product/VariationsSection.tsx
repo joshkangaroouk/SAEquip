@@ -74,7 +74,7 @@ export function VariationsSection({
           {/* Bulk fill — mandatory ergonomics past a handful of rows, and this
               can reach 300. */}
           {!lockedByOptions && variations.length > 2 && (
-            <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface-2 p-3">
+            <div className="mb-3 flex flex-wrap items-end gap-2 border border-border bg-surface-2 p-3">
               <span className="text-help font-semibold text-text">Set all:</span>
               {!hideCommerce && (
                 <>
