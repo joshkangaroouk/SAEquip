@@ -13,9 +13,6 @@ import Quotes from "./pages/Quotes";
 import ResourceRequests from "./pages/ResourceRequests";
 import Translations from "./pages/Translations";
 import Status from "./pages/Status";
-// The component-kit showcase (pages/UIShowcase.tsx) is intentionally NOT
-// routed: it was a temporary reference for building the UI and is hidden from
-// the app. The file is kept for reference rather than deleted.
 import UsersPage from "./pages/Users";
 import Security from "./pages/Security";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -40,6 +37,14 @@ export const router = createBrowserRouter([
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
 
+  // The UI kit (pages/UIShowcase.tsx): development only. `import.meta.env.DEV`
+  // is the constant `false` in a production build, so this branch, and the
+  // lazy import inside it, are dropped — the page is never shipped. Outside
+  // the auth guard because it calls no API.
+  ...(import.meta.env.DEV
+    ? [{ path: "/ui", lazy: async () => ({ Component: (await import("./pages/UIShowcase")).default }) }]
+    : []),
+
   // Authenticated app — shared sidebar shell renders the page via <Outlet/>.
   {
     element: (
@@ -58,25 +63,51 @@ export const router = createBrowserRouter([
         </Layout>
       </ProtectedRoute>
     ),
+    // `handle.crumbs` is each page's place in the top bar's breadcrumb (TopBar.tsx).
+    // Page names in Title Case, as in the sidebar and each page's title (12.11);
+    // product and category names show as entered.
     children: [
-      { path: "/website", element: <WebsiteEditor /> },
-      { path: "/", element: <Products /> },
+      { path: "/website", element: <WebsiteEditor />, handle: { crumbs: { title: "Website Editor" } } },
+      { path: "/", element: <Products />, handle: { crumbs: { group: "Catalogue", title: "Products" } } },
       // Static segments outrank dynamic ones in v7's route ranking, so
       // /products/new wins over /products/:id regardless of declaration order.
-      { path: "/products/new", element: <ProductNew /> },
-      { path: "/products/:id", element: <ProductDetail /> },
-      { path: "/categories", element: <Categories /> },
-      { path: "/categories/:id", element: <CategoryDetail /> },
-      { path: "/options", element: <ProductOptions /> },
-      { path: "/media", element: <Media /> },
-      { path: "/logos", element: <Logos /> },
-      { path: "/widgets", element: <Widgets /> },
-      { path: "/quotes", element: <Quotes /> },
-      { path: "/resource-requests", element: <ResourceRequests /> },
-      { path: "/translations", element: <Translations /> },
-      { path: "/users", element: <UsersPage /> },
-      { path: "/security", element: <Security /> },
-      { path: "/status", element: <Status /> },
+      {
+        path: "/products/new",
+        element: <ProductNew />,
+        // A product band rather than a page header: 24px to the first card (10 §4).
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "New Product" }, layout: "band" },
+      },
+      {
+        path: "/products/:id",
+        element: <ProductDetail />,
+        // The editor names the product (usePageCrumb); "Product" until it loads.
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Products", to: "/" }, title: "Product" }, layout: "band" },
+      },
+      { path: "/categories", element: <Categories />, handle: { crumbs: { group: "Catalogue", title: "Categories" } } },
+      {
+        path: "/categories/:id",
+        element: <CategoryDetail />,
+        handle: { crumbs: { group: "Catalogue", parent: { title: "Categories", to: "/categories" }, title: "Category" } },
+      },
+      { path: "/options", element: <ProductOptions />, handle: { crumbs: { group: "Catalogue", title: "Product Options" } } },
+      { path: "/media", element: <Media />, handle: { crumbs: { group: "Catalogue", title: "Media" } } },
+      { path: "/logos", element: <Logos />, handle: { crumbs: { group: "Catalogue", title: "Logos" } } },
+      { path: "/widgets", element: <Widgets />, handle: { crumbs: { title: "Widgets" } } },
+      {
+        path: "/quotes",
+        element: <Quotes />,
+        // A split view: full width, and the panes scroll on their own (Layout).
+        handle: { crumbs: { group: "Enquiries", title: "Quote Requests" }, layout: "full" },
+      },
+      {
+        path: "/resource-requests",
+        element: <ResourceRequests />,
+        handle: { crumbs: { group: "Enquiries", title: "Resource Requests" }, layout: "full" },
+      },
+      { path: "/translations", element: <Translations />, handle: { crumbs: { group: "Catalogue", title: "Translations" } } },
+      { path: "/users", element: <UsersPage />, handle: { crumbs: { group: "Admin", title: "Users" } } },
+      { path: "/security", element: <Security />, handle: { crumbs: { group: "Admin", title: "Security" } } },
+      { path: "/status", element: <Status />, handle: { crumbs: { title: "Status" } } },
     ],
   },
 ]);

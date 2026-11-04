@@ -15,6 +15,9 @@ npx tsc --noEmit -p frontend
 echo "pre-push ▸ CLAUDE.md references"
 node scripts/check-doc-refs.mjs
 
+echo "pre-push ▸ CSP hash of the inline theme script"
+node scripts/check-csp-hash.mjs
+
 echo "pre-push ▸ i18n tests"
 if ! npm run --silent i18n:test --workspace=backend > /dev/null 2>&1; then
   npm run --silent i18n:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30

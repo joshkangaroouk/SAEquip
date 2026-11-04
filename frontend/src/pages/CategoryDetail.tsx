@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, ImageOff } from "lucide-react";
+import { ImageOff, Plus } from "lucide-react";
 import {
+  Thumb,
+  Alert,
+  Badge,
   Button,
   Card,
   CardHeader,
   DragHandle,
   Field,
   Input,
-  Loader,
+  Skeleton,
+  SkeletonField,
+  SkeletonLine,
+  PageHeader,
   Select,
   SortableList,
   Textarea,
@@ -18,8 +24,10 @@ import {
 import { MediaPicker } from "../components/MediaPicker";
 import { UnsavedChangesModal } from "../components/UnsavedChangesModal";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
+import { usePageCrumb } from "../components/TopBar";
 import { AssignPickList } from "../components/product/AssignPickList";
 import { apiJson } from "../lib/api";
+import { cn } from "../lib/cn";
 import type { ProductSummary } from "../lib/types";
 
 const ROOT = "ROOT";
@@ -122,6 +130,8 @@ export default function CategoryDetail() {
   }, [load]);
 
   const node = cats.find((c) => c.id === id);
+  // "Catalogue / Categories / <title>" in the top bar: the saved title.
+  usePageCrumb(node?.title ?? baseline?.title);
   const children = useMemo(() => cats.filter((c) => c.parent_id === id), [cats, id]);
   const dirty = !!draft && !!baseline && project(draft) !== project(baseline);
 
@@ -215,12 +225,55 @@ export default function CategoryDetail() {
     }
   }
 
-  if (loading) return <Loader label="Loading category…" />;
+  // The band shows from the first render, so it does not appear only once
+  // the category has loaded. No page breadcrumb: the top bar's says
+  // "Catalogue / Categories / <title>" (02a "After stage 5").
+  const header = (
+    <PageHeader
+      title={node?.title ?? baseline?.title ?? "Category"}
+      actions={
+        // Placeholders while it loads, so Cancel and Save arriving cannot
+        // push the page down (they wrap under the title on a phone).
+        loading ? (
+          <>
+            <Skeleton className="h-8.5 w-[74px]" />
+            <Skeleton className="h-8.5 w-[58px]" />
+          </>
+        ) : draft && (
+          <>
+            {dirty && <Badge dot="unsaved">Unsaved changes</Badge>}
+            <Button variant="secondary" size="sm" onClick={() => navigate("/categories")} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void save()}
+              loading={saving}
+              disabled={!dirty || !draft.title.trim() || !!slugError}
+            >
+              Save
+            </Button>
+          </>
+        )
+      }
+    />
+  );
+
+  if (loading) {
+    return (
+      <>
+        {header}
+        <CategoryDetailSkeleton />
+      </>
+    );
+  }
   if (error) {
     return (
-      <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-body text-danger">
-        {error}
-      </div>
+      <>
+        {header}
+        <Alert tone="danger">{error}</Alert>
+      </>
     );
   }
   if (!draft) return null;
@@ -228,29 +281,10 @@ export default function CategoryDetail() {
   return (
     <>
       <UnsavedChangesModal blocker={blocker} onSave={save} />
-      <nav className="flex items-center gap-1.5 text-small text-muted">
-        <Link to="/categories" className="hover:text-text">
-          Categories
-        </Link>
-        <ChevronRight size={13} />
-        <span className="text-text">{node?.title ?? draft.title}</span>
-      </nav>
+      {header}
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-h1 font-semibold text-text">{node?.title ?? draft.title}</h1>
-        <div className="flex items-center gap-2">
-          {dirty && <span className="text-small text-muted">Unsaved changes</span>}
-          <Button variant="secondary" size="sm" onClick={() => navigate("/categories")} disabled={saving}>
-            Cancel
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => void save()} disabled={!dirty || saving || !draft.title.trim() || !!slugError}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-10">
-        <div className="space-y-4 lg:col-span-7">
+      <div className="grid gap-5 lg:grid-cols-10">
+        <div className="space-y-5 lg:col-span-7">
           <Card>
             <CardHeader title="Category info" />
             <div className="space-y-4">
@@ -291,10 +325,8 @@ export default function CategoryDetail() {
           </Card>
 
           <Card>
-            <CardHeader
-              title="Category products"
-              description="Stored in the Hub. Run duda:sync-categories to push it to Duda's storefront."
-            />
+            {/* No sync instructions: pushing to Duda is Kangaroo's job (02 §6: REMOVE). */}
+            <CardHeader title="Category products" />
             <AssignPickList
               items={products.map((p) => ({ id: p.id, label: p.name, imageUrl: p.thumbnail }))}
               selected={draft.productIds}
@@ -309,12 +341,13 @@ export default function CategoryDetail() {
               title="Subcategories"
               actions={
                 <Button variant="secondary" size="sm" onClick={() => navigate(`/categories?create=${id}`)}>
-                  + Create a subcategory
+                  <Plus size={16} aria-hidden="true" />
+                  New subcategory
                 </Button>
               }
             />
             {children.length === 0 ? (
-              <p className="text-small text-subtle">No subcategories yet.</p>
+              <p className="text-help text-muted">No subcategories yet.</p>
             ) : (
               <SortableList
                 items={children}
@@ -322,22 +355,15 @@ export default function CategoryDetail() {
                 className="divide-y divide-border"
                 onReorder={(next) => void reorderChildren(next.map((c) => c.id))}
                 renderItem={(c, handle: DragHandleProps) => (
-                  <div className="flex items-center gap-2 py-2">
-                    <DragHandle handle={handle} />
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2 text-subtle">
-                      {c.imageUrl ? (
-                        <img src={c.imageUrl} alt="" className="h-full w-full object-contain" />
-                      ) : (
-                        <ImageOff size={14} />
-                      )}
-                    </span>
-                    <Link
-                      to={`/categories/${c.id}`}
-                      className="min-w-0 flex-1 truncate font-medium text-text underline-offset-2 hover:underline"
-                    >
+                  <div className="flex items-center gap-3 py-2">
+                    <DragHandle handle={handle} label={`Drag ${c.title} to reorder`} />
+                    <Thumb src={c.imageUrl} size={40} />
+                    <Link to={`/categories/${c.id}`} className="min-w-0 flex-1 truncate font-medium text-text">
                       {c.title}
                     </Link>
-                    <span className="shrink-0 text-small text-muted">{c.hubProductCount} products</span>
+                    <span className="shrink-0 text-help text-muted">
+                      <span className="tabular-nums">{c.hubProductCount}</span> product{c.hubProductCount === 1 ? "" : "s"}
+                    </span>
                   </div>
                 )}
               />
@@ -345,25 +371,31 @@ export default function CategoryDetail() {
           </Card>
         </div>
 
-        <div className="space-y-4 lg:col-span-3">
+        <div className="space-y-5 lg:col-span-3">
           <Card>
             <CardHeader title="Category image" />
+            {/* Named either way: once an image is set its only content is the
+                picture, which is decorative here. */}
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-surface-2 text-subtle transition-colors hover:border-ring hover:text-text"
+              aria-label={draft.image_url ? "Replace the category image" : "Choose a category image"}
+              className={cn(
+                "flex aspect-square w-full items-center justify-center overflow-hidden border text-muted transition-colors duration-[120ms] hover:border-text hover:text-text",
+                draft.image_url ? "border-border bg-paper" : "border-dashed border-border-input bg-surface-2",
+              )}
             >
               {draft.image_url ? (
                 <img src={draft.image_url} alt="" className="h-full w-full object-contain" />
               ) : (
-                <span className="flex flex-col items-center gap-2 text-small">
+                <span className="flex flex-col items-center gap-2 text-help" aria-hidden="true">
                   <ImageOff size={24} />
-                  Click to choose an image
+                  Choose an image
                 </span>
               )}
             </button>
-            <p className="mt-2 text-small text-subtle">
-              Duda fetches the file and re-hosts its own copy, so the Media Centre original can
+            <p className="t-help mt-2">
+              Duda fetches the file and re-hosts its own copy, so the original in Media can
               change later without breaking the page.
               {/*
                 * ⚠️ No Remove: a category image cannot be cleared once set.
@@ -430,6 +462,80 @@ export default function CategoryDetail() {
         />
       )}
     </>
+  );
+}
+
+/**
+ * The page while the category loads (11 §1): its cards, with their real
+ * titles, and blocks where the data goes, so nothing moves when it lands.
+ * One polite announcement; the blocks are aria-hidden.
+ */
+function CategoryDetailSkeleton() {
+  return (
+    <div aria-busy="true">
+      <p role="status" className="sr-only">
+        Loading category
+      </p>
+      <div className="grid gap-5 lg:grid-cols-10">
+        <div className="space-y-5 lg:col-span-7">
+          <Card>
+            <CardHeader title="Category info" />
+            <div className="space-y-4">
+              <SkeletonField label="Category name" />
+              <SkeletonField label="Parent category" hint="Top level sits at the root of the store." />
+              <SkeletonField label="Description" control="h-24 w-full" textarea hint="HTML, shown on the category page." />
+            </div>
+          </Card>
+          <Card>
+            <CardHeader title="Category products" />
+            {/* AssignPickList: the search, the "Only show selected" row, and its 320px list. */}
+            <div aria-hidden="true">
+              <Skeleton className="mb-2 h-10 w-full" />
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <Skeleton className="h-6 w-44" />
+                <SkeletonLine text="text-help" className="h-[0.8em] w-20" />
+              </div>
+              <div className="h-80 overflow-hidden border border-border">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-2 border-b border-border px-2.5 py-2">
+                    <Skeleton className="h-5 w-5 shrink-0" />
+                    <Skeleton className="h-10 w-10 shrink-0" />
+                    <Skeleton className="h-3 w-48 max-w-full" />
+                  </div>
+                ))}
+              </div>
+              <SkeletonLine text="mt-2 text-body" className="h-[0.8em] w-24" />
+            </div>
+          </Card>
+          <Card>
+            <CardHeader title="Subcategories" actions={<Skeleton className="h-8.5 w-40" />} />
+            <SkeletonLine text="text-help" className="h-[0.8em] w-40" />
+          </Card>
+        </div>
+        <div className="space-y-5 lg:col-span-3">
+          <Card>
+            <CardHeader title="Category image" />
+            <Skeleton className="aspect-square w-full" />
+            {/* Static copy, so it shows as itself and wraps where the real one will. */}
+            <p className="t-help mt-2" aria-hidden="true">
+              Duda fetches the file and re-hosts its own copy, so the original in Media can change later without
+              breaking the page.
+            </p>
+          </Card>
+          <Card>
+            <CardHeader title="SEO" />
+            <div className="space-y-4">
+              <SkeletonField
+                label="Page URL"
+                hint="The live category page address. Changing it breaks existing links."
+              />
+              <SkeletonField label="Title" />
+              <SkeletonField label="Meta description" control="h-20 w-full" textarea />
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }
 

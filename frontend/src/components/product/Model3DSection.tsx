@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, SectionError, RemoveButton } from "../ui";
+import { Button, Card, CardHeader, SectionError, RemoveButton } from "../ui";
 import { MediaPicker } from "../MediaPicker";
 import { Model3DPreview } from "./Model3DPreview";
 import type { MediaAsset } from "../../lib/types";
@@ -14,12 +14,10 @@ import type { Model3DDraft } from "./productEditorTypes";
 export function Model3DSection({
   value,
   onChange,
-  dirty,
   error,
 }: {
   value: Model3DDraft;
   onChange: (next: Model3DDraft) => void;
-  dirty: boolean;
   error?: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -34,7 +32,6 @@ export function Model3DSection({
       <CardHeader
         title="3D Model"
         description="Upload a .glb file to show an interactive 3D viewer on the product page."
-        actions={dirty && <Badge tone="accent">Unsaved</Badge>}
       />
 
       <SectionError message={error} />
@@ -43,7 +40,7 @@ export function Model3DSection({
         <div className="space-y-3">
           <Model3DPreview src={value.url} />
           <div className="flex items-center justify-between gap-3">
-            <span className="truncate text-small text-muted" title={value.filename ?? ""}>
+            <span className="truncate text-help text-muted" title={value.filename ?? ""}>
               {value.filename}
             </span>
             <div className="flex items-center gap-1">
@@ -59,7 +56,7 @@ export function Model3DSection({
         </div>
       ) : (
         <div className="flex flex-col items-start gap-3">
-          <p className="text-body text-subtle">No 3D model uploaded yet.</p>
+          <p className="text-body text-muted">No 3D model uploaded yet.</p>
           <Button type="button" size="sm" onClick={() => setPickerOpen(true)}>
             Upload GLB file
           </Button>

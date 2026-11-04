@@ -1,13 +1,14 @@
 /* ==========================================================================
-   SAEquip Product Hub — design system
-   Styling language follows shadcn/ui: white surfaces separated by hairline
-   borders rather than fills, a restrained neutral scale, 14px UI text, small
-   radii, and soft focus rings instead of hard outlines.
-   Brand yellow (#FED217) stays as the accent — shadcn's own primary is
-   near-black, but the brand takes precedence.
-   Typeface: DIN 2014 (Adobe Fonts, loaded via the <link> in index.html —
-   Adobe forbids self-hosting, so it is NOT vendored like previous typefaces).
-   Weights available: 200/300/400/600/700/800, normal only, no 500.
+   SAEquip Product Hub — design system (redesign 2026-10)
+   The look: square corners, 1px borders instead of shadows, black / white /
+   brand yellow (#FED217). Yellow marks only the active or primary thing.
+   The sidebar is always dark; the main panel has a light and a dark theme,
+   switched by `data-theme` on <html>. Source of truth for the values:
+   docs/redesign/00-design-reference.md and 02a-decisions.md.
+   Typefaces: Barlow (headings) and Inter (everything else) — from Google
+   Fonts via the <link> in index.html, 400/500/600/700. Codes and counts are
+   Inter with tabular figures; only the HTML code editors use a monospace,
+   the system's (`font-mono`).
    ========================================================================== */
 
 @tailwind base;
@@ -17,15 +18,8 @@
 /* --- Design tokens -------------------------------------------------------
    Mirrored in tailwind.config.js so the same names exist as utilities.
 
-   NOTE on naming: shadcn calls its light grey fill `--muted` and its secondary
-   text `--muted-foreground`. This codebase already uses `muted` to mean
-   secondary TEXT across ~10 pages, so that name keeps its existing meaning and
-   shadcn's non-colliding names (primary, secondary, input, ring, destructive)
-   are added alongside. Renaming `muted` would silently turn every piece of
-   secondary text near-white.
-
-   Values are the sRGB equivalents of shadcn's OKLCH neutrals, which line up
-   with Tailwind's `neutral` palette.
+   `muted` is secondary TEXT (shadcn would call it muted-foreground). There is
+   no third text grey: the old `--subtle` folded into it.
 
    FORMAT: these are space-separated RGB CHANNELS, not hex, and the Tailwind
    config consumes them as `rgb(var(--x) / <alpha-value>)`. That is what makes
@@ -33,88 +27,140 @@
    alpha channel and silently DROPS the declaration, so `bg-danger/10` and
    friends rendered fully transparent. Any direct CSS use must therefore wrap
    the var: `rgb(var(--accent))`. */
+
+/* Main panel, light — also the default when no theme is set. */
+:root,
+[data-theme="light"] {
+  --bg: 242 242 240; /* #F2F2F0 page */
+  --surface: 255 255 255; /* #FFFFFF cards, header, top bar */
+  --surface-2: 247 247 245; /* #F7F7F5 table heads, footers, wells, row hover */
+  --input-bg: 255 255 255; /* #FFFFFF inputs and selects */
+  --border: 227 227 223; /* #E3E3DF hairlines */
+  --border-strong: 203 203 198; /* #CBCBC6 ghost buttons, other edges */
+  --border-input: 138 138 133; /* #8A8A85 inputs, selects, checkboxes, toggle off — 3:1 (02a Q13) */
+  --text: 11 11 11; /* #0B0B0B */
+  --muted: 92 92 88; /* #5C5C58 secondary text, labels, help */
+  --track: 236 236 234; /* #ECECEA segmented-control background */
+  --selected-bg: 255 247 209; /* #FFF7D1 selected row / list item / tile (02a "After 4a") */
+  --selected-bar: 11 11 11; /* = --text: the selected item's 3px left bar */
+  --chip-bg: 242 242 240; /* #F2F2F0 neutral chip */
+  --ok: 30 122 60; /* #1E7A3C */
+  --ok-bg: 230 242 233; /* #E6F2E9 */
+  --danger: 180 35 24; /* #B42318 */
+  --danger-bg: 253 236 234; /* #FDECEA danger-button hover, failed pills (02a Q2) */
+  --warning: 138 75 0; /* #8A4B00 (02a Q3) */
+  --warning-bg: 252 239 217; /* #FCEFD9 */
+  --focus: 11 11 11; /* = --text: the 2px focus outline */
+  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.12); /* menus, popovers, modals, toasts (02a Q10) */
+  --backdrop: rgb(0 0 0 / 0.5); /* behind modals and the mobile drawer */
+  color-scheme: light;
+}
+
+/* Main panel, dark. ⚠️ Never redefine the fixed tokens below here — that is
+   what keeps the sidebar dark and the paper tiles white in both themes. */
+[data-theme="dark"] {
+  --bg: 15 15 15; /* #0F0F0F */
+  --surface: 23 23 23; /* #171717 */
+  --surface-2: 29 29 29; /* #1D1D1D */
+  --input-bg: 18 18 18; /* #121212 */
+  --border: 42 42 42; /* #2A2A2A */
+  --border-strong: 59 59 59; /* #3B3B3B */
+  --border-input: 107 107 107; /* #6B6B6B */
+  --text: 242 242 240; /* #F2F2F0 */
+  --muted: 163 163 160; /* #A3A3A0 */
+  --track: 35 35 35; /* #232323 */
+  --selected-bg: 29 29 29; /* = --surface-2 */
+  --selected-bar: 254 210 23; /* = --accent: yellow in dark */
+  --chip-bg: 34 34 34; /* #222222 */
+  --ok: 95 208 138; /* #5FD08A */
+  --ok-bg: 16 38 26; /* #10261A */
+  --danger: 249 112 102; /* #F97066 */
+  --danger-bg: 42 19 17; /* #2A1311 */
+  --warning: 245 181 74; /* #F5B54A */
+  --warning-bg: 42 30 8; /* #2A1E08 */
+  --focus: 242 242 240;
+  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.5);
+  --backdrop: rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+
+/* Fixed — the same in both themes. */
 :root {
-  /* Surfaces */
-  --bg: 250 250 250; /* neutral-50 — page base */
-  --surface: 255 255 255; /* cards, panels, fields */
-  --surface-2: 245 245 245; /* neutral-100 — table headers, hover, subtle fills */
+  --accent: 254 210 23; /* #FED217 — active or primary only */
+  --accent-ink: 11 11 11; /* #0B0B0B text on yellow */
+  --accent-hover: 240 196 15; /* #F0C40F primary-button hover (02a Q4) */
+  --paper: 255 255 255; /* always-white tile: images, logos, PDF previews, QR, widget previews */
+  --danger-solid: 180 35 24; /* #B42318 confirm-delete button, both themes (02a "After 3b") */
+  --danger-solid-hover: 155 28 19; /* #9B1C13 */
 
-  /* Lines — a hairline border does the work a shadow used to */
-  --border: 229 229 229; /* neutral-200 */
-  --input: 229 229 229;
-  --ring: 254 210 23; /* brand yellow focus ring */
+  /* Sidebar — always dark, whatever the theme. */
+  --sidebar: 11 11 11; /* #0B0B0B */
+  --sidebar-border: 31 31 31; /* #1F1F1F */
+  --sidebar-fg: 255 255 255; /* text on hover and the sidebar's brightest text */
+  --sidebar-text: 201 201 197; /* #C9C9C5 item text, and "Product Hub" under "SA Equip" (12.13) */
+  --sidebar-label: 138 138 133; /* #8A8A85 group labels, about 5.7:1 on the panel (02a "After stage 5") */
+  --sidebar-muted: 163 163 160; /* #A3A3A0 muted sidebar text (02a Q6) */
+  --sidebar-hover: 26 26 26; /* #1A1A1A item hover (02a Q4) */
+  --sidebar-active: 254 210 23; /* #FED217 active item */
+  --sidebar-active-ink: 11 11 11;
+  --sidebar-badge: 31 31 31; /* #1F1F1F */
+  --sidebar-badge-ink: 229 229 226; /* #E5E5E2 */
+  --sidebar-focus: 254 210 23; /* #FED217 (02a Q5) */
+}
 
-  /* Content */
-  --text: 10 10 10; /* neutral-950 */
-  --muted: 115 115 115; /* neutral-500 — secondary text (shadcn muted-foreground) */
-  --subtle: 163 163 163; /* neutral-400 — placeholders, tertiary */
-
-  /* Brand accent */
-  --accent: 254 210 23;
-  --accent-hover: 240 196 15;
-  --accent-foreground: 10 10 10;
-
-  /* Neutral primary, for shadcn-style dark controls where yellow is too loud */
-  --primary: 23 23 23; /* neutral-900 */
-  --primary-foreground: 250 250 250;
-  --secondary: 245 245 245;
-  --secondary-foreground: 23 23 23;
-
-  /* Status */
-  --danger: 220 38 38;
-  --success: 22 163 74;
-
-  /* Sidebar — deliberately DARK against the light content area, mirroring
-     shadcn's own sidebar token set. Tokenised rather than hardcoded so the
-     panel can be retuned in one place. */
-  --sidebar: 20 20 20;
-  --sidebar-foreground: 250 250 250;
-  --sidebar-muted: 161 161 161; /* idle nav labels */
-  --sidebar-subtle: 107 107 107; /* section headings, secondary meta */
-  --sidebar-border: 38 38 38;
-
-  /* shadcn's 0.625rem base radius */
-  --radius: 0.625rem;
+/* Inside the sidebar, focus is yellow and drawn inside the item (02a Q5):
+   the main panel's --focus follows --text, which in the light theme is the
+   sidebar's own background. */
+[data-sidebar] {
+  --focus: var(--sidebar-focus);
+  color-scheme: dark;
+}
+[data-sidebar] :focus-visible {
+  outline-offset: -2px;
 }
 
 @layer base {
   html {
-    /* Scales the whole UI to ~110%, which is where the layout was judged to
-       feel right. Deliberately on the ROOT and as a percentage: Tailwind's
-       spacing scale, the type scale and --radius are all rem-based, so this
-       lifts type AND layout together the way browser zoom does — rather than
-       only enlarging text and leaving the padding/gaps behind. A percentage
-       (not a px value) keeps it relative to the visitor's own browser font
-       setting instead of overriding it.
+    /* No font-size here: the root is the browser default (100%, normally
+       16px), so it still follows the visitor's own browser setting. The
+       redesign specifies sizes in px, and at a 16px root Tailwind's 4px grid
+       IS those values (h-10 = 40, h-16 = 64, p-5 = 20). It was 110% until
+       the 2026-10 redesign, which made every rem-based size 1.1× the design.
 
-       Note this supersedes the reasoning in the body rule below: the 16px grid
-       is now a 17.6px grid, on purpose. Fixed-px values don't follow (lucide
-       `size={n}` icons, the 200x160 site thumbnail), but those sit within ~2px
-       of proportional, so the mismatch isn't perceptible. */
-    font-size: 110%;
-
-    /* Never synthesise the missing weights. */
+       Never synthesise a missing weight: render the nearest loaded one. */
     font-synthesis: none;
+    /* The shell's top bar is sticky (64px), so anything scrolled to — an
+       anchor like the save area's failed-section pills, or scrollIntoView — stops
+       16px below it rather than underneath it. */
+    scroll-padding-top: 5rem;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
+  /* …and below a sticky band too (the product editor's, from 1280: 11 §4),
+     whose height the band writes to --sticky-band while it is on screen.
+     The same breakpoint as the shell slot's `xl:` sticky rule in Layout. */
+  @media (min-width: 1280px) {
+    html {
+      scroll-padding-top: calc(5rem + var(--sticky-band, 0px));
+    }
+  }
+
   body {
     background-color: rgb(var(--bg));
     color: rgb(var(--text));
-    font-family: "din-2014", ui-sans-serif, system-ui, -apple-system,
-      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     font-weight: 400;
-    /* 16px paragraph/body text. Matches the `body` token in
-       tailwind.config.js — keep the two in step, since some text inherits
-       from here and some sets `text-body` explicitly. Expressed in rem
-       (16/17.6) so it tracks the 110% root above rather than being pinned. */
-    font-size: 0.909rem;
+    /* 14px body text. Matches the `body` token in tailwind.config.js — keep
+       the two in step, since some text inherits from here and some sets
+       `text-body` explicitly. */
+    font-size: 0.875rem;
     line-height: 1.5;
   }
 
   h1, h2, h3, h4, h5, h6 {
+    font-family: "Barlow", ui-sans-serif, system-ui, sans-serif;
     font-weight: 600;
     line-height: 1.2;
     letter-spacing: -0.01em;
@@ -122,14 +168,15 @@
 
   ::selection {
     background-color: rgb(var(--accent));
-    color: rgb(var(--accent-foreground));
+    color: rgb(var(--accent-ink));
   }
 
-  /* Soft ring rather than a hard outline — the shadcn focus treatment.
-     Controls that style their own focus state override this. */
+  /* The focus treatment (00: "a 2px outline in --text with a 2px offset").
+     An outline follows the element's corners, so with every radius at 0 the
+     ring is square too. --focus is yellow inside the sidebar (see above). */
   :focus-visible {
-    outline: 2px solid rgb(var(--ring));
-    outline-offset: 1px;
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
   }
 
   input, textarea, select, button {
@@ -138,6 +185,58 @@
   }
 
   * {
-    scrollbar-color: rgb(var(--subtle)) transparent;
+    scrollbar-color: rgb(var(--muted)) transparent;
   }
+
+  /* 02a Q4: movement and transitions are dropped for anyone who asks the OS
+     for reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* --- Type roles ------------------------------------------------------------
+   One class per role in the design (docs/redesign/00 "Type", 02a Q7), so a
+   size never travels without its family, weight, tracking and case. Reach
+   for a role before a raw size, and never add a free-standing `uppercase` or
+   `tracking-*` beside one.
+
+   Sizes: the five fontSize tokens (micro 11, label 12, help 13, body 14,
+   title 36) plus the few one-off heading sizes 02a gives (16/22/24/28/32),
+   which exist only as these roles. Line heights are 02a's; a role without one
+   inherits body's 1.5.
+
+   They live in the components layer, so a utility on the same element (a
+   colour such as `text-danger`, say) still wins. */
+@layer components {
+  .t-h1 { @apply font-heading text-title font-bold; } /* page title: 36/700, lh 1.05, -0.01em */
+  .t-section { @apply font-heading text-body font-semibold uppercase tracking-[0.09em]; line-height: 1.2; } /* card/section heading */
+  .t-overline { @apply font-heading text-label font-semibold uppercase tracking-[0.14em] text-muted; line-height: 1.2; }
+  .t-body { @apply font-body text-body; }
+  .t-label { @apply font-body text-label font-semibold tracking-[0.02em] text-muted; line-height: 1.3; } /* field label */
+  .t-help { @apply font-body text-help text-muted; line-height: 1.5; }
+  .t-th { @apply font-body text-label font-semibold text-muted; line-height: 1.3; } /* table head */
+  /* Codes in Inter since 12.16. Add `tabular-nums` where they show NUMBERS that
+     must line up (counts, quantities, sizes, dates): not on the roles, because
+     Inter's tabular figures also widen the hyphen, so "air-mover" read "air - mover". */
+  .t-code { @apply font-body text-help; } /* 13 — SKU, slug, page numbers in cells and inline values */
+  .t-code-sm { @apply font-body text-label; } /* 12 — under-text slugs, counts in badges/segments, kbd */
+
+  /* One-off headings (02a Q7) */
+  .t-modal-title { @apply font-heading font-bold; font-size: 1.375rem; line-height: 1.15; } /* 22 */
+  .t-detail-title { @apply font-heading font-bold; font-size: 1.5rem; line-height: 1.15; } /* 24 — split-view detail */
+  .t-editor-title { @apply font-heading font-bold; font-size: 1.75rem; line-height: 1.1; } /* 28 — product editor name */
+  .t-auth-title { @apply font-heading font-bold; font-size: 2rem; line-height: 1.1; } /* 32 */
+  .t-empty-title { @apply font-body font-semibold; font-size: 1rem; line-height: 1.4; } /* 16 */
+
+  /* The sidebar (02a Q6) */
+  .t-nav-label { @apply font-heading font-semibold uppercase tracking-[0.14em]; font-size: 0.6875rem; line-height: 1.2; } /* 11 — group labels */
+  .t-lockup-name { @apply font-heading font-semibold; font-size: 1rem; line-height: 1.2; } /* 16 — "SA Equip" beside the sidebar logo (12.13) */
 }

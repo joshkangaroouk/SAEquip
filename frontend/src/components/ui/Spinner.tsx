@@ -32,9 +32,9 @@ export function Spinner({ className }: { className?: string }) {
 /** Centred loading state for a whole panel/page region. */
 export function Loader({ label = "Loading…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-3 py-16 text-muted">
-      <Spinner className="text-lg" />
-      <span className="text-small">{label}</span>
+    <div role="status" aria-live="polite" className="flex items-center justify-center gap-3 py-16 text-muted">
+      <Spinner className="h-[18px] w-[18px]" />
+      <span className="text-help">{label}</span>
     </div>
   );
 }

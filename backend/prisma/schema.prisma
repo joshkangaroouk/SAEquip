@@ -274,6 +274,11 @@ model Lead {
   /// The language the form was shown in ("en", "ar", …); null on requests from
   /// before languages existed.
   locale        String?
+  /// When staff marked the request handled on the Resource requests page, and
+  /// who (their sign-in email). Both null = new. Additive and nullable, with no
+  /// default (migration 20261030120000_enquiry_handled).
+  handledAt     DateTime?
+  handledBy     String?
   download      Download? @relation(fields: [downloadId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
@@ -397,6 +402,11 @@ model QuoteRequest {
   locale     String?
   createdAt DateTime           @default(now())
   emailSent Boolean            @default(false)
+  /// When staff marked the quote handled on the Quote requests page, and who
+  /// (their sign-in email). Both null = new. Additive and nullable, with no
+  /// default (migration 20261030120000_enquiry_handled).
+  handledAt DateTime?
+  handledBy String?
   items     QuoteRequestItem[]
 
   /// /api/quotes lists newest first.

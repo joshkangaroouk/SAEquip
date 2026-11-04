@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { Badge, Card } from "../components/ui";
+import { PageHeader, Badge, Card } from "../components/ui";
 
 /**
  * The embeddable widget's own production CSS (verbatim from
@@ -410,6 +410,12 @@ function SpecsTablePreview() {
  * Mirrors compatibleSection() in widget.js. Static here — the live arrows
  * appear only when the track actually overflows, which is measured from
  * rendered width, so a preview can't meaningfully show that.
+ *
+ * Each card is productCard()'s markup: a link (the product page live; inert
+ * here), the picture with an empty alt since the title names the card, an h4,
+ * and "View Product" with its chevron. The cards used to be spans on the
+ * carousel's retired `.saeh-cp-*` classes, so the track held nothing
+ * focusable and the styling was not the live one.
  */
 function CompatiblePreview() {
   return (
@@ -428,17 +434,24 @@ function CompatiblePreview() {
         </button>
         <div className="saeh-cp-track">
           {DUMMY.compatible.map((c) => (
-            <span key={c.name} className="saeh-cp-card">
-              <span className="saeh-cp-shot">
-                <img src={c.image} alt={c.name} />
-              </span>
-              <span className="saeh-cp-body">
-                <span className="saeh-cp-name">{c.name}</span>
-                <span className="saeh-cp-btn">
-                  <span>VIEW PRODUCT</span>
+            <a key={c.name} className="saeh-pl-card saeh-cp-card" href="#compatible" onClick={(e) => e.preventDefault()}>
+              <div className="saeh-pl-shot">
+                <img src={c.image} alt="" />
+              </div>
+              <div className="saeh-pl-body">
+                <h4 className="saeh-pl-name">{c.name}</h4>
+              </div>
+              <span className="saeh-pl-btn">
+                View Product
+                <span className="saeh-pl-chevwrap">
+                  <svg viewBox="0 0 24 24" width={19} height={19} fill="none" aria-hidden="true">
+                    {["M5 5l7 7-7 7", "M13 5l7 7-7 7"].map((d) => (
+                      <path key={d} d={d} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                    ))}
+                  </svg>
                 </span>
               </span>
-            </span>
+            </a>
           ))}
         </div>
         <button type="button" className="saeh-cp-nav" aria-label="Next products">
@@ -467,7 +480,11 @@ function ListPreview({ items }: { items: string[] }) {
  *
  * Mirrors tabsSection() in widget.js: one set of buttons serves both layouts,
  * with the disclosure pattern (aria-expanded + aria-controls) rather than tab
- * roles, and `hidden` rather than a class on the closed panels.
+ * roles. The open panel carries `.saeh-open` and the body sits in
+ * `.saeh-tab-c > .saeh-tab-b`, as the live widget builds it; the CSS hides the
+ * others. The first panel is open, as on the product page (10 §6) — the
+ * preview used the `hidden` attribute and never added the class, so the CSS
+ * hid every panel.
  */
 function TabsPreview() {
   const [open, setOpen] = useState(0);
@@ -498,13 +515,14 @@ function TabsPreview() {
               <span>{p.label}</span>
             </button>
             <div
-              className="saeh-tab-p"
+              className={i === open ? "saeh-tab-p saeh-open" : "saeh-tab-p"}
               id={`prev-${p.id}`}
               role="region"
               aria-labelledby={`prev-${p.id}-h`}
-              hidden={i !== open}
             >
-              {p.body}
+              <div className="saeh-tab-c">
+                <div className="saeh-tab-b">{p.body}</div>
+              </div>
             </div>
           </Fragment>
         ))}
@@ -580,13 +598,15 @@ const WIDGETS = [
     what: "The main product widget: Overview, Technical Specs, Key Benefits and Applications. Tabs on desktop, an accordion on mobile.",
     source: "Description, Technical Specs, Key Benefits and Applications in the product editor.",
     preview: <TabsPreview />,
+    wide: true,
   },
   {
     section: "compatible",
     name: "SA Compatible Products",
-    what: "A carousel of products and accessories that go with this one — 4 across on desktop, 3 on tablet, 2 on mobile. Arrows appear only when there is more than fits.",
+    what: "A carousel of products and accessories that go with this one — 4 across on desktop, 3 on tablet, 1 on mobile. Arrows appear only when there is more than fits.",
     source: "Compatible Products in the product editor.",
     preview: <CompatiblePreview />,
+    wide: true,
   },
   {
     section: "3d-viewer",
@@ -602,14 +622,15 @@ export default function Widgets() {
     <>
       <style>{WIDGET_CSS}</style>
 
-      <h1 className="text-xl font-semibold text-text">Widgets</h1>
-      <p className="mt-1 text-sm text-muted">
-        The five widgets on the live product page. Each one shows content you enter here in the Hub.
-      </p>
+      <PageHeader
+        title="Widgets"
+        description="The five widgets on the live product page. Each one shows content you enter here in the Hub."
+      />
 
-      <Card className="mt-6">
+      {/* No top margin: the <style> above is the column's first child, so the shell's first-child rule can't take one off this. */}
+      <Card>
         <h2 className="text-body font-semibold text-text">How it works</h2>
-        <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-muted">
+        <ul className="mt-2 max-w-[72ch] list-disc space-y-1.5 pl-5 text-body text-muted">
           <li>
             All five are already built and placed on the Duda product template. Nothing needs pasting or
             configuring here — edit a product and the widgets follow.
@@ -634,12 +655,23 @@ export default function Widgets() {
               <h2 className="text-body font-semibold text-text">{w.name}</h2>
               <Badge tone="neutral">{w.section}</Badge>
             </div>
-            <p className="mt-1 text-sm text-muted">{w.what}</p>
-            <p className="mt-1 text-xs text-subtle">
+            <p className="mt-1 text-body text-muted">{w.what}</p>
+            <p className="mt-1 text-label text-muted">
               <span className="font-semibold">Comes from:</span> {w.source}
             </p>
 
-            <div className="mt-4 rounded-lg border border-border bg-white p-4">{w.preview}</div>
+            {/*
+              The widget's own root, as widget.js builds it: .saeh-root sets the
+              fonts, the 16px size and the #1a1a1a text, so the preview reads as
+              on the live page in either theme. The accordion and the carousel
+              opt out of the 920px cap (saeh-wide) there too. On paper, since the
+              live page is white.
+            */}
+            <div className="mt-4 border border-border bg-paper p-4">
+              <div lang="en" className={w.wide ? "saeh-root saeh-wide" : "saeh-root"}>
+                {w.preview}
+              </div>
+            </div>
           </Card>
         ))}
       </div>

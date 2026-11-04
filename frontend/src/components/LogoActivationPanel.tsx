@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Badge, Card, CardHeader } from "./ui";
+import { Badge, Card, CardHeader, ToggleTrack } from "./ui";
+import { cn } from "../lib/cn";
 import type { ProductLogoEntry } from "../lib/types";
 
 /**
@@ -8,7 +9,7 @@ import type { ProductLogoEntry } from "../lib/types";
  *
  * Toggling used to apply immediately (PUT/DELETE per click). It is now part of
  * the page's unified save, so a toggle only stages a change — the "Unsaved"
- * badge and the save bar are what tell the user it hasn't committed yet.
+ * badge and the band's save area are what tell the user it hasn't committed yet.
  */
 export function LogoActivationPanel({
   id,
@@ -17,7 +18,6 @@ export function LogoActivationPanel({
   entries,
   activeIds,
   onToggle,
-  dirty,
 }: {
   id: string;
   kind: "SA_LOGO" | "CERT_LOGO";
@@ -25,7 +25,6 @@ export function LogoActivationPanel({
   entries: ProductLogoEntry[];
   activeIds: string[];
   onToggle: (logoId: string) => void;
-  dirty: boolean;
 }) {
   const active = new Set(activeIds);
 
@@ -44,14 +43,13 @@ export function LogoActivationPanel({
         }
         actions={
           <>
-            {dirty && <Badge tone="accent">Unsaved</Badge>}
             {entries.length > 0 && <Badge tone="neutral">{active.size} active</Badge>}
           </>
         }
       />
 
       {entries.length === 0 ? (
-        <p className="text-body text-subtle">
+        <p className="text-body text-muted">
           No {kind === "SA_LOGO" ? "SA" : "Cert"} logos in the catalog yet —{" "}
           <Link to="/logos" className="text-text underline underline-offset-2 hover:text-muted">
             add some
@@ -68,28 +66,32 @@ export function LogoActivationPanel({
                 type="button"
                 onClick={() => onToggle(entry.id)}
                 aria-pressed={on}
-                className={`flex flex-col items-center rounded-lg border-2 p-2 text-left transition ${
-                  on ? "border-accent bg-accent/10" : "border-border hover:border-subtle"
-                }`}
+                // On is the selected treatment (02a "After 4a"), not a yellow
+                // tint: the --selected-bar edge on --selected-bg and a 600
+                // label, beside the toggle that carries the state.
+                className={cn(
+                  "flex flex-col items-center border-2 p-2 text-left transition-colors duration-[120ms]",
+                  on ? "border-selected-bar bg-selected" : "border-border hover:border-border-strong",
+                )}
               >
-                <div className="flex h-16 w-full items-center justify-center bg-surface-2">
+                <div className="flex h-16 w-full items-center justify-center bg-paper">
+                  {/* The visible label names the button, so with one the image
+                      is decorative; without one the alt text is the name. */}
                   <img
                     src={entry.url}
-                    alt={entry.alt || entry.label || "logo"}
+                    alt={entry.label ? "" : entry.alt || "logo"}
                     className="max-h-16 max-w-full object-contain"
                   />
                 </div>
                 <div className="mt-2 flex w-full items-center justify-between gap-1">
-                  <span className="truncate text-small text-muted" title={entry.label ?? ""}>
+                  <span
+                    className={cn("truncate text-help", on ? "font-semibold text-text" : "text-muted")}
+                    title={entry.label ?? ""}
+                  >
                     {entry.label || "—"}
                   </span>
-                  <span
-                    className={`inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full px-1 ${
-                      on ? "justify-end bg-accent" : "justify-start bg-surface-2"
-                    }`}
-                  >
-                    <span className="h-3.5 w-3.5 rounded-full bg-surface shadow-sm" />
-                  </span>
+                  {/* The card is the toggle (aria-pressed); this only draws its state. */}
+                  <ToggleTrack checked={on} />
                 </div>
               </button>
             );

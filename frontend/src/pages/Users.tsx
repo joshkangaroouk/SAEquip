@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../lib/api";
-import { Badge, Button, Table, TBody, TD, TH, THead, TR, toast } from "../components/ui";
+import { initialsFrom } from "../lib/initials";
+import {
+  PageHeader,
+  Alert,
+  Badge,
+  Button,
+  Skeleton,
+  SkeletonLine,
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  toast,
+} from "../components/ui";
 
 interface StaffUser {
   id: string;
@@ -28,16 +43,138 @@ function when(iso: string | null): string {
  * whole companies — as buttons on this page, any signed-in session could mint
  * itself another account or delete a colleague's.
  */
+/** Initials avatar from the email (02a Q19): there is no name field. */
+function Avatar({ email }: { email: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-8 w-8 shrink-0 items-center justify-center border border-border bg-surface-2 text-label font-semibold text-text"
+    >
+      {initialsFrom(email)}
+    </span>
+  );
+}
+
+/** The email as the main line, with the Unconfirmed fault chip when it applies. */
+function Who({ u }: { u: StaffUser }) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <Avatar email={u.email} />
+      <span className="min-w-0">
+        <span className="block break-all font-medium text-text">{u.email}</span>
+        {!u.emailConfirmed && (
+          <Badge tone="danger" className="mt-1">
+            Unconfirmed
+          </Badge>
+        )}
+      </span>
+    </span>
+  );
+}
+
+const TwoFactor = ({ on }: { on: boolean }) => (on ? <Badge tone="ok">On</Badge> : <Badge tone="neutral">Off</Badge>);
+
+const DudaEditor = ({ yes }: { yes: boolean }) =>
+  yes ? (
+    <Badge tone="solid">Yes</Badge>
+  ) : (
+    <>
+      <span aria-hidden="true" className="text-muted">
+        —
+      </span>
+      <span className="sr-only">No</span>
+    </>
+  );
+
+/**
+ * The page while the staff list loads (11 §1): the table from xl and the
+ * cards below it, as the page lays them out, with the static labels as
+ * themselves and blocks for each person. One polite announcement; the
+ * blocks are aria-hidden.
+ */
+function UsersSkeleton() {
+  const text = (w: string) => <SkeletonLine text="text-body" className={`h-[0.8em] ${w}`} />;
+  const who = (
+    <span className="flex min-w-0 items-center gap-3">
+      <Skeleton className="h-8 w-8 shrink-0" />
+      <Skeleton className="h-3.5 w-56 max-w-full" />
+    </span>
+  );
+  return (
+    <div aria-busy="true">
+      <p role="status" className="sr-only">
+        Loading users
+      </p>
+      <div aria-hidden="true">
+        <div className="hidden xl:block">
+          <Table>
+            <THead>
+              <TR>
+                <TH>User</TH>
+                <TH>Two-factor</TH>
+                <TH>Last sign-in</TH>
+                <TH>Added</TH>
+                <TH>Duda editor</TH>
+                <TH className="w-px">
+                  <span className="sr-only">Actions</span>
+                </TH>
+              </TR>
+            </THead>
+            <TBody>
+              {[0, 1].map((i) => (
+                <TR key={i}>
+                  <TD>{who}</TD>
+                  <TD>
+                    <Skeleton className="h-6.5 w-10" />
+                  </TD>
+                  <TD>{text("w-20")}</TD>
+                  <TD>{text("w-20")}</TD>
+                  <TD>
+                    <Skeleton className="h-6.5 w-10" />
+                  </TD>
+                  <TD className="w-px">
+                    <Skeleton className="h-8.5 w-[140px]" />
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        </div>
+        <ul className="grid gap-3 md:grid-cols-2 xl:hidden">
+          {[0, 1].map((i) => (
+            <li key={i} className="border border-border bg-surface p-4">
+              {who}
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                {["Two-factor", "Duda editor", "Last sign-in", "Added"].map((label, j) => (
+                  <div key={label}>
+                    <dt className="t-label">{label}</dt>
+                    <dd className="mt-1">{j < 2 ? <Skeleton className="h-6.5 w-10" /> : text("w-20")}</dd>
+                  </div>
+                ))}
+              </dl>
+              <Skeleton className="mt-4 h-8.5 w-full" />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export default function Users() {
   const [users, setUsers] = useState<StaffUser[] | null>(null);
+  const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    apiJson<{ users: StaffUser[] }>("/api/users")
+    // `allowedDomains` is ALLOWED_EMAIL_DOMAINS, which GET /api/users already returns.
+    apiJson<{ users: StaffUser[]; allowedDomains?: string[] }>("/api/users")
       .then((d) => {
-        if (!cancelled) setUsers(d.users);
+        if (cancelled) return;
+        setUsers(d.users);
+        setAllowedDomains(d.allowedDomains ?? []);
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load users");
@@ -62,74 +199,119 @@ export default function Users() {
     }
   }
 
+  const resetButton = (u: StaffUser, className?: string) => (
+    <Button
+      variant="secondary"
+      size="sm"
+      className={className}
+      disabled={sending === u.email}
+      onClick={() => sendReset(u.email)}
+    >
+      {sending === u.email ? "Sending…" : "Send reset email"}
+    </Button>
+  );
+
   return (
     <>
-      <h1 className="text-xl font-semibold text-text">Users</h1>
-      <p className="mt-1 text-sm text-muted">
-        Staff accounts that can sign into this dashboard.
-      </p>
+      <PageHeader title="Users" description="Staff accounts that can sign into this dashboard." />
 
+      {error && <Alert tone="danger">{error}</Alert>}
 
-      {error && (
-        <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
+      {!users && !error && <UsersSkeleton />}
+
+      {users && (
+        <>
+          {/*
+            From xl, the table. No Card round it: <Table> is already a bordered
+            surface. Between lg and xl the column is ~670px and six columns plus
+            "Send reset email" need ~730, so the cards carry on until xl.
+          */}
+          <div className="hidden xl:block">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>User</TH>
+                  <TH>Two-factor</TH>
+                  <TH>Last sign-in</TH>
+                  <TH>Added</TH>
+                  <TH>Duda editor</TH>
+                  <TH className="w-px">
+                    <span className="sr-only">Actions</span>
+                  </TH>
+                </TR>
+              </THead>
+              <TBody>
+                {users.map((u) => (
+                  <TR key={u.id}>
+                    <TD>
+                      <Who u={u} />
+                    </TD>
+                    <TD>
+                      <TwoFactor on={u.mfaEnabled} />
+                    </TD>
+                    <TD className="whitespace-nowrap text-muted">{when(u.lastSignInAt)}</TD>
+                    <TD className="whitespace-nowrap text-muted">{when(u.createdAt)}</TD>
+                    <TD>
+                      <DudaEditor yes={u.dudaEditor} />
+                    </TD>
+                    <TD className="w-px whitespace-nowrap">{resetButton(u)}</TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          </div>
+
+          {/* Below xl, one card per user (02a "After stage 5": not a sideways-scrolling table), two up from md. */}
+          <ul className="grid gap-3 md:grid-cols-2 xl:hidden">
+            {users.map((u) => (
+              <li key={u.id} className="border border-border bg-surface p-4">
+                <Who u={u} />
+                <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div>
+                    <dt className="t-label">Two-factor</dt>
+                    <dd className="mt-1">
+                      <TwoFactor on={u.mfaEnabled} />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="t-label">Duda editor</dt>
+                    <dd className="mt-1">
+                      <DudaEditor yes={u.dudaEditor} />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="t-label">Last sign-in</dt>
+                    <dd className="mt-1 text-body text-text">{when(u.lastSignInAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="t-label">Added</dt>
+                    <dd className="mt-1 text-body text-text">{when(u.createdAt)}</dd>
+                  </div>
+                </dl>
+                {resetButton(u, "mt-4 w-full")}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
-      {!users && !error && <p className="mt-8 text-muted">Loading users…</p>}
-
-      {/* No Card round the table: <Table> is already a bordered surface, and
-          wrapping it in one drew a second box with 20px between them. */}
-      {users && (
-        <div className="mt-6">
-          <Table>
-            <THead>
-              <TR>
-                <TH>Email</TH>
-                <TH>Two-factor</TH>
-                <TH>Last sign-in</TH>
-                <TH>Added</TH>
-                <TH>Duda editor</TH>
-                <TH className="w-px" />
-              </TR>
-            </THead>
-            <TBody>
-              {users.map((u) => (
-                <TR key={u.id}>
-                  <TD>
-                    <span className="font-medium text-text">{u.email}</span>
-                    {!u.emailConfirmed && (
-                      <Badge tone="danger" className="ml-2">
-                        Unconfirmed
-                      </Badge>
-                    )}
-                  </TD>
-                  <TD>
-                    {u.mfaEnabled ? (
-                      <Badge tone="success">On</Badge>
-                    ) : (
-                      <Badge tone="neutral">Off</Badge>
-                    )}
-                  </TD>
-                  <TD className="text-muted">{when(u.lastSignInAt)}</TD>
-                  <TD className="text-muted">{when(u.createdAt)}</TD>
-                  <TD>{u.dudaEditor ? <Badge tone="accent">Yes</Badge> : <span className="text-subtle">—</span>}</TD>
-                  <TD className="w-px whitespace-nowrap">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={sending === u.email}
-                      onClick={() => sendReset(u.email)}
-                    >
-                      {sending === u.email ? "Sending…" : "Send reset email"}
-                    </Button>
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        </div>
+      {/*
+        Invite domains (00, 02a Q19): exactly ALLOWED_EMAIL_DOMAINS as the API
+        reports it. The backend requires at least one, so there is always a
+        restriction to state; the note is left out only if the list is missing.
+      */}
+      {users && allowedDomains.length > 0 && (
+        <Alert tone="info" live="off" title="Adding someone" className="mt-5">
+          Only email addresses at {listDomains(allowedDomains)} can sign in. Accounts are created by Kangaroo, not
+          from this page — ask them to add a colleague.
+        </Alert>
       )}
     </>
   );
+}
+
+/** "a.com", "a.com or b.com", "a.com, b.com or c.com". */
+function listDomains(domains: string[]): string {
+  const d = domains.map((x) => `@${x}`);
+  return d.length <= 1 ? d.join("") : `${d.slice(0, -1).join(", ")} or ${d[d.length - 1]}`;
 }

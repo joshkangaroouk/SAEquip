@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
+import { handledBody, handledData, handledSelect } from "../services/enquiryHandled.js";
 
 export const resourceRequestsRouter = Router();
 
@@ -41,6 +42,9 @@ resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
         consentTextEn: l.consentTextEn,
         locale: l.locale,
         createdAt: l.createdAt,
+        /** Null = new. Set by PATCH /resource-requests/:id/handled. */
+        handledAt: l.handledAt,
+        handledBy: l.handledBy,
         file: {
           title: l.downloadTitle,
           fileName: l.fileName,
@@ -53,6 +57,29 @@ resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
         },
       })),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/resource-requests/:id/handled  { handled: boolean }
+ * The resource-request twin of PATCH /quotes/:id/handled, named after this
+ * page's own route (the rows are `Lead`s). Unknown id → 404 (P2025).
+ */
+resourceRequestsRouter.patch("/resource-requests/:id/handled", async (req, res, next) => {
+  const parsed = handledBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+    return;
+  }
+  try {
+    const lead = await prisma.lead.update({
+      where: { id: req.params.id },
+      data: handledData(parsed.data.handled, req.user?.email),
+      select: handledSelect,
+    });
+    res.json(lead);
   } catch (err) {
     next(err);
   }

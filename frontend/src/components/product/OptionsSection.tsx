@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, Card, CardHeader, SectionError, EmptyState, RemoveButton, toast, useConfirm } from "../ui";
+import { Alert, Badge, Button, Card, CardHeader, SectionError, EmptyState, Input, RemoveButton, toast, useConfirm } from "../ui";
 import { apiJson } from "../../lib/api";
+import { cn } from "../../lib/cn";
 import { cartesianSize } from "./normalize";
 import { AttachOptionModal } from "./AttachOptionModal";
 import { VariationCountMeter } from "./VariationCountMeter";
@@ -120,7 +121,6 @@ export function OptionsSection({
           }
           actions={
             <>
-              {dirty && <Badge tone="accent">Unsaved</Badge>}
               <VariationCountMeter
                 current={currentVariationCount}
                 projected={projected}
@@ -136,14 +136,16 @@ export function OptionsSection({
         <SectionError message={error} />
 
         {dirty && (
-          <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-small text-text">
+          <Alert tone="warning" className="mb-4">
             Saving this regenerates the variation list. SKUs and price differences are carried across
             for combinations that still exist; any that disappear lose theirs.
-          </div>
+          </Alert>
         )}
 
         {options.length === 0 ? (
           <EmptyState
+            // Inside the section, under its h2.
+            as="h3"
             title="No options on this product"
             description="Attach one to generate purchasable variations, or leave it as a single-variant product."
           />
@@ -153,17 +155,17 @@ export function OptionsSection({
               const cat = byId.get(ref.id);
               const selected = new Set(ref.choiceIds);
               return (
-                <div key={ref.id} className="rounded-md border border-border p-3">
+                <div key={ref.id} className="border border-border p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-small font-semibold text-text">{ref.name}</span>
+                      <span className="text-help font-semibold text-text">{ref.name}</span>
                       {cat && (
                         <Badge tone="neutral">
                           shared with {Math.max(cat.usage - 1, 0)} other{" "}
                           {Math.max(cat.usage - 1, 0) === 1 ? "product" : "products"}
                         </Badge>
                       )}
-                      <span className="text-small text-muted">
+                      <span className="text-help text-muted">
                         {ref.choiceIds.length} of {cat?.choices.length ?? ref.choiceIds.length} values
                       </span>
                     </div>
@@ -179,11 +181,13 @@ export function OptionsSection({
                           type="button"
                           onClick={() => onToggleChoice(ref.id, c.id)}
                           aria-pressed={on}
-                          className={`inline-flex h-7 items-center rounded-full border px-3 text-small font-medium transition ${
+                          // The neutral chip; offered = the solid chip (02a "Batch 8"), never yellow.
+                          className={cn(
+                            "inline-flex h-6.5 items-center border px-2.5 text-help font-medium transition-colors duration-[120ms]",
                             on
-                              ? "border-accent bg-accent/15 text-text"
-                              : "border-border text-muted hover:border-subtle"
-                          }`}
+                              ? "border-text bg-text text-surface"
+                              : "border-border bg-chip text-muted hover:border-border-strong hover:text-text",
+                          )}
                           title={on ? "Offered on this product" : "Not offered on this product"}
                         >
                           {c.value}
@@ -193,7 +197,8 @@ export function OptionsSection({
 
                     {addingTo === ref.id ? (
                       <span className="flex items-center gap-1">
-                        <input
+                        <Input
+                          size="chip"
                           value={newChoice}
                           onChange={(e) => setNewChoice(e.target.value)}
                           onKeyDown={(e) => {
@@ -201,8 +206,9 @@ export function OptionsSection({
                             if (e.key === "Escape") setAddingTo(null);
                           }}
                           placeholder="New value…"
+                          aria-label={`New value for ${ref.name}`}
                           autoFocus
-                          className="h-7 w-32 rounded-full border border-input bg-surface px-3 text-small outline-none transition-[color,box-shadow] placeholder:text-subtle focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          className="w-32"
                         />
                         <Button
                           variant="primary"
@@ -232,7 +238,7 @@ export function OptionsSection({
                           setAddingTo(ref.id);
                           setNewChoice("");
                         }}
-                        className="inline-flex h-7 items-center rounded-full border border-dashed border-border px-3 text-small text-muted transition-colors hover:border-subtle hover:text-text"
+                        className="inline-flex h-6.5 items-center border border-dashed border-border-input px-2.5 text-help text-muted transition-colors duration-[120ms] hover:border-text hover:text-text"
                         title="Adds a value to the shared option. Existing products keep their own selection."
                       >
                         + value
@@ -241,7 +247,7 @@ export function OptionsSection({
                   </div>
 
                   {ref.choiceIds.length === 0 && (
-                    <p className="mt-2 text-small text-danger">
+                    <p className="mt-2 text-help text-danger">
                       Select at least one value, or remove this option.
                     </p>
                   )}

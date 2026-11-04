@@ -1,38 +1,43 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, ImageOff } from "lucide-react";
-import { Modal, Skeleton } from "./ui";
+import { ChevronRight } from "lucide-react";
+import { Thumb, Alert, Badge, Modal, Skeleton } from "./ui";
 import type { AssetUsage, UsageProduct } from "../lib/types";
-
-const PILL = "rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted";
 
 const LOGO_KIND = { SA_LOGO: "SA logo", CERT_LOGO: "Cert logo" } as const;
 
 /**
  * A usage count that opens the list of products behind it.
  *
- * Shared by the Media Centre and the Logos page so the pill and its popup look
- * and behave the same in both. The popup fetches when opened rather than with
- * the page: 24 tiles would otherwise mean 24 product lists nobody asked for.
+ * Shared by the Media Centre, the Logos page and Product options, so the chip
+ * and its popup look and behave the same everywhere. The popup fetches when
+ * opened rather than with the page: 24 tiles would otherwise mean 24 product
+ * lists nobody asked for.
  *
- * At 0 it is a plain pill — a popup listing nothing is a click wasted.
+ * The neutral chip (00 "Chips"). At 0 it is a plain chip — a popup listing
+ * nothing is a click wasted; otherwise it is a button whose chip darkens as a
+ * whole on hover (the fill takes the border's colour, so it reads as one
+ * shape).
  */
 export function UsagePill({
   count,
   label,
   subject,
   load,
+  verb,
 }: {
   count: number;
   label: string;
   /** What the popup is about — a filename or a logo's name. */
   subject: string;
   load: () => Promise<AssetUsage>;
+  /** The popup heading's verb, "Used on" by default. */
+  verb?: string;
 }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
 
-  if (count === 0) return <span className={PILL}>{label}</span>;
+  if (count === 0) return <Badge tone="neutral">{label}</Badge>;
   return (
     <>
       <button
@@ -40,20 +45,22 @@ export function UsagePill({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         title="See which products use this"
-        className={`${PILL} transition-colors hover:bg-border hover:text-text focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50`}
+        className="group"
       >
-        {label}
+        <Badge
+          tone="neutral"
+          className="cursor-pointer transition-colors duration-[120ms] group-hover:bg-border group-hover:text-text"
+        >
+          {label}
+        </Badge>
       </button>
-      {open && <UsageDialog count={count} subject={subject} load={load} onClose={close} />}
+      {open && <UsageDialog count={count} subject={subject} load={load} onClose={close} verb={verb} />}
     </>
   );
 }
 
-/**
- * The list of products behind a usage count, each opening its editor. Also
- * used on its own, by the Product Options page's "Included in" badge.
- */
-export function UsageDialog({
+/** The list of products behind a usage count, each opening its editor. */
+function UsageDialog({
   count,
   subject,
   load,
@@ -106,7 +113,7 @@ export function UsageDialog({
       }
     >
       {data?.logos && data.logos.length > 0 && (
-        <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-small text-muted">
+        <Alert tone="info" live="off" className="mb-3">
           In the logo catalogue as{" "}
           {data.logos.map((l, i) => (
             <span key={l.id}>
@@ -119,10 +126,10 @@ export function UsageDialog({
           <Link to="/logos" className="font-semibold text-text underline underline-offset-2">
             Manage logos
           </Link>
-        </p>
+        </Alert>
       )}
 
-      {error && <p className="text-small text-danger">{error}</p>}
+      {error && <Alert tone="danger">{error}</Alert>}
 
       {/* ⚠️ The list scrolls inside the dialog: a certification logo is on
           up to ~50 products, which would otherwise push the dialog off-screen. */}
@@ -143,7 +150,7 @@ export function UsageDialog({
               </li>
             ))}
           {data && products.length === 0 && (
-            <li className="px-2 py-2 text-small text-muted">No products use this any more.</li>
+            <li className="px-2 py-2 text-help text-muted">No products use this any more.</li>
           )}
           {products.map((p) => (
             <li key={p.dudaProductId}>
@@ -157,33 +164,21 @@ export function UsageDialog({
 }
 
 function ProductRow({ product: p, showVia }: { product: UsageProduct; showVia: boolean }) {
-  const [broken, setBroken] = useState(false);
   return (
     <Link
       to={`/products/${p.dudaProductId}`}
-      className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      className="group flex items-center gap-3 px-2 py-2 transition-colors duration-[120ms] hover:bg-surface-2"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-white">
-        {p.thumbnailUrl && !broken ? (
-          <img
-            src={p.thumbnailUrl}
-            alt=""
-            loading="lazy"
-            onError={() => setBroken(true)}
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          <ImageOff className="h-4 w-4 text-subtle" aria-hidden="true" />
-        )}
-      </span>
+      {/* The product's picture on paper, like every thumbnail. */}
+      <Thumb src={p.thumbnailUrl} size={40} fallback="box" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-body font-semibold text-text">{p.name || "Untitled product"}</span>
-        <span className="block truncate text-xs text-muted">
+        <span className="block truncate text-label text-muted">
           {p.sku || "No SKU"}
           {showVia && p.via.length > 0 && ` · ${p.via.join(" · ")}`}
         </span>
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-subtle transition-colors group-hover:text-text" aria-hidden="true" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-colors group-hover:text-text" aria-hidden="true" />
     </Link>
   );
 }

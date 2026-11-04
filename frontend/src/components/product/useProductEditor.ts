@@ -27,6 +27,7 @@ import {
   specsFrom,
   validate,
   variationsFrom,
+  type Validation,
 } from "./normalize";
 import {
   SECTION_LABELS,
@@ -73,6 +74,8 @@ const emptyDirty: DirtyMap = {
   model3d: false,
   downloads: false,
 };
+
+const noProblems: Validation = { errors: {}, detailsField: null };
 
 /**
  * Sections whose English the website also shows in other languages, so a save
@@ -217,10 +220,11 @@ export function useProductEditor(
   }, [draft, baseline]);
 
   const isDirty = SECTION_KEYS.some((k) => dirty[k]);
-  const validationErrors = useMemo(
-    () => (draft ? validate(draft, context?.maxVariations, { hideCommerce }) : {}),
+  const validation = useMemo(
+    () => (draft ? validate(draft, context?.maxVariations, { hideCommerce }) : noProblems),
     [draft, context?.maxVariations, hideCommerce],
   );
+  const validationErrors = validation.errors;
   const isValid = Object.keys(validationErrors).length === 0;
 
   const dirtyLabels = useMemo(
@@ -614,7 +618,7 @@ export function useProductEditor(
     if (dirty.downloads) {
       tasks.push({
         keys: ["downloads"],
-        label: "Downloads",
+        label: "downloads",
         run: async () => {
           // The whole list in display order. Keyed on the file server-side, so
           // a retry after a lost response converges instead of duplicating.
@@ -731,6 +735,8 @@ export function useProductEditor(
     skipTranslation: translate.skip,
     downloadLanguage: translate.download,
     validationErrors,
+    /** The field `validationErrors.details` is about. */
+    detailsInvalidField: validation.detailsField,
     dirty,
     isDirty,
     isValid,

@@ -1,36 +1,65 @@
-import { forwardRef, type InputHTMLAttributes } from "react";
+import { createContext, forwardRef, useContext, useId, type InputHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
 
-// shadcn field treatment: hairline border, soft 3px ring at half opacity on
-// focus, and a red ring when aria-invalid. The previous hard 1px yellow ring
-// plus border colour change read as much more aggressive.
+/*
+ * The field box (00 "Input and select"): square, --input-bg, a 1px
+ * --border-input edge (3:1 against the page, 02a Q13), focus via the global
+ * 2px outline, a --danger border when aria-invalid. Disabled is drawn, not
+ * dimmed: --surface-2 fill, muted text, the plain border.
+ */
 const fieldBase =
-  "w-full rounded-md bg-surface border border-input text-text placeholder:text-subtle " +
-  "shadow-xs transition-[color,box-shadow] outline-none " +
-  "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
-  "aria-[invalid=true]:border-danger aria-[invalid=true]:ring-[3px] aria-[invalid=true]:ring-danger/20 " +
-  "disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full border border-border-input bg-field text-text placeholder:text-muted " +
+  "transition-colors duration-[120ms] " +
+  "aria-[invalid=true]:border-danger " +
+  "disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-2 disabled:text-muted";
 
 /**
- * Control density. "sm" is used across the product editor, which packs a lot of
- * fields into one page; "md" stays the default so other pages are unchanged.
- * "xs" is the same 32px box with 14px type, for toolbars where a control is
- * secondary to the content it filters.
+ * Control density: "md" is the design's 40px field; "sm" and "xs" are the
+ * 34px dense field for toolbars and the packed product editor (02a Q11);
+ * "chip" is 28px, for a field that sits in a row of 26px chips (Product
+ * options' "New value…"). Every density is 14px type; "chip" has 10px side
+ * padding, the rest 12px.
  *
- * ⚠️ Pick the density here rather than passing `text-small` through
- * `className`. `cn()` is a plain string JOIN, not tailwind-merge, so the
- * override would land beside `text-body` and the winner would be stylesheet
- * order — the trap that has already cost `w-56` on an Input and `p-0` on a
- * Card.
+ * Pick the density here rather than passing a height through `className`.
  */
-export type FieldSize = "xs" | "sm" | "md";
+export type FieldSize = "chip" | "xs" | "sm" | "md";
 
-// Matches the Button heights: 32px compact, 36px default.
 export const fieldSizes: Record<FieldSize, string> = {
-  xs: "h-8 px-2.5 text-small",
-  sm: "h-8 px-2.5 text-body",
-  md: "h-9 px-3 text-body",
+  chip: "h-7 px-2.5 text-body",
+  xs: "h-8.5 px-3 text-body",
+  sm: "h-8.5 px-3 text-body",
+  md: "h-10 px-3 text-body",
 };
+
+/* ---------------------------------------------------------------------------
+ * Field ↔ control wiring.
+ *
+ * A Field tells the control inside it which id its label points at, whether
+ * it is invalid, and which hint or error describes it — so an error is
+ * announced with its input and draws the red border, without every caller
+ * threading three attributes through. A control's own props always win.
+ * ------------------------------------------------------------------------- */
+interface FieldState {
+  id: string;
+  describedBy?: string;
+  invalid: boolean;
+}
+const FieldContext = createContext<FieldState | null>(null);
+
+/** The id / aria-invalid / aria-describedby a control inside a Field should carry. */
+export function useFieldControl(own: {
+  id?: string;
+  "aria-invalid"?: InputHTMLAttributes<HTMLInputElement>["aria-invalid"];
+  "aria-describedby"?: string;
+}) {
+  const field = useContext(FieldContext);
+  const describedBy = [own["aria-describedby"], field?.describedBy].filter(Boolean).join(" ") || undefined;
+  return {
+    id: own.id ?? field?.id,
+    "aria-invalid": own["aria-invalid"] ?? (field?.invalid ? true : undefined),
+    "aria-describedby": describedBy,
+  };
+}
 
 // Omit the native numeric `size` so ours (density) wins without widening to
 // string | number.
@@ -38,15 +67,22 @@ export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
   size?: FieldSize;
 };
 
-/** Rounded text input with a yellow focus ring. */
+/** Square text input. */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, size = "md", ...rest },
   ref,
 ) {
-  return <input ref={ref} className={cn(fieldBase, fieldSizes[size], className)} {...rest} />;
+  const a11y = useFieldControl(rest);
+  return <input ref={ref} className={cn(fieldBase, fieldSizes[size], className)} {...rest} {...a11y} />;
 });
 
-/** Label + field + optional hint/error wrapper for consistent form rows. */
+/**
+ * Label + control + optional hint/error, for consistent form rows.
+ *
+ * The label is the design's field label (Inter 12/600, muted). Without
+ * `htmlFor`, the label points at an id the Field generates and hands to the
+ * Input / Select / Textarea inside it.
+ */
 export function Field({
   label,
   hint,
@@ -62,20 +98,30 @@ export function Field({
   children: React.ReactNode;
   className?: string;
 }) {
+  const auto = useId();
+  const controlId = htmlFor ?? `${auto}-control`;
+  const messageId = `${auto}-message`;
+  const message = error || hint;
   return (
-    <div className={cn("space-y-1.5", className)}>
-      {label && (
-        <label htmlFor={htmlFor} className="block text-body font-medium text-text">
-          {label}
-        </label>
-      )}
-      {children}
-      {error ? (
-        <p className="text-small text-danger">{error}</p>
-      ) : hint ? (
-        <p className="text-small text-muted">{hint}</p>
-      ) : null}
-    </div>
+    <FieldContext.Provider value={{ id: controlId, describedBy: message ? messageId : undefined, invalid: !!error }}>
+      <div className={cn("space-y-1.5", className)}>
+        {label && (
+          <label htmlFor={controlId} className="t-label block">
+            {label}
+          </label>
+        )}
+        {children}
+        {error ? (
+          <p id={messageId} className="t-help text-danger">
+            {error}
+          </p>
+        ) : hint ? (
+          <p id={messageId} className="t-help">
+            {hint}
+          </p>
+        ) : null}
+      </div>
+    </FieldContext.Provider>
   );
 }
 

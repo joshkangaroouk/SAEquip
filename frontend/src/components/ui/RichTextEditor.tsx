@@ -1,7 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import {
+  Bold,
+  Heading2,
+  Heading3,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  Pilcrow,
+  Redo2,
+  RemoveFormatting,
+  Underline,
+  Undo2,
+} from "lucide-react";
 import { cn } from "../../lib/cn";
+import { Button } from "./Button";
+import { Input } from "./Input";
 
 /**
  * WYSIWYG editor for trusted product HTML.
@@ -23,13 +39,26 @@ import { cn } from "../../lib/cn";
 export interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
+  /**
+   * The editable area's accessible name. Required: tiptap's surface is a
+   * contenteditable div, not a form control, so no <label> can point at it.
+   */
+  ariaLabel: string;
   className?: string;
   /** Called once after mount with whether tiptap's parse differs from `value`. */
   onNormalisedDiffers?: (differs: boolean) => void;
 }
 
+/*
+ * Toolbar buttons: 34px squares holding a 16px icon (10 §4). Active formats
+ * are yellow (an active state). A disabled button is drawn in --border-input
+ * — no opacity (02a "After 3b").
+ */
 const btn =
-  "rounded px-2 py-1 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+  "inline-flex h-8.5 w-8.5 items-center justify-center " +
+  "transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:text-border-input";
+
+const ICON = { size: 16, strokeWidth: 2, "aria-hidden": true } as const;
 
 function ToolbarButton({
   editor,
@@ -56,7 +85,7 @@ function ToolbarButton({
       // Keep focus in the document so commands apply to the current selection.
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={cn(btn, active ? "bg-accent text-accent-foreground" : "text-muted hover:bg-surface-2 hover:text-text")}
+      className={cn(btn, active ? "bg-accent text-accent-ink" : "text-muted enabled:hover:bg-surface-2 enabled:hover:text-text")}
     >
       {children}
     </button>
@@ -66,6 +95,7 @@ function ToolbarButton({
 export function RichTextEditor({
   value,
   onChange,
+  ariaLabel,
   className,
   onNormalisedDiffers,
 }: RichTextEditorProps) {
@@ -91,8 +121,12 @@ export function RichTextEditor({
     content: value,
     editorProps: {
       attributes: {
+        // Announced as a named, multi-line text field rather than an unnamed group.
+        role: "textbox",
+        "aria-multiline": "true",
+        "aria-label": ariaLabel,
         class:
-          "min-h-[10rem] max-h-[26rem] overflow-y-auto px-3 py-2.5 text-small leading-relaxed text-text focus:outline-none " +
+          "min-h-[10rem] max-h-[26rem] overflow-y-auto px-3 py-2.5 text-body leading-relaxed text-text focus:outline-none " +
           // ⚠ Paragraph spacing MUST mirror how the description actually
           // renders on the product page — which since 2026-09-09 is the
           // WIDGET's Overview tab, not Duda's native description element.
@@ -111,8 +145,8 @@ export function RichTextEditor({
           // renders the description, we set the spacing ourselves and the
           // editor can show paragraph structure honestly.
           //
-          // ⚠ `mt-[12px]`, NOT `mt-3` — see the note in RichHtml.tsx: the
-          // 110% root font-size makes rem-based spacing resolve to 13.2px.
+          // ⚠ `mt-[12px]`, NOT `mt-3` — see the note in RichHtml.tsx: rem-based
+          // spacing depends on the root font size; the widget's 12px does not.
           "[&_p]:my-0 [&_p+p]:mt-[12px] [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 " +
           "[&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold " +
           "[&_h3]:mb-1.5 [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold " +
@@ -169,15 +203,30 @@ export function RichTextEditor({
   }
 
   return (
-    <div className={cn("rounded-md border border-border bg-surface", className)}>
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-1.5 py-1">
+    // The field box. The editing surface draws no outline of its own (tiptap
+    // owns it), so the BOX shows the focus outline while the text is focused —
+    // until 2026-10 there was no visible focus at all.
+    <div
+      className={cn(
+        "border border-border-input bg-field",
+        "has-[.ProseMirror:focus]:outline has-[.ProseMirror:focus]:outline-2 has-[.ProseMirror:focus]:outline-offset-2 has-[.ProseMirror:focus]:outline-focus",
+        className,
+      )}
+    >
+      {/*
+        Icon buttons (10 §4), each 34px with its name as aria-label and a
+        tooltip: the formats, then Paragraph and Clear formatting (kept from
+        the word toolbar), with Undo and Redo on the right. Underline is in
+        tiptap's StarterKit and the widget's prose allowlist (<u>).
+      */}
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-1 py-1">
         <ToolbarButton
           editor={editor}
           title="Bold"
           active={editor?.isActive("bold")}
           onClick={() => editor?.chain().focus().toggleBold().run()}
         >
-          <span className="font-bold">B</span>
+          <Bold {...ICON} />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
@@ -185,29 +234,40 @@ export function RichTextEditor({
           active={editor?.isActive("italic")}
           onClick={() => editor?.chain().focus().toggleItalic().run()}
         >
-          <span className="italic">I</span>
+          <Italic {...ICON} />
+        </ToolbarButton>
+        <ToolbarButton
+          editor={editor}
+          title="Underline"
+          active={editor?.isActive("underline")}
+          onClick={() => editor?.chain().focus().toggleUnderline().run()}
+        >
+          <Underline {...ICON} />
         </ToolbarButton>
 
         <span className="mx-1 h-4 w-px bg-border" />
 
-        {([2, 3] as const).map((level) => (
-          <ToolbarButton
-            key={level}
-            editor={editor}
-            title={`Heading ${level}`}
-            active={editor?.isActive("heading", { level })}
-            onClick={() => editor?.chain().focus().toggleHeading({ level }).run()}
-          >
-            H{level}
-          </ToolbarButton>
-        ))}
+        {([2, 3] as const).map((level) => {
+          const Icon = level === 2 ? Heading2 : Heading3;
+          return (
+            <ToolbarButton
+              key={level}
+              editor={editor}
+              title={`Heading ${level}`}
+              active={editor?.isActive("heading", { level })}
+              onClick={() => editor?.chain().focus().toggleHeading({ level }).run()}
+            >
+              <Icon {...ICON} />
+            </ToolbarButton>
+          );
+        })}
         <ToolbarButton
           editor={editor}
           title="Paragraph"
           active={editor?.isActive("paragraph")}
           onClick={() => editor?.chain().focus().setParagraph().run()}
         >
-          ¶
+          <Pilcrow {...ICON} />
         </ToolbarButton>
 
         <span className="mx-1 h-4 w-px bg-border" />
@@ -218,7 +278,7 @@ export function RichTextEditor({
           active={editor?.isActive("bulletList")}
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
         >
-          • List
+          <List {...ICON} />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
@@ -226,7 +286,7 @@ export function RichTextEditor({
           active={editor?.isActive("orderedList")}
           onClick={() => editor?.chain().focus().toggleOrderedList().run()}
         >
-          1. List
+          <ListOrdered {...ICON} />
         </ToolbarButton>
 
         <span className="mx-1 h-4 w-px bg-border" />
@@ -240,14 +300,14 @@ export function RichTextEditor({
             setLinkOpen((o) => !o);
           }}
         >
-          Link
+          <LinkIcon {...ICON} />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
           title="Clear formatting"
           onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
         >
-          Clear
+          <RemoveFormatting {...ICON} />
         </ToolbarButton>
 
         <span className="flex-1" />
@@ -258,7 +318,7 @@ export function RichTextEditor({
           disabled={!editor?.can().undo()}
           onClick={() => editor?.chain().focus().undo().run()}
         >
-          ↶
+          <Undo2 {...ICON} />
         </ToolbarButton>
         <ToolbarButton
           editor={editor}
@@ -266,13 +326,15 @@ export function RichTextEditor({
           disabled={!editor?.can().redo()}
           onClick={() => editor?.chain().focus().redo().run()}
         >
-          ↷
+          <Redo2 {...ICON} />
         </ToolbarButton>
       </div>
 
       {linkOpen && (
         <div className="flex items-center gap-2 border-b border-border bg-surface-2 px-2 py-1.5">
-          <input
+          <Input
+            size="sm"
+            aria-label="Link URL"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
             onKeyDown={(e) => {
@@ -284,18 +346,14 @@ export function RichTextEditor({
             }}
             placeholder="https://…"
             autoFocus
-            className="flex-1 rounded border border-border bg-surface px-2 py-1 text-xs focus:border-accent focus:outline-none"
+            className="flex-1"
           />
-          <button type="button" onClick={applyLink} className={cn(btn, "bg-accent text-accent-foreground")}>
+          <Button type="button" size="sm" onClick={applyLink}>
             Apply
-          </button>
-          <button
-            type="button"
-            onClick={() => setLinkOpen(false)}
-            className={cn(btn, "text-muted hover:text-text")}
-          >
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setLinkOpen(false)}>
             Cancel
-          </button>
+          </Button>
         </div>
       )}
 

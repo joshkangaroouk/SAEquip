@@ -4,7 +4,7 @@ import { uploadFile } from "../../lib/upload";
 import { cn } from "../../lib/cn";
 import { toast } from "./Toast";
 
-interface UploadItem {
+export interface UploadItem {
   id: string;
   name: string;
   progress: number; // 0–100
@@ -21,25 +21,29 @@ export interface FileDropzoneProps {
   label?: string;
   hint?: string;
   className?: string;
+  /**
+   * The upload itself — the real browser → Supabase upload by default. The UI
+   * kit passes a local stand-in so dropping a file there uploads nothing.
+   */
+  upload?: typeof uploadFile;
 }
 
 /**
- * Drag-and-drop uploader. Each file uploads independently, with a per-file
- * progress bar. Fires success/error toasts and calls onUploaded(asset) for
- * each completed upload.
+ * The upload queue behind FileDropzone: each file uploads independently, with
+ * its own progress, fires a success or error toast, and calls the CURRENT
+ * `onUploaded(asset)` when it completes. Split out so a surface that is not a
+ * dashed box (the product editor's Images card, which takes a drop anywhere
+ * on it) uploads exactly as the box does; render its `items` with
+ * `UploadList`.
  *
  * The bytes go browser → Supabase directly and never through the API; see
  * `lib/upload.ts` for why (a serverless request body caps at 4.5MB, and a
  * model can be up to 50MB).
  */
-export function FileDropzone({
+export function useUploadQueue({
   onUploaded,
-  accept,
-  multiple = true,
-  label = "Drop files here or click to browse",
-  hint,
-  className,
-}: FileDropzoneProps) {
+  upload = uploadFile,
+}: Pick<FileDropzoneProps, "onUploaded" | "upload">): { items: UploadItem[]; onDrop: (accepted: File[]) => void } {
   const [items, setItems] = useState<UploadItem[]>([]);
   // An upload finishes after later renders, so it calls the CURRENT handler,
   // not the one captured when the file was dropped.
@@ -49,7 +53,7 @@ export function FileDropzone({
   const uploadOne = useCallback(
     async (file: File, id: string) => {
       try {
-        const asset = await uploadFile(file, {
+        const asset = await upload(file, {
           onProgress: (progress) =>
             setItems((prev) => prev.map((it) => (it.id === id ? { ...it, progress } : it))),
         });
@@ -66,7 +70,7 @@ export function FileDropzone({
         toast.error(`Failed to upload ${file.name}: ${detail}`);
       }
     },
-    [],
+    [upload],
   );
 
   const onDrop = useCallback(
@@ -84,6 +88,23 @@ export function FileDropzone({
     [uploadOne],
   );
 
+  return { items, onDrop };
+}
+
+/**
+ * Drag-and-drop uploader: a dashed box that takes a drop or a click, and a
+ * progress row per file (`useUploadQueue`).
+ */
+export function FileDropzone({
+  onUploaded,
+  accept,
+  multiple = true,
+  label = "Drop files here or click to browse",
+  hint,
+  className,
+  upload = uploadFile,
+}: FileDropzoneProps) {
+  const { items, onDrop } = useUploadQueue({ onUploaded, upload });
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept, multiple });
 
   return (
@@ -91,26 +112,39 @@ export function FileDropzone({
       <div
         {...getRootProps()}
         className={cn(
-          "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
+          "flex cursor-pointer flex-col items-center justify-center border border-dashed px-6 py-10 text-center",
+          "transition-colors duration-[120ms]",
+          // Drag-over is the selected treatment (02a "Batch 8"), not a yellow tint.
           isDragActive
-            ? "border-accent bg-accent/10 text-text"
-            : "border-border bg-surface text-muted hover:border-subtle",
+            ? "border-selected-bar bg-selected text-text"
+            : "border-border-strong bg-surface text-muted hover:border-text",
         )}
       >
-        <input {...getInputProps()} />
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="mb-3 text-subtle">
+        {/* Hidden and out of the tab order (the box above is the control), but
+            still in the accessibility tree, so it carries the box's own words. */}
+        <input {...getInputProps({ "aria-label": label })} />
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="mb-3 text-muted">
           <path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="currentColor" strokeWidth="1.5" />
           <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="1.5" />
         </svg>
         <p className="text-body font-semibold text-text">{label}</p>
-        {hint && <p className="mt-1 text-small text-muted">{hint}</p>}
+        {hint && <p className="t-help mt-1">{hint}</p>}
       </div>
 
+      <UploadList items={items} />
+    </div>
+  );
+}
+
+/** One row per file in the queue, with its progress; announced as files finish or fail. */
+export function UploadList({ items }: { items: UploadItem[] }) {
+  return (
+    <>
       {items.length > 0 && (
-        <ul className="space-y-2">
+        <ul className="space-y-2" aria-live="polite">
           {items.map((it) => (
-            <li key={it.id} className="rounded-md bg-surface border border-border px-4 py-3">
-              <div className="flex items-center justify-between gap-3 text-small">
+            <li key={it.id} className="border border-border bg-surface px-4 py-3">
+              <div className="flex items-center justify-between gap-3 text-help">
                 <span className="truncate text-text">{it.name}</span>
                 <span
                   className={cn(
@@ -118,17 +152,17 @@ export function FileDropzone({
                     it.status === "error"
                       ? "text-danger"
                       : it.status === "done"
-                        ? "text-success"
+                        ? "text-ok"
                         : "text-muted",
                   )}
                 >
                   {it.status === "error" ? it.error : `${it.progress}%`}
                 </span>
               </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+              <div className="mt-2 h-1.5 w-full overflow-hidden bg-surface-2">
                 <div
                   className={cn(
-                    "h-full rounded-full transition-all",
+                    "h-full transition-[width] duration-[120ms]",
                     it.status === "error" ? "bg-danger" : "bg-accent",
                   )}
                   style={{ width: `${it.progress}%` }}
@@ -138,6 +172,6 @@ export function FileDropzone({
           ))}
         </ul>
       )}
-    </div>
+    </>
   );
 }

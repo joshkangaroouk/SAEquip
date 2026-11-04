@@ -1,39 +1,76 @@
-import { useState } from "react";
-import { rectSortingStrategy } from "@dnd-kit/sortable";
-import { Badge, Button, Card, CardHeader, SectionError, EmptyState, FileDropzone, SortableList, toast } from "../ui";
+import { useEffect, useRef, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
+import { ImagePlus, Upload } from "lucide-react";
+import {
+  Alert,
+  Badge,
+  Button,
+  DragHandle,
+  Field,
+  ImageWell,
+  Input,
+  Modal,
+  SortableList,
+  UploadList,
+  toast,
+  useUploadQueue,
+} from "../ui";
 import { MediaPicker } from "../MediaPicker";
-import { ImageCard } from "./ImageCard";
+import { EditorSection } from "./EditorSection";
 import type { ImageDraft } from "./productEditorTypes";
 import type { MediaAsset } from "../../lib/types";
+import type { uploadFile } from "../../lib/upload";
+
+/** True for an image Duda has already ingested onto its CDN. */
+const isDudaHosted = (url: string) => url.includes("cdn-website.com");
+
+const ACCEPT = { "image/png": [], "image/jpeg": [], "image/webp": [] };
 
 /**
- * Product gallery editor.
+ * The product gallery, WordPress-style (11 §2): the first section of the
+ * Files & media tab (12 §1). The featured image large, and the whole gallery
+ * as thumbnails to drag into order, beside it from lg (the featured image at
+ * about 40%, the gallery 4 across) and under it below (3 across). A
+ * thumbnail opens an "Image" dialog for its alt text, Set as featured and
+ * Remove.
  *
- * Uploads go to our Supabase media bucket first (via the existing POST
- * /api/media), which yields a public URL. On save, Duda fetches that URL and
- * re-hosts the image on its own CDN — so the Supabase copy is staging plus a
- * reusable Media Centre original, and the product ends up referencing Duda
- * only. That's why a newly-dropped image shows "Pending upload" until saved.
+ * ⚠️ The featured image IS the first one. There is no primary flag: Duda's
+ * image shape is only {url, alt}, the array is a full replacement and
+ * position is the order, and index 0 is the product thumbnail (the products
+ * list and the band read images[0]). So "Set as featured" moves an image to
+ * the front, exactly as dragging it there does.
  *
- * The array is a full replacement and position IS the order, with index 0 as
- * the product thumbnail (the products list reads images[0]).
+ * Uploads go to our Supabase media bucket first, which yields a public URL.
+ * On save, Duda fetches that URL and re-hosts the image on its own CDN — so
+ * the Supabase copy is staging plus a reusable original in Media, and the
+ * product ends up referencing Duda only. That's why a newly added image shows
+ * "Pending upload" until saved. A drop anywhere on the card uploads, as the
+ * dashed dropzone did (`useUploadQueue`).
  */
 export function ImagesSection({
   images,
   onChange,
-  dirty,
   error,
+  upload,
 }: {
   images: ImageDraft[];
   /** A value, or a function of the gallery as it is when the change lands. */
   onChange: (next: ImageDraft[] | ((prev: ImageDraft[]) => ImageDraft[])) => void;
-  dirty: boolean;
   error?: string;
+  /** The upload itself (the real one by default); the UI kit passes a local stand-in. */
+  upload?: typeof uploadFile;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  /** The image whose dialog is open, by its cosmetic key. */
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  /** After a Remove from the dialog: the position whose thumbnail gets focus. */
+  const [refocusAt, setRefocusAt] = useState<number | null>(null);
+  const thumbs = useRef(new Map<string, HTMLButtonElement>());
+  const addButton = useRef<HTMLButtonElement>(null);
 
   /*
-   * ⚠️ Functional updates, all three. An upload completes seconds after the
+   * ⚠️ Functional updates, all of them. An upload completes seconds after the
    * drop, and appending to `images` as captured then kept only the LAST of
    * several dropped files, and undid any alt text typed or image removed while
    * the upload ran.
@@ -45,6 +82,13 @@ export function ImagesSection({
     onChange((prev) => prev.map((img) => (img.key === key ? { ...img, alt } : img)));
 
   const remove = (key: string) => onChange((prev) => prev.filter((img) => img.key !== key));
+
+  /** What making an image primary has always been: moving it to the front. */
+  const setFeatured = (key: string) =>
+    onChange((prev) => {
+      const from = prev.findIndex((img) => img.key === key);
+      return from > 0 ? arrayMove(prev, from, 0) : prev;
+    });
 
   /**
    * Add a library image to the gallery. Duda ingests a gallery image by
@@ -59,65 +103,168 @@ export function ImagesSection({
     append(asset.url, asset.alt ?? "");
   }
 
+  // The same queue as the dashed dropzone: one upload per file, its progress
+  // row, toasts, and the CURRENT addAsset when each one lands.
+  const queue = useUploadQueue({ onUploaded: (asset: MediaAsset) => addAsset(asset), upload });
+  // The whole card takes a drop. noClick and noKeyboard: the card holds its
+  // own controls, and Upload (in the header) is the keyboard and click way in.
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    onDrop: queue.onDrop,
+    accept: ACCEPT,
+    multiple: true,
+    noClick: true,
+    noKeyboard: true,
+  });
+
+  // A removed image's thumbnail is gone, so the dialog cannot hand focus back
+  // to it: the one now in its place takes it, or Add from Media when none is left.
+  useEffect(() => {
+    if (refocusAt === null) return;
+    const target = images[Math.min(refocusAt, images.length - 1)];
+    (target ? thumbs.current.get(target.key) : addButton.current)?.focus();
+    setRefocusAt(null);
+  }, [refocusAt, images]);
+
+  const featured = images[0];
+  const openIndex = openKey ? images.findIndex((img) => img.key === openKey) : -1;
+  const openImage = openIndex >= 0 ? images[openIndex] : null;
+
   return (
-    <>
-      <Card id="section-images">
-        <CardHeader
-          title="Images"
-          description="Drag to reorder — the first image is the product thumbnail."
-          actions={
-            <>
-              {dirty && <Badge tone="accent">Unsaved</Badge>}
-              <Button variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-                Add from Media Centre
-              </Button>
-            </>
-          }
-        />
+    <div {...getRootProps({ className: "relative" })}>
+      {/* The file chooser behind Upload. Out of the accessibility tree: the
+          visible Upload button is the way in, and the input (visually hidden,
+          not display:none) would otherwise read as a second, unseen button. */}
+      <input {...getInputProps({ "aria-hidden": true })} />
+      <EditorSection
+        id="section-images"
+        title="Images"
+        description="The first image is the featured image."
+        meta={images.length ? `${images.length} ${images.length === 1 ? "image" : "images"}` : undefined}
+        actions={
+          <>
+            <Button ref={addButton} variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
+              Add from Media
+            </Button>
+            <Button variant="secondary" size="sm" onClick={open}>
+              <Upload size={16} aria-hidden="true" />
+              Upload
+            </Button>
+          </>
+        }
+        error={error}
+      >
+        {/* From lg the featured image (about 40%) beside the gallery; stacked below. */}
+        <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-5 lg:space-y-0">
+          <div>
+            <p className="t-overline mb-2">Featured</p>
+            {featured ? (
+              // The first image, whole, on paper.
+              <ImageWell src={featured.url} alt={featured.alt} aspect="4/3" />
+            ) : (
+              // Paper in both themes, so the words inside take the light theme's tokens.
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 border border-dashed border-border-strong bg-paper transition-colors duration-[120ms] hover:border-text"
+              >
+                <span data-theme="light" className="flex flex-col items-center gap-2 text-body font-semibold text-muted">
+                  <ImagePlus size={24} strokeWidth={1.75} aria-hidden="true" />
+                  Add a featured image
+                </span>
+              </button>
+            )}
+          </div>
 
-        <SectionError message={error} />
-
-        {images.length === 0 ? (
-          <EmptyState
-            title="No images yet"
-            description="Drop an image below, or pick one from the Media Centre."
-          />
-        ) : (
-          <SortableList
-            items={images}
-            getId={(img) => img.key}
-            onReorder={onChange}
-            strategy={rectSortingStrategy}
-            // 3 across at most, matching the SA/Cert logo panels — the editor's
-            // left column is now 70% of the page rather than the full width, so
-            // a 4-up grid made each thumbnail too small to judge an image by.
-            className="grid grid-cols-2 gap-3 sm:grid-cols-3"
-            renderItem={(img, handle, index) => (
-              <ImageCard
-                image={img}
-                handle={handle}
-                isPrimary={index === 0}
-                onAltChange={(alt) => setAlt(img.key, alt)}
-                onRemove={() => remove(img.key)}
+          <div>
+            <p className="t-overline">Gallery</p>
+            <p className="t-help mb-2 mt-1">Drag a thumbnail by its handle to reorder.</p>
+            {images.length === 0 ? (
+              <p className="t-help">No images yet. Add one from Media, upload one, or drop one on this card.</p>
+            ) : (
+              <SortableList
+                items={images}
+                getId={(img) => img.key}
+                onReorder={onChange}
+                strategy={rectSortingStrategy}
+                className="grid grid-cols-3 gap-2 lg:grid-cols-4"
+                renderItem={(img, handle, index) => {
+                  const pending = !isDudaHosted(img.url);
+                  const n = index + 1;
+                  return (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        ref={(el) => {
+                          if (el) thumbs.current.set(img.key, el);
+                          else thumbs.current.delete(img.key);
+                        }}
+                        onClick={() => setOpenKey(img.key)}
+                        aria-label={`Image ${n} of ${images.length}${index === 0 ? ", featured" : ""}${pending ? ", pending upload" : ""}: ${img.alt.trim() || "no alt text"}`}
+                        // The picture is not a drag source of its own: a native
+                        // image drag would read as a file dropped on the card.
+                        className="block w-full [&_img]:pointer-events-none"
+                      >
+                        <ImageWell src={img.url} aspect="square" />
+                      </button>
+                      {/* In the button's name already, so hidden from assistive tech.
+                          The chips and the handle sit on paper, so they take the light
+                          theme's tokens in both (a near-white solid chip, or a
+                          near-white focus ring, would vanish on the photo). */}
+                      <span
+                        aria-hidden="true"
+                        data-theme="light"
+                        className="pointer-events-none absolute bottom-1 left-1 right-1 flex flex-col items-start gap-0.5"
+                      >
+                        {pending && (
+                          <Badge className="h-auto min-h-5 whitespace-normal px-1.5 py-0.5 text-micro leading-tight">
+                            Pending upload
+                          </Badge>
+                        )}
+                        {index === 0 && (
+                          <Badge tone="solid" className="h-5 px-1.5 text-micro">
+                            Featured
+                          </Badge>
+                        )}
+                      </span>
+                      <span data-theme="light" className="absolute right-1 top-1">
+                        <DragHandle
+                          handle={handle}
+                          label={`Drag image ${n} to reorder`}
+                          className="h-6 w-6 border border-border-strong bg-surface"
+                        />
+                      </span>
+                    </div>
+                  );
+                }}
               />
             )}
-          />
-        )}
-
-        <div className="mt-4">
-          <FileDropzone
-            accept={{ "image/png": [], "image/jpeg": [], "image/webp": [] }}
-            multiple
-            label="Drop images here or click to browse"
-            hint="PNG, JPEG or WebP, up to 25MB. They upload now and transfer to Duda when you save."
-            onUploaded={(asset: MediaAsset) => addAsset(asset)}
-          />
+          </div>
         </div>
-      </Card>
+        <p className="t-help mt-4">
+          Or drop images on this card. PNG, JPEG or WebP, up to 25MB. They upload now and transfer to Duda when you
+          save.
+        </p>
+        {queue.items.length > 0 && (
+          <div className="mt-3">
+            <UploadList items={queue.items} />
+          </div>
+        )}
+      </EditorSection>
+
+      {/* The drop target's selected treatment (02a "Batch 8"), over the whole card. */}
+      {isDragActive && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center border-2 border-dashed border-selected-bar bg-selected/95 text-body font-semibold text-text"
+        >
+          Drop images to upload
+        </div>
+      )}
 
       {pickerOpen && (
         <MediaPicker
           kind="image"
+          upload={upload}
           onPick={(asset) => {
             addAsset(asset);
             setPickerOpen(false);
@@ -125,6 +272,67 @@ export function ImagesSection({
           onClose={() => setPickerOpen(false)}
         />
       )}
-    </>
+
+      {/* Focus goes back to the thumbnail that opened it (Modal), and it
+          moves with its image, so Set as featured keeps it. */}
+      <Modal
+        open={!!openImage}
+        onClose={() => setOpenKey(null)}
+        title="Image"
+        description={openImage ? `Image ${openIndex + 1} of ${images.length}` : undefined}
+        footer={
+          openImage && (
+            <>
+              <Button
+                variant="danger"
+                className="mr-auto"
+                onClick={() => {
+                  remove(openImage.key);
+                  setOpenKey(null);
+                  setRefocusAt(openIndex);
+                }}
+              >
+                Remove
+              </Button>
+              <Button onClick={() => setOpenKey(null)}>Done</Button>
+            </>
+          )
+        }
+      >
+        {openImage && (
+          <div className="space-y-4">
+            {/* The section's own error (the alt text's length among them), as on the card. */}
+            {error && <Alert tone="danger">{error}</Alert>}
+            <ImageWell src={openImage.url} alt={openImage.alt} aspect="4/3" />
+            <div className="flex flex-wrap items-center gap-2">
+              {openIndex === 0 ? (
+                <Badge tone="solid">Featured</Badge>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={(e) => {
+                    // This button goes once the image is first, so focus moves to
+                    // the dialog itself rather than dropping to the page.
+                    (e.currentTarget.closest("[role=dialog]") as HTMLElement | null)?.focus();
+                    setFeatured(openImage.key);
+                  }}
+                >
+                  Set as featured
+                </Button>
+              )}
+              {!isDudaHosted(openImage.url) && <Badge>Pending upload</Badge>}
+            </div>
+            {/* Announced when Set as featured moves the image to the front. */}
+            <p role="status" className="sr-only">
+              {openIndex === 0 ? "This is the featured image." : ""}
+            </p>
+            <Field label="Alt text" hint="Describes the image for people who can't see it. Up to 300 characters.">
+              <Input value={openImage.alt} onChange={(e) => setAlt(openImage.key, e.target.value)} />
+            </Field>
+          </div>
+        )}
+      </Modal>
+    </div>
   );
 }

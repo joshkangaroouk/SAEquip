@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../../lib/api";
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
+import { Thumb, Alert, Button, Card, CardHeader, SectionError, DragHandle, Input, SortableList } from "../ui";
 import type { CompatibleDraft } from "./productEditorTypes";
 import type { ProductSummary } from "../../lib/types";
 
@@ -25,33 +25,11 @@ function ArrowRight() {
 }
 
 /**
- * A product's thumbnail, or a neutral placeholder.
- *
- * `ProductSummary.thumbnail` is Duda's `images[0]`, so a product with an empty
- * gallery has none — 5 of the 96 imported that way before the fallback image
- * was applied. A missing photo must not collapse the row height or leave a
- * broken-image glyph, hence the fixed box either way.
- */
-function Thumb({ url, name }: { url: string | null; name: string }) {
-  return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-2">
-      {url ? (
-        <img src={url} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
-      ) : (
-        <span className="text-[10px] font-semibold text-subtle" aria-hidden="true">
-          {name.trim().charAt(0).toUpperCase() || "?"}
-        </span>
-      )}
-    </span>
-  );
-}
-
-/**
  * "Compatible Products & Accessories" — a two-column transfer list, mirroring
  * the WordPress screen it replaces: the catalogue on the left, this product's
  * chosen list on the right, click to move either way.
  *
- * Controlled: the parent owns the list and the unified save bar commits it.
+ * Controlled: the parent owns the list and the editor's one Save commits it.
  *
  * ⚠️ Both columns are driven by ONE fetch of the catalogue, searched in the
  * browser. At 96 products that is a single small request and an instant
@@ -67,13 +45,11 @@ export function CompatibleProductsSection({
   productId,
   items,
   onChange,
-  dirty,
   error,
 }: {
   productId: string;
   items: CompatibleDraft[];
   onChange: (next: CompatibleDraft[]) => void;
-  dirty: boolean;
   error?: string;
 }) {
   const [all, setAll] = useState<ProductSummary[] | null>(null);
@@ -114,29 +90,28 @@ export function CompatibleProductsSection({
   const remove = (id: string) => onChange(items.filter((i) => i.dudaProductId !== id));
 
   // Matched heights so moving a product between columns never shifts the page.
-  const PANE = "h-[22rem] overflow-y-auto rounded-md border border-border bg-surface";
+  const PANE = "h-[22rem] overflow-y-auto border border-border bg-surface";
 
   return (
     <Card id="section-compatible">
       <CardHeader
         title="Compatible Products"
         description="Shown on the product page as a carousel. Click a product on the left to add it; drag the right-hand list to set the order it appears in."
-        actions={dirty ? <Badge tone="accent">Unsaved</Badge> : undefined}
       />
 
       <SectionError message={error} />
       {loadError && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-small text-danger">
+        <Alert tone="danger" className="mb-3">
           {loadError}
-        </div>
+        </Alert>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* ---- Left: the catalogue ---- */}
         <div className="min-w-0">
           <div className="mb-2 flex items-baseline justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">All products</h3>
-            <span className="text-xs text-subtle">
+            <h3 className="t-overline">All products</h3>
+            <span className="text-label text-muted">
               {all ? `${available.length} available` : "loading…"}
             </span>
           </div>
@@ -151,9 +126,9 @@ export function CompatibleProductsSection({
           />
 
           <div className={`mt-2 ${PANE}`}>
-            {!all && !loadError && <p className="px-3 py-3 text-small text-subtle">Loading products…</p>}
+            {!all && !loadError && <p className="px-3 py-3 text-help text-muted">Loading products…</p>}
             {all && available.length === 0 && (
-              <p className="px-3 py-3 text-small text-subtle">
+              <p className="px-3 py-3 text-help text-muted">
                 {query.trim() ? "No products match that search." : "Every other product has been added."}
               </p>
             )}
@@ -165,9 +140,9 @@ export function CompatibleProductsSection({
                 title={`Add ${p.name}`}
                 className="flex w-full items-center gap-3 border-b border-border px-2.5 py-2 text-left last:border-b-0 hover:bg-surface-2"
               >
-                <Thumb url={p.thumbnail} name={p.name ?? ""} />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium text-text">{p.name}</span>
-                <span className="shrink-0 text-xs text-subtle">{p.sku ?? "—"}</span>
+                <Thumb src={p.thumbnail} size={40} />
+                <span className="min-w-0 flex-1 truncate text-label font-medium text-text">{p.name}</span>
+                <span className="shrink-0 text-label text-muted">{p.sku ?? "—"}</span>
                 {/* A word plus a direction beats a "+": it says what the
                     click does AND which way the product moves, which is the
                     one thing a two-column transfer list has to make obvious.
@@ -175,7 +150,7 @@ export function CompatibleProductsSection({
                     "Add <product>" — otherwise a screen reader hears "Add"
                     twice. */}
                 <span
-                  className="flex shrink-0 items-center gap-1 text-xs font-semibold text-accent-strong"
+                  className="flex shrink-0 items-center gap-1 text-label font-semibold text-text"
                   aria-hidden="true"
                 >
                   Add
@@ -189,10 +164,10 @@ export function CompatibleProductsSection({
         {/* ---- Right: this product's list ---- */}
         <div className="min-w-0">
           <div className="mb-2 flex items-baseline justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
+            <h3 className="t-overline">
               Added to this product
             </h3>
-            <span className="text-xs text-subtle">
+            <span className="text-label text-muted">
               {items.length} selected{items.length >= 40 ? " (max)" : ""}
             </span>
           </div>
@@ -203,7 +178,7 @@ export function CompatibleProductsSection({
 
           <div className={`mt-2 ${PANE}`}>
             {items.length === 0 ? (
-              <p className="px-3 py-3 text-small text-subtle">
+              <p className="px-3 py-3 text-help text-muted">
                 Nothing added yet. Pick the products and accessories that go with this one.
               </p>
             ) : (
@@ -215,18 +190,18 @@ export function CompatibleProductsSection({
                 onReorder={onChange}
                 renderItem={(item, handle, index) => (
                   <div className="flex items-center gap-2 bg-surface px-2.5 py-2">
-                    <DragHandle handle={handle} />
-                    <span className="w-5 shrink-0 text-right text-xs text-subtle">{index + 1}.</span>
-                    <Thumb url={byId.get(item.dudaProductId)?.thumbnail ?? null} name={item.name} />
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-text" title={item.name}>
+                    <DragHandle handle={handle} label={`Drag ${item.name ?? "product"} to reorder`} />
+                    <span className="w-5 shrink-0 text-right text-label text-muted">{index + 1}.</span>
+                    <Thumb src={byId.get(item.dudaProductId)?.thumbnail ?? null} size={40} />
+                    <span className="min-w-0 flex-1 truncate text-label font-medium text-text" title={item.name}>
                       {item.name}
                     </span>
-                    <span className="shrink-0 text-xs text-subtle">{item.sku ?? "—"}</span>
+                    <span className="shrink-0 text-label text-muted">{item.sku ?? "—"}</span>
                     <button
                       type="button"
                       onClick={() => remove(item.dudaProductId)}
                       title={`Remove ${item.name}`}
-                      className="shrink-0 rounded px-1.5 text-body font-semibold text-muted hover:text-danger"
+                      className="shrink-0 px-1.5 text-body font-semibold text-muted hover:text-danger"
                     >
                       Remove
                     </button>

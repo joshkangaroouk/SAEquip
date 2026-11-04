@@ -7,8 +7,10 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Button } from "./Button";
 
@@ -24,6 +26,8 @@ export interface ModalProps {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
+  /** The dialog's accessible name when it has no visible `title`. One of the two is required. */
+  ariaLabel?: string;
   description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
@@ -44,31 +48,22 @@ const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"]),[contenteditable="true"]';
 
 /**
- * Rounded dialog rendered in a portal with a dimmed backdrop.
- *
- * ⚠️ The panel is capped at the viewport and its BODY scrolls, between a
- * fixed header and footer. It used to be `overflow-hidden` with no height
- * cap while the page behind was scroll-locked, so a tall dialog — a long
- * translation, a quote with many lines, anything on a phone — was cut off
- * with its Save button out of reach.
- *
- * Focus moves in on open (unless something inside already took it, e.g. an
- * `autoFocus` input), is held inside, and returns to where it was on close;
- * the title and description name the dialog for assistive tech.
+ * The dialog mechanics, shared by Modal and the shell's mobile drawer: on
+ * open, focus moves into the panel (unless something inside already took it,
+ * e.g. an `autoFocus` input) and Tab is held inside it; Escape closes it when
+ * dismissable; the page behind stops scrolling; on close, focus returns to
+ * `returnFocusTo` or else to whatever had it before. Only the TOP open dialog
+ * answers keys (openStack).
  */
-export function Modal({
-  open,
-  onClose,
-  title,
-  description,
-  children,
-  footer,
-  size = "md",
-  dismissable = true,
-}: ModalProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const titleId = useId();
-  const descriptionId = useId();
+export function useDialog(
+  open: boolean,
+  panelRef: RefObject<HTMLElement>,
+  {
+    onClose,
+    dismissable = true,
+    returnFocusTo,
+  }: { onClose: () => void; dismissable?: boolean; returnFocusTo?: RefObject<HTMLElement> },
+) {
   // The latest handler without re-running the open/close effect on each render.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -77,7 +72,7 @@ export function Modal({
 
   useEffect(() => {
     if (!open) return;
-    const me = Symbol("modal");
+    const me = Symbol("dialog");
     openStack.push(me);
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
@@ -121,16 +116,51 @@ export function Modal({
       const at = openStack.indexOf(me);
       if (at !== -1) openStack.splice(at, 1);
       document.body.style.overflow = prevOverflow;
-      if (opener && opener.isConnected) opener.focus();
+      const back = returnFocusTo?.current ?? opener;
+      if (back && back.isConnected) back.focus();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+}
+
+/**
+ * Square dialog in a portal over the --backdrop: a 1px --border and the menu
+ * shadow (02a Q10), the title in .t-modal-title, a footer on --surface-2, and
+ * a Close (×) button whenever it is dismissable.
+ *
+ * ⚠️ The panel is capped at the viewport and its BODY scrolls, between a
+ * fixed header and footer. It used to be `overflow-hidden` with no height
+ * cap while the page behind was scroll-locked, so a tall dialog — a long
+ * translation, a quote with many lines, anything on a phone — was cut off
+ * with its Save button out of reach.
+ *
+ * Focus moves in on open (unless something inside already took it, e.g. an
+ * `autoFocus` input), is held inside, and returns to where it was on close;
+ * the title and description name the dialog for assistive tech.
+ */
+export function Modal({
+  open,
+  onClose,
+  title,
+  ariaLabel,
+  description,
+  children,
+  footer,
+  size = "md",
+  dismissable = true,
+}: ModalProps) {
+  if (import.meta.env.DEV && open && !title && !ariaLabel) console.warn("Modal: pass a `title` or an `ariaLabel`.");
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  useDialog(open, panelRef, { onClose, dismissable });
 
   if (!open) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-backdrop backdrop-blur-sm"
         onClick={() => dismissable && onClose()}
       />
       <div
@@ -138,23 +168,35 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : ariaLabel}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex w-full flex-col overflow-hidden rounded-xl bg-surface border border-border shadow-2xl outline-none",
+          "relative flex w-full flex-col overflow-hidden border border-border bg-surface shadow-menu outline-none",
           "max-h-[calc(100vh-2rem)] supports-[height:100dvh]:max-h-[calc(100dvh-2rem)]",
           sizes[size],
         )}
       >
+        {dismissable && (
+          <Button
+            variant="ghost"
+            icon
+            aria-label="Close"
+            onClick={onClose}
+            className="absolute right-3 top-3 z-10"
+          >
+            <X size={18} strokeWidth={2} />
+          </Button>
+        )}
         {(title || description) && (
-          <div className="shrink-0 border-b border-border px-6 py-5">
+          <div className={cn("shrink-0 border-b border-border px-6 py-5", dismissable && "pr-14")}>
             {title && (
-              <h2 id={titleId} className="text-h3 font-semibold text-text">
+              <h2 id={titleId} className="t-modal-title text-text">
                 {title}
               </h2>
             )}
             {description && (
-              <p id={descriptionId} className="mt-1 text-small text-muted">
+              <p id={descriptionId} className="t-help mt-1">
                 {description}
               </p>
             )}
@@ -164,7 +206,7 @@ export function Modal({
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 text-body text-text">{children}</div>
         )}
         {footer && (
-          <div className="flex shrink-0 justify-end gap-3 border-t border-border px-6 py-4">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-border bg-surface-2 px-6 py-4">
             {footer}
           </div>
         )}
@@ -225,7 +267,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               {state?.cancelLabel ?? "Cancel"}
             </Button>
             <Button
-              variant={state?.danger ? "danger" : "primary"}
+              variant={state?.danger ? "danger-solid" : "primary"}
               size="sm"
               onClick={() => settle(true)}
             >

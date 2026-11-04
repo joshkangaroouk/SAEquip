@@ -1,21 +1,42 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import { Table, THead, TBody, TR, TH, TD, Modal, Button, Skeleton, EmptyState } from "../components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  EmptyState,
+  PageHeader,
+  SplitDetailHeader,
+  SplitListItem,
+  SplitView,
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  Thumb,
+  useSelection,
+} from "../components/ui";
+import {
+  DefinitionGrid,
+  Detail,
+  EnquiryActions,
+  EnquiryListSkeleton,
+  EnquiryToolbar,
+  HandledStatus,
+  filterEnquiries,
+  isNew,
+  useMarkHandled,
+  withHandled,
+  type EnquiryFilter,
+} from "../components/enquiries";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
+import { refreshEnquiryCounts } from "../lib/enquiryCounts";
+import { formatDateTime, formatShortDate } from "../lib/format";
 import { languageName } from "../lib/language";
-import { ProductThumb } from "../components/ProductThumb";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function itemsSummary(quote: QuoteRequest): string {
   return quote.items.map((item) => `${item.name} x${item.quantity}`).join("; ");
@@ -39,7 +60,7 @@ function exportQuotes(requests: QuoteRequest[]) {
     q.country ?? "",
     q.message ?? "",
     q.locale ? languageName(q.locale) : "",
-    formatDate(q.createdAt),
+    formatDateTime(q.createdAt),
     itemsSummary(q),
   ]);
   downloadCsv(`quote-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
@@ -52,87 +73,140 @@ function formatOptions(options: Record<string, unknown> | null): string | null {
   return entries.map(([k, v]) => `${k}: ${v}`).join(", ");
 }
 
-/** One labelled value in the detail grid. "—" when empty, so a field is never silently missing. */
-function Detail({ label, children, wide = false }: { label: string; children?: React.ReactNode; wide?: boolean }) {
-  const empty = children == null || children === "";
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** A basket line's product: its picture, and a link to its editor when it matched one. */
+function ItemName({ item }: { item: QuoteRequest["items"][number] }) {
   return (
-    <div className={wide ? "sm:col-span-2" : undefined}>
-      <div className="text-xs font-semibold uppercase tracking-wide text-subtle">{label}</div>
-      <div className="whitespace-pre-line text-sm font-medium text-text">{empty ? "—" : children}</div>
+    <div className="flex items-center gap-3">
+      <Thumb src={item.imageUrl} size={40} />
+      {item.dudaProductId ? (
+        <Link
+          to={`/products/${item.dudaProductId}`}
+          className="font-medium text-text underline-offset-2 hover:underline"
+          title="Open this product in the editor"
+        >
+          {item.name}
+        </Link>
+      ) : (
+        <span>{item.name}</span>
+      )}
     </div>
   );
 }
 
-function QuoteDetail({ quote }: { quote: QuoteRequest }) {
+function QuoteDetail({
+  quote,
+  busy,
+  onHandled,
+}: {
+  quote: QuoteRequest;
+  busy: boolean;
+  onHandled: (handled: boolean) => void;
+}) {
   /*
    * Every field is shown, with "—" when it was not given. They used to appear
    * only when filled in, which made a field the form never asked for (older
    * quotes) indistinguishable from one the page was failing to show.
    */
   const address = [quote.address, quote.postcode, quote.country].filter(Boolean).join("\n");
+  const units = quote.items.reduce((n, item) => n + item.quantity, 0);
+  const total = `${plural(quote.items.length, "item", "items")} · ${plural(units, "unit", "units")}`;
   return (
-    <div className="space-y-5">
-      <h3 className="text-sm font-semibold text-text">{quote.name}</h3>
+    <>
+      <SplitDetailHeader
+        title={quote.name}
+        subtitle={quote.company ?? quote.email}
+        actions={
+          <EnquiryActions
+            kind="quote"
+            enquiry={quote}
+            busy={busy}
+            onHandled={onHandled}
+            onExport={() => exportQuotes([quote])}
+          />
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Detail label="First name">{quote.firstName}</Detail>
-        <Detail label="Last name">{quote.lastName}</Detail>
-        <Detail label="Company">{quote.company}</Detail>
-        <Detail label="Email">{quote.email}</Detail>
-        <Detail label="Telephone">{quote.phone}</Detail>
-        <Detail label="When needed">{quote.requiredBy}</Detail>
-        <Detail label="Address">{address}</Detail>
-        <Detail label="Submitted">{formatDate(quote.createdAt)}</Detail>
-        {/* The page language the customer used, so a reply can be in it.
-            Unknown (—) for quotes from before 2026-10-07. */}
-        <Detail label="Language">{quote.locale ? languageName(quote.locale) : null}</Detail>
-        <Detail label="Message" wide>
-          {quote.message}
-        </Detail>
-      </div>
+      <div className="space-y-6 px-6 py-5">
+        <DefinitionGrid>
+          <Detail label="First name">{quote.firstName}</Detail>
+          <Detail label="Last name">{quote.lastName}</Detail>
+          <Detail label="Company">{quote.company}</Detail>
+          <Detail label="Email">{quote.email}</Detail>
+          <Detail label="Telephone">{quote.phone}</Detail>
+          <Detail label="When needed">{quote.requiredBy}</Detail>
+          <Detail label="Address">{address}</Detail>
+          <Detail label="Submitted">{formatDateTime(quote.createdAt)}</Detail>
+          {/* The page language the customer used, so a reply can be in it.
+              Unknown (—) for quotes from before 2026-10-07. */}
+          <Detail label="Language">{quote.locale ? languageName(quote.locale) : null}</Detail>
+          <Detail label="Status">
+            <HandledStatus enquiry={quote} />
+          </Detail>
+          <Detail label="Message" wide>
+            {quote.message}
+          </Detail>
+        </DefinitionGrid>
 
-      <div>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
-          Items ({quote.items.length})
-        </div>
-        {/* No price column: SAEquip quotes prices, so the basket never carries one. */}
-        <Table>
-          <THead>
-            <TR>
-              <TH>Item</TH>
-              <TH>SKU</TH>
-              <TH>Options</TH>
-              <TH>Qty</TH>
-            </TR>
-          </THead>
-          <TBody>
+        <section aria-labelledby="quote-items">
+          <h3 id="quote-items" className="t-overline mb-2">
+            Items
+          </h3>
+          {/* No price column: SAEquip quotes prices, so the basket never carries one.
+              From sm, the table; below it, stacked rows (10 §6), not a table
+              scrolling sideways inside its box. */}
+          <div className="hidden sm:block">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Product</TH>
+                  <TH>SKU</TH>
+                  <TH>Options</TH>
+                  <TH className="text-right">Qty</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {quote.items.map((item) => (
+                  <TR key={item.id}>
+                    <TD>
+                      <ItemName item={item} />
+                    </TD>
+                    <TD className="t-code">{item.sku || "—"}</TD>
+                    <TD className="text-muted">{formatOptions(item.options) ?? "—"}</TD>
+                    <TD className="t-code text-right tabular-nums">{item.quantity}</TD>
+                  </TR>
+                ))}
+              </TBody>
+              {/* Units only: no prices (02a Q17). */}
+              <tfoot className="border-t border-border bg-surface-2">
+                <tr>
+                  <td colSpan={4} className="px-5 py-2.5 text-right text-body font-semibold text-text">
+                    {total}
+                  </td>
+                </tr>
+              </tfoot>
+            </Table>
+          </div>
+          <ul className="border border-border sm:hidden">
             {quote.items.map((item) => (
-              <TR key={item.id}>
-                <TD>
-                  <div className="flex items-center gap-3">
-                    <ProductThumb url={item.imageUrl} />
-                    {item.dudaProductId ? (
-                      <Link
-                        to={`/products/${item.dudaProductId}`}
-                        className="font-medium text-text underline-offset-2 hover:underline"
-                        title="Open this product in the editor"
-                      >
-                        {item.name}
-                      </Link>
-                    ) : (
-                      <span>{item.name}</span>
-                    )}
-                  </div>
-                </TD>
-                <TD>{item.sku || "—"}</TD>
-                <TD className="text-subtle">{formatOptions(item.options) ?? "—"}</TD>
-                <TD>{item.quantity}</TD>
-              </TR>
+              <li key={item.id} className="border-b border-border px-4 py-3">
+                <ItemName item={item} />
+                <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-help">
+                  <dt className="text-muted">SKU</dt>
+                  <dd className="t-code text-text">{item.sku || "—"}</dd>
+                  <dt className="text-muted">Options</dt>
+                  <dd className="text-muted">{formatOptions(item.options) ?? "—"}</dd>
+                  <dt className="text-muted">Qty</dt>
+                  <dd className="t-code text-text tabular-nums">{item.quantity}</dd>
+                </dl>
+              </li>
             ))}
-          </TBody>
-        </Table>
+            <li className="bg-surface-2 px-4 py-2.5 text-right text-body font-semibold text-text">{total}</li>
+          </ul>
+        </section>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -140,7 +214,14 @@ export default function Quotes() {
   const [data, setData] = useState<QuotesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<QuoteRequest | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<EnquiryFilter>("all");
+  const { selectedId, select, hrefFor } = useSelection();
+  const { busy, setHandled } = useMarkHandled(
+    (id) => `/api/quotes/${id}/handled`,
+    (res) => setData((d) => d && { ...d, requests: withHandled(d.requests, res) }),
+    "quote request",
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -149,7 +230,10 @@ export default function Quotes() {
     apiFetch("/api/quotes")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((json: QuotesResponse) => {
-        if (!cancelled) setData(json);
+        if (cancelled) return;
+        setData(json);
+        // The badge should agree with the list just loaded.
+        refreshEnquiryCounts();
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load quote requests");
@@ -163,20 +247,11 @@ export default function Quotes() {
   }, []);
 
   const requests = data?.requests ?? [];
+  const shown = filterEnquiries(requests, filter, query, (q) => [q.name, q.company, q.email]);
+  const selected = selectedId ? requests.find((q) => q.id === selectedId) ?? null : null;
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text">Quote Requests</h1>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={requests.length === 0}
-          onClick={() => exportQuotes(requests)}
-        >
-          Export CSV
-        </Button>
-      </div>
       {/*
         * ⚠️ No email-status banner, badge or column. Resend is not being set
         * up — these will feed SAEquip's own CRM later — so `emailSent` is
@@ -184,98 +259,93 @@ export default function Quotes() {
         * a setting nobody chose. The backend still stores every submission
         * independently of email, which is what makes leaving it off safe.
         */}
-      <p className="mt-1 text-sm text-muted">
-        Submissions captured from the public basket-page widget. Every request is stored here
-        regardless of any notification setup.
-      </p>
+      <PageHeader
+        title="Quote Requests"
+        description="Submissions captured from the public basket-page widget. Every request is stored here regardless of any notification setup."
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={requests.length === 0}
+            onClick={() => exportQuotes(requests)}
+          >
+            Export CSV
+          </Button>
+        }
+      />
 
+      {error && <Alert tone="danger">{error}</Alert>}
 
-      {/* The real table, so only the cells change when the data lands. */}
-      {loading && (
-        <div className="mt-6" aria-busy="true" aria-live="polite" aria-label="Loading quote requests">
-          <Table>
-            <THead>
-              <TR>
-                <TH>Name</TH>
-                <TH>Email</TH>
-                <TH>Company</TH>
-                <TH>Items</TH>
-                <TH>Date</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {Array.from({ length: 6 }, (_, i) => (
-                <TR key={i}>
-                  <TD>
-                    <Skeleton className="h-4 w-32" />
-                  </TD>
-                  <TD>
-                    <Skeleton className="h-4 w-44" />
-                  </TD>
-                  <TD>
-                    <Skeleton className="h-4 w-28" />
-                  </TD>
-                  <TD>
-                    <Skeleton className="h-4 w-8" />
-                  </TD>
-                  <TD>
-                    <Skeleton className="h-4 w-36" />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        </div>
-      )}
-      {error && (
-        <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
       {!loading && !error && requests.length === 0 && (
         <EmptyState
-          className="mt-8"
           title="No quote requests yet"
           description="Submissions from the basket-page widget will show up here."
         />
       )}
 
-      {!loading && !error && requests.length > 0 && (
-        <div className="mt-6">
-          <Table>
-            <THead>
-              <TR>
-                <TH>Name</TH>
-                <TH>Email</TH>
-                <TH>Company</TH>
-                <TH>Items</TH>
-                <TH>Date</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {requests.map((q) => (
-                <TR key={q.id} hover onClick={() => setSelected(q)}>
-                  <TD className="font-semibold text-text">
-                    <button type="button" onClick={() => setSelected(q)} className="rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50">
-                      <span className="sr-only">Open the quote from </span>
-                      {q.name}
-                    </button>
-                  </TD>
-                  <TD>{q.email}</TD>
-                  <TD>{q.company || "—"}</TD>
-                  <TD>{q.items.length}</TD>
-                  <TD>{formatDate(q.createdAt)}</TD>
-
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        </div>
+      {!error && (loading || requests.length > 0) && (
+        <SplitView
+          className="lg:flex-1"
+          listLabel="Quote requests"
+          selectedId={selectedId}
+          onBack={() => select(null)}
+          list={
+            loading ? (
+              <EnquiryListSkeleton />
+            ) : (
+              <>
+                <EnquiryToolbar
+                  all={requests}
+                  query={query}
+                  onQuery={setQuery}
+                  filter={filter}
+                  onFilter={setFilter}
+                  searchLabel="Search quote requests"
+                />
+                {shown.length === 0 ? (
+                  <p className="px-5 py-6 text-body text-muted">No quote requests match.</p>
+                ) : (
+                  <ul>
+                    {shown.map((q) => (
+                      <li key={q.id}>
+                        <SplitListItem
+                          to={hrefFor(q.id)}
+                          selected={q.id === selectedId}
+                          title={q.name}
+                          subtitle={q.company ?? q.email}
+                          meta={formatShortDate(q.createdAt)}
+                          badge={isNew(q) ? <Badge tone="new">New</Badge> : undefined}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )
+          }
+          detail={
+            selectedId === null || loading ? null : selected ? (
+              <QuoteDetail
+                quote={selected}
+                busy={busy === selected.id}
+                onHandled={(handled) => void setHandled(selected.id, handled)}
+              />
+            ) : (
+              <>
+                <SplitDetailHeader title="Not found" />
+                <p className="px-6 py-5 text-body text-muted">There's no quote request with that link in the list.</p>
+              </>
+            )
+          }
+          emptyDetail={
+            <EmptyState
+              className="m-6"
+              title="Select a quote request"
+              description="Its details and items show here."
+            />
+          }
+        />
       )}
-
-      <Modal open={selected !== null} onClose={() => setSelected(null)} size="lg">
-        {selected && <QuoteDetail quote={selected} />}
-      </Modal>
     </>
   );
 }

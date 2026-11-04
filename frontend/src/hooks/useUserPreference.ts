@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthContext";
 import { toast } from "../components/ui";
+import { applyTheme, readTheme, useDocumentTheme, THEME_PREFERENCE_KEY, type Theme } from "../lib/theme";
 
 /**
  * A UI preference stored against the signed-in ACCOUNT, in Supabase's
@@ -15,6 +16,7 @@ import { toast } from "../components/ui";
  *
  * Writes are optimistic — the control responds immediately and reverts with a
  * toast if the round-trip fails, since a preference isn't worth a spinner.
+ * `setValue` resolves to whether the write was saved.
  */
 export function useUserPreference<T>(key: string, fallback: T) {
   const { user } = useAuth();
@@ -33,16 +35,18 @@ export function useUserPreference<T>(key: string, fallback: T) {
   }, [JSON.stringify(remote)]);
 
   const update = useCallback(
-    async (next: T) => {
+    async (next: T): Promise<boolean> => {
       const previous = value;
       setValue(next); // optimistic
       setSaving(true);
       try {
         const { error } = await supabase.auth.updateUser({ data: { [key]: next } });
         if (error) throw new Error(error.message);
+        return true;
       } catch (e) {
         setValue(previous);
         toast.error(e instanceof Error ? e.message : "Couldn't save that preference");
+        return false;
       } finally {
         setSaving(false);
       }
@@ -65,4 +69,38 @@ export const HIDE_COMMERCE_KEY = "hideCommerceFields";
 
 export function useHideCommerceFields() {
   return useUserPreference<boolean>(HIDE_COMMERCE_KEY, true);
+}
+
+/**
+ * The account's light/dark choice.
+ *
+ * `null` means never chosen, which keeps whatever the pre-paint copy applied.
+ * A value from the account wins once the session resolves, so a choice made
+ * on one computer reaches the others. Called once in Layout so it runs on
+ * every authenticated page; the theme toggle (redesign batch 4) calls
+ * `setTheme`.
+ *
+ * ⚠️ `setTheme` writes the signed-in user's Supabase user_metadata — a real
+ * write to the live auth record, if a harmless one.
+ */
+export function useThemePreference() {
+  const pref = useUserPreference<Theme | null>(THEME_PREFERENCE_KEY, null);
+  const { value, setValue, saving } = pref;
+  useEffect(() => {
+    if (value === "light" || value === "dark") applyTheme(value);
+  }, [value]);
+  const setTheme = useCallback(
+    (theme: Theme) => {
+      const before = readTheme();
+      applyTheme(theme); // instant, and refreshes the pre-paint copy
+      // Optimistic: on failure the preference reverts with a toast, and the
+      // theme that was showing is put back. (The effect above cannot do that
+      // for an account that never chose one: its previous value is null.)
+      void setValue(theme).then((saved) => {
+        if (!saved) applyTheme(before);
+      });
+    },
+    [setValue],
+  );
+  return { theme: useDocumentTheme(), setTheme, saving };
 }

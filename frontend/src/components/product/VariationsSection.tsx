@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Card, CardHeader, SectionError, EmptyState, Input, Select, Table, TBody, TD, TH, THead, TR } from "../ui";
+import { Alert, Badge, Button, Card, CardHeader, SectionError, EmptyState, Input, Select, Table, TBody, TD, TH, THead, TR } from "../ui";
 import type { OptionRefDraft, VariationDraft } from "./productEditorTypes";
 
 /**
@@ -18,7 +18,6 @@ export function VariationsSection({
   variations,
   options,
   lockedByOptions,
-  dirty,
   error,
   onChange,
   onChangeAll,
@@ -27,7 +26,6 @@ export function VariationsSection({
   variations: VariationDraft[];
   options: OptionRefDraft[];
   lockedByOptions: boolean;
-  dirty: boolean;
   error?: string;
   onChange: (id: string, patch: Partial<VariationDraft>) => void;
   onChangeAll: (patch: Partial<VariationDraft>) => void;
@@ -49,7 +47,6 @@ export function VariationsSection({
         }
         actions={
           <>
-            {dirty && <Badge tone="accent">Unsaved</Badge>}
             <Badge tone="neutral">{variations.length}</Badge>
           </>
         }
@@ -58,14 +55,15 @@ export function VariationsSection({
       <SectionError message={error} />
 
       {lockedByOptions && (
-        <div className="mb-4 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-small text-text">
-          <span className="font-semibold">Save your option changes first.</span> Duda rebuilds this
-          list when the options change, so SKUs and prices are entered afterwards.
-        </div>
+        <Alert tone="info" title="Save your option changes first." className="mb-4">
+          Duda rebuilds this list when the options change, so SKUs and prices are entered afterwards.
+        </Alert>
       )}
 
       {variations.length === 0 ? (
         <EmptyState
+          // Inside the section, under its h2.
+          as="h3"
           title="No variations"
           description={
             options.length === 0
@@ -78,8 +76,8 @@ export function VariationsSection({
           {/* Bulk fill — mandatory ergonomics past a handful of rows, and this
               can reach 300. */}
           {!lockedByOptions && variations.length > 2 && (
-            <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface-2 p-3">
-              <span className="text-small font-semibold text-text">Set all:</span>
+            <div className="mb-3 flex flex-wrap items-end gap-2 border border-border bg-surface-2 p-3">
+              <span className="text-help font-semibold text-text">Set all:</span>
               {!hideCommerce && (
                 <>
                   <Input
@@ -121,7 +119,8 @@ export function VariationsSection({
                   ))}
                   <TH>SKU</TH>
                   {!hideCommerce && <TH className="w-28">Price Δ</TH>}
-                  <TH className="w-32">Status</TH>
+                  {/* 144px: the cell's 20px padding plus the select's chevron gutter leave room for "Hidden". */}
+                  <TH className="w-36">Status</TH>
                 </TR>
               </THead>
               <TBody>
@@ -129,7 +128,7 @@ export function VariationsSection({
                   const byOption = new Map(v.choices.map((c) => [c.optionId, c.value]));
                   return (
                     <TR key={v.id}>
-                      <TD className="w-px text-subtle">{idx + 1}</TD>
+                      <TD className="w-px text-muted">{idx + 1}</TD>
                       {columns.map((o) => (
                         <TD key={o.id} className="whitespace-nowrap font-medium text-text">
                           {byOption.get(o.id) ?? "—"}
@@ -149,11 +148,7 @@ export function VariationsSection({
                         <TD>
                           <Input
                             size="sm"
-                            className={
-                              /^-?\d+(\.\d+)?$/.test(v.price_difference)
-                                ? undefined
-                                : "border-danger focus:border-danger"
-                            }
+                            aria-invalid={!/^-?\d+(\.\d+)?$/.test(v.price_difference) || undefined}
                             inputMode="decimal"
                             value={v.price_difference}
                             disabled={lockedByOptions}

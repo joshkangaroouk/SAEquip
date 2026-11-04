@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { rectSortingStrategy } from "@dnd-kit/sortable";
+import { Plus, Trash2 } from "lucide-react";
 import { MediaPicker } from "../components/MediaPicker";
 import { UsagePill } from "../components/UsagePill";
 import {
+  PageHeader,
+  Alert,
   Button,
   DragHandle,
-  RemoveButton,
+  EmptyState,
+  Field,
+  Input,
+  SegmentedControl,
   Skeleton,
   SortableList,
   toast,
@@ -17,7 +22,12 @@ import type { AssetUsage, LogoCatalogEntry, MediaAsset } from "../lib/types";
 
 type Kind = "SA_LOGO" | "CERT_LOGO";
 
-function LogoCard({
+/**
+ * One logo as a row (00): the drag handle, the lockup on paper, the label and
+ * alt text, "Used by N products", Replace and Delete. "Save" appears while
+ * the label or alt text differs from what is saved (KEEP-S).
+ */
+function LogoRow({
   entry,
   handle,
   onDelete,
@@ -34,6 +44,7 @@ function LogoCard({
   const [alt, setAlt] = useState(entry.alt ?? "");
   const [saving, setSaving] = useState(false);
   const dirty = label !== (entry.label ?? "") || alt !== (entry.alt ?? "");
+  const name = entry.label || entry.alt || "logo";
 
   async function saveMeta() {
     if (!dirty || saving) return;
@@ -54,46 +65,62 @@ function LogoCard({
     }
   }
 
-  const inputCls = "w-full rounded-md border border-border px-2 py-1 text-sm font-medium focus:border-text focus:outline-none placeholder:text-subtle";
-
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-surface p-3">
-      <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
-        <img src={entry.url} alt={entry.alt || entry.label || "logo"} className="max-h-24 max-w-full object-contain" />
-      </div>
-      <Button variant="secondary" size="xs" className="mt-2" onClick={() => onReplace(entry)}>
-        Replace image
-      </Button>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
+      <DragHandle handle={handle} label={`Drag ${name} to reorder`} />
+      {/* The lockup on paper. Decorative here: its words are in the fields beside it. */}
+      <span className="flex h-16 w-28 shrink-0 items-center justify-center border border-border bg-paper p-2">
+        <img src={entry.url} alt="" className="max-h-full max-w-full object-contain" />
+      </span>
 
-      <div className="mt-2 space-y-2">
-        <label className="block text-xs font-semibold text-muted">
-          Label
-          <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="optional" />
-        </label>
-        <label className="block text-xs font-semibold text-muted">
-          Alt
-          <input className={inputCls} value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="optional" />
-        </label>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <DragHandle handle={handle} />
-          <UsagePill
-            count={entry.usage}
-            label={`Used by ${entry.usage}`}
-            subject={entry.label || entry.alt || "Logo"}
-            load={() => apiJson<AssetUsage>(`/api/logos/${entry.id}/products`)}
+      <div className="grid min-w-0 flex-1 basis-72 gap-3 sm:grid-cols-2">
+        <Field label="Label">
+          <Input
+            size="sm"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Optional"
+            aria-label={`Label for ${name}`}
           />
-        </div>
-        <RemoveButton onClick={() => onDelete(entry)} title="Delete logo" />
+        </Field>
+        <Field label="Alt text">
+          <Input
+            size="sm"
+            value={alt}
+            onChange={(e) => setAlt(e.target.value)}
+            placeholder="Optional"
+            aria-label={`Alt text for ${name}`}
+          />
+        </Field>
       </div>
 
-      {dirty && (
-        <button onClick={saveMeta} disabled={saving} className="mt-2 rounded-md bg-accent px-3 py-1 text-body font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-40">
-          {saving ? "Saving…" : "Save label/alt"}
-        </button>
-      )}
+      <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:self-end">
+        <UsagePill
+          count={entry.usage}
+          label={`Used by ${entry.usage} product${entry.usage === 1 ? "" : "s"}`}
+          subject={name}
+          load={() => apiJson<AssetUsage>(`/api/logos/${entry.id}/products`)}
+        />
+        <span className="ml-auto flex items-center gap-2">
+          {dirty && (
+            <Button size="sm" onClick={saveMeta} loading={saving} aria-label={`Save the label and alt text of ${name}`}>
+              Save
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => onReplace(entry)} aria-label={`Replace the image of ${name}`}>
+            Replace
+          </Button>
+          <button
+            type="button"
+            onClick={() => onDelete(entry)}
+            aria-label={`Delete ${name}`}
+            title="Delete logo"
+            className="inline-flex h-8.5 w-8.5 shrink-0 items-center justify-center text-muted transition-colors duration-[120ms] hover:bg-danger-bg hover:text-danger"
+          >
+            <Trash2 size={16} aria-hidden="true" />
+          </button>
+        </span>
+      </div>
     </div>
   );
 }
@@ -180,11 +207,11 @@ export default function Logos() {
         <>
           {/* Spans, not divs: the dialog renders its description in a <p>. */}
           <span className="mb-3 flex items-center justify-center gap-3">
-            <span className="flex h-20 w-28 items-center justify-center rounded-lg bg-surface-2 p-2">
+            <span className="flex h-20 w-28 items-center justify-center border border-border bg-paper p-2">
               <img src={entry.url} alt="Current image" className="max-h-full max-w-full object-contain" />
             </span>
             <span aria-hidden="true" className="text-muted">→</span>
-            <span className="flex h-20 w-28 items-center justify-center rounded-lg bg-surface-2 p-2">
+            <span className="flex h-20 w-28 items-center justify-center border border-border bg-paper p-2">
               <img src={asset.url ?? ""} alt="New image" className="max-h-full max-w-full object-contain" />
             </span>
           </span>
@@ -197,7 +224,7 @@ export default function Logos() {
           ) : (
             <>No product carries {name} yet.</>
           )}{" "}
-          The label, alt text and order stay as they are, and the old image stays in the Media Centre.
+          The label, alt text and order stay as they are, and the old image stays in Media.
         </>
       ),
       confirmLabel: "Replace image",
@@ -227,7 +254,7 @@ export default function Logos() {
         <>
           This will remove the logo from the catalog and from{" "}
           <span className="font-semibold">{entry.usage} product(s)</span> that currently use it. The image
-          stays in the Media Centre.
+          stays in Media.
         </>
       ),
       confirmLabel: "Delete",
@@ -237,7 +264,7 @@ export default function Logos() {
     try {
       await apiJson(`/api/logos/${entry.id}`, { method: "DELETE" });
       setEntries((prev) => prev?.filter((e) => e.id !== entry.id) ?? null);
-      toast.success("Logo deleted (image kept in Media Centre)");
+      toast.success("Logo deleted (image kept in Media)");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
     }
@@ -245,64 +272,79 @@ export default function Logos() {
 
   return (
     <>
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-text">Logos</h1>
-          <button onClick={() => setPickerOpen(true)} className="rounded-md bg-accent px-4 py-2 text-body font-semibold text-accent-foreground hover:bg-accent-hover">
-            + Add logo
-          </button>
-        </div>
-        <p className="mt-1 text-sm text-muted">Global catalog shared across all products.</p>
+      <PageHeader
+        title="Logos"
+        description="Global catalog shared across all products."
+        actions={
+          <Button size="sm" onClick={() => setPickerOpen(true)}>
+            <Plus size={16} aria-hidden="true" />
+            Add logo
+          </Button>
+        }
+      />
 
-        {/* Tabs */}
-        <div className="mt-6 flex gap-2 text-sm">
-          {(["SA_LOGO", "CERT_LOGO"] as Kind[]).map((k) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`rounded-full px-4 py-1.5 font-semibold ${
-                tab === k ? "bg-accent text-accent-foreground" : "border border-border text-muted hover:bg-surface-2"
-              }`}
-            >
-              {k === "SA_LOGO" ? "SA Logos" : "Cert Logos"}
-            </button>
-          ))}
-        </div>
+      <SegmentedControl<Kind>
+        className="mb-4"
+        ariaLabel="Logo catalogue"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "SA_LOGO", label: "SA range" },
+          { value: "CERT_LOGO", label: "Certification" },
+        ]}
+      />
 
-        {/* The same 2/3/4-up grid and the same 8rem tile, so the real logos
-            drop straight into place. */}
-        {loading && (
-          <div
-            className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
-            aria-busy="true"
-            aria-live="polite"
-            aria-label="Loading logos"
-          >
-            {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="flex flex-col rounded-xl border border-border bg-surface p-3">
-                <Skeleton className="h-32 w-full rounded-lg" />
-                <Skeleton className="mt-3 h-4 w-3/4" />
-                <Skeleton className="mt-2 h-3 w-1/2" />
+      {/* The same rows, the same height: a 64px lockup beside a labelled
+          34px field. (The old skeleton tile was h-32 against a real h-24, so
+          the page jumped on load.) */}
+      {loading && (
+        <div className="border border-border bg-surface" aria-busy="true" aria-live="polite" aria-label="Loading logos">
+          <div className="divide-y divide-border">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
+                <Skeleton className="h-8.5 w-8.5" />
+                <Skeleton className="h-16 w-28" />
+                <div className="grid min-w-0 flex-1 basis-72 gap-3 sm:grid-cols-2">
+                  {[0, 1].map((j) => (
+                    <div key={j}>
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="mt-1.5 h-8.5 w-full" />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto sm:self-end">
+                  <Skeleton className="h-6.5 w-36" />
+                  <Skeleton className="ml-auto h-8.5 w-20" />
+                  <Skeleton className="h-8.5 w-8.5" />
+                </div>
               </div>
             ))}
           </div>
-        )}
-        {error && (
-          <div className="mt-8 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>
-        )}
-        {!loading && !error && entries && entries.length === 0 && (
-          <p className="mt-8 text-muted">No logos in this catalog yet. Add one to get started.</p>
-        )}
+        </div>
+      )}
+      {error && <Alert tone="danger">{error}</Alert>}
+      {!loading && !error && entries && entries.length === 0 && (
+        <EmptyState
+          title="No logos in this catalog yet"
+          description="Add one from Media to get started."
+          action={
+            <Button size="sm" onClick={() => setPickerOpen(true)}>
+              <Plus size={16} aria-hidden="true" />
+              Add logo
+            </Button>
+          }
+        />
+      )}
 
-        {!loading && !error && entries && entries.length > 0 && (
+      {!loading && !error && entries && entries.length > 0 && (
+        <div className="border border-border bg-surface">
           <SortableList
             items={entries}
             getId={(entry) => entry.id}
             onReorder={reorder}
-            strategy={rectSortingStrategy}
-            className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+            className="divide-y divide-border"
             renderItem={(entry, handle) => (
-              <LogoCard
+              <LogoRow
                 entry={entry}
                 handle={handle}
                 onDelete={handleDelete}
@@ -311,8 +353,8 @@ export default function Logos() {
               />
             )}
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {pickerOpen && <MediaPicker kind="image" onPick={onPickMedia} onClose={() => setPickerOpen(false)} />}
       {replacing && <MediaPicker kind="image" onPick={onPickReplacement} onClose={() => setReplacing(null)} />}

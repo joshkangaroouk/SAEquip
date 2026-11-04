@@ -52,6 +52,8 @@ export interface CategoryNode extends DudaCategorySummary {
    * page load. Null for a category never synced or written from here.
    */
   imageUrl?: string | null;
+  /** The category page's slug (Duda's `seo.url`), from the MIRROR like the image. Null if never mirrored. */
+  slug?: string | null;
   /**
    * How many products the HUB has in this category.
    *
@@ -81,6 +83,7 @@ function buildTree(
   order: Map<string, number>,
   images: Map<string, string | null>,
   hubCounts: Map<string, number>,
+  slugs: Map<string, string>,
 ): CategoryNode[] {
   const byParent = new Map<string, DudaCategorySummary[]>();
   for (const c of flat) {
@@ -100,6 +103,7 @@ function buildTree(
         depth,
         subcategoryCount: (byParent.get(c.id) ?? []).length,
         imageUrl: images.get(c.id) ?? null,
+        slug: slugs.get(c.id) ?? null,
         hubProductCount: hubCounts.get(c.id) ?? 0,
       });
       walk(c.id, depth + 1);
@@ -126,6 +130,7 @@ function buildTree(
       depth: 0,
       subcategoryCount: (byParent.get(c.id) ?? []).length,
       imageUrl: images.get(c.id) ?? null,
+      slug: slugs.get(c.id) ?? null,
       hubProductCount: hubCounts.get(c.id) ?? 0,
     });
   }
@@ -144,15 +149,16 @@ function buildTree(
 export async function treeFrom(flat: DudaCategorySummary[]): Promise<CategoryNode[]> {
   const [orderRows, mirrorRows, countRows] = await Promise.all([
     prisma.categoryOrder.findMany(),
-    prisma.categoryMirror.findMany({ select: { dudaCategoryId: true, imageUrl: true } }),
+    prisma.categoryMirror.findMany({ select: { dudaCategoryId: true, imageUrl: true, slug: true } }),
     // ONE grouped query, never a count per category — the trap that made
     // GET /api/media take 7s after the import.
     prisma.productCategory.groupBy({ by: ["dudaCategoryId"], _count: true }),
   ]);
   const order = new Map(orderRows.map((o) => [o.dudaCategoryId, o.sortOrder]));
   const images = new Map(mirrorRows.map((m) => [m.dudaCategoryId, m.imageUrl]));
+  const slugs = new Map(mirrorRows.map((m) => [m.dudaCategoryId, m.slug]));
   const hubCounts = new Map(countRows.map((g) => [g.dudaCategoryId, g._count]));
-  return buildTree(flat, order, images, hubCounts);
+  return buildTree(flat, order, images, hubCounts, slugs);
 }
 
 /**

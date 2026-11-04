@@ -1,5 +1,5 @@
 import { Check, Languages, TriangleAlert } from "lucide-react";
-import { Button, Modal, Spinner } from "./ui";
+import { Alert, Button, Modal, Spinner } from "./ui";
 import type { LangProgress } from "../lib/translations";
 
 function statusText(p: LangProgress): string {
@@ -72,13 +72,13 @@ export function TranslationProgressModal({
       <ul className="space-y-3" aria-live="polite">
         {(progress ?? []).map((p) => (
           <li key={p.locale}>
-            <div className="flex items-center justify-between gap-3 text-small">
+            <div className="flex items-center justify-between gap-3 text-help">
               <span className="font-semibold text-text">{p.label}</span>
               <span
                 className={p.phase === "failed" ? "text-danger" : "text-muted"}
               >
                 <span className="inline-flex items-center gap-1.5">
-                  {p.phase === "done" && !p.rejected && <Check size={14} className="text-success" aria-hidden="true" />}
+                  {p.phase === "done" && !p.rejected && <Check size={14} className="text-ok" aria-hidden="true" />}
                   {(p.phase === "failed" || (p.phase === "done" && p.rejected > 0)) && (
                     <TriangleAlert size={14} className={p.phase === "failed" ? "text-danger" : "text-muted"} aria-hidden="true" />
                   )}
@@ -88,18 +88,21 @@ export function TranslationProgressModal({
               </span>
             </div>
             {p.phase === "needs-click" && (
-              <div className="mt-2 flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface-2 px-3 py-2">
-                <p className="min-w-0 flex-1 text-small text-muted">
-                  Chrome downloads each language once per computer, and only when you click.
-                </p>
-                <Button size="xs" onClick={() => onDownload(p.locale)}>
-                  Download {p.label}
-                </Button>
-              </div>
+              <Alert
+                tone="info"
+                className="mt-2"
+                action={
+                  <Button size="xs" onClick={() => onDownload(p.locale)}>
+                    Download {p.label}
+                  </Button>
+                }
+              >
+                Chrome downloads each language once per computer, and only when you click.
+              </Alert>
             )}
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+            <div className="mt-1.5 h-1.5 overflow-hidden bg-surface-2" aria-hidden="true">
               <div
-                className={`h-full rounded-full transition-[width] duration-300 ${p.phase === "failed" ? "bg-danger/60" : "bg-accent"}`}
+                className={`h-full transition-[width] duration-300 ${p.phase === "failed" ? "bg-danger/60" : "bg-accent"}`}
                 style={{ width: `${Math.round(fraction(p) * 100)}%` }}
               />
             </div>

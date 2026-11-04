@@ -1,4 +1,4 @@
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, RemoveButton, SortableList } from "./ui";
+import { Button, Card, CardHeader, SectionError, DragHandle, Input, RemoveButton, SortableList } from "./ui";
 import type { SpecRowDraft } from "./product/productEditorTypes";
 import {
   flattenSpecGroups,
@@ -33,12 +33,10 @@ import {
 export function SpecTableEditor({
   rows,
   onChange,
-  dirty,
   error,
 }: {
   rows: SpecRowDraft[];
   onChange: (next: SpecRowDraft[]) => void;
-  dirty: boolean;
   error?: string;
 }) {
   const groups = groupSpecRows(rows);
@@ -80,24 +78,21 @@ export function SpecTableEditor({
     commit([...groups, { id: rowId, label: "", heading: false, lines: [{ id: rowId, value: "" }] }]);
   };
 
-  const inputCls =
-    "w-full rounded-md border bg-surface px-3 py-2 text-xs font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent";
   const lineCount = rows.length;
 
   return (
     <Card id="section-specs">
       <CardHeader
         title="Technical Specs"
-        description="Rendered as a table on the product page. One label can carry several lines — use “+ Add line” for specs like PROTECTION that list more than one entry. Drag to reorder."
+        description="Shown as a table in the Technical Specs tab of the product page. One label can carry several lines — use “+ Add line” for specs like PROTECTION that list more than one entry. Drag to reorder."
         actions={
           <div className="flex items-center gap-2">
             {lineCount > 0 && (
-              <span className="text-xs text-subtle">
+              <span className="text-label text-muted">
                 {groups.length} spec{groups.length === 1 ? "" : "s"} · {lineCount} row
                 {lineCount === 1 ? "" : "s"}
               </span>
             )}
-            {dirty ? <Badge tone="accent">Unsaved</Badge> : null}
           </div>
         }
       />
@@ -105,7 +100,7 @@ export function SpecTableEditor({
       <SectionError message={error} />
 
       {groups.length === 0 ? (
-        <p className="text-small text-subtle">No specs. Add one below.</p>
+        <p className="text-help text-muted">No specs. Add one below.</p>
       ) : (
         <SortableList
           as="div"
@@ -114,21 +109,23 @@ export function SpecTableEditor({
           getId={(g) => g.id}
           onReorder={commit}
           renderItem={(g, handle) => (
-            <div className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2">
+            <div className="flex items-start gap-2 border border-border bg-surface-2 p-2">
               <div className="pt-2">
                 <DragHandle handle={handle} />
               </div>
 
               {/* Label — one per group, however many lines it has. */}
               <div className="w-2/5 shrink-0">
-                <input
-                  className={`${inputCls} ${g.label.trim() ? "border-border" : "border-danger"}`}
+                <Input
+                  size="sm"
+                  aria-label="Spec label"
+                  aria-invalid={!g.label.trim() || undefined}
                   value={g.label}
                   onChange={(e) => setLabel(g.id, e.target.value)}
                   placeholder="e.g. PROTECTION"
                 />
                 {g.heading && (
-                  <p className="mt-1 text-xs text-subtle">
+                  <p className="mt-1 text-label text-muted">
                     Sub-heading — no value beside it.
                   </p>
                 )}
@@ -138,8 +135,10 @@ export function SpecTableEditor({
               <div className="min-w-0 flex-1 space-y-1.5">
                 {g.lines.map((ln, i) => (
                   <div key={ln.id} className="flex items-center gap-1.5">
-                    <input
-                      className={`${inputCls} ${ln.value.trim() ? "border-border" : "border-danger"}`}
+                    <Input
+                      size="sm"
+                      aria-label={g.label.trim() ? `${g.label} — value line ${i + 1}` : `Spec value line ${i + 1}`}
+                      aria-invalid={!ln.value.trim() || undefined}
                       value={ln.value}
                       onChange={(e) => setLine(g.id, ln.id, e.target.value)}
                       placeholder={i === 0 ? "e.g. Tipping protection" : "another line…"}
@@ -156,7 +155,7 @@ export function SpecTableEditor({
                 <button
                   type="button"
                   onClick={() => addLine(g.id)}
-                  className="rounded px-1 text-body font-semibold text-muted hover:text-text"
+                  className="px-1 text-body font-semibold text-muted hover:text-text"
                 >
                   + Add line
                 </button>

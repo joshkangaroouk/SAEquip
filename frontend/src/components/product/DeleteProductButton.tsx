@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, CardHeader, Field, Input, Modal, toast } from "../ui";
+import { Trash2 } from "lucide-react";
+import { Button, Field, Input, Modal, toast } from "../ui";
 import { apiJson } from "../../lib/api";
 
 interface DeletePreview {
@@ -14,14 +15,38 @@ interface DeletePreview {
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
+ * The trigger on its own (12 §2): a danger text button, no border, an
+ * underline on hover, the global focus outline. Separate so the UI kit can
+ * show it without the dialog and its requests.
+ */
+export function DeleteProductLink({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 text-body font-semibold text-danger underline-offset-2 hover:underline"
+    >
+      <Trash2 size={16} aria-hidden="true" />
+      Delete product
+    </button>
+  );
+}
+
+/**
  * Product deletion. Irreversible on Duda's side, so it's gated behind a
  * preview of exactly what goes and what stays, plus typing the product name.
+ *
+ * WordPress-style since batch 12 (12 §2): a danger text button at the foot of
+ * the side panel's Visibility card, not a card of its own at the foot of
+ * Overview. The dialog, its typed check, the request and the navigation
+ * after it are as they were; on Cancel or Escape focus goes back to the
+ * button (Modal).
  *
  * Captured leads and quote requests are NOT destroyed — leads survive via a
  * SetNull FK plus their capture-time snapshot, and quote requests never
  * referenced the product to begin with.
  */
-export function DangerZoneSection({
+export function DeleteProductButton({
   productId,
   productName,
   onBeforeNavigate,
@@ -78,17 +103,7 @@ export function DangerZoneSection({
 
   return (
     <>
-      <Card id="section-danger" className="border-danger/40">
-        <CardHeader
-          title="Delete product"
-          description="Removes the product from Duda along with its Hub content. Captured leads and quote requests are kept."
-          actions={
-            <Button variant="danger" size="sm" onClick={() => void openDialog()}>
-              Delete…
-            </Button>
-          }
-        />
-      </Card>
+      <DeleteProductLink onClick={() => void openDialog()} />
 
       <Modal
         open={open}
@@ -103,7 +118,7 @@ export function DangerZoneSection({
               Cancel
             </Button>
             <Button
-              variant="danger"
+              variant="danger-solid"
               onClick={() => void confirmDelete()}
               disabled={typed !== productName || loading}
               loading={deleting}
@@ -113,13 +128,13 @@ export function DangerZoneSection({
           </div>
         }
       >
-        {loading && <p className="text-small text-muted">Checking what this would remove…</p>}
+        {loading && <p className="text-help text-muted">Checking what this would remove…</p>}
 
         {preview && (
           <div className="space-y-4">
             <div>
-              <p className="text-small font-semibold text-text">Will be deleted</p>
-              <ul className="mt-1 list-inside list-disc text-small text-muted">
+              <p className="text-help font-semibold text-text">Will be deleted</p>
+              <ul className="mt-1 list-inside list-disc text-help text-muted">
                 <li>The Duda product{preview.sku ? ` (SKU ${preview.sku})` : ""} and its images</li>
                 {destroyed.length > 0 ? (
                   destroyed.map((d) => <li key={String(d)}>{d}</li>)
@@ -130,8 +145,8 @@ export function DangerZoneSection({
             </div>
 
             <div>
-              <p className="text-small font-semibold text-success">Will be kept</p>
-              <ul className="mt-1 list-inside list-disc text-small text-muted">
+              <p className="text-help font-semibold text-ok">Will be kept</p>
+              <ul className="mt-1 list-inside list-disc text-help text-muted">
                 <li>
                   {preview.retains.leads > 0
                     ? `${plural(preview.retains.leads, "captured download lead")} — retained with this product's name recorded`

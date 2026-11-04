@@ -1,9 +1,9 @@
-import { Badge, Button, Card, CardHeader, SectionError, DragHandle, RemoveButton, SortableList } from "./ui";
+import { Button, Card, CardHeader, SectionError, DragHandle, Input, RemoveButton, SortableList } from "./ui";
 import type { TextItemDraft } from "./product/productEditorTypes";
 
 /**
  * Ordered text list, used for both Key Benefits and Applications. Controlled —
- * the parent owns the items and the unified save bar commits them.
+ * the parent owns the items and the editor's one Save commits them.
  */
 export function TextItemListEditor({
   id,
@@ -11,7 +11,6 @@ export function TextItemListEditor({
   description,
   items,
   onChange,
-  dirty,
   error,
   placeholder = "Enter text…",
 }: {
@@ -20,7 +19,6 @@ export function TextItemListEditor({
   description?: string;
   items: TextItemDraft[];
   onChange: (next: TextItemDraft[]) => void;
-  dirty: boolean;
   error?: string;
   placeholder?: string;
 }) {
@@ -34,13 +32,12 @@ export function TextItemListEditor({
       <CardHeader
         title={title}
         description={description}
-        actions={dirty ? <Badge tone="accent">Unsaved</Badge> : undefined}
       />
 
       <SectionError message={error} />
 
       {items.length === 0 ? (
-        <p className="text-small text-subtle">No items. Add one below.</p>
+        <p className="text-help text-muted">No items. Add one below.</p>
       ) : (
         <SortableList
           items={items}
@@ -52,13 +49,14 @@ export function TextItemListEditor({
             // edge against its own row and was hard to pick out; the contrast
             // between the two is what makes the field visible, so they must
             // not be set to the same token. Matches SpecTableEditor's rows.
-            <div className="flex items-center gap-3 rounded-md border border-border bg-surface-2 p-3">
+            <div className="flex items-center gap-3 border border-border bg-surface-2 p-3">
               <DragHandle handle={handle} />
-              <span className="w-6 text-right text-xs text-subtle">{index + 1}.</span>
-              <input
-                className={`flex-1 rounded-md border bg-surface px-3 py-2 text-xs font-medium text-text placeholder:text-subtle focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent ${
-                  it.text.trim() ? "border-border" : "border-danger"
-                }`}
+              <span className="w-6 text-right text-label text-muted">{index + 1}.</span>
+              <Input
+                size="sm"
+                className="flex-1"
+                aria-label={`Item ${index + 1}`}
+                aria-invalid={!it.text.trim() || undefined}
                 value={it.text}
                 onChange={(e) => update(it.id, e.target.value)}
                 placeholder={placeholder}
