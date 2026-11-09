@@ -2212,6 +2212,14 @@ page's Hire/Purchase choice; the plan and the scrape are in
   Purchase.
 - It replaced the same morning's `catalogue:hire-purchase` rule ("every non-accessory").
 - The Filtration Unit (SAFU) is a main product, not an accessory (Josh).
+- **Every product offering Hire AND Purchase also offers "Both", last** (Josh, 2026-10-28):
+  48 products, the 45 above plus the three left as they were. Hire stays first, so it is still
+  the choice Duda pre-selects. Applied by `npm run catalogue:hire-purchase-both` (dry run by
+  default; works from Duda's current state, hidden products included, and re-running is a
+  no-op), which also stores "Both" as an English option label so the basket and the quotes read
+  it by id. `catalogue:old-site-options` adds "Both" to any Hire and Purchase it sets, so a
+  re-run of the plan keeps it. Live on the product pages at once (no publish); Add to Quote
+  records "Hire/Purchase: Both" with its choice id.
 
 **"What do you need?" was added and removed on 2026-10-15** (Josh). It put the unit or a
 replacement filter (from the old site's lists) first on SAECFU and the Filtration Unit. It was
@@ -2697,6 +2705,8 @@ Also before launch (each detailed elsewhere in this file):
 - ⚠️ **Pre-launch translation pass** (Josh, 2026-10-13). The six non-English languages are to
   be paused until the English site is finished, then translated in ONE pass before launch. That
   replaces the post-publish translation check that was planned. The pass must cover:
+  - **The "Both" Hire/Purchase choice** (added 2026-10-28, English only). Check Duda translates
+    it with the other option choices, then copy it with "Refresh all languages from Duda".
   - **The 10 new Site Challenges** (created 2026-10-13). Duda translates store category names
     by itself, without a publish: a French dry run on 2026-10-13 already read 33/33 category
     titles translated. Copy them with "Refresh all languages from Duda" once the languages are

@@ -7,7 +7,8 @@
  * pages' Hire/Purchase choice) says per product: hp ["Hire","Purchase"],
  * ["Purchase"], ["Hire"], [] (no choice at all) or null (leave as it is).
  *   - The store's "Hire/Purchase" option carries exactly those choices, Hire
- *     first; [] removes it.
+ *     first; [] removes it. Hire AND Purchase also get "Both", last (Josh,
+ *     28 Oct 2026; added by catalogue:hire-purchase-both).
  *   - The SA Rental logo is ON exactly when Hire is offered (null: untouched).
  *   - The Filtration Unit (SAFU) is not an accessory (its main-product flag).
  *   - RETIRED options are taken off every product and deleted from the store.
@@ -36,6 +37,9 @@ const HP_NAME = "Hire/Purchase";
 /** Taken off every product and deleted from the store (Josh, 2026-10-15). */
 const RETIRED = ["What do you need?"];
 const UNFLAG_ACCESSORY = { sku: "SAFU", name: "Filtration Unit" };
+
+/** Hire and Purchase together also offer "Both", after them (Josh, 2026-10-28). */
+const withBoth = (hp: string[]) => (hp.includes("Hire") && hp.includes("Purchase") ? [...hp, "Both"] : hp);
 
 type PlanItem = { dudaId: string; name: string; hp: ("Hire" | "Purchase")[] | null; source: string };
 
@@ -83,7 +87,7 @@ async function main() {
     const refs: Change["refs"] = [];
     for (const o of cur) if (o.id !== hp.id && !retiredIds.has(o.id)) refs.push(o);
     const curHp = cur.find((o) => o.id === hp.id);
-    const hpWant = item.hp === null ? (curHp ? curHp.values : []) : item.hp;
+    const hpWant = item.hp === null ? (curHp ? curHp.values : []) : withBoth(item.hp);
     if (hpWant.length) refs.push({ id: hp.id, name: HP_NAME, choiceIds: hpWant.map(hpChoice), values: hpWant });
     const key = (rs: { id: string; values: string[] }[]) => rs.map((r) => `${r.id}:${r.values.join("|")}`).join(" + ");
     if (key(refs) !== key(cur)) {
