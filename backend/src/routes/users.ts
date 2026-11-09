@@ -6,7 +6,7 @@ import { prisma } from "../prisma.js";
 import { supabase } from "../supabase.js";
 import { hasVerifiedFactor, listUsersWithFactors } from "../services/supabaseUsers.js";
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
-import { requireSuperAdmin } from "../middleware/requireAuth.js";
+import { isSuperAdminSession, requireSuperAdmin } from "../middleware/requireAuth.js";
 import { grantEditorAccess, revokeEditorAccess } from "../services/dudaEditorAccess.js";
 import {
   disableUserRoute,
@@ -19,8 +19,9 @@ import {
 export const usersRouter = Router();
 
 /**
- * Staff accounts: the list (everyone signed in), a password-reset trigger,
- * and, since 2026-11, the SUPER ADMIN's actions: disable / enable an account
+ * Staff accounts: the list (everyone signed in), a password-reset trigger
+ * (your own address; anyone's for the super admin), and, since 2026-11, the
+ * SUPER ADMIN's actions: disable / enable an account
  * and give / remove its Website Editor access. New accounts come from invites
  * (routes/invites.ts).
  *
@@ -180,6 +181,11 @@ export function resetRedirectFor(
  * The target must be an existing allowed-domain user: this is a staff admin
  * action, not a public endpoint, and it should not double as a way to probe
  * which addresses exist elsewhere.
+ *
+ * ⚠️ Only YOUR OWN address, unless you are the super admin (the role and a
+ * 2FA session, as requireSuperAdmin). Anyone else gets 403
+ * `super_admin_required` (Josh, 2026-11-09). The Users page shows the button
+ * only where it will work.
  */
 usersRouter.post("/users/password-reset", resetLimiter, async (req, res, next) => {
   const parsed = resetBody.safeParse(req.body);
@@ -188,6 +194,14 @@ usersRouter.post("/users/password-reset", resetLimiter, async (req, res, next) =
     return;
   }
   const email = parsed.data.email.trim().toLowerCase();
+  const own = email === (req.user?.email ?? "").trim().toLowerCase();
+  if (!own && !isSuperAdminSession(req.user)) {
+    res.status(403).json({
+      error: "super_admin_required",
+      detail: "You can only send a reset email to yourself. Ask the super admin to reset someone else's password.",
+    });
+    return;
+  }
   const domain = email.split("@")[1] ?? "";
   if (!env.allowedEmailDomains.includes(domain)) {
     res.status(403).json({ error: "forbidden_domain" });

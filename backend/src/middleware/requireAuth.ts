@@ -115,6 +115,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
  * Website Editor access all hand out or take away access, so a stolen
  * password alone must not be enough.
  */
+/**
+ * The same rule as requireSuperAdmin, as a test, for a route that everyone can
+ * use but only the super admin can point at SOMEONE ELSE (the password reset).
+ */
+export function isSuperAdminSession(user: Request["user"]): boolean {
+  return user?.role === "super_admin" && user.aal === "aal2";
+}
+
 export function requireSuperAdmin(req: Request, res: Response, next: NextFunction): void {
   if (req.user?.role !== "super_admin") {
     res.status(403).json({ error: "super_admin_required", detail: "Only the super admin can do this." });

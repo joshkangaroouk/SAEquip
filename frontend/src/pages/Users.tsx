@@ -69,9 +69,10 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.mess
 /**
  * Staff accounts.
  *
- * Everyone signed in sees the list and can send a password reset. The SUPER
- * ADMIN (2026-11; set with the `users:admin` CLI, and only from a 2FA
- * session) also gets:
+ * Everyone signed in sees the list and can send a password reset to
+ * THEMSELVES. The SUPER ADMIN (2026-11; set with the `users:admin` CLI, and
+ * only from a 2FA session) also gets:
+ * - a password reset for anyone;
  * - Invite user: an email in, a link out (5 hours, once), sent by hand;
  * - the invites list, with Revoke and New link;
  * - per person: give or remove Website Editor access, disable or enable.
@@ -518,17 +519,23 @@ export default function Users() {
 
   const rowActions = (u: StaffUser, wide = false) => {
     const actions = superAdmin ? adminActions(u) : [];
+    // A reset goes to your own address only, unless you are the super admin:
+    // the server refuses the rest, so the button is not offered.
+    const canReset = superAdmin || u.id === me?.id;
+    if (!canReset && actions.length === 0) return null;
     return (
       <div className={wide ? "mt-4 flex gap-2" : "flex items-center justify-end gap-2"}>
-        <Button
-          variant="secondary"
-          size="sm"
-          className={wide ? "flex-1" : undefined}
-          disabled={sending === u.email || u.disabled}
-          onClick={() => sendReset(u.email)}
-        >
-          {sending === u.email ? "Sending…" : "Send reset email"}
-        </Button>
+        {canReset && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className={wide ? "flex-1" : undefined}
+            disabled={sending === u.email || u.disabled}
+            onClick={() => sendReset(u.email)}
+          >
+            {sending === u.email ? "Sending…" : "Send reset email"}
+          </Button>
+        )}
         {actions.length > 0 && (
           <DropdownMenu label={`More actions for ${who(u)}${busyUser === u.id ? " (working…)" : ""}`} actions={actions} />
         )}
