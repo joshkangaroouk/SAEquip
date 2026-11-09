@@ -270,7 +270,7 @@ export interface QuoteRequestItem {
   imageUrl: string | null;
 }
 
-export interface QuoteRequest {
+export interface QuoteRequest extends EnquiryState {
   id: string;
   name: string;
   email: string;
@@ -288,9 +288,6 @@ export interface QuoteRequest {
   locale: string | null;
   createdAt: string;
   emailSent: boolean;
-  /** When staff marked it handled, and who (their email). Both null = new. */
-  handledAt: string | null;
-  handledBy: string | null;
   items: QuoteRequestItem[];
 }
 
@@ -300,7 +297,7 @@ export interface QuotesResponse {
 }
 
 /** One resource request — the "File Requests" form on a gated download. */
-export interface ResourceRequest {
+export interface ResourceRequest extends EnquiryState {
   id: string;
   name: string;
   /** Null only on rows from before the current form, which have none. */
@@ -319,9 +316,6 @@ export interface ResourceRequest {
   /** The language the form was shown in ("en", "ar", …); null before languages. */
   locale: string | null;
   createdAt: string;
-  /** When staff marked it handled, and who (their email). Both null = new. */
-  handledAt: string | null;
-  handledBy: string | null;
   file: {
     title: string | null;
     fileName: string | null;
@@ -338,9 +332,21 @@ export interface ResourceRequestsResponse {
   requests: ResourceRequest[];
 }
 
-/** PATCH /api/quotes/:id/handled and /api/resource-requests/:id/handled. */
-export interface HandledResponse {
+/**
+ * Read state, star and notes on a quote request or a resource request, shared
+ * by the team. What PATCH /api/quotes/:id and /api/resource-requests/:id
+ * answer with (plus `id`), and part of every row in their lists.
+ */
+export interface EnquiryState {
   id: string;
-  handledAt: string | null;
-  handledBy: string | null;
+  /** When someone first opened it, and who (their email). Both null = unread. */
+  readAt: string | null;
+  readBy: string | null;
+  /** When it was starred, and by whom. Both null = not starred. */
+  starredAt: string | null;
+  starredBy: string | null;
+  /** Staff-only notes, and who last changed them. */
+  notes: string | null;
+  notesUpdatedAt: string | null;
+  notesUpdatedBy: string | null;
 }

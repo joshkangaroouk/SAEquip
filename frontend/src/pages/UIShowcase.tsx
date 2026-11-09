@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink, Image, Moon, Plus, Sun, Trash2 } from "lucide-react";
 import {
   Alert,
@@ -62,16 +62,20 @@ import { VisibilitySection } from "../components/product/VisibilitySection";
 import { DeleteProductLink } from "../components/product/DeleteProductButton";
 import { ProductEditorSkeleton } from "../components/product/EditorSkeleton";
 import type { ImageDraft } from "../components/product/productEditorTypes";
+import type { EnquiryState } from "../lib/types";
 import { ProductSaveArea } from "../components/product/ProductSaveArea";
 import { CategoriesSection, type CategoryNode } from "../components/product/CategoriesSection";
 import { EDITOR_TABS, type EditorTab } from "../components/product/editorTabs";
 import logo from "../assets/saequip-logo-unframed.svg";
 import {
   EnquiryActions,
+  EnquiryNotes,
   EnquiryToolbar,
-  HandledStatus,
+  ReadStatus,
+  StarButton,
   filterEnquiries,
-  isNew,
+  isStarred,
+  isUnread,
   type EnquiryFilter,
 } from "../components/enquiries";
 
@@ -944,50 +948,51 @@ function Overlays() {
   );
 }
 
-const handled = { handledAt: "2026-10-30T10:00:00Z", handledBy: "kit@saequip.com" };
-const fresh = { handledAt: null, handledBy: null };
-const KIT_REQUESTS: {
-  id: string;
-  name: string;
-  company: string | null;
-  email: string;
-  date: string;
-  handledAt: string | null;
-  handledBy: string | null;
-}[] = [
-  { id: "q1", name: "Alex Example", company: "Example Refining Ltd", email: "alex@example.com", date: "29 Oct", ...fresh },
-  { id: "q2", name: "Sam Sample", company: "Sample Shipyards", email: "sam@example.org", date: "27 Oct", ...fresh },
-  { id: "q3", name: "Jo Tester", company: "Tester Rail", email: "jo@example.com", date: "21 Oct", ...handled },
+const blank = { starredAt: null, starredBy: null, notes: null, notesUpdatedAt: null, notesUpdatedBy: null };
+const read = { ...blank, readAt: "2026-10-30T10:00:00Z", readBy: "kit@saequip.com" };
+const unread = { ...blank, readAt: null, readBy: null };
+const starred = { starredAt: "2026-10-31T09:00:00Z", starredBy: "kit@saequip.com" };
+type KitRequest = EnquiryState & { name: string; company: string | null; email: string; date: string };
+const KIT_REQUESTS: KitRequest[] = [
+  { id: "q1", name: "Alex Example", company: "Example Refining Ltd", email: "alex@example.com", date: "29 Oct", ...unread },
+  { id: "q2", name: "Sam Sample", company: "Sample Shipyards", email: "sam@example.org", date: "27 Oct", ...unread, ...starred },
+  { id: "q3", name: "Jo Tester", company: "Tester Rail", email: "jo@example.com", date: "21 Oct", ...read, ...starred },
   // No company: the list shows the email instead, as Quotes does.
-  { id: "q4", name: "Pat Placeholder", company: null, email: "pat@example.net", date: "18 Oct", ...handled },
-  { id: "q5", name: "Lee Longname-Hyphenated", company: "A company with a long enough name to truncate", email: "lee@example.org", date: "2 Oct", ...handled },
+  { id: "q4", name: "Pat Placeholder", company: null, email: "pat@example.net", date: "18 Oct", ...read },
+  { id: "q5", name: "Lee Longname-Hyphenated", company: "A company with a long enough name to truncate", email: "lee@example.org", date: "2 Oct", ...read },
 ];
 
 function Split({ theme }: { theme: string }) {
   // One URL param per panel, so the two demos don't select each other's rows.
   const { selectedId, select, hrefFor } = useSelection(`${theme}-id`);
-  // Handled state is local: "Mark as handled" here changes nothing anywhere else.
+  // State is local: opening, starring and notes here change nothing anywhere else.
   const [requests, setRequests] = useState(KIT_REQUESTS);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<EnquiryFilter>("all");
   const shown = filterEnquiries(requests, filter, query, (r) => [r.name, r.company, r.email]);
   const item = requests.find((r) => r.id === selectedId);
-  const setHandled = (id: string, handled: boolean) =>
-    setRequests((rs) =>
-      rs.map((r) => (r.id === id ? { ...r, handledAt: handled ? "2026-11-03T10:00:00Z" : null, handledBy: handled ? "kit@saequip.com" : null } : r)),
-    );
+  const patch = (id: string, values: Partial<EnquiryState>) =>
+    setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, ...values } : r)));
+  const toggleStar = (r: KitRequest) =>
+    patch(r.id, isStarred(r) ? { starredAt: null, starredBy: null } : { starredAt: "2026-11-09T10:00:00Z", starredBy: "kit@saequip.com" });
+  // Opening marks read, as the pages do (useAutoRead), without the network.
+  useEffect(() => {
+    if (item && isUnread(item)) patch(item.id, { readAt: "2026-11-09T10:00:00Z", readBy: "kit@saequip.com" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
   return (
     <Section title="Split view">
       <p className="t-help">
         Selection is in the URL (<span className="t-code-sm">?{theme}-id=</span>); focus moves to the heading. Below lg:
-        list only, then the detail with "Back to list".{" "}
+        list only, then the detail with "Back to list". Unread rows are bold with a yellow square; opening one marks it
+        read. The star shows on hover (always when starred, and on touch).{" "}
         <a href={hrefFor("missing")} className="underline underline-offset-2">
           Open an id that isn't in the list
         </a>
       </p>
       <div data-kit="split">
         <SplitView
-          className="h-[420px]"
+          className="h-[520px]"
           listLabel="Quote requests (kit)"
           selectedId={selectedId}
           onBack={() => select(null)}
@@ -1010,10 +1015,11 @@ function Split({ theme }: { theme: string }) {
                       <SplitListItem
                         to={hrefFor(r.id)}
                         selected={r.id === selectedId}
+                        unread={isUnread(r)}
                         title={r.name}
                         subtitle={r.company ?? r.email}
                         meta={r.date}
-                        badge={isNew(r) ? <Badge tone="new">New</Badge> : undefined}
+                        aside={<StarButton inList enquiry={r} name={r.name} onToggle={() => toggleStar(r)} />}
                       />
                     </li>
                   ))}
@@ -1026,32 +1032,43 @@ function Split({ theme }: { theme: string }) {
               <>
                 <SplitDetailHeader
                   title={item.name}
+                  titleAside={<StarButton enquiry={item} name={item.name} onToggle={() => toggleStar(item)} />}
                   subtitle={item.company ?? undefined}
                   actions={
                     <EnquiryActions
                       kind="quote"
                       enquiry={item}
-                      busy={false}
-                      onHandled={(handled) => setHandled(item.id, handled)}
+                      onMarkUnread={() => patch(item.id, { readAt: null, readBy: null })}
+                      onDelete={() => toast.success("Kit only — nothing deleted")}
                       onExport={() => toast.success("Kit only — nothing exported")}
                     />
                   }
                 />
-                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-5">
-                  {(
-                    [
-                      ["Status", <HandledStatus key="s" enquiry={item} />],
-                      ["Email", item.email],
-                      ["When needed", "Within the next month"],
-                      ["Submitted", `${item.date} 2026, 10:00`],
-                    ] as const
-                  ).map(([k, v]) => (
-                    <div key={k}>
-                      <dt className="t-label">{k}</dt>
-                      <dd className="mt-0.5 text-body text-text">{v}</dd>
-                    </div>
-                  ))}
-                </dl>
+                <div className="space-y-6 px-6 py-5">
+                  <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
+                    {(
+                      [
+                        ["Opened", <ReadStatus key="s" enquiry={item} />],
+                        ["Email", item.email],
+                        ["When needed", "Within the next month"],
+                        ["Submitted", `${item.date} 2026, 10:00`],
+                      ] as const
+                    ).map(([k, v]) => (
+                      <div key={k}>
+                        <dt className="t-label">{k}</dt>
+                        <dd className="mt-0.5 text-body text-text">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <EnquiryNotes
+                    key={item.id}
+                    enquiry={item}
+                    onSave={async (notes) => {
+                      patch(item.id, { notes, notesUpdatedAt: "2026-11-09T10:00:00Z", notesUpdatedBy: "kit@saequip.com" });
+                      return true;
+                    }}
+                  />
+                </div>
               </>
             ) : (
               <>

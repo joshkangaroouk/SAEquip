@@ -3,14 +3,16 @@ import { apiFetch } from "./api";
 
 /**
  * The sidebar's enquiry badges (02a "After 4b"): how many quote requests and
- * resource requests are not yet handled, from GET /api/enquiries/counts, held
- * for the session like the product index.
+ * resource requests are unread (nobody on the team has opened them), from
+ * GET /api/enquiries/counts, held for the session like the product index.
  *
- * Refreshed after Mark as handled / Mark as new and whenever an enquiry list
- * loads, so the badge agrees with the list on screen without a reload.
+ * Refreshed after anything changes read state (opening one, Mark as unread,
+ * Mark all as read, a delete) and whenever an enquiry list loads, so the badge
+ * agrees with the list on screen without a reload.
  *
- * ⚠️ Fails silently: a badge is a convenience, and until the batch 6 migration
- * is applied the route errors. No copy means no badge, never a wrong one.
+ * ⚠️ Fails silently: a badge is a convenience, and a route error (say, the
+ * read-state migration not yet applied) must not break the sidebar. No copy
+ * means no badge, never a wrong one.
  */
 export interface EnquiryCounts {
   quotes: number;
@@ -20,7 +22,7 @@ export interface EnquiryCounts {
 let cache: EnquiryCounts | null = null;
 let requested = false;
 // Only the latest request may publish, so a slow reply that left before a
-// Mark as handled cannot overwrite the count that followed it.
+// request was opened cannot overwrite the count that followed it.
 let seq = 0;
 const listeners = new Set<() => void>();
 

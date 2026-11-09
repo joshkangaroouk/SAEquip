@@ -171,10 +171,19 @@ export function SplitView({
 }
 
 /**
- * A row in the list: the title (600 while selected), a muted subtitle, a
- * mono meta line on the right (a date) and an optional chip. A link, so it
- * opens in a new tab like any other; the selected one carries
- * aria-current="true" and the selected state (02a "After 4a").
+ * A row in the list: the title, a muted subtitle, a meta line on the right (a
+ * date) and an optional chip. A link, so it opens in a new tab like any other;
+ * the selected one carries aria-current="true" and the selected state (02a
+ * "After 4a").
+ *
+ * `unread` (the enquiry lists, email-style): the title and date in 600, an 8px
+ * yellow square in the left gutter, and "Unread:" for screen readers. A list
+ * that passes it is bold by read state alone; one that doesn't is bold while
+ * selected.
+ *
+ * `aside` sits to the right of the link, OUTSIDE it (a button cannot nest in a
+ * link), on the row's own background, so the row reads and hovers as one: the
+ * enquiry lists' star.
  */
 export function SplitListItem({
   to,
@@ -183,6 +192,8 @@ export function SplitListItem({
   subtitle,
   meta,
   badge,
+  unread,
+  aside,
 }: {
   /** `hrefFor(id)` from `useSelection`. */
   to: string;
@@ -191,29 +202,52 @@ export function SplitListItem({
   subtitle?: ReactNode;
   meta?: ReactNode;
   badge?: ReactNode;
+  unread?: boolean;
+  aside?: ReactNode;
 }) {
+  const bold = unread ?? selected;
   return (
-    <Link
-      to={to}
-      replace
-      data-split-item
-      aria-current={selected ? "true" : undefined}
+    <div
       className={cn(
-        "block border-b border-border px-5 py-3 transition-colors duration-[120ms] focus-visible:outline-offset-[-2px]",
+        "group/row flex border-b border-border transition-colors duration-[120ms]",
         selected ? "bg-selected shadow-[inset_3px_0_0_0_rgb(var(--selected-bar))]" : "hover:bg-surface-2",
       )}
     >
-      <span className="flex items-baseline justify-between gap-3">
-        <span className={cn("min-w-0 truncate text-body text-text", selected && "font-semibold")}>{title}</span>
-        {meta && <span className="t-code-sm shrink-0 text-muted tabular-nums">{meta}</span>}
-      </span>
-      {(subtitle || badge) && (
-        <span className="mt-0.5 flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate text-help text-muted">{subtitle}</span>
-          {badge && <span className="shrink-0">{badge}</span>}
+      <Link
+        to={to}
+        replace
+        data-split-item
+        aria-current={selected ? "true" : undefined}
+        className={cn("block min-w-0 flex-1 py-3 pl-5 focus-visible:outline-offset-[-2px]", aside ? "pr-1" : "pr-5")}
+      >
+        <span className="relative flex items-baseline justify-between gap-3">
+          {unread && (
+            // In the 20px gutter, centred on the title's line; a dark edge so
+            // the yellow still shows on white.
+            <span
+              aria-hidden="true"
+              className="absolute -left-3 top-1/2 h-2 w-2 -translate-y-1/2 border border-black/30 bg-accent"
+            />
+          )}
+          <span className={cn("min-w-0 truncate text-body text-text", bold && "font-semibold")}>
+            {unread && <span className="sr-only">Unread: </span>}
+            {title}
+          </span>
+          {meta && (
+            <span className={cn("t-code-sm shrink-0 tabular-nums", unread ? "font-semibold text-text" : "text-muted")}>
+              {meta}
+            </span>
+          )}
         </span>
-      )}
-    </Link>
+        {(subtitle || badge) && (
+          <span className="mt-0.5 flex items-center justify-between gap-3">
+            <span className="min-w-0 truncate text-help text-muted">{subtitle}</span>
+            {badge && <span className="shrink-0">{badge}</span>}
+          </span>
+        )}
+      </Link>
+      {aside && <div className="flex shrink-0 items-center pr-2">{aside}</div>}
+    </div>
   );
 }
 
@@ -223,10 +257,13 @@ export function SplitListItem({
  */
 export function SplitDetailHeader({
   title,
+  titleAside,
   subtitle,
   actions,
 }: {
   title: ReactNode;
+  /** Beside the heading, outside it so it is not part of its name: the enquiry star. */
+  titleAside?: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
 }) {
@@ -234,15 +271,18 @@ export function SplitDetailHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-5">
       <div className="min-w-0">
-        {/* Focused by script on select; not a control, so no outline. */}
-        <h2
-          ref={ctx?.headingRef}
-          id={ctx?.headingId}
-          tabIndex={-1}
-          className="t-detail-title text-text focus-visible:outline-none"
-        >
-          {title}
-        </h2>
+        <div className="flex items-center gap-1.5">
+          {/* Focused by script on select; not a control, so no outline. */}
+          <h2
+            ref={ctx?.headingRef}
+            id={ctx?.headingId}
+            tabIndex={-1}
+            className="t-detail-title min-w-0 text-text focus-visible:outline-none"
+          >
+            {title}
+          </h2>
+          {titleAside}
+        </div>
         {subtitle && <p className="mt-1 text-body text-muted">{subtitle}</p>}
       </div>
       {/* Not shrink-0: in a narrow pane (lg, 1024) the group must be able to

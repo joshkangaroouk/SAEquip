@@ -274,11 +274,23 @@ model Lead {
   /// The language the form was shown in ("en", "ar", …); null on requests from
   /// before languages existed.
   locale        String?
-  /// When staff marked the request handled on the Resource requests page, and
-  /// who (their sign-in email). Both null = new. Additive and nullable, with no
-  /// default (migration 20261030120000_enquiry_handled).
+  /// SUPERSEDED by readAt/readBy (migration 20261109120000_enquiry_read_star_notes,
+  /// which copied them across). Nothing reads or writes these any more; they stay
+  /// only until a later migration drops them, so the deploy order stays additive.
   handledAt     DateTime?
   handledBy     String?
+  /// Read state, shared by the team (2026-11): when someone first opened the
+  /// request on the Resource Requests page, and who (their sign-in email).
+  /// Both null = unread. Opening it sets them; "Mark as unread" clears them.
+  readAt        DateTime?
+  readBy        String?
+  /// Starred, shared by the team: when and by whom. Both null = not starred.
+  starredAt     DateTime?
+  starredBy     String?
+  /// Staff-only notes, and who last changed them. Never shown to the visitor.
+  notes          String?
+  notesUpdatedAt DateTime?
+  notesUpdatedBy String?
   download      Download? @relation(fields: [downloadId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
@@ -402,11 +414,23 @@ model QuoteRequest {
   locale     String?
   createdAt DateTime           @default(now())
   emailSent Boolean            @default(false)
-  /// When staff marked the quote handled on the Quote requests page, and who
-  /// (their sign-in email). Both null = new. Additive and nullable, with no
-  /// default (migration 20261030120000_enquiry_handled).
+  /// SUPERSEDED by readAt/readBy (migration 20261109120000_enquiry_read_star_notes,
+  /// which copied them across). Nothing reads or writes these any more; they stay
+  /// only until a later migration drops them, so the deploy order stays additive.
   handledAt DateTime?
   handledBy String?
+  /// Read state, shared by the team (2026-11): when someone first opened the
+  /// quote on the Quote Requests page, and who (their sign-in email). Both
+  /// null = unread. Opening it sets them; "Mark as unread" clears them.
+  readAt    DateTime?
+  readBy    String?
+  /// Starred, shared by the team: when and by whom. Both null = not starred.
+  starredAt DateTime?
+  starredBy String?
+  /// Staff-only notes, and who last changed them. Never shown to the customer.
+  notes          String?
+  notesUpdatedAt DateTime?
+  notesUpdatedBy String?
   items     QuoteRequestItem[]
 
   /// /api/quotes lists newest first.

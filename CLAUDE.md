@@ -640,7 +640,7 @@ marketing checkbox, and "Submit & Download".
   deploy landed — the same lesson as "deploy the guard BEFORE running the import".
 - No email goes anywhere (Resend is not set up; these feed the CRM later, like quotes), and
   there is no role model: any signed-in user can read every request. Requests are personal
-  data — deletion on request is a database job until a delete button is built.
+  data: "Delete request…" removes one permanently (see "Read state, stars and notes").
 
 ## Languages — multi-language Duda sites (phases 1–4 built 2026-10-06)
 
@@ -1018,13 +1018,35 @@ SAEquip has **no native pricing/checkout** for these products — instead there'
 
 ⚠️ **A dashboard tab left open across a deploy keeps running the OLD code** until it is refreshed — the new quote fields "not showing" on 2026-10-02 was exactly that (they were stored correctly).
 
-### Handled state (batch 6, 2026-10-30)
+### Read state, stars and notes (2026-11, replacing batch 6's "Mark as handled")
 
-`QuoteRequest` and `Lead` have nullable `handledAt` / `handledBy` (null = new), from migration `20261030120000_enquiry_handled`.
-- ⚠️ **Written, not applied.** Josh applies it to production with `docs/redesign/06b-migration-runbook.md` (back up, check `_prisma_migrations`, `migrate deploy`, verify). Until then the enquiry pages and the sidebar's enquiry badges error against production. **Don't merge `redesign/ui` before it is applied.**
-- **Mark handled / new:** `PATCH /api/quotes/:id/handled` and `PATCH /api/resource-requests/:id/handled`, body `{ handled: boolean }` (`.strict()`, else 400). `true` stamps now and the signed-in user's email; `false` clears both. Unknown id → 404 (P2025).
-- **Sidebar badges:** `GET /api/enquiries/counts` → `{ quotes, resourceRequests }`, the not-handled counts. It's its own endpoint because the sidebar loads neither list.
-- **The list endpoints** return `handledAt` and `handledBy` on each row.
+Quote Requests and Resource Requests work like a **shared mailbox** (Josh's choice: shared by the team, not per person).
+- **Opening a request marks it read for everyone.** Unread rows are bold, with an 8px yellow square in the gutter and "Unread:" for screen readers. "Mark as unread" (the ⋯ menu) puts one back, and it stays unread until it is opened again (`useAutoRead()`).
+- **Who opened it first is kept**: a second opening writes nothing. The detail's "Opened" row shows when, and by whom.
+- **A star** shows in the list and beside the detail's heading.
+  - In the list, an unstarred star shows on hover or focus, and always on a touch screen.
+  - Clicking a list star toggles it without opening the row.
+- **Staff notes** save a second after typing stops, and when the box loses focus or another request is opened. They show who last edited them. The CSVs gain Starred and Notes columns.
+- **"Mark all as read"** (page header, with a confirm) sends only the ids the page shows as unread, so a request that arrived after the page loaded is not marked read unseen.
+- **The list filter** is All / Unread / Starred. A row opened or unstarred under a filter stays visible until the filter changes (`touched` in `useEnquiryActions()`).
+- **The email and phone numbers are links**: a reply with the usual subject, and `tel:` with digits only.
+- **Delete request…** (⋯ menu) is for a GDPR removal request. The confirmation asks for "delete" to be typed, and the route refuses without `?confirm=true`. ⚠️ It is permanent, and there are no backups. The log records the row id and who deleted it, never the person's details.
+
+**Columns:** `readAt`/`readBy`, `starredAt`/`starredBy`, `notes`/`notesUpdatedAt`/`notesUpdatedBy` on both `QuoteRequest` and `Lead`, all nullable. They come from migration `20261109120000_enquiry_read_star_notes`, which also copied `handledAt`/`handledBy` into `readAt`/`readBy`.
+- ⚠️ **Apply it with `docs/redesign/13-enquiry-read-star-runbook.md` BEFORE merging the code.** The new code reads the columns, so code first breaks both pages and the badges.
+- `handledAt`/`handledBy` (migration `20261030120000_enquiry_handled`) are superseded and unused. They stay until a later migration drops them, so the deploy order stays additive.
+
+**Routes** (behind `requireAuth`; the rules are in `services/enquiryState.ts`, shared so the two cannot drift):
+- **`PATCH /api/quotes/:id` and `PATCH /api/resource-requests/:id`** take `{ read?, starred?, notes? }` (`.strict()`, at least one; notes ≤ 5000 characters). They answer with the row's state (`stateRoute()`, `stateChanges()`).
+  - `read: true` on a read row and `starred: true` on a starred row keep the first stamp.
+  - Unchanged notes are not re-stamped, and all-whitespace notes are stored as null.
+  - The old `/handled` routes are gone, so a tab still open from before the deploy gets a 404 until it is reloaded.
+- **`POST /api/…/mark-read`** takes `{ ids }` (1–1000) and answers `{ requests }` with their state (`markReadRoute()`).
+- **`DELETE /api/…/:id?confirm=true`** (`deleteRoute()`). A quote's lines go with it (cascade); nothing references a `Lead`.
+- **Sidebar badges:** `GET /api/enquiries/counts` → `{ quotes, resourceRequests }`, the UNREAD counts. It's its own endpoint because the sidebar loads neither list.
+- **The list endpoints** return the seven state fields on each row.
+
+On the dashboard, changes show at once and are put back if the server refuses (`useEnquiryActions()`). Only the latest change of each kind to a row may land, so two quick clicks on a star cannot finish in the wrong order.
 
 ### The quote widgets in every language (2026-10-07)
 
@@ -2671,7 +2693,7 @@ Also before launch (each detailed elsewhere in this file):
 
 ## Known gaps / backlog (reviewed 2026-10-02)
 
-- Resource Requests has **no delete** — a visitor asking for their data to be removed is a database job for now.
+- **Deleting an enquiry is permanent and there are no backups** — "Delete request…" on Quote Requests and Resource Requests (2026-11) is for someone who asks for their data to be removed, and any signed-in user can do it (there is no role model).
 - ⚠️ **Pre-launch translation pass** (Josh, 2026-10-13). The six non-English languages are to
   be paused until the English site is finished, then translated in ONE pass before launch. That
   replaces the post-publish translation check that was planned. The pass must cover:

@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { isEmailConfigured } from "../services/email.js";
 import { quoteProductMatcher, type MatchedProduct } from "../services/quoteProducts.js";
-import { handledBody, handledData, handledSelect } from "../services/enquiryHandled.js";
+import { deleteRoute, markReadRoute, stateRoute, stateSelect } from "../services/enquiryState.js";
 
 export const quotesRouter = Router();
 
@@ -40,9 +40,14 @@ function shapeQuote(q: QuoteWithItems, match: Matcher) {
     locale: q.locale,
     createdAt: q.createdAt,
     emailSent: q.emailSent,
-    /** Null = new. Set by PATCH /quotes/:id/handled. */
-    handledAt: q.handledAt,
-    handledBy: q.handledBy,
+    // Read state, star and notes, shared by the team (PATCH /quotes/:id).
+    readAt: q.readAt,
+    readBy: q.readBy,
+    starredAt: q.starredAt,
+    starredBy: q.starredBy,
+    notes: q.notes,
+    notesUpdatedAt: q.notesUpdatedAt,
+    notesUpdatedBy: q.notesUpdatedBy,
     items: q.items.map((item) => ({
       id: item.id,
       name: item.name,
@@ -87,25 +92,29 @@ quotesRouter.get("/quotes/:id", async (req, res, next) => {
 });
 
 /**
- * PATCH /api/quotes/:id/handled  { handled: boolean }
- * Marks the quote handled (now, by the signed-in user) or new again. Behind
- * requireAuth like every /api route. An unknown id is a 404 (Prisma P2025,
- * through the shared error handler).
+ * PATCH /api/quotes/:id  { read?, starred?, notes? }
+ * Opening a quote on the dashboard sends `read: true`; "Mark as unread",
+ * the star and the notes box send the rest. Rules in services/enquiryState.ts.
  */
-quotesRouter.patch("/quotes/:id/handled", async (req, res, next) => {
-  const parsed = handledBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
-    return;
-  }
-  try {
-    const quote = await prisma.quoteRequest.update({
-      where: { id: req.params.id },
-      data: handledData(parsed.data.handled, req.user?.email),
-      select: handledSelect,
-    });
-    res.json(quote);
-  } catch (err) {
-    next(err);
-  }
-});
+quotesRouter.patch(
+  "/quotes/:id",
+  stateRoute({
+    find: (id) => prisma.quoteRequest.findUnique({ where: { id }, select: stateSelect }),
+    update: (id, data) => prisma.quoteRequest.update({ where: { id }, data, select: stateSelect }),
+  }),
+);
+
+/** POST /api/quotes/mark-read  { ids } — "Mark all as read". */
+quotesRouter.post(
+  "/quotes/mark-read",
+  markReadRoute({
+    markRead: (ids, data) => prisma.quoteRequest.updateMany({ where: { id: { in: ids }, readAt: null }, data }),
+    states: (ids) => prisma.quoteRequest.findMany({ where: { id: { in: ids } }, select: stateSelect }),
+  }),
+);
+
+/** DELETE /api/quotes/:id?confirm=true — permanent; its basket lines go with it (cascade). */
+quotesRouter.delete(
+  "/quotes/:id",
+  deleteRoute("quote request", (id) => prisma.quoteRequest.delete({ where: { id } })),
+);

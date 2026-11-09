@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
-import { handledBody, handledData, handledSelect } from "../services/enquiryHandled.js";
+import { deleteRoute, markReadRoute, stateRoute, stateSelect } from "../services/enquiryState.js";
 
 export const resourceRequestsRouter = Router();
 
@@ -42,9 +42,14 @@ resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
         consentTextEn: l.consentTextEn,
         locale: l.locale,
         createdAt: l.createdAt,
-        /** Null = new. Set by PATCH /resource-requests/:id/handled. */
-        handledAt: l.handledAt,
-        handledBy: l.handledBy,
+        // Read state, star and notes, shared by the team (PATCH /resource-requests/:id).
+        readAt: l.readAt,
+        readBy: l.readBy,
+        starredAt: l.starredAt,
+        starredBy: l.starredBy,
+        notes: l.notes,
+        notesUpdatedAt: l.notesUpdatedAt,
+        notesUpdatedBy: l.notesUpdatedBy,
         file: {
           title: l.downloadTitle,
           fileName: l.fileName,
@@ -63,24 +68,33 @@ resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
 });
 
 /**
- * PATCH /api/resource-requests/:id/handled  { handled: boolean }
- * The resource-request twin of PATCH /quotes/:id/handled, named after this
- * page's own route (the rows are `Lead`s). Unknown id → 404 (P2025).
+ * PATCH /api/resource-requests/:id  { read?, starred?, notes? }
+ * The resource-request twin of PATCH /quotes/:id, named after this page's own
+ * route (the rows are `Lead`s). Rules in services/enquiryState.ts.
  */
-resourceRequestsRouter.patch("/resource-requests/:id/handled", async (req, res, next) => {
-  const parsed = handledBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
-    return;
-  }
-  try {
-    const lead = await prisma.lead.update({
-      where: { id: req.params.id },
-      data: handledData(parsed.data.handled, req.user?.email),
-      select: handledSelect,
-    });
-    res.json(lead);
-  } catch (err) {
-    next(err);
-  }
-});
+resourceRequestsRouter.patch(
+  "/resource-requests/:id",
+  stateRoute({
+    find: (id) => prisma.lead.findUnique({ where: { id }, select: stateSelect }),
+    update: (id, data) => prisma.lead.update({ where: { id }, data, select: stateSelect }),
+  }),
+);
+
+/** POST /api/resource-requests/mark-read  { ids } — "Mark all as read". */
+resourceRequestsRouter.post(
+  "/resource-requests/mark-read",
+  markReadRoute({
+    markRead: (ids, data) => prisma.lead.updateMany({ where: { id: { in: ids }, readAt: null }, data }),
+    states: (ids) => prisma.lead.findMany({ where: { id: { in: ids } }, select: stateSelect }),
+  }),
+);
+
+/**
+ * DELETE /api/resource-requests/:id?confirm=true — permanent, consent record
+ * included: for someone who asks for their data to be removed. Nothing
+ * references a `Lead`, so nothing else changes.
+ */
+resourceRequestsRouter.delete(
+  "/resource-requests/:id",
+  deleteRoute("resource request", (id) => prisma.lead.delete({ where: { id } })),
+);

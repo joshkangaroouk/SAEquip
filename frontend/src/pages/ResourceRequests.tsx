@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import {
@@ -11,20 +11,28 @@ import {
   SplitListItem,
   SplitView,
   Thumb,
+  useConfirm,
   useSelection,
 } from "../components/ui";
 import {
   DefinitionGrid,
+  DeleteEnquiryDialog,
   Detail,
+  EmailLink,
   EnquiryActions,
   EnquiryListSkeleton,
+  EnquiryNotes,
   EnquiryToolbar,
-  HandledStatus,
+  PhoneLink,
+  ReadStatus,
+  StarButton,
   filterEnquiries,
-  isNew,
-  useMarkHandled,
-  withHandled,
+  isStarred,
+  isUnread,
+  useAutoRead,
+  useEnquiryActions,
   type EnquiryFilter,
+  type StatePatch,
 } from "../components/enquiries";
 import type { ResourceRequest, ResourceRequestsResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
@@ -35,7 +43,7 @@ import { languageName } from "../lib/language";
 function exportRequests(requests: ResourceRequest[]) {
   const header = [
     "Name", "First name", "Last name", "Company", "Email", "Telephone", "Mobile",
-    "Marketing emails", "Language", "Product", "SKU", "File", "File name", "Date",
+    "Marketing emails", "Language", "Product", "SKU", "File", "File name", "Date", "Starred", "Notes",
   ];
   const rows = requests.map((r) => [
     r.name,
@@ -52,47 +60,62 @@ function exportRequests(requests: ResourceRequest[]) {
     r.file.title ?? "",
     r.file.fileName ?? "",
     formatDateTime(r.createdAt),
+    isStarred(r) ? "Yes" : "",
+    r.notes ?? "",
   ]);
   downloadCsv(`resource-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
 }
 
 function RequestDetail({
   request: r,
-  busy,
-  onHandled,
+  onState,
+  onDelete,
 }: {
   request: ResourceRequest;
-  busy: boolean;
-  onHandled: (handled: boolean) => void;
+  /** A change to its read state, star or notes; resolves true once saved. */
+  onState: (patch: StatePatch, success?: string) => Promise<boolean>;
+  /** Deletes it permanently; resolves true once deleted. */
+  onDelete: () => Promise<boolean>;
 }) {
+  const [deleting, setDeleting] = useState(false);
   return (
     <>
       <SplitDetailHeader
         title={r.name}
+        titleAside={<StarButton enquiry={r} name={r.name} onToggle={() => void onState({ starred: !isStarred(r) })} />}
         subtitle={r.company ?? r.email}
         actions={
           <EnquiryActions
             kind="resource"
             enquiry={r}
-            busy={busy}
-            onHandled={onHandled}
+            onMarkUnread={() => void onState({ read: false }, "Marked as unread")}
+            onDelete={() => setDeleting(true)}
             onExport={() => exportRequests([r])}
           />
         }
       />
+      <DeleteEnquiryDialog
+        open={deleting}
+        onClose={() => setDeleting(false)}
+        name={r.name}
+        removes="their details, the record of what they consented to and the team's notes"
+        onConfirm={onDelete}
+      />
 
       <div className="space-y-6 px-6 py-5">
         <DefinitionGrid>
-          <Detail label="Email">{r.email}</Detail>
+          <Detail label="Email">
+            <EmailLink email={r.email} kind="resource" />
+          </Detail>
           <Detail label="Company">{r.company}</Detail>
-          <Detail label="Telephone">{r.phone}</Detail>
-          <Detail label="Mobile">{r.mobile}</Detail>
+          <Detail label="Telephone">{r.phone && <PhoneLink phone={r.phone} />}</Detail>
+          <Detail label="Mobile">{r.mobile && <PhoneLink phone={r.mobile} />}</Detail>
           {/* "—" for a request from before languages (02 §6 FLAG), as on quotes. */}
           <Detail label="Language">{r.locale ? languageName(r.locale) : null}</Detail>
           <Detail label="Marketing emails">{r.marketingConsent ? "Yes - opted in" : "No"}</Detail>
           <Detail label="Submitted">{formatDateTime(r.createdAt)}</Detail>
-          <Detail label="Status">
-            <HandledStatus enquiry={r} />
+          <Detail label="Opened">
+            <ReadStatus enquiry={r} />
           </Detail>
           {/* What they agreed to, as the server recorded it at the time — in the
               language they read it in, with the English beneath when that differs. */}
@@ -147,6 +170,8 @@ function RequestDetail({
             )}
           </div>
         </section>
+
+        <EnquiryNotes key={r.id} enquiry={r} onSave={(notes) => onState({ notes })} />
       </div>
     </>
   );
@@ -163,11 +188,16 @@ export default function ResourceRequests() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<EnquiryFilter>("all");
   const { selectedId, select, hrefFor } = useSelection();
-  const { busy, setHandled } = useMarkHandled(
-    (id) => `/api/resource-requests/${id}/handled`,
-    (res) => setData((d) => d && { ...d, requests: withHandled(d.requests, res) }),
-    "resource request",
+  const confirm = useConfirm();
+  const setList = useCallback(
+    (update: (list: ResourceRequest[]) => ResourceRequest[]) => setData((d) => d && { ...d, requests: update(d.requests) }),
+    [],
   );
+  const { setState, markRead, remove, touched, resetTouched } = useEnquiryActions<ResourceRequest>({
+    base: "/api/resource-requests",
+    noun: "resource request",
+    setList,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -193,8 +223,19 @@ export default function ResourceRequests() {
   }, []);
 
   const requests = data?.requests ?? [];
-  const shown = filterEnquiries(requests, filter, query, (r) => [r.name, r.company, r.email]);
+  const shown = filterEnquiries(requests, filter, query, (r) => [r.name, r.company, r.email], touched);
   const selected = selectedId ? requests.find((r) => r.id === selectedId) ?? null : null;
+  const unread = requests.filter(isUnread);
+  useAutoRead(selected, setState);
+
+  async function markAllRead() {
+    const ok = await confirm({
+      title: `Mark ${unread.length === 1 ? "1 resource request" : `all ${unread.length} resource requests`} as read?`,
+      description: "They'll show as read for everyone on the team. You can mark any of them unread again.",
+      confirmLabel: "Mark as read",
+    });
+    if (ok) await markRead(unread.map((r) => r.id));
+  }
 
   return (
     <>
@@ -202,9 +243,14 @@ export default function ResourceRequests() {
         title="Resource Requests"
         description="Details entered on the Datasheets, User Manuals and Certificates pages before a file is downloaded."
         actions={
-          <Button variant="secondary" size="sm" disabled={requests.length === 0} onClick={() => exportRequests(requests)}>
-            Export CSV
-          </Button>
+          <>
+            <Button variant="secondary" size="sm" disabled={unread.length === 0} onClick={() => void markAllRead()}>
+              Mark all as read
+            </Button>
+            <Button variant="secondary" size="sm" disabled={requests.length === 0} onClick={() => exportRequests(requests)}>
+              Export CSV
+            </Button>
+          </>
         }
       />
 
@@ -233,7 +279,10 @@ export default function ResourceRequests() {
                   query={query}
                   onQuery={setQuery}
                   filter={filter}
-                  onFilter={setFilter}
+                  onFilter={(f) => {
+                    setFilter(f);
+                    resetTouched();
+                  }}
                   searchLabel="Search resource requests"
                 />
                 {shown.length === 0 ? (
@@ -245,10 +294,18 @@ export default function ResourceRequests() {
                         <SplitListItem
                           to={hrefFor(r.id)}
                           selected={r.id === selectedId}
+                          unread={isUnread(r)}
                           title={r.name}
                           subtitle={r.company ?? r.email}
                           meta={formatShortDate(r.createdAt)}
-                          badge={isNew(r) ? <Badge tone="new">New</Badge> : undefined}
+                          aside={
+                            <StarButton
+                              inList
+                              enquiry={r}
+                              name={r.name}
+                              onToggle={() => void setState(r, { starred: !isStarred(r) })}
+                            />
+                          }
                         />
                       </li>
                     ))}
@@ -261,8 +318,8 @@ export default function ResourceRequests() {
             selectedId === null || loading ? null : selected ? (
               <RequestDetail
                 request={selected}
-                busy={busy === selected.id}
-                onHandled={(handled) => void setHandled(selected.id, handled)}
+                onState={(patch, success) => setState(selected, patch, { success })}
+                onDelete={() => remove(selected.id, () => select(null))}
               />
             ) : (
               <>

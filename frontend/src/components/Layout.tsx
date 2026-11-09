@@ -47,9 +47,9 @@ interface NavItem {
   match?: (pathname: string) => boolean;
   /**
    * Products carries the live product count; Quote requests and Resource
-   * requests the count not yet handled (02a "After 4b").
+   * requests the count nobody has opened yet (unread, shared by the team).
    */
-  badge?: "liveProducts" | "newQuotes" | "newResourceRequests";
+  badge?: "liveProducts" | "unreadQuotes" | "unreadResourceRequests";
 }
 
 interface NavGroup {
@@ -88,8 +88,8 @@ const NAV: NavGroup[] = [
   {
     label: "Enquiries",
     items: [
-      { to: "/quotes", label: "Quote Requests", icon: BarChart3, badge: "newQuotes" },
-      { to: "/resource-requests", label: "Resource Requests", icon: FileDown, badge: "newResourceRequests" },
+      { to: "/quotes", label: "Quote Requests", icon: BarChart3, badge: "unreadQuotes" },
+      { to: "/resource-requests", label: "Resource Requests", icon: FileDown, badge: "unreadResourceRequests" },
     ],
   },
   {
@@ -160,8 +160,8 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const enquiries = useEnquiryCounts();
   const badges: Record<NonNullable<NavItem["badge"]>, { count: number; noun: string }> = {
     liveProducts: { count: products?.filter((p) => p.status === "ACTIVE").length ?? 0, noun: "live" },
-    newQuotes: { count: enquiries?.quotes ?? 0, noun: "new" },
-    newResourceRequests: { count: enquiries?.resourceRequests ?? 0, noun: "new" },
+    unreadQuotes: { count: enquiries?.quotes ?? 0, noun: "unread" },
+    unreadResourceRequests: { count: enquiries?.resourceRequests ?? 0, noun: "unread" },
   };
   // Per instance: the drawer renders a second copy of the nav.
   const idBase = useId();

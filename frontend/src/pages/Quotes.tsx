@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import {
   Alert,
-  Badge,
   Button,
   EmptyState,
   PageHeader,
@@ -17,20 +16,28 @@ import {
   THead,
   TR,
   Thumb,
+  useConfirm,
   useSelection,
 } from "../components/ui";
 import {
   DefinitionGrid,
+  DeleteEnquiryDialog,
   Detail,
+  EmailLink,
   EnquiryActions,
   EnquiryListSkeleton,
+  EnquiryNotes,
   EnquiryToolbar,
-  HandledStatus,
+  PhoneLink,
+  ReadStatus,
+  StarButton,
   filterEnquiries,
-  isNew,
-  useMarkHandled,
-  withHandled,
+  isStarred,
+  isUnread,
+  useAutoRead,
+  useEnquiryActions,
   type EnquiryFilter,
+  type StatePatch,
 } from "../components/enquiries";
 import type { QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
@@ -45,7 +52,7 @@ function itemsSummary(quote: QuoteRequest): string {
 function exportQuotes(requests: QuoteRequest[]) {
   const header = [
     "Name", "First name", "Last name", "Company", "Email", "Telephone", "When needed",
-    "Address", "Postcode", "Country", "Message", "Language", "Date", "Items",
+    "Address", "Postcode", "Country", "Message", "Language", "Date", "Items", "Starred", "Notes",
   ];
   const rows = requests.map((q) => [
     q.name,
@@ -62,6 +69,8 @@ function exportQuotes(requests: QuoteRequest[]) {
     q.locale ? languageName(q.locale) : "",
     formatDateTime(q.createdAt),
     itemsSummary(q),
+    isStarred(q) ? "Yes" : "",
+    q.notes ?? "",
   ]);
   downloadCsv(`quote-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
 }
@@ -97,13 +106,16 @@ function ItemName({ item }: { item: QuoteRequest["items"][number] }) {
 
 function QuoteDetail({
   quote,
-  busy,
-  onHandled,
+  onState,
+  onDelete,
 }: {
   quote: QuoteRequest;
-  busy: boolean;
-  onHandled: (handled: boolean) => void;
+  /** A change to its read state, star or notes; resolves true once saved. */
+  onState: (patch: StatePatch, success?: string) => Promise<boolean>;
+  /** Deletes it permanently; resolves true once deleted. */
+  onDelete: () => Promise<boolean>;
 }) {
+  const [deleting, setDeleting] = useState(false);
   /*
    * Every field is shown, with "—" when it was not given. They used to appear
    * only when filled in, which made a field the form never asked for (older
@@ -116,16 +128,26 @@ function QuoteDetail({
     <>
       <SplitDetailHeader
         title={quote.name}
+        titleAside={
+          <StarButton enquiry={quote} name={quote.name} onToggle={() => void onState({ starred: !isStarred(quote) })} />
+        }
         subtitle={quote.company ?? quote.email}
         actions={
           <EnquiryActions
             kind="quote"
             enquiry={quote}
-            busy={busy}
-            onHandled={onHandled}
+            onMarkUnread={() => void onState({ read: false }, "Marked as unread")}
+            onDelete={() => setDeleting(true)}
             onExport={() => exportQuotes([quote])}
           />
         }
+      />
+      <DeleteEnquiryDialog
+        open={deleting}
+        onClose={() => setDeleting(false)}
+        name={quote.name}
+        removes="their details, the items they asked for and the team's notes"
+        onConfirm={onDelete}
       />
 
       <div className="space-y-6 px-6 py-5">
@@ -133,21 +155,25 @@ function QuoteDetail({
           <Detail label="First name">{quote.firstName}</Detail>
           <Detail label="Last name">{quote.lastName}</Detail>
           <Detail label="Company">{quote.company}</Detail>
-          <Detail label="Email">{quote.email}</Detail>
-          <Detail label="Telephone">{quote.phone}</Detail>
+          <Detail label="Email">
+            <EmailLink email={quote.email} kind="quote" />
+          </Detail>
+          <Detail label="Telephone">{quote.phone && <PhoneLink phone={quote.phone} />}</Detail>
           <Detail label="When needed">{quote.requiredBy}</Detail>
           <Detail label="Address">{address}</Detail>
           <Detail label="Submitted">{formatDateTime(quote.createdAt)}</Detail>
           {/* The page language the customer used, so a reply can be in it.
               Unknown (—) for quotes from before 2026-10-07. */}
           <Detail label="Language">{quote.locale ? languageName(quote.locale) : null}</Detail>
-          <Detail label="Status">
-            <HandledStatus enquiry={quote} />
+          <Detail label="Opened">
+            <ReadStatus enquiry={quote} />
           </Detail>
           <Detail label="Message" wide>
             {quote.message}
           </Detail>
         </DefinitionGrid>
+
+        <EnquiryNotes key={quote.id} enquiry={quote} onSave={(notes) => onState({ notes })} />
 
         <section aria-labelledby="quote-items">
           <h3 id="quote-items" className="t-overline mb-2">
@@ -217,11 +243,16 @@ export default function Quotes() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<EnquiryFilter>("all");
   const { selectedId, select, hrefFor } = useSelection();
-  const { busy, setHandled } = useMarkHandled(
-    (id) => `/api/quotes/${id}/handled`,
-    (res) => setData((d) => d && { ...d, requests: withHandled(d.requests, res) }),
-    "quote request",
+  const confirm = useConfirm();
+  const setList = useCallback(
+    (update: (list: QuoteRequest[]) => QuoteRequest[]) => setData((d) => d && { ...d, requests: update(d.requests) }),
+    [],
   );
+  const { setState, markRead, remove, touched, resetTouched } = useEnquiryActions<QuoteRequest>({
+    base: "/api/quotes",
+    noun: "quote request",
+    setList,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -247,8 +278,19 @@ export default function Quotes() {
   }, []);
 
   const requests = data?.requests ?? [];
-  const shown = filterEnquiries(requests, filter, query, (q) => [q.name, q.company, q.email]);
+  const shown = filterEnquiries(requests, filter, query, (q) => [q.name, q.company, q.email], touched);
   const selected = selectedId ? requests.find((q) => q.id === selectedId) ?? null : null;
+  const unread = requests.filter(isUnread);
+  useAutoRead(selected, setState);
+
+  async function markAllRead() {
+    const ok = await confirm({
+      title: `Mark ${unread.length === 1 ? "1 quote request" : `all ${unread.length} quote requests`} as read?`,
+      description: "They'll show as read for everyone on the team. You can mark any of them unread again.",
+      confirmLabel: "Mark as read",
+    });
+    if (ok) await markRead(unread.map((q) => q.id));
+  }
 
   return (
     <>
@@ -263,14 +305,19 @@ export default function Quotes() {
         title="Quote Requests"
         description="Submissions captured from the public basket-page widget. Every request is stored here regardless of any notification setup."
         actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={requests.length === 0}
-            onClick={() => exportQuotes(requests)}
-          >
-            Export CSV
-          </Button>
+          <>
+            <Button variant="secondary" size="sm" disabled={unread.length === 0} onClick={() => void markAllRead()}>
+              Mark all as read
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={requests.length === 0}
+              onClick={() => exportQuotes(requests)}
+            >
+              Export CSV
+            </Button>
+          </>
         }
       />
 
@@ -299,7 +346,10 @@ export default function Quotes() {
                   query={query}
                   onQuery={setQuery}
                   filter={filter}
-                  onFilter={setFilter}
+                  onFilter={(f) => {
+                    setFilter(f);
+                    resetTouched();
+                  }}
                   searchLabel="Search quote requests"
                 />
                 {shown.length === 0 ? (
@@ -311,10 +361,18 @@ export default function Quotes() {
                         <SplitListItem
                           to={hrefFor(q.id)}
                           selected={q.id === selectedId}
+                          unread={isUnread(q)}
                           title={q.name}
                           subtitle={q.company ?? q.email}
                           meta={formatShortDate(q.createdAt)}
-                          badge={isNew(q) ? <Badge tone="new">New</Badge> : undefined}
+                          aside={
+                            <StarButton
+                              inList
+                              enquiry={q}
+                              name={q.name}
+                              onToggle={() => void setState(q, { starred: !isStarred(q) })}
+                            />
+                          }
                         />
                       </li>
                     ))}
@@ -327,8 +385,8 @@ export default function Quotes() {
             selectedId === null || loading ? null : selected ? (
               <QuoteDetail
                 quote={selected}
-                busy={busy === selected.id}
-                onHandled={(handled) => void setHandled(selected.id, handled)}
+                onState={(patch, success) => setState(selected, patch, { success })}
+                onDelete={() => remove(selected.id, () => select(null))}
               />
             ) : (
               <>
