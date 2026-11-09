@@ -11,6 +11,7 @@ import { downloadsRouter } from "./routes/downloads.js";
 import { quotesRouter } from "./routes/quotes.js";
 import { resourceRequestsRouter } from "./routes/resourceRequests.js";
 import { enquiriesRouter } from "./routes/enquiries.js";
+import { acceptInviteRouter, invitesRouter } from "./routes/invites.js";
 import { translationsRouter } from "./routes/translations.js";
 import { usersRouter } from "./routes/users.js";
 import { websiteEditorRouter } from "./routes/websiteEditor.js";
@@ -60,6 +61,10 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+// --- Public: accepting an invite (the person has no account yet). Its own
+// rate limits; mounted BEFORE the requireAuth'd /api router so it is reached. ---
+app.use("/api/accept-invite", acceptInviteRouter);
+
 // --- Protected (single) ---
 app.get("/api/me", requireAuth, (req, res) => {
   res.json(req.user);
@@ -78,6 +83,7 @@ api.use(resourceRequestsRouter);
 api.use(enquiriesRouter);
 api.use(translationsRouter);
 api.use(usersRouter);
+api.use(invitesRouter);
 api.use(websiteEditorRouter);
 app.use("/api", requireAuth, api);
 

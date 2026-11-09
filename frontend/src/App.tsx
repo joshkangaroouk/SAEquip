@@ -17,6 +17,8 @@ import UsersPage from "./pages/Users";
 import Security from "./pages/Security";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import AcceptInvite from "./pages/AcceptInvite";
+import SetupTwoFactor from "./pages/SetupTwoFactor";
 import WebsiteEditor from "./pages/WebsiteEditor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
@@ -36,6 +38,12 @@ export const router = createBrowserRouter([
   // emailed recovery link's short-lived session exists — it checks for one.
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
+  // An invite link (/invite#t=…): there is no account yet, so no guard.
+  { path: "/invite", element: <AcceptInvite /> },
+  // Signed in, but two-factor must be set up first (invited users, the super
+  // admin). The page itself sends anyone else on; not inside the guard, which
+  // sends such accounts HERE.
+  { path: "/setup-2fa", element: <SetupTwoFactor /> },
 
   // The UI kit (pages/UIShowcase.tsx): development only. `import.meta.env.DEV`
   // is the constant `false` in a production build, so this branch, and the

@@ -1,30 +1,10 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Factor } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthContext";
 import { useSignOut } from "../hooks/useSignOut";
-import { PageHeader, Alert, Badge, Button, ButtonLink, Card, CardHeader, Input, toast, useConfirm } from "../components/ui";
-
-/** One step of turning two-factor on, with its yellow square number (00). */
-function Step({ n, title, children }: { n: number; title: string; children?: ReactNode }) {
-  return (
-    <li className="flex gap-3">
-      <span
-        aria-hidden="true"
-        className="flex h-6 w-6 shrink-0 items-center justify-center bg-accent text-label font-semibold text-accent-ink"
-      >
-        {n}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-text">
-          <span className="sr-only">Step {n}: </span>
-          {title}
-        </p>
-        {children}
-      </div>
-    </li>
-  );
-}
+import { PageHeader, Alert, Badge, Button, ButtonLink, Card, CardHeader, toast, useConfirm } from "../components/ui";
+import { TotpEnrolment } from "../components/TotpEnrolment";
 
 /**
  * Two-factor setup for the signed-in user.
@@ -44,11 +24,6 @@ export default function Security() {
   const [factors, setFactors] = useState<Factor[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // In-progress enrolment.
-  const [enrolling, setEnrolling] = useState<{ id: string; qr: string; secret: string } | null>(null);
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-
   const load = useCallback(async () => {
     const { data, error } = await supabase.auth.mfa.listFactors();
     if (error) {
@@ -64,60 +39,6 @@ export default function Security() {
   }, [load]);
 
   const verified = (factors ?? []).filter((f) => f.status === "verified");
-
-  async function startEnrol() {
-    setBusy(true);
-    setError(null);
-    // A friendly name keeps several devices distinguishable, and Supabase
-    // rejects a duplicate name — hence the timestamp.
-    const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: "totp",
-      friendlyName: `Authenticator ${new Date().toISOString().slice(0, 16)}`,
-    });
-    setBusy(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    setEnrolling({ id: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
-    setCode("");
-  }
-
-  async function confirmEnrol() {
-    if (!enrolling || code.trim().length < 6) return;
-    setBusy(true);
-    setError(null);
-    const challenge = await supabase.auth.mfa.challenge({ factorId: enrolling.id });
-    if (challenge.error) {
-      setBusy(false);
-      setError(challenge.error.message);
-      return;
-    }
-    const { error } = await supabase.auth.mfa.verify({
-      factorId: enrolling.id,
-      challengeId: challenge.data.id,
-      code: code.trim(),
-    });
-    setBusy(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    setEnrolling(null);
-    setCode("");
-    toast.success("Two-factor is on. You'll be asked for a code next time you sign in.");
-    await load();
-  }
-
-  async function cancelEnrol() {
-    if (!enrolling) return;
-    // Leave no half-finished factor behind: an unverified one is harmless
-    // (requireAuth ignores it) but it clutters the list and blocks the name.
-    await supabase.auth.mfa.unenroll({ factorId: enrolling.id }).catch(() => {});
-    setEnrolling(null);
-    setCode("");
-    await load();
-  }
 
   async function remove(factor: Factor) {
     const ok = await confirm({
@@ -138,8 +59,10 @@ export default function Security() {
   }
 
   const on = verified.length > 0;
-  // The steps show while two-factor is off, and while another device is being added.
-  const showSteps = !on || !!enrolling;
+  // Invited accounts and the super admin must keep two-factor: their last
+  // authenticator cannot be turned off (the API would refuse them anyway).
+  const required = (user?.app_metadata as { mfa_required?: unknown } | undefined)?.mfa_required === true;
+  const canTurnOff = !required || verified.length > 1;
 
   return (
     <>
@@ -171,75 +94,29 @@ export default function Security() {
                   className="flex flex-wrap items-center justify-between gap-2 border border-border bg-surface-2 px-3 py-2"
                 >
                   <span className="text-body text-text">{f.friendly_name || "Authenticator"}</span>
-                  <Button variant="secondary" size="sm" onClick={() => remove(f)}>
-                    Turn off
-                  </Button>
+                  {canTurnOff ? (
+                    <Button variant="secondary" size="sm" onClick={() => remove(f)}>
+                      Turn off
+                    </Button>
+                  ) : (
+                    <span className="t-help text-muted">Required for your account</span>
+                  )}
                 </li>
               ))}
             </ul>
           )}
 
-          {showSteps && (
-            <ol className={on ? "mt-5 space-y-5 text-body" : "space-y-5 text-body"}>
-              <Step n={1} title="Get an authenticator app">
-                <p className="t-help mt-1">Google Authenticator, 1Password, Authy, Microsoft Authenticator — any of them.</p>
-              </Step>
-              <Step n={2} title="Scan the QR code with it">
-                {enrolling ? (
-                  <>
-                    {/* Supabase returns the QR as an SVG data URI. Always on --paper, or a phone may not read it. */}
-                    <img
-                      src={enrolling.qr}
-                      alt="Two-factor QR code"
-                      className="mt-3 h-44 w-44 border border-border bg-paper p-2"
-                    />
-                    <details className="mt-2">
-                      <summary className="t-label cursor-pointer hover:text-text">Can't scan it?</summary>
-                      <p className="t-help mt-1">Type this key in by hand:</p>
-                      <code className="t-code mt-1 block break-all border border-border bg-surface-2 px-2 py-1 text-text">
-                        {enrolling.secret}
-                      </code>
-                    </details>
-                  </>
-                ) : (
-                  <p className="t-help mt-1">It appears here when you start.</p>
-                )}
-              </Step>
-              <Step n={3} title="Enter the 6-digit code it shows">
-                {enrolling ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <div className="w-32">
-                      <Input
-                        value={code}
-                        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        placeholder="123456"
-                        aria-label="Authentication code"
-                      />
-                    </div>
-                    <Button variant="secondary" onClick={cancelEnrol} disabled={busy}>
-                      Cancel
-                    </Button>
-                    <Button onClick={confirmEnrol} disabled={busy || code.trim().length < 6}>
-                      {busy ? "Checking…" : "Confirm"}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="t-help mt-1">Two-factor is on once the code is accepted.</p>
-                )}
-              </Step>
-            </ol>
-          )}
-
-          {/* Start: the primary action while off; adding a second device is secondary. */}
-          {!enrolling && (
-            <div className="mt-5">
-              <Button variant={on ? "secondary" : "primary"} onClick={startEnrol} disabled={busy}>
-                {on ? "Add another device" : "Turn on two-factor"}
-              </Button>
-            </div>
-          )}
+          {/* The steps show while two-factor is off, and while another device is being added. */}
+          <TotpEnrolment
+            className={on ? "mt-5" : undefined}
+            idleSteps={!on}
+            startLabel={on ? "Add another device" : "Turn on two-factor"}
+            startVariant={on ? "secondary" : "primary"}
+            onEnrolled={async () => {
+              toast.success("Two-factor is on. You'll be asked for a code next time you sign in.");
+              await load();
+            }}
+          />
         </Card>
 
         <Card>

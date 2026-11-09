@@ -523,9 +523,43 @@ model DudaEditorSiteAccess {
   /// auditing. Duda remains the source of truth; this is a record of intent.
   grantedPermissions  String[]
   createdAt           DateTime          @default(now())
+  /// Who granted it: the super admin's email from the dashboard, or null for a
+  /// grant made with the CLI (migration 20261109170000_user_invites).
+  grantedBy           String?
   account             DudaEditorAccount @relation(fields: [dudaEditorAccountId], references: [id], onDelete: Cascade)
 
   @@unique([dudaEditorAccountId, siteName])
+}
+
+/// An invitation to create a dashboard account (2026-11). The super admin
+/// enters an email and gets a link (`/invite#t=<token>`) that works once, for
+/// 5 hours, and sends it by hand.
+///
+/// Only the SHA-256 of the token is stored, so the link can be shown once and
+/// never again: a lost link is revoked and reissued. Status is worked out from
+/// the timestamps (pending, used, revoked, expired), and the rows stay as the
+/// record of who invited whom.
+model UserInvite {
+  id                 String    @id @default(cuid())
+  /// Lower-cased. The account is created for THIS address; the invitee cannot change it.
+  email              String
+  tokenHash          String    @unique
+  /// Give Website Editor (Duda SSO) access as soon as the account exists.
+  grantWebsiteEditor Boolean   @default(false)
+  createdBy          String
+  createdAt          DateTime  @default(now())
+  expiresAt          DateTime
+  usedAt             DateTime?
+  revokedAt          DateTime?
+  revokedBy          String?
+  /// The Supabase user the invite created.
+  acceptedUserId     String?
+  /// Why Website Editor access could not be set up on acceptance (the account
+  /// was still created); cleared once it is granted.
+  editorGrantError   String?
+
+  @@index([email])
+  @@index([createdAt])
 }
 
 /// Append-only audit of every attempt to mint a Duda editor SSO link.

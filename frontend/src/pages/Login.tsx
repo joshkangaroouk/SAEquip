@@ -53,6 +53,8 @@ export default function Login() {
   /** Second step: the account has a verified authenticator. */
   const [needsCode, setNeedsCode] = useState(false);
   const [code, setCode] = useState("");
+  // Sent here by the API refusing a disabled account (lib/api.ts).
+  const [disabled] = useState(() => new URLSearchParams(window.location.search).get("disabled") === "1");
 
   /*
    * ⚠️ Already signed in → home, EXCEPT while the code is outstanding.
@@ -149,6 +151,11 @@ export default function Login() {
 
   return (
     <AuthShell title="Welcome back" description="Sign in to continue.">
+      {disabled && (
+        <Alert tone="danger" className="mt-5">
+          This account has been disabled. Ask the Hub's administrator if you think that's a mistake.
+        </Alert>
+      )}
       <form onSubmit={onSubmit}>
         <div className="mt-6 space-y-4">
           <Field label="Email" htmlFor="email">

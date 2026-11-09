@@ -27,7 +27,16 @@ function assuranceLevel(token: string): string | null {
 
 /**
  * Requires a valid Supabase access token whose user's email domain is in
- * ALLOWED_EMAIL_DOMAINS. On success, attaches req.user = { id, email }.
+ * ALLOWED_EMAIL_DOMAINS. On success, attaches req.user = { id, email, role, aal }.
+ *
+ * Also refuses (2026-11, with user invites):
+ * - a DISABLED account (`banned_until` in the future): 403 `account_disabled`.
+ *   The ban also stops new sign-ins and token refresh; this makes it immediate
+ *   for a session that is already open.
+ * - an account that MUST have two-factor (`app_metadata.mfa_required`: every
+ *   invited user, and the super admin) but has no verified factor yet: 403
+ *   `mfa_setup_required`, so the dashboard sends them to set it up. Skipping
+ *   that page gets them nothing: every route refuses them until it is done.
  *
  * ⚠️ Also enforces two-factor: a user with a VERIFIED factor must present an
  * `aal2` token. This is the half that makes MFA real. Supabase enrols and
@@ -68,8 +77,24 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
+  const bannedUntil = data.user.banned_until ? Date.parse(data.user.banned_until) : NaN;
+  if (bannedUntil > Date.now()) {
+    res.status(403).json({ error: "account_disabled", detail: "This account has been disabled." });
+    return;
+  }
+
+  const meta = (data.user.app_metadata ?? {}) as { role?: unknown; mfa_required?: unknown };
   const hasVerifiedFactor = (data.user.factors ?? []).some((f) => f.status === "verified");
-  if (hasVerifiedFactor && assuranceLevel(token) !== "aal2") {
+  if (meta.mfa_required === true && !hasVerifiedFactor) {
+    res.status(403).json({
+      error: "mfa_setup_required",
+      detail: "This account must set up two-factor authentication before it can be used.",
+    });
+    return;
+  }
+
+  const aal = assuranceLevel(token);
+  if (hasVerifiedFactor && aal !== "aal2") {
     // A distinct code so the dashboard can send the user through the second
     // factor rather than showing them a generic "signed out".
     res.status(403).json({
@@ -79,6 +104,28 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  req.user = { id: data.user.id, email };
+  req.user = { id: data.user.id, email, role: typeof meta.role === "string" ? meta.role : null, aal };
+  next();
+}
+
+/**
+ * After requireAuth: only the super admin (`app_metadata.role`, set with the
+ * `users:admin` CLI and by nothing else), and only from a session that has
+ * used its second factor. Inviting people, disabling them and granting
+ * Website Editor access all hand out or take away access, so a stolen
+ * password alone must not be enough.
+ */
+export function requireSuperAdmin(req: Request, res: Response, next: NextFunction): void {
+  if (req.user?.role !== "super_admin") {
+    res.status(403).json({ error: "super_admin_required", detail: "Only the super admin can do this." });
+    return;
+  }
+  if (req.user.aal !== "aal2") {
+    res.status(403).json({
+      error: "super_admin_required",
+      detail: "Set up two-factor authentication on Security, then sign in again with your code.",
+    });
+    return;
+  }
   next();
 }

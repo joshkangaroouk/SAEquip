@@ -1,5 +1,6 @@
 /**
- * Password rules, mirrored from `backend/src/scripts/createStaffUser.ts`.
+ * Password rules, mirrored from `backend/src/services/passwordPolicy.ts` (used by
+ * the `users:create` CLI and by accepting an invite, which also checks known breaches).
  *
  * ⚠️ This is a UX aid, NOT the enforcement point. Anything typed in a browser
  * can be bypassed, so the real floor is Supabase's own minimum length and

@@ -69,6 +69,24 @@ function tokenAal(accessToken: string): string | null {
  * onAuthStateChange callback and on every render. Display-only: the server
  * verifies the token and enforces aal2 itself.
  */
+/**
+ * An account that MUST have two-factor (`app_metadata.mfa_required`: invited
+ * users and the super admin) but has no confirmed authenticator yet. The API
+ * refuses it with `mfa_setup_required`; the dashboard sends it to /setup-2fa.
+ * Display-only, like the rule below: the server enforces it.
+ */
+export function sessionNeedsMfaSetup(
+  session: { user: { app_metadata?: Record<string, unknown>; factors?: { status: string }[] | null } } | null,
+): boolean {
+  if (!session) return false;
+  const required = session.user.app_metadata?.mfa_required === true;
+  return required && !(session.user.factors ?? []).some((f) => f.status === "verified");
+}
+
+/**
+ * A signed-in session that still owes its second factor (above): the account
+ * has a confirmed authenticator but this token is not aal2.
+ */
 export function sessionNeedsSecondFactor(
   session: { access_token: string; user: { factors?: { status: string }[] | null } } | null,
 ): boolean {

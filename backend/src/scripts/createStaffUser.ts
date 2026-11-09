@@ -3,6 +3,7 @@ import { createInterface } from "node:readline/promises";
 import { env } from "../env.js";
 import { supabase } from "../supabase.js";
 import { findUserWithFactors } from "../services/supabaseUsers.js";
+import { assessPassword } from "../services/passwordPolicy.js";
 
 /**
  * Create (or repair) a staff Supabase account.
@@ -35,20 +36,6 @@ const arg = (name: string) => {
 function fail(msg: string): never {
   console.error(`\n✗ ${msg}\n`);
   process.exit(1);
-}
-
-/** Refuses the passwords that make "extremely secure" a fiction. */
-function assessPassword(pw: string): { ok: boolean; problems: string[] } {
-  const problems: string[] = [];
-  if (pw.length < 12) problems.push(`only ${pw.length} characters — 12 is the practical minimum, 16+ is better`);
-  if (!/[a-z]/.test(pw) || !/[A-Z]/.test(pw)) problems.push("no mix of upper and lower case");
-  if (!/\d/.test(pw)) problems.push("no digit");
-  if (!/[^A-Za-z0-9]/.test(pw)) problems.push("no symbol");
-  // A dictionary word plus a trailing digit or two is the single most common
-  // human password shape, and the first thing any credential-stuffing list
-  // tries. Length alone does not rescue it.
-  if (/^[A-Za-z]+\d{0,3}[!?.]?$/.test(pw)) problems.push("word-plus-digits shape — the first pattern any cracking list tries");
-  return { ok: problems.length === 0, problems };
 }
 
 async function readPassword(): Promise<string> {

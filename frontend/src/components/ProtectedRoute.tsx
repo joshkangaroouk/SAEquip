@@ -6,10 +6,11 @@ import { Loader } from "./ui";
 /**
  * Renders children only when authenticated — and, for an account with 2FA,
  * only once the code has been entered. Otherwise /login, which shows whichever
- * step is outstanding.
+ * step is outstanding. An account that must set up 2FA first goes to
+ * /setup-2fa (the API refuses it everything else until then).
  */
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, loading, mfaPending } = useAuth();
+  const { user, loading, mfaPending, mfaSetupPending } = useAuth();
 
   // Before the shell exists: the page background (light or dark, as the
   // pre-paint script set it) and the shared Loader, announced politely.
@@ -23,6 +24,9 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!user || mfaPending) {
     return <Navigate to="/login" replace />;
+  }
+  if (mfaSetupPending) {
+    return <Navigate to="/setup-2fa" replace />;
   }
 
   return <>{children}</>;

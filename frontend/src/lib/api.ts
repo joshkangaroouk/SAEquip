@@ -49,6 +49,16 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
       await supabase.auth.signOut();
       window.location.assign("/login");
     }
+    // The account must set up two-factor first (invited users, the super
+    // admin): every request fails until it has, so go and do it.
+    if (body?.error === "mfa_setup_required" && window.location.pathname !== "/setup-2fa") {
+      window.location.assign("/setup-2fa");
+    }
+    // Disabled by the super admin: the session is useless, so end it and say why.
+    if (body?.error === "account_disabled") {
+      await supabase.auth.signOut();
+      window.location.assign("/login?disabled=1");
+    }
   }
   return res;
 }

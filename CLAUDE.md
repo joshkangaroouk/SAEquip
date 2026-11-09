@@ -1249,7 +1249,17 @@ The `/website` page (top of the sidebar) lets a staff member SSO straight into t
 
   This is why `DudaEditorAccount` has separate `staffEmail` and `dudaAccountName` columns. ⚠️ **Anything looking a mapping up must query `staffEmail`, and anything calling Duda must use `dudaAccountName`.** `--check` and `--revoke` both got this wrong: they queried `dudaAccountName` with the login address, so `--check` reported "no access" for a fully granted account, and **`--revoke` would have asked Duda about an account that never held the grant, taken `ResourceNotExist` as "nothing to revoke", and deleted the Hub mapping while the real customer account kept all 11 permissions on the live site** — the same silent-revoke failure recorded below, reached through a different door.
 
-- **Provisioning is CLI-only, deliberately.** Creating Duda accounts and granting permissions are the privilege-escalating operations; as an HTTP route, any allowed-domain session could self-provision. Use `npm run duda:editor-provision --workspace=backend -- --email <staff> --supabase-user-id <uuid> --confirm` (also `--check` read-only, and `--revoke`). `GRANTABLE_SITES` in that script hard-limits which sites can be granted — the retired `099434f3` is deliberately absent. The allowlist check runs **after** the revoke branch on purpose: a retired site is exactly when you still need to take access away.
+- **Provisioning: the super admin on the Users page, or the CLI** (2026-11). Creating Duda accounts and granting permissions are the privilege-escalating operations, so the routes (`POST|DELETE /api/users/:id/website-editor`) are behind `requireSuperAdmin` (the role AND a 2FA session); before the super admin role existed this was CLI-only.
+  - Both go through **`services/dudaEditorAccess.ts`** (`grantEditorAccess()` / `revokeEditorAccess()`), the one copy of the guards:
+    - `GRANTABLE_SITES` (the live `8a8f03b5`; the retired `099434f3` is deliberately absent; revoke skips the check, because a retired site is exactly when access still needs taking away);
+    - CUSTOMER accounts only. A Duda STAFF email falls back automatically to `name+saequip@domain`, while a FORCED name (`--duda-account`) that is STAFF is refused;
+    - the fixed `EDITOR_PERMISSIONS`;
+    - a revoke verified with Duda before the Hub rows go;
+    - a 404 on lookup means "create", and any other Duda error stops;
+    - Duda's raw body is never passed on.
+  - **CLI:** `npm run duda:editor-provision --workspace=backend -- --email <staff> --supabase-user-id <uuid> --confirm` (also `--check` read-only, and `--revoke`).
+  - **Audit:** `DudaEditorSiteAccess.grantedBy` records the super admin who granted it (null for a CLI grant).
+  - **An invite can tick Website Editor access**; it is granted when the account is created.
 - ⚠️ **`--check` takes `--duda-account` too, and it matters MOST when there is no mapping** —
   which is exactly when you are asking whether Duda still holds a grant the Hub has lost.
   Without it the check falls back to the LOGIN address, and Duda answers "does not have
@@ -1286,17 +1296,44 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 ### Two limits to remember
 
 - **The Duda session outlives the Hub session.** Once SSO'd, the user holds an independent Duda cookie; signing out of the Hub does not end it. This is why the permission set matters more than session hygiene.
-- **Offboarding is NOT automatic.** Deleting a Supabase user does *not* revoke Duda access — run `duda:editor-provision -- --email <staff> --revoke --confirm`, or you get orphaned editor access outliving the Hub account.
+- **Offboarding: use Disable access on the Users page**, which removes Website Editor access too, verified in Duda. Deleting a Supabase user (CLI) does *not* revoke Duda access: remove editor access first, or run `duda:editor-provision -- --email <staff> --revoke --confirm`, or you get orphaned editor access outliving the Hub account.
 
 ## Users, password resets and 2FA
 
 ### Accounts
 
 - **Public signup is disabled**; `ALLOWED_EMAIL_DOMAINS` gates who can sign in at all (`requireAuth`).
-- ⚠️ **There is NO role model.** Every authenticated user has identical access — any signed-in user can edit any product. "Admin account" currently means nothing more than "an account". The `/users` page says so rather than implying a hierarchy that doesn't exist. Adding roles is unbuilt work.
+- **One role: SUPER ADMIN** (2026-11; Josh). It manages users and nothing else: everyone signed in still has identical access to the CONTENT, and there is no read-only role.
+  - The role is `app_metadata.role = "super_admin"`. Only the service role can write `app_metadata`, so the server trusts it, reading it from `getUser()` on every request; a role in `user_metadata` (which users can edit) is ignored.
+  - ⚠️ **Only the CLI grants it**: `npm run users:admin --workspace=backend -- --email <addr> --check | --super-admin | --revoke-super-admin [--confirm]`. No route can, so a dashboard bug or a stolen session cannot make anyone super admin.
+  - Becoming super admin also sets `mfa_required`.
+  - **`requireSuperAdmin`** (in `middleware/requireAuth.ts`) guards every admin route. It needs the role AND an `aal2` session, so a stolen password alone is not enough.
 - ⚠️ **`auth.admin.listUsers()` does NOT return `factors`** — the key is absent from every row, not merely empty. Only `getUserById()` includes them, and the difference is silent: it reads as "nobody has MFA". It made the Users page show Two-factor **Off** for an account with a verified TOTP factor, `users:create --check` report "not enrolled", and — the dangerous one — **`users:mfa` would have told an admin there were no factors to delete, for the one person who cannot get in without that reset.** Everything that needs factors now goes through `services/supabaseUsers.ts` (`listUsersWithFactors`, `findUserWithFactors`, `hasVerifiedFactor`), which re-fetches each user. That is an N+1, accepted deliberately: the staff list is a handful of people, the calls run in parallel, and the alternative is a page that lies about a security control.
-- **`/users` is READ-ONLY** apart from triggering a reset email: `GET /api/users` (`listUsersWithFactors`, filtered to allowed domains, joined against `DudaEditorAccount`) and `POST /api/users/password-reset`.
-- ⚠️ **Account creation is CLI-only, deliberately** — same reasoning as `duda:editor-provision`. `requireAuth` proves only "valid token + allowed domain", and that domain list spans two companies, so an HTTP route would let any signed-in session mint itself more accounts or delete a colleague's:
+- **`/users`:** everyone signed in sees the list (`GET /api/users`: `listUsersWithFactors`, filtered to allowed domains, joined against `DudaEditorAccount`, with name, role, 2FA required, disabled, the Duda account name and an invite's editor error) and can send a password reset. `viewer.superAdmin` tells the page whether to show:
+  - **Invite user** and the **Invites** list;
+  - per person: **Give / Remove Website Editor access** and **Disable / Enable access** (see below).
+- **Invites** (2026-11, `services/userInvites.ts`, `routes/invites.ts`, the `UserInvite` table from migration `20261109170000_user_invites`):
+  - **Creating one:** `POST /api/invites { email, grantWebsiteEditor? }` (super admin) answers `{ invite, token }`. The browser builds `/invite#t=<token>`, and the super admin sends it by hand.
+  - **Security:**
+    - The token is 32 random bytes and **only its SHA-256 is stored**, so the link is shown once; a lost one is revoked and reissued (**New link**).
+    - It lasts **5 hours** and works **once**.
+    - Re-inviting an email revokes its pending link.
+    - Only `ALLOWED_EMAIL_DOMAINS` addresses can be invited, and an email that already has an account → 409.
+  - ⚠️ **The link is a bearer credential**: the email is never verified, because the link is sent by hand, so whoever holds it can create that account. That is why it is short, single-use and revocable. The token rides in the URL **fragment** (never sent to a server) and is redeemed only by a POST, so a chat app's link preview cannot use it up.
+  - **Public routes**, mounted BEFORE `requireAuth` at `/api/accept-invite`, Postgres-limited per IP (10/min, 50/hour):
+    - `POST /check { token }` → `{ email, expiresAt }`, 410 expired/used/revoked, or 404.
+    - `POST / { token, firstName, lastName, password }` (`.strict()`, so **the email always comes from the invite**).
+      1. Applies the password rules (`services/passwordPolicy.ts`, shared with the CLI) and a Pwned Passwords k-anonymity check (fails open after 2s), because Supabase's own leaked-password check may not run on admin-created accounts.
+      2. **Claims the invite atomically** (a conditional `updateMany`).
+      3. `auth.admin.createUser` with `email_confirm`, the names in `user_metadata`, and `app_metadata { mfa_required: true, invited_by }`.
+      4. A refused create releases the claim, so the link works again.
+      5. If Website Editor was ticked it is granted then. A Duda failure is stored in `UserInvite.editorGrantError` and shown as "Couldn't be set up" with a Retry; it never costs the account.
+  - **The `/invite` page** (`pages/AcceptInvite.tsx`) takes the token off the address bar at once. It shows the email read-only, asks for names and a password, then signs in and goes to `/setup-2fa`.
+- **Disable / Enable** (`services/userAdmin.ts`, super admin): a Supabase ban (`ban_duration` `876000h` / `none`).
+  - It refuses your own account and another super admin's.
+  - `requireAuth` answers a banned account 403 `account_disabled` at once, and the dashboard signs it out with the reason.
+  - ⚠️ **Disabling also removes Website Editor access**, verified in Duda, because a Duda session outlives the Hub one. Enabling does NOT give it back.
+- **Still CLI-only, deliberately:** granting super admin, deleting an account, and resetting someone's 2FA (`users:create`, `users:mfa`). Account creation also stays available with the CLI:
 
   ```
   npm run users:create --workspace=backend -- --email <addr> --check
@@ -1339,7 +1376,14 @@ Four parts, and the last is the one that makes it real:
 3. **`mfa_required` handling** — `apiFetch` (not just `apiJson`: Products, Quotes, Resource Requests and Media call `apiFetch` directly) signs out and returns to `/login` on that response, because every request will fail identically until a code is entered. ⚠️ **A session that owes its code is known from the session itself** (`mfaPending` in `AuthContext`, via `sessionNeedsSecondFactor()`: a confirmed factor on the session's user and a token that is not `aal2` — the rule supabase-js applies, without its lock). `ProtectedRoute` sends such a session to `/login`, which resumes the code step. It used to live only in the login page's state, so a reload during the code step lost it and stranded the user on a dashboard that loaded nothing (fixed 2026-10-12).
 4. ⚠️ **Server-side enforcement in `requireAuth`** — a user with a **verified** factor must present an `aal2` token, or the API returns `403 mfa_required`. Supabase challenges factors entirely in the browser and an unchallenged session still carries a valid `aal1` token, so **without this check 2FA is decorative** — a caller could enrol, ignore the prompt and keep using the API. `getUser()` validates the token but does not expose `aal`, so it is read from the already-verified JWT payload; `assuranceLevel()` decodes without verifying and is only safe because verification has already happened. Never point it at an unvalidated token.
 
-**Opt-in per user, deliberately.** Only an enrolled *and verified* factor raises the bar, so this cannot lock out staff who haven't set MFA up. An `unverified` factor is ignored — enrolment leaves one behind until the first code is confirmed, and honouring it would lock the user out mid-enrolment. Requiring MFA for everyone would be a separate, announced change.
+**Opt-in per user, deliberately, EXCEPT where it is required.** Only an enrolled *and verified* factor raises the bar, so this cannot lock out staff who haven't set MFA up. An `unverified` factor is ignored: enrolment leaves one behind until the first code is confirmed, and honouring it would lock the user out mid-enrolment.
+
+**Required 2FA (2026-11)** is `app_metadata.mfa_required: true`, on every invited account and the super admin (Josh's choice: existing accounts are unchanged).
+- `requireAuth` answers such an account with no verified factor 403 `mfa_setup_required`, on every route.
+- The dashboard sends it to **`/setup-2fa`** (`pages/SetupTwoFactor.tsx`, light only), through `mfaSetupPending` in `AuthContext` (`sessionNeedsMfaSetup()`), `ProtectedRoute` and `apiFetch`.
+- That page uses the same `TotpEnrolment` component as Security. Once the code is accepted it refreshes the session, so the guard sees the factor.
+- Security hides **Turn off** on the last authenticator of such an account.
+- Requiring it for everyone would be a separate, announced change.
 
 ⚠️ **The lockout escape hatch is CLI-only**: `npm run users:mfa --workspace=backend -- --email <addr> --check | --reset --confirm`. There is no bypass code, because a bypass is a second password. This is the most privilege-escalating operation in the repo — it removes a security control from someone else's account — so it must never become an HTTP route, and the request should be confirmed out-of-band. Encourage a second enrolled device instead.
 
@@ -2720,7 +2764,7 @@ Also before launch (each detailed elsewhere in this file):
 
 ## Known gaps / backlog (reviewed 2026-10-02)
 
-- **Deleting an enquiry is permanent and there are no backups** — "Delete request…" on Quote Requests and Resource Requests (2026-11) is for someone who asks for their data to be removed, and any signed-in user can do it (there is no role model).
+- **Deleting an enquiry is permanent and there are no backups** — "Delete request…" on Quote Requests and Resource Requests (2026-11) is for someone who asks for their data to be removed, and any signed-in user can do it, not only the super admin.
 - ⚠️ **Pre-launch translation pass** (Josh, 2026-10-13). The six non-English languages are to
   be paused until the English site is finished, then translated in ONE pass before launch. That
   replaces the post-publish translation check that was planned. The pass must cover:

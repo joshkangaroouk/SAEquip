@@ -6,39 +6,66 @@ import { prisma } from "../prisma.js";
 import { supabase } from "../supabase.js";
 import { hasVerifiedFactor, listUsersWithFactors } from "../services/supabaseUsers.js";
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
+import { requireSuperAdmin } from "../middleware/requireAuth.js";
+import { grantEditorAccess, revokeEditorAccess } from "../services/dudaEditorAccess.js";
+import {
+  disableUserRoute,
+  enableUserRoute,
+  grantEditorRoute,
+  revokeEditorRoute,
+  type UserAdminDeps,
+} from "../services/userAdmin.js";
 
 export const usersRouter = Router();
 
 /**
- * Staff accounts — READ-ONLY, plus a password-reset trigger.
+ * Staff accounts: the list (everyone signed in), a password-reset trigger,
+ * and, since 2026-11, the SUPER ADMIN's actions: disable / enable an account
+ * and give / remove its Website Editor access. New accounts come from invites
+ * (routes/invites.ts).
  *
- * ⚠️ Creating and deleting accounts is deliberately NOT here. `requireAuth`
- * only proves "valid Supabase token + allowed email domain", and
- * ALLOWED_EMAIL_DOMAINS spans both kangaroouk.com and saequip.com — far too
- * coarse to gate account creation. As an HTTP route, any signed-in session
- * could mint itself another account or delete a colleague's. Provisioning is a
- * CLI operation for exactly the same reason the Duda editor provisioning is
- * (see scripts/dudaEditorProvision.ts):
+ * ⚠️ Every action that changes access is behind requireSuperAdmin (the
+ * `super_admin` role in app_metadata AND a 2FA-verified session).
+ * `requireAuth` alone proves only "valid token + allowed domain", and
+ * ALLOWED_EMAIL_DOMAINS spans two companies, which is far too coarse to gate
+ * access. No route can GRANT the super admin role: that stays a CLI job
+ * (`npm run users:admin`), as do deleting an account and resetting someone's
+ * 2FA (`users:create`, `users:mfa`).
  *
- *   npm run users:create --workspace=backend -- --email <addr> --confirm
- *
- * There is also no role model in this app yet: every authenticated user has
- * the same access. So "admin" is not a flag this endpoint can report, and the
- * page says so rather than implying a hierarchy that does not exist.
+ * Everyone else still has identical access to the content: super admin adds
+ * user management, nothing more.
  */
 
 /** Shape returned to the dashboard. Deliberately no tokens, no links. */
 interface StaffUser {
   id: string;
   email: string;
+  /** "First Last" from user_metadata (invited accounts), else null. */
+  name: string | null;
+  /** "super_admin" or null. */
+  role: string | null;
   createdAt: string;
   lastSignInAt: string | null;
   emailConfirmed: boolean;
   /** TOTP factors that completed enrollment. */
   mfaEnabled: boolean;
+  /** Two-factor is required for this account (invitees, the super admin). */
+  mfaRequired: boolean;
+  /** Disabled by the super admin (banned in Supabase). */
+  disabled: boolean;
   /** Has a Duda editor account mapped (see the Website Editor section). */
   dudaEditor: boolean;
+  /** The Duda account the mapping uses, e.g. a +saequip one. */
+  dudaAccountName: string | null;
+  /** Website Editor access was ticked on the invite but could not be set up. */
+  editorError: string | null;
 }
+
+const fullName = (meta: Record<string, unknown> | undefined): string | null => {
+  const parts = [meta?.first_name, meta?.last_name].filter((p): p is string => typeof p === "string" && p.trim() !== "");
+  return parts.length ? parts.join(" ") : null;
+};
+const isDisabled = (bannedUntil: string | undefined) => !!bannedUntil && Date.parse(bannedUntil) > Date.now();
 
 /**
  * GET /api/users — every Supabase auth user whose domain is allowed.
@@ -52,22 +79,41 @@ usersRouter.get("/users", async (req, res, next) => {
     // entirely, so Two-factor rendered "Off" for accounts that had it on.
     const allUsers = await listUsersWithFactors(env.allowedEmailDomains);
 
-    const editors = await prisma.dudaEditorAccount.findMany({ select: { staffUserId: true } });
-    const editorIds = new Set(editors.map((e) => e.staffUserId));
+    const [editors, editorErrors] = await Promise.all([
+      prisma.dudaEditorAccount.findMany({ select: { staffUserId: true, dudaAccountName: true } }),
+      prisma.userInvite.findMany({
+        where: { acceptedUserId: { not: null }, editorGrantError: { not: null } },
+        select: { acceptedUserId: true, editorGrantError: true },
+      }),
+    ]);
+    const editorFor = new Map(editors.map((e) => [e.staffUserId, e.dudaAccountName]));
+    const errorFor = new Map(editorErrors.map((i) => [i.acceptedUserId, i.editorGrantError]));
 
     const users: StaffUser[] = allUsers
-      .map((u) => ({
-        id: u.id,
-        email: u.email ?? "",
-        createdAt: u.created_at,
-        lastSignInAt: u.last_sign_in_at ?? null,
-        emailConfirmed: !!u.email_confirmed_at,
-        mfaEnabled: hasVerifiedFactor(u),
-        dudaEditor: editorIds.has(u.id),
-      }))
+      .map((u) => {
+        const app = (u.app_metadata ?? {}) as { role?: unknown; mfa_required?: unknown };
+        const dudaAccountName = editorFor.get(u.id) ?? null;
+        return {
+          id: u.id,
+          email: u.email ?? "",
+          name: fullName(u.user_metadata),
+          role: typeof app.role === "string" ? app.role : null,
+          createdAt: u.created_at,
+          lastSignInAt: u.last_sign_in_at ?? null,
+          emailConfirmed: !!u.email_confirmed_at,
+          mfaEnabled: hasVerifiedFactor(u),
+          mfaRequired: app.mfa_required === true,
+          disabled: isDisabled(u.banned_until),
+          dudaEditor: dudaAccountName !== null,
+          dudaAccountName,
+          editorError: dudaAccountName ? null : errorFor.get(u.id) ?? null,
+        };
+      })
       .sort((a, b) => a.email.localeCompare(b.email));
 
-    res.json({ users, allowedDomains: env.allowedEmailDomains });
+    // Whether the person looking may manage users (the page shows the controls).
+    const superAdmin = req.user?.role === "super_admin" && req.user.aal === "aal2";
+    res.json({ users, allowedDomains: env.allowedEmailDomains, viewer: { superAdmin } });
   } catch (err) {
     next(err);
   }
@@ -191,3 +237,39 @@ usersRouter.post("/users/password-reset", resetLimiter, async (req, res, next) =
     next(err);
   }
 });
+
+/** The real Supabase and Duda calls behind services/userAdmin.ts. */
+const adminDeps: UserAdminDeps = {
+  getUser: async (id) => {
+    const { data, error } = await supabase.auth.admin.getUserById(id);
+    if (error || !data.user) return null;
+    const u = data.user;
+    const meta = (u.user_metadata ?? {}) as { first_name?: unknown; last_name?: unknown };
+    const role = (u.app_metadata as { role?: unknown } | undefined)?.role;
+    return {
+      id: u.id,
+      email: u.email ?? "",
+      role: typeof role === "string" ? role : null,
+      firstName: typeof meta.first_name === "string" ? meta.first_name : null,
+      lastName: typeof meta.last_name === "string" ? meta.last_name : null,
+      disabled: isDisabled(u.banned_until),
+    };
+  },
+  setDisabled: async (id, disabled) => {
+    // A ban stops sign-in and token refresh; requireAuth refuses a banned
+    // account's open session at once. "none" lifts it.
+    const { error } = await supabase.auth.admin.updateUserById(id, { ban_duration: disabled ? "876000h" : "none" });
+    if (error) throw error;
+  },
+  hasEditor: async (userId) => (await prisma.dudaEditorAccount.count({ where: { staffUserId: userId } })) > 0,
+  grantEditor: (g) => grantEditorAccess(g),
+  revokeEditor: (r) => revokeEditorAccess(r),
+  clearEditorError: async (userId) => {
+    await prisma.userInvite.updateMany({ where: { acceptedUserId: userId }, data: { editorGrantError: null } });
+  },
+};
+
+usersRouter.post("/users/:id/disable", requireSuperAdmin, disableUserRoute(adminDeps));
+usersRouter.post("/users/:id/enable", requireSuperAdmin, enableUserRoute(adminDeps));
+usersRouter.post("/users/:id/website-editor", requireSuperAdmin, grantEditorRoute(adminDeps));
+usersRouter.delete("/users/:id/website-editor", requireSuperAdmin, revokeEditorRoute(adminDeps));

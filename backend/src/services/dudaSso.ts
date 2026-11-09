@@ -112,7 +112,8 @@ export const dudaSso = {
     return parsed.data.url;
   },
 
-  // --- Provisioning (used only by the CLI script, never by an HTTP route) ---
+  // --- Provisioning: only through services/dudaEditorAccess.ts (the CLI, and
+  // the super admin's routes behind requireSuperAdmin) ---
 
   createAccount(payload: DudaAccountCreate): Promise<unknown> {
     return dudaRequest("POST", PATHS.createAccount(), payload, {

@@ -7,7 +7,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
-import { sessionNeedsSecondFactor, verifyTotpCode } from "../lib/mfa";
+import { sessionNeedsMfaSetup, sessionNeedsSecondFactor, verifyTotpCode } from "../lib/mfa";
 
 type AuthContextValue = {
   user: User | null;
@@ -20,6 +20,16 @@ type AuthContextValue = {
    * refuses, and bounce /login straight back to it.
    */
   mfaPending: boolean;
+  /**
+   * Signed in, but the account must set up two-factor first (invited users,
+   * the super admin): /setup-2fa, and nothing else, until it is done.
+   */
+  mfaSetupPending: boolean;
+  /**
+   * The super admin role, from app_metadata (only the service role writes it).
+   * Display-only: the server checks it, and a 2FA session, on every admin route.
+   */
+  isSuperAdmin: boolean;
   signIn: (
     email: string,
     password: string,
@@ -98,6 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     loading,
     mfaPending: sessionNeedsSecondFactor(session),
+    mfaSetupPending: sessionNeedsMfaSetup(session),
+    isSuperAdmin: (session?.user.app_metadata as { role?: unknown } | undefined)?.role === "super_admin",
     signIn,
     verifyMfa,
     signOut,

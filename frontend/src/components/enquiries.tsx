@@ -556,7 +556,8 @@ export function NoteBoard({
           <p id={`${id}-hint`} className="t-help text-muted">
             Only the team sees notes. Cmd or Ctrl + Enter adds one.
           </p>
-          <Button type="submit" variant="secondary" size="sm" disabled={!ready} loading={posting}>
+          {/* Yellow (primary) once there is something to add; quiet until then. */}
+          <Button type="submit" variant={draft.trim() ? "primary" : "secondary"} size="sm" disabled={!ready} loading={posting}>
             Add note
           </Button>
         </div>
