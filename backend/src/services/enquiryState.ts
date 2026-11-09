@@ -2,34 +2,29 @@ import type { RequestHandler } from "express";
 import { z } from "zod";
 
 /**
- * Read state, stars and notes on quote requests and resource requests (2026-11,
- * replacing batch 6's "Mark as handled"). Shared by the two routers so the
- * rules cannot drift; each router only supplies how to find and write its own
- * rows (`QuoteRequest` and `Lead`).
+ * Read state, stars and the team's notes on quote requests and resource
+ * requests (2026-11, replacing batch 6's "Mark as handled"). Shared by the two
+ * routers so the rules cannot drift; each router only supplies how to find and
+ * write its own rows (`QuoteRequest` and `Lead`, and their `EnquiryNote`s).
  *
  * All of it is SHARED by the team, like a shared mailbox: opening a request
- * marks it read for everyone, and a star is a team flag. Each records who and
- * when, from the signed-in user.
+ * marks it read for everyone, a star is a team flag, and notes are a small
+ * message board everyone sees. Each records who and when, from the signed-in
+ * user.
  */
 
-/** Long enough for a running log of calls and prices; short enough to bound a row. */
-export const NOTES_MAX = 5000;
-
 /**
- * PATCH body: any of the three, at least one. `.strict()`, so a body with
- * anything else in it (an old client's `handled`) is a 400 rather than
- * silently half-applied.
+ * PATCH body: read and/or starred, at least one. `.strict()`, so a body with
+ * anything else in it (an old client's `handled` or `notes`) is a 400 rather
+ * than silently half-applied.
  */
 export const stateBody = z
   .object({
     read: z.boolean().optional(),
     starred: z.boolean().optional(),
-    notes: z.string().max(NOTES_MAX).nullable().optional(),
   })
   .strict()
-  .refine((b) => b.read !== undefined || b.starred !== undefined || b.notes !== undefined, {
-    message: "Nothing to change",
-  });
+  .refine((b) => b.read !== undefined || b.starred !== undefined, { message: "Nothing to change" });
 
 export type StateBody = z.infer<typeof stateBody>;
 
@@ -40,9 +35,6 @@ export const stateSelect = {
   readBy: true,
   starredAt: true,
   starredBy: true,
-  notes: true,
-  notesUpdatedAt: true,
-  notesUpdatedBy: true,
 } as const;
 
 export interface EnquiryState {
@@ -51,9 +43,6 @@ export interface EnquiryState {
   readBy: string | null;
   starredAt: Date | null;
   starredBy: string | null;
-  notes: string | null;
-  notesUpdatedAt: Date | null;
-  notesUpdatedBy: string | null;
 }
 
 export type StateChanges = Partial<Omit<EnquiryState, "id">>;
@@ -64,8 +53,6 @@ export type StateChanges = Partial<Omit<EnquiryState, "id">>;
  * - `read: true` on a row already read changes nothing, so "first opened by"
  *   keeps the first person rather than whoever opened it last.
  * - `starred: true` on a starred row likewise keeps who starred it.
- * - `notes`: all-whitespace is stored as null. Only a real change stamps who
- *   and when, so an autosave of the same text is not an edit.
  */
 export function stateChanges(
   body: StateBody,
@@ -79,10 +66,6 @@ export function stateChanges(
   if (body.read === false && current.readAt) Object.assign(data, { readAt: null, readBy: null });
   if (body.starred === true && !current.starredAt) Object.assign(data, { starredAt: now, starredBy: who });
   if (body.starred === false && current.starredAt) Object.assign(data, { starredAt: null, starredBy: null });
-  if (body.notes !== undefined) {
-    const notes = body.notes && body.notes.trim() !== "" ? body.notes : null;
-    if (notes !== current.notes) Object.assign(data, { notes, notesUpdatedAt: now, notesUpdatedBy: who });
-  }
   return data;
 }
 
@@ -92,7 +75,7 @@ interface StateModel {
 }
 
 /**
- * PATCH /<list>/:id  { read?, starred?, notes? } — answers with the row's
+ * PATCH /<list>/:id  { read?, starred? } — answers with the row's
  * state after the change. Unknown id → 404.
  */
 export function stateRoute(model: StateModel): RequestHandler {
@@ -168,6 +151,81 @@ export function deleteRoute(kind: string, remove: (id: string) => Promise<unknow
       const id = String(req.params.id);
       await remove(id);
       console.info(`[enquiries] ${kind} ${id} deleted by ${req.user?.email ?? "unknown"}`);
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+/** Long enough for a call log with prices; short enough to bound a row. */
+export const NOTE_MAX = 5000;
+
+/** POST body: the note's text, trimmed, not empty. */
+export const noteBody = z.object({ body: z.string().trim().min(1).max(NOTE_MAX) }).strict();
+
+/** What a note looks like in every answer, oldest first in a request's list. */
+export const noteSelect = { id: true, body: true, createdAt: true, createdBy: true } as const;
+
+export interface EnquiryNote {
+  id: string;
+  body: string;
+  createdAt: Date;
+  createdBy: string | null;
+}
+
+interface NotesModel {
+  /** Whether the request exists. */
+  exists: (id: string) => Promise<boolean>;
+  create: (id: string, body: string, createdBy: string | null) => Promise<EnquiryNote>;
+  /** The note, only if it belongs to request `id`. */
+  find: (id: string, noteId: string) => Promise<{ createdBy: string | null } | null>;
+  remove: (noteId: string) => Promise<unknown>;
+}
+
+/**
+ * POST /<list>/:id/notes  { body } — adds a note, stamped now and with the
+ * signed-in user's email; answers 201 with the note. Unknown request → 404.
+ */
+export function addNoteRoute(model: NotesModel): RequestHandler {
+  return async (req, res, next) => {
+    const parsed = noteBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+      return;
+    }
+    try {
+      const id = String(req.params.id);
+      if (!(await model.exists(id))) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      res.status(201).json(await model.create(id, parsed.data.body, req.user?.email ?? null));
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+/**
+ * DELETE /<list>/:id/notes/:noteId — only its author may delete a note, so
+ * the board stays a record of what each person wrote (403 `not_author`
+ * otherwise; a note with no recorded author cannot be deleted). A note that
+ * is not on that request → 404.
+ */
+export function deleteNoteRoute(model: NotesModel): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      const note = await model.find(String(req.params.id), String(req.params.noteId));
+      if (!note) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      if (!note.createdBy || note.createdBy !== req.user?.email) {
+        res.status(403).json({ error: "not_author", detail: "Only the person who wrote a note can delete it." });
+        return;
+      }
+      await model.remove(String(req.params.noteId));
       res.json({ ok: true });
     } catch (err) {
       next(err);

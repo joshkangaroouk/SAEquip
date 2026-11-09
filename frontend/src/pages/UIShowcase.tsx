@@ -62,17 +62,19 @@ import { VisibilitySection } from "../components/product/VisibilitySection";
 import { DeleteProductLink } from "../components/product/DeleteProductButton";
 import { ProductEditorSkeleton } from "../components/product/EditorSkeleton";
 import type { ImageDraft } from "../components/product/productEditorTypes";
-import type { EnquiryState } from "../lib/types";
+import type { EnquiryRow, EnquiryState } from "../lib/types";
 import { ProductSaveArea } from "../components/product/ProductSaveArea";
 import { CategoriesSection, type CategoryNode } from "../components/product/CategoriesSection";
 import { EDITOR_TABS, type EditorTab } from "../components/product/editorTabs";
 import logo from "../assets/saequip-logo-unframed.svg";
 import {
   EnquiryActions,
-  EnquiryNotes,
+  EnquiryRowAside,
   EnquiryToolbar,
+  NoteBoard,
   ReadStatus,
   StarButton,
+  UnreadMark,
   filterEnquiries,
   isStarred,
   isUnread,
@@ -948,15 +950,27 @@ function Overlays() {
   );
 }
 
-const blank = { starredAt: null, starredBy: null, notes: null, notesUpdatedAt: null, notesUpdatedBy: null };
+const blank = { starredAt: null, starredBy: null, teamNotes: [] };
 const read = { ...blank, readAt: "2026-10-30T10:00:00Z", readBy: "kit@saequip.com" };
 const unread = { ...blank, readAt: null, readBy: null };
 const starred = { starredAt: "2026-10-31T09:00:00Z", starredBy: "kit@saequip.com" };
-type KitRequest = EnquiryState & { name: string; company: string | null; email: string; date: string };
+type KitRequest = EnquiryRow & { name: string; company: string | null; email: string; date: string };
 const KIT_REQUESTS: KitRequest[] = [
   { id: "q1", name: "Alex Example", company: "Example Refining Ltd", email: "alex@example.com", date: "29 Oct", ...unread },
   { id: "q2", name: "Sam Sample", company: "Sample Shipyards", email: "sam@example.org", date: "27 Oct", ...unread, ...starred },
-  { id: "q3", name: "Jo Tester", company: "Tester Rail", email: "jo@example.com", date: "21 Oct", ...read, ...starred },
+  {
+    id: "q3",
+    name: "Jo Tester",
+    company: "Tester Rail",
+    email: "jo@example.com",
+    date: "21 Oct",
+    ...read,
+    ...starred,
+    teamNotes: [
+      { id: "n1", body: "Called Jo, wants hire for 6 weeks from 1 Dec.", createdAt: "2026-10-31T09:30:00Z", createdBy: "sam@saequip.com" },
+      { id: "n2", body: "Quoted £1,200 + delivery.\nChasing the PO on Friday.", createdAt: "2026-11-02T14:05:00Z", createdBy: "kit@saequip.com" },
+    ],
+  },
   // No company: the list shows the email instead, as Quotes does.
   { id: "q4", name: "Pat Placeholder", company: null, email: "pat@example.net", date: "18 Oct", ...read },
   { id: "q5", name: "Lee Longname-Hyphenated", company: "A company with a long enough name to truncate", email: "lee@example.org", date: "2 Oct", ...read },
@@ -984,8 +998,8 @@ function Split({ theme }: { theme: string }) {
     <Section title="Split view">
       <p className="t-help">
         Selection is in the URL (<span className="t-code-sm">?{theme}-id=</span>); focus moves to the heading. Below lg:
-        list only, then the detail with "Back to list". Unread rows are bold with a yellow square; opening one marks it
-        read. The star shows on hover (always when starred, and on touch).{" "}
+        list only, then the detail with "Back to list". Unread rows are bold with an envelope beside the star; opening
+        one marks it read and the envelope goes. The star shows on hover (always when starred, and on touch).{" "}
         <a href={hrefFor("missing")} className="underline underline-offset-2">
           Open an id that isn't in the list
         </a>
@@ -1019,7 +1033,7 @@ function Split({ theme }: { theme: string }) {
                         title={r.name}
                         subtitle={r.company ?? r.email}
                         meta={r.date}
-                        aside={<StarButton inList enquiry={r} name={r.name} onToggle={() => toggleStar(r)} />}
+                        aside={<EnquiryRowAside enquiry={r} name={r.name} onToggleStar={() => toggleStar(r)} />}
                       />
                     </li>
                   ))}
@@ -1032,7 +1046,12 @@ function Split({ theme }: { theme: string }) {
               <>
                 <SplitDetailHeader
                   title={item.name}
-                  titleAside={<StarButton enquiry={item} name={item.name} onToggle={() => toggleStar(item)} />}
+                  titleAside={
+                    <>
+                      <UnreadMark enquiry={item} size={18} />
+                      <StarButton enquiry={item} name={item.name} onToggle={() => toggleStar(item)} />
+                    </>
+                  }
                   subtitle={item.company ?? undefined}
                   actions={
                     <EnquiryActions
@@ -1060,11 +1079,20 @@ function Split({ theme }: { theme: string }) {
                       </div>
                     ))}
                   </dl>
-                  <EnquiryNotes
+                  {/* Local only: "kit@saequip.com" is "you", so its notes offer Delete. */}
+                  <NoteBoard
                     key={item.id}
-                    enquiry={item}
-                    onSave={async (notes) => {
-                      patch(item.id, { notes, notesUpdatedAt: "2026-11-09T10:00:00Z", notesUpdatedBy: "kit@saequip.com" });
+                    notes={item.teamNotes}
+                    me="kit@saequip.com"
+                    onAdd={async (body) => {
+                      const note = { id: `n${Date.now()}`, body, createdAt: new Date().toISOString(), createdBy: "kit@saequip.com" };
+                      setRequests((rs) => rs.map((r) => (r.id === item.id ? { ...r, teamNotes: [...r.teamNotes, note] } : r)));
+                      return true;
+                    }}
+                    onDelete={async (note) => {
+                      setRequests((rs) =>
+                        rs.map((r) => (r.id === item.id ? { ...r, teamNotes: r.teamNotes.filter((n) => n.id !== note.id) } : r)),
+                      );
                       return true;
                     }}
                   />

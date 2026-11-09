@@ -21,12 +21,15 @@ import {
   EmailLink,
   EnquiryActions,
   EnquiryListSkeleton,
-  EnquiryNotes,
+  EnquiryRowAside,
   EnquiryToolbar,
+  NoteBoard,
   PhoneLink,
   ReadStatus,
   StarButton,
+  UnreadMark,
   filterEnquiries,
+  notesCsv,
   isStarred,
   isUnread,
   useAutoRead,
@@ -34,7 +37,8 @@ import {
   type EnquiryFilter,
   type StatePatch,
 } from "../components/enquiries";
-import type { ResourceRequest, ResourceRequestsResponse } from "../lib/types";
+import { useAuth } from "../auth/AuthContext";
+import type { EnquiryNote, ResourceRequest, ResourceRequestsResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { refreshEnquiryCounts } from "../lib/enquiryCounts";
 import { formatDateTime, formatShortDate } from "../lib/format";
@@ -61,19 +65,26 @@ function exportRequests(requests: ResourceRequest[]) {
     r.file.fileName ?? "",
     formatDateTime(r.createdAt),
     isStarred(r) ? "Yes" : "",
-    r.notes ?? "",
+    notesCsv(r.teamNotes),
   ]);
   downloadCsv(`resource-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
 }
 
 function RequestDetail({
   request: r,
+  me,
   onState,
+  onAddNote,
+  onDeleteNote,
   onDelete,
 }: {
   request: ResourceRequest;
-  /** A change to its read state, star or notes; resolves true once saved. */
+  /** The signed-in user's email, for Delete on their own notes. */
+  me: string | null;
+  /** A change to its read state or star; resolves true once saved. */
   onState: (patch: StatePatch, success?: string) => Promise<boolean>;
+  onAddNote: (body: string) => Promise<boolean>;
+  onDeleteNote: (note: EnquiryNote) => Promise<boolean>;
   /** Deletes it permanently; resolves true once deleted. */
   onDelete: () => Promise<boolean>;
 }) {
@@ -82,7 +93,12 @@ function RequestDetail({
     <>
       <SplitDetailHeader
         title={r.name}
-        titleAside={<StarButton enquiry={r} name={r.name} onToggle={() => void onState({ starred: !isStarred(r) })} />}
+        titleAside={
+          <>
+            <UnreadMark enquiry={r} size={18} />
+            <StarButton enquiry={r} name={r.name} onToggle={() => void onState({ starred: !isStarred(r) })} />
+          </>
+        }
         subtitle={r.company ?? r.email}
         actions={
           <EnquiryActions
@@ -171,7 +187,7 @@ function RequestDetail({
           </div>
         </section>
 
-        <EnquiryNotes key={r.id} enquiry={r} onSave={(notes) => onState({ notes })} />
+        <NoteBoard key={r.id} notes={r.teamNotes} me={me} onAdd={onAddNote} onDelete={onDeleteNote} />
       </div>
     </>
   );
@@ -193,7 +209,8 @@ export default function ResourceRequests() {
     (update: (list: ResourceRequest[]) => ResourceRequest[]) => setData((d) => d && { ...d, requests: update(d.requests) }),
     [],
   );
-  const { setState, markRead, remove, touched, resetTouched } = useEnquiryActions<ResourceRequest>({
+  const me = useAuth().user?.email ?? null;
+  const { setState, markRead, remove, addNote, deleteNote, touched, resetTouched } = useEnquiryActions<ResourceRequest>({
     base: "/api/resource-requests",
     noun: "resource request",
     setList,
@@ -299,11 +316,10 @@ export default function ResourceRequests() {
                           subtitle={r.company ?? r.email}
                           meta={formatShortDate(r.createdAt)}
                           aside={
-                            <StarButton
-                              inList
+                            <EnquiryRowAside
                               enquiry={r}
                               name={r.name}
-                              onToggle={() => void setState(r, { starred: !isStarred(r) })}
+                              onToggleStar={() => void setState(r, { starred: !isStarred(r) })}
                             />
                           }
                         />
@@ -318,7 +334,10 @@ export default function ResourceRequests() {
             selectedId === null || loading ? null : selected ? (
               <RequestDetail
                 request={selected}
+                me={me}
                 onState={(patch, success) => setState(selected, patch, { success })}
+                onAddNote={(body) => addNote(selected.id, body)}
+                onDeleteNote={(note) => deleteNote(selected.id, note.id)}
                 onDelete={() => remove(selected.id, () => select(null))}
               />
             ) : (

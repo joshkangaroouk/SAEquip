@@ -270,7 +270,7 @@ export interface QuoteRequestItem {
   imageUrl: string | null;
 }
 
-export interface QuoteRequest extends EnquiryState {
+export interface QuoteRequest extends EnquiryRow {
   id: string;
   name: string;
   email: string;
@@ -297,7 +297,7 @@ export interface QuotesResponse {
 }
 
 /** One resource request — the "File Requests" form on a gated download. */
-export interface ResourceRequest extends EnquiryState {
+export interface ResourceRequest extends EnquiryRow {
   id: string;
   name: string;
   /** Null only on rows from before the current form, which have none. */
@@ -333,9 +333,9 @@ export interface ResourceRequestsResponse {
 }
 
 /**
- * Read state, star and notes on a quote request or a resource request, shared
- * by the team. What PATCH /api/quotes/:id and /api/resource-requests/:id
- * answer with (plus `id`), and part of every row in their lists.
+ * Read state and star on a quote request or a resource request, shared by the
+ * team. What PATCH /api/quotes/:id and /api/resource-requests/:id answer with,
+ * and part of every row in their lists.
  */
 export interface EnquiryState {
   id: string;
@@ -345,8 +345,18 @@ export interface EnquiryState {
   /** When it was starred, and by whom. Both null = not starred. */
   starredAt: string | null;
   starredBy: string | null;
-  /** Staff-only notes, and who last changed them. */
-  notes: string | null;
-  notesUpdatedAt: string | null;
-  notesUpdatedBy: string | null;
+}
+
+/** One note on a request's message board; what POST …/:id/notes answers with. */
+export interface EnquiryNote {
+  id: string;
+  body: string;
+  createdAt: string;
+  /** The author's email; null only on a note whose author was not recorded. */
+  createdBy: string | null;
+}
+
+/** A row of either enquiry list: its state, and the team's notes, oldest first. */
+export interface EnquiryRow extends EnquiryState {
+  teamNotes: EnquiryNote[];
 }

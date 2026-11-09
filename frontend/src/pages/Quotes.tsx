@@ -26,12 +26,15 @@ import {
   EmailLink,
   EnquiryActions,
   EnquiryListSkeleton,
-  EnquiryNotes,
+  EnquiryRowAside,
   EnquiryToolbar,
+  NoteBoard,
   PhoneLink,
   ReadStatus,
   StarButton,
+  UnreadMark,
   filterEnquiries,
+  notesCsv,
   isStarred,
   isUnread,
   useAutoRead,
@@ -39,7 +42,8 @@ import {
   type EnquiryFilter,
   type StatePatch,
 } from "../components/enquiries";
-import type { QuoteRequest, QuotesResponse } from "../lib/types";
+import { useAuth } from "../auth/AuthContext";
+import type { EnquiryNote, QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { refreshEnquiryCounts } from "../lib/enquiryCounts";
 import { formatDateTime, formatShortDate } from "../lib/format";
@@ -70,7 +74,7 @@ function exportQuotes(requests: QuoteRequest[]) {
     formatDateTime(q.createdAt),
     itemsSummary(q),
     isStarred(q) ? "Yes" : "",
-    q.notes ?? "",
+    notesCsv(q.teamNotes),
   ]);
   downloadCsv(`quote-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
 }
@@ -106,12 +110,19 @@ function ItemName({ item }: { item: QuoteRequest["items"][number] }) {
 
 function QuoteDetail({
   quote,
+  me,
   onState,
+  onAddNote,
+  onDeleteNote,
   onDelete,
 }: {
   quote: QuoteRequest;
-  /** A change to its read state, star or notes; resolves true once saved. */
+  /** The signed-in user's email, for Delete on their own notes. */
+  me: string | null;
+  /** A change to its read state or star; resolves true once saved. */
   onState: (patch: StatePatch, success?: string) => Promise<boolean>;
+  onAddNote: (body: string) => Promise<boolean>;
+  onDeleteNote: (note: EnquiryNote) => Promise<boolean>;
   /** Deletes it permanently; resolves true once deleted. */
   onDelete: () => Promise<boolean>;
 }) {
@@ -129,7 +140,10 @@ function QuoteDetail({
       <SplitDetailHeader
         title={quote.name}
         titleAside={
-          <StarButton enquiry={quote} name={quote.name} onToggle={() => void onState({ starred: !isStarred(quote) })} />
+          <>
+            <UnreadMark enquiry={quote} size={18} />
+            <StarButton enquiry={quote} name={quote.name} onToggle={() => void onState({ starred: !isStarred(quote) })} />
+          </>
         }
         subtitle={quote.company ?? quote.email}
         actions={
@@ -173,7 +187,7 @@ function QuoteDetail({
           </Detail>
         </DefinitionGrid>
 
-        <EnquiryNotes key={quote.id} enquiry={quote} onSave={(notes) => onState({ notes })} />
+        <NoteBoard key={quote.id} notes={quote.teamNotes} me={me} onAdd={onAddNote} onDelete={onDeleteNote} />
 
         <section aria-labelledby="quote-items">
           <h3 id="quote-items" className="t-overline mb-2">
@@ -248,7 +262,8 @@ export default function Quotes() {
     (update: (list: QuoteRequest[]) => QuoteRequest[]) => setData((d) => d && { ...d, requests: update(d.requests) }),
     [],
   );
-  const { setState, markRead, remove, touched, resetTouched } = useEnquiryActions<QuoteRequest>({
+  const me = useAuth().user?.email ?? null;
+  const { setState, markRead, remove, addNote, deleteNote, touched, resetTouched } = useEnquiryActions<QuoteRequest>({
     base: "/api/quotes",
     noun: "quote request",
     setList,
@@ -366,11 +381,10 @@ export default function Quotes() {
                           subtitle={q.company ?? q.email}
                           meta={formatShortDate(q.createdAt)}
                           aside={
-                            <StarButton
-                              inList
+                            <EnquiryRowAside
                               enquiry={q}
                               name={q.name}
-                              onToggle={() => void setState(q, { starred: !isStarred(q) })}
+                              onToggleStar={() => void setState(q, { starred: !isStarred(q) })}
                             />
                           }
                         />
@@ -385,7 +399,10 @@ export default function Quotes() {
             selectedId === null || loading ? null : selected ? (
               <QuoteDetail
                 quote={selected}
+                me={me}
                 onState={(patch, success) => setState(selected, patch, { success })}
+                onAddNote={(body) => addNote(selected.id, body)}
+                onDeleteNote={(note) => deleteNote(selected.id, note.id)}
                 onDelete={() => remove(selected.id, () => select(null))}
               />
             ) : (

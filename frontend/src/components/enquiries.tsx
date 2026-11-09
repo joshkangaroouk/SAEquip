@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Search, Star } from "lucide-react";
-import { Button, ButtonLink, DropdownMenu, Field, Input, Modal, SegmentedControl, Skeleton, Textarea, toast } from "./ui";
+import { Mail, Search, Star } from "lucide-react";
+import { Button, ButtonLink, DropdownMenu, Field, Input, Modal, SegmentedControl, Skeleton, Textarea, toast, useConfirm } from "./ui";
 import { apiJson } from "../lib/api";
 import { cn } from "../lib/cn";
 import { refreshEnquiryCounts } from "../lib/enquiryCounts";
 import { formatDateTime } from "../lib/format";
-import type { EnquiryState } from "../lib/types";
+import type { EnquiryNote, EnquiryRow, EnquiryState } from "../lib/types";
 
 /**
  * The pieces Quote Requests and Resource Requests share as split views: the
- * list toolbar and filter, the loading rows, the star, the detail's header
- * actions, notes and definition grid, and the calls behind them.
+ * list toolbar and filter, the loading rows, the envelope and the star, the
+ * detail's header actions, notes and definition grid, and the calls behind
+ * them.
  *
  * Read state works like a shared mailbox (2026-11, replacing batch 6's "Mark
  * as handled"): opening a request marks it read for the whole team, unread
- * rows are bold with a yellow square, and "Mark as unread" puts one back. The
- * star and the notes are shared the same way.
+ * rows are bold with an envelope beside the star, and "Mark as unread" puts
+ * one back. The star and the notes are shared the same way.
  */
 
 export type EnquiryFilter = "all" | "unread" | "starred";
@@ -24,17 +25,16 @@ export type EnquiryFilter = "all" | "unread" | "starred";
 export const isUnread = (e: Pick<EnquiryState, "readAt">) => e.readAt === null;
 export const isStarred = (e: Pick<EnquiryState, "starredAt">) => e.starredAt !== null;
 
-export type StatePatch = { read: boolean } | { starred: boolean } | { notes: string | null };
-type PatchKind = "read" | "starred" | "notes";
+export type StatePatch = { read: boolean } | { starred: boolean };
+type PatchKind = "read" | "starred";
 
 /** The columns each kind of change owns, so an answer only touches its own. */
 const OWNS: Record<PatchKind, (keyof EnquiryState)[]> = {
   read: ["readAt", "readBy"],
   starred: ["starredAt", "starredBy"],
-  notes: ["notes", "notesUpdatedAt", "notesUpdatedBy"],
 };
 
-const kindOf = (patch: StatePatch): PatchKind => ("read" in patch ? "read" : "starred" in patch ? "starred" : "notes");
+const kindOf = (patch: StatePatch): PatchKind => ("read" in patch ? "read" : "starred");
 
 function pick(e: EnquiryState, kind: PatchKind): Partial<EnquiryState> {
   return Object.fromEntries(OWNS[kind].map((k) => [k, e[k]]));
@@ -50,18 +50,15 @@ function optimistic(e: EnquiryState, patch: StatePatch, now: string): Partial<En
     if (!patch.read) return { readAt: null, readBy: null };
     return e.readAt ? {} : { readAt: now, readBy: null };
   }
-  if ("starred" in patch) {
-    if (!patch.starred) return { starredAt: null, starredBy: null };
-    return e.starredAt ? {} : { starredAt: now, starredBy: null };
-  }
-  return { notes: patch.notes };
+  if (!patch.starred) return { starredAt: null, starredBy: null };
+  return e.starredAt ? {} : { starredAt: now, starredBy: null };
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * Everything a page does to its requests: change one's state (read, star,
- * notes), mark several read, delete one. `base` is the list's API path
+ * Everything a page does to its requests: change one's state (read, star),
+ * mark several read, add or delete a note, delete one. `base` is the list's API path
  * ("/api/quotes"), `setList` updates the page's copy of the list, `noun`
  * names one ("quote request").
  *
@@ -73,7 +70,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * filtered list until it changes again, so a row does not vanish from under
  * the cursor the moment it is opened (Unread) or unstarred (Starred).
  */
-export function useEnquiryActions<T extends EnquiryState>({
+export function useEnquiryActions<T extends EnquiryRow>({
   base,
   noun,
   setList,
@@ -151,9 +148,42 @@ export function useEnquiryActions<T extends EnquiryState>({
     [base, noun, setList],
   );
 
+  /** Adds a note to the end of the request's board; resolves true once stored. */
+  const addNote = useCallback(
+    async (id: string, body: string): Promise<boolean> => {
+      try {
+        const note = await apiJson<EnquiryNote>(`${base}/${id}/notes`, { method: "POST", body: JSON.stringify({ body }) });
+        setList((list) => list.map((e) => (e.id === id ? { ...e, teamNotes: [...e.teamNotes, note] } : e)));
+        return true;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't add the note");
+        return false;
+      }
+    },
+    [base, setList],
+  );
+
+  /** Deletes one of your own notes (the server refuses anyone else's). */
+  const deleteNote = useCallback(
+    async (id: string, noteId: string): Promise<boolean> => {
+      try {
+        await apiJson(`${base}/${id}/notes/${noteId}`, { method: "DELETE" });
+        setList((list) =>
+          list.map((e) => (e.id === id ? { ...e, teamNotes: e.teamNotes.filter((n) => n.id !== noteId) } : e)),
+        );
+        toast.success("Note deleted");
+        return true;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't delete the note");
+        return false;
+      }
+    },
+    [base, setList],
+  );
+
   const resetTouched = useCallback(() => setTouched(new Set()), []);
 
-  return { setState, markRead, remove, touched, resetTouched };
+  return { setState, markRead, remove, addNote, deleteNote, touched, resetTouched };
 }
 
 /**
@@ -179,8 +209,8 @@ export function useAutoRead<T extends EnquiryState>(
 
 /**
  * The star, in the list and beside the detail's heading. A toggle button
- * (aria-pressed), so its name stays the same either way. Filled yellow with a
- * dark amber edge when starred; an outline otherwise.
+ * (aria-pressed), so its name stays the same either way. Solid yellow when
+ * starred, edge included (Josh: no darker outline); a muted outline otherwise.
  *
  * In the list an unstarred star shows on hover or focus only, and always on a
  * touch screen, where there is no hover; a starred one always shows.
@@ -213,8 +243,45 @@ export function StarButton({
         inList && !starred && "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100",
       )}
     >
-      <Star size={inList ? 16 : 20} aria-hidden="true" className={starred ? "fill-accent stroke-warning" : undefined} />
+      <Star size={inList ? 16 : 20} aria-hidden="true" className={starred ? "fill-accent stroke-accent" : undefined} />
     </button>
+  );
+}
+
+/**
+ * The envelope that marks an unread request, beside the star. It goes as soon
+ * as the request is opened. Decorative: the row says "Unread:" to screen
+ * readers, and the bold text carries it too.
+ */
+export function UnreadMark({ enquiry, size = 16 }: { enquiry: Pick<EnquiryState, "readAt">; size?: number }) {
+  if (!isUnread(enquiry)) return null;
+  return (
+    <span title="Unread" aria-hidden="true" className="inline-flex shrink-0 items-center text-text">
+      <Mail size={size} />
+    </span>
+  );
+}
+
+/**
+ * A list row's right-hand side: the envelope (while unread) and the star. The
+ * envelope's slot is kept when it is empty, so the dates line up down the list.
+ */
+export function EnquiryRowAside({
+  enquiry,
+  name,
+  onToggleStar,
+}: {
+  enquiry: Pick<EnquiryState, "readAt" | "starredAt" | "starredBy">;
+  name: string;
+  onToggleStar: () => void;
+}) {
+  return (
+    <span className="flex items-center">
+      <span className="inline-flex w-5 justify-center">
+        <UnreadMark enquiry={enquiry} />
+      </span>
+      <StarButton inList enquiry={enquiry} name={name} onToggle={onToggleStar} />
+    </span>
   );
 }
 
@@ -370,105 +437,137 @@ export function DeleteEnquiryDialog({
 }
 
 /**
- * Staff notes on a request, saved as you type (a second after the last key)
- * and when the box loses focus, so there is no Save button to forget. Mount
- * it with `key={id}`: it keeps its own draft, and an answer from the server
- * never overwrites what is being typed.
+ * The team's notes on a request: a small message board, oldest first, each
+ * with who wrote it and when, and a box to add one at the bottom (the button,
+ * or Cmd/Ctrl + Enter). Only the author of a note may delete it, so the board
+ * stays a record of who said what; the server enforces that too.
  *
- * While a change is waiting or saving, leaving the page asks first.
+ * While there is text in the box that hasn't been added, leaving the page
+ * asks first. Mount it with `key={id}`, so the box starts empty per request.
  */
-export function EnquiryNotes({
-  enquiry,
-  onSave,
+export function NoteBoard({
+  notes,
+  me,
+  onAdd,
+  onDelete,
 }: {
-  enquiry: Pick<EnquiryState, "notes" | "notesUpdatedAt" | "notesUpdatedBy">;
-  /** Resolves true once saved. */
-  onSave: (notes: string | null) => Promise<boolean>;
+  notes: EnquiryNote[];
+  /** The signed-in user's email, to offer Delete on their own notes. */
+  me: string | null;
+  /** Resolves true once stored. */
+  onAdd: (body: string) => Promise<boolean>;
+  onDelete: (note: EnquiryNote) => Promise<boolean>;
 }) {
   const id = useId();
-  const [draft, setDraft] = useState(enquiry.notes ?? "");
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  // The text the server has (or was last sent). Null after a failure, so the
-  // next flush tries again whatever the text is.
-  const sent = useRef<string | null>(enquiry.notes ?? "");
-  const latest = useRef(draft);
-  latest.current = draft;
-  const onSaveRef = useRef(onSave);
-  onSaveRef.current = onSave;
-  const timer = useRef<number | undefined>(undefined);
+  const confirm = useConfirm();
+  const [draft, setDraft] = useState("");
+  const [posting, setPosting] = useState(false);
+  const ready = draft.trim() !== "" && !posting;
 
-  const flush = useCallback(() => {
-    window.clearTimeout(timer.current);
-    timer.current = undefined;
-    const value = latest.current;
-    if (value === sent.current) return;
-    sent.current = value;
-    setStatus("saving");
-    void onSaveRef.current(value.trim() === "" ? null : value).then((ok) => {
-      if (!ok) {
-        sent.current = null;
-        setStatus("error");
-      } else if (latest.current === value) {
-        setStatus("saved");
-      }
+  async function add() {
+    if (!ready) return;
+    setPosting(true);
+    const ok = await onAdd(draft.trim());
+    setPosting(false);
+    if (ok) setDraft("");
+  }
+
+  async function remove(note: EnquiryNote) {
+    const ok = await confirm({
+      title: "Delete this note?",
+      description: "It's removed for everyone on the team.",
+      confirmLabel: "Delete note",
+      danger: true,
     });
-  }, []);
+    if (ok) await onDelete(note);
+  }
 
+  const unsent = draft.trim() !== "";
   useEffect(() => {
-    if (draft === sent.current) return;
-    timer.current = window.setTimeout(flush, 1000);
-    return () => window.clearTimeout(timer.current);
-  }, [draft, flush]);
-
-  // Switching to another request unmounts this one: save what was typed.
-  useEffect(() => () => flush(), [flush]);
-
-  const pending = draft !== sent.current || status === "saving";
-  useEffect(() => {
-    if (!pending) return;
+    if (!unsent) return;
     const warn = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [pending]);
-
-  const statusText =
-    status === "saving" ? "Saving…" : status === "saved" ? "Saved" : status === "error" ? "Not saved" : "";
+  }, [unsent]);
 
   return (
     <section aria-labelledby={`${id}-h`}>
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h3 id={`${id}-h`} className="t-overline">
-          <label htmlFor={`${id}-notes`}>Notes</label>
-        </h3>
-        <span role="status" className={cn("t-help", status === "error" ? "text-danger" : "text-muted")}>
-          {statusText}
-        </span>
-      </div>
-      <Textarea
-        id={`${id}-notes`}
-        rows={3}
-        maxLength={5000}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={flush}
-        placeholder="For example: quoted £1,200 on 10 Nov, chasing the PO."
-        aria-describedby={`${id}-hint`}
-      />
-      <p id={`${id}-hint`} className="t-help mt-1.5 text-muted">
-        Only the team sees these, and they save as you type.
-        {enquiry.notesUpdatedAt && (
-          <>
-            {" "}
-            Last edited {formatDateTime(enquiry.notesUpdatedAt)}
-            {enquiry.notesUpdatedBy && <> by {enquiry.notesUpdatedBy}</>}.
-          </>
-        )}
-      </p>
+      <h3 id={`${id}-h`} className="t-overline mb-2">
+        Notes{notes.length > 0 && <span className="tabular-nums"> ({notes.length})</span>}
+      </h3>
+      {notes.length === 0 ? (
+        <p className="t-help mb-3 text-muted">No notes yet.</p>
+      ) : (
+        <ol className="mb-3 space-y-2">
+          {notes.map((n) => (
+            <li key={n.id} className="border border-border bg-surface-2 px-3 py-2.5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <p className="t-help min-w-0 break-words">
+                  <span className="font-semibold text-text">{n.createdBy ?? "Unknown"}</span>
+                  <span className="text-muted tabular-nums">
+                    {" · "}
+                    <time dateTime={n.createdAt}>{formatDateTime(n.createdAt)}</time>
+                  </span>
+                </p>
+                {me && n.createdBy === me && (
+                  <button
+                    type="button"
+                    onClick={() => void remove(n)}
+                    aria-label={`Delete your note from ${formatDateTime(n.createdAt)}`}
+                    className="t-help text-muted underline-offset-2 hover:text-danger hover:underline"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+              <p className="mt-1 whitespace-pre-line break-words text-body text-text">{n.body}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+      >
+        <label htmlFor={`${id}-new`} className="sr-only">
+          Add a note
+        </label>
+        <Textarea
+          id={`${id}-new`}
+          rows={3}
+          maxLength={5000}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              void add();
+            }
+          }}
+          placeholder="Add a note for the team, e.g. quoted £1,200 on 10 Nov, chasing the PO."
+          aria-describedby={`${id}-hint`}
+        />
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p id={`${id}-hint`} className="t-help text-muted">
+            Only the team sees notes. Cmd or Ctrl + Enter adds one.
+          </p>
+          <Button type="submit" variant="secondary" size="sm" disabled={!ready} loading={posting}>
+            Add note
+          </Button>
+        </div>
+      </form>
     </section>
   );
+}
+
+/** A request's notes for one CSV cell: "[date, who] text", one note per line, oldest first. */
+export function notesCsv(notes: EnquiryNote[]): string {
+  return notes.map((n) => `[${formatDateTime(n.createdAt)}, ${n.createdBy ?? "unknown"}] ${n.body}`).join("\n");
 }
 
 /**

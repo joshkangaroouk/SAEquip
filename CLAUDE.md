@@ -1021,30 +1021,49 @@ SAEquip has **no native pricing/checkout** for these products — instead there'
 ### Read state, stars and notes (2026-11, replacing batch 6's "Mark as handled")
 
 Quote Requests and Resource Requests work like a **shared mailbox** (Josh's choice: shared by the team, not per person).
-- **Opening a request marks it read for everyone.** Unread rows are bold, with an 8px yellow square in the gutter and "Unread:" for screen readers. "Mark as unread" (the ⋯ menu) puts one back, and it stays unread until it is opened again (`useAutoRead()`).
+- **Opening a request marks it read for everyone.** Unread rows are bold, with an envelope icon beside the star (`UnreadMark`), and "Unread:" for screen readers. The envelope goes as soon as the request is opened.
+  - It replaced an 8px yellow square (Josh, 2026-11-09). Its slot is kept when empty, so the dates line up.
+  - "Mark as unread" (the ⋯ menu) puts the row back, envelope included, also beside the detail's star. It stays unread until it is opened again (`useAutoRead()`).
 - **Who opened it first is kept**: a second opening writes nothing. The detail's "Opened" row shows when, and by whom.
-- **A star** shows in the list and beside the detail's heading.
+- **A star** shows in the list and beside the detail's heading. It is solid yellow when starred, with no darker edge (Josh).
   - In the list, an unstarred star shows on hover or focus, and always on a touch screen.
   - Clicking a list star toggles it without opening the row.
-- **Staff notes** save a second after typing stops, and when the box loses focus or another request is opened. They show who last edited them. The CSVs gain Starred and Notes columns.
+- **Notes are a small message board on each request** (`NoteBoard`): oldest first, each with who wrote it and when. The box at the bottom adds one with **Add note** or Cmd/Ctrl + Enter.
+  - Only a note's author can delete it (with a confirm), and the server enforces that too.
+  - Leaving the page with text not yet added asks first.
+  - It replaced a single autosaving box the same day.
+- **The CSVs gain Starred and Notes columns.** The Notes cell holds every note as "[date, who] text", one per line (`notesCsv()`).
 - **"Mark all as read"** (page header, with a confirm) sends only the ids the page shows as unread, so a request that arrived after the page loaded is not marked read unseen.
 - **The list filter** is All / Unread / Starred. A row opened or unstarred under a filter stays visible until the filter changes (`touched` in `useEnquiryActions()`).
 - **The email and phone numbers are links**: a reply with the usual subject, and `tel:` with digits only.
-- **Delete request…** (⋯ menu) is for a GDPR removal request. The confirmation asks for "delete" to be typed, and the route refuses without `?confirm=true`. ⚠️ It is permanent, and there are no backups. The log records the row id and who deleted it, never the person's details.
+- **Delete request…** (⋯ menu) is for a GDPR removal request. The confirmation asks for "delete" to be typed, and the route refuses without `?confirm=true`. The request's notes go with it.
+  - ⚠️ It is permanent, and there are no backups.
+  - The log records the row id and who deleted it, never the person's details.
+- **Opening another request starts its detail at the top** (`SplitView` resets the pane's scroll). The pane used to keep the last one's scroll, so a long thread opened part-way down.
 
-**Columns:** `readAt`/`readBy`, `starredAt`/`starredBy`, `notes`/`notesUpdatedAt`/`notesUpdatedBy` on both `QuoteRequest` and `Lead`, all nullable. They come from migration `20261109120000_enquiry_read_star_notes`, which also copied `handledAt`/`handledBy` into `readAt`/`readBy`.
-- ⚠️ **Apply it with `docs/redesign/13-enquiry-read-star-runbook.md` BEFORE merging the code.** The new code reads the columns, so code first breaks both pages and the badges.
-- `handledAt`/`handledBy` (migration `20261030120000_enquiry_handled`) are superseded and unused. They stay until a later migration drops them, so the deploy order stays additive.
+**Data:**
+- `readAt`/`readBy` and `starredAt`/`starredBy` on `QuoteRequest` and `Lead`, all nullable, from migration `20261109120000_enquiry_read_star_notes`. That migration also copied `handledAt`/`handledBy` into `readAt`/`readBy`.
+- **`EnquiryNote`** (`teamNotes` on each): `body`, `createdAt`, `createdBy`, from migration `20261109150000_enquiry_notes`.
+  - A CHECK requires exactly one of `quoteRequestId`/`leadId`.
+  - Both FKs cascade, so a deleted request takes its notes.
+  - That migration copied any text from the single-box `notes` columns in as a first note.
+- ⚠️ **Apply each migration BEFORE the code that reads it** (`docs/redesign/13-enquiry-read-star-runbook.md`, `docs/redesign/14-enquiry-notes-runbook.md`). Code first breaks both pages and the badges.
+- Superseded and unused, kept so each deploy stays additive; a later migration drops them:
+  - `handledAt`/`handledBy` (migration `20261030120000_enquiry_handled`);
+  - `notes`/`notesUpdatedAt`/`notesUpdatedBy`.
 
 **Routes** (behind `requireAuth`; the rules are in `services/enquiryState.ts`, shared so the two cannot drift):
-- **`PATCH /api/quotes/:id` and `PATCH /api/resource-requests/:id`** take `{ read?, starred?, notes? }` (`.strict()`, at least one; notes ≤ 5000 characters). They answer with the row's state (`stateRoute()`, `stateChanges()`).
+- **`PATCH /api/quotes/:id` and `PATCH /api/resource-requests/:id`** take `{ read?, starred? }` (`.strict()`, at least one). They answer with the row's state (`stateRoute()`, `stateChanges()`).
   - `read: true` on a read row and `starred: true` on a starred row keep the first stamp.
-  - Unchanged notes are not re-stamped, and all-whitespace notes are stored as null.
-  - The old `/handled` routes are gone, so a tab still open from before the deploy gets a 404 until it is reloaded.
+  - The old `/handled` routes are gone, and so is `notes` on this route. A tab still open from before a deploy gets a 404 or 400 until it is reloaded.
+- **`POST /api/…/:id/notes`** takes `{ body }` (trimmed, 1–5000 characters, `.strict()`, so no forged author). It answers 201 with the note, stamped with the signed-in user (`addNoteRoute()`).
+- **`DELETE /api/…/:id/notes/:noteId`** is for the author only (`deleteNoteRoute()`).
+  - Anyone else gets 403 `not_author`, and so does everyone for a note with no recorded author.
+  - A note that isn't on that request → 404.
 - **`POST /api/…/mark-read`** takes `{ ids }` (1–1000) and answers `{ requests }` with their state (`markReadRoute()`).
-- **`DELETE /api/…/:id?confirm=true`** (`deleteRoute()`). A quote's lines go with it (cascade); nothing references a `Lead`.
+- **`DELETE /api/…/:id?confirm=true`** (`deleteRoute()`). A quote's lines and notes go with it (cascade).
 - **Sidebar badges:** `GET /api/enquiries/counts` → `{ quotes, resourceRequests }`, the UNREAD counts. It's its own endpoint because the sidebar loads neither list.
-- **The list endpoints** return the seven state fields on each row.
+- **The list endpoints** return the state fields and `teamNotes` (oldest first) on each row, in one query, never one per row.
 
 On the dashboard, changes show at once and are put back if the server refuses (`useEnquiryActions()`). Only the latest change of each kind to a row may land, so two quick clicks on a star cannot finish in the wrong order.
 

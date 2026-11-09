@@ -287,10 +287,13 @@ model Lead {
   /// Starred, shared by the team: when and by whom. Both null = not starred.
   starredAt     DateTime?
   starredBy     String?
-  /// Staff-only notes, and who last changed them. Never shown to the visitor.
+  /// SUPERSEDED by `teamNotes` (migration 20261109150000_enquiry_notes, which
+  /// copied any text across as a note). Unused; dropped with handledAt later.
   notes          String?
   notesUpdatedAt DateTime?
   notesUpdatedBy String?
+  /// The team's notes on this request, a small message board (EnquiryNote).
+  teamNotes     EnquiryNote[]
   download      Download? @relation(fields: [downloadId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
@@ -427,14 +430,39 @@ model QuoteRequest {
   /// Starred, shared by the team: when and by whom. Both null = not starred.
   starredAt DateTime?
   starredBy String?
-  /// Staff-only notes, and who last changed them. Never shown to the customer.
+  /// SUPERSEDED by `teamNotes` (migration 20261109150000_enquiry_notes, which
+  /// copied any text across as a note). Unused; dropped with handledAt later.
   notes          String?
   notesUpdatedAt DateTime?
   notesUpdatedBy String?
+  /// The team's notes on this quote, a small message board (EnquiryNote).
+  teamNotes EnquiryNote[]
   items     QuoteRequestItem[]
 
   /// /api/quotes lists newest first.
   @@index([createdAt])
+}
+
+/// A note the team writes on a quote request or a resource request (2026-11):
+/// a small message board on each request, oldest first, each with who wrote it
+/// and when. Staff only, never shown to the customer.
+///
+/// Exactly one of `quoteRequestId` / `leadId` is set (a CHECK in the
+/// migration), and a note goes with its request when that is deleted (cascade),
+/// so a GDPR delete takes the team's notes about the person with it.
+model EnquiryNote {
+  id             String        @id @default(cuid())
+  quoteRequestId String?
+  leadId         String?
+  body           String
+  createdAt      DateTime      @default(now())
+  /// The author's sign-in email. Only they may delete the note.
+  createdBy      String?
+  quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([quoteRequestId, createdAt])
+  @@index([leadId, createdAt])
 }
 
 model QuoteRequestItem {

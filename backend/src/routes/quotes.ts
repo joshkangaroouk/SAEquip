@@ -3,11 +3,21 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { isEmailConfigured } from "../services/email.js";
 import { quoteProductMatcher, type MatchedProduct } from "../services/quoteProducts.js";
-import { deleteRoute, markReadRoute, stateRoute, stateSelect } from "../services/enquiryState.js";
+import {
+  addNoteRoute,
+  deleteNoteRoute,
+  deleteRoute,
+  markReadRoute,
+  noteSelect,
+  stateRoute,
+  stateSelect,
+} from "../services/enquiryState.js";
 
 export const quotesRouter = Router();
 
-const quoteInclude = { items: true } as const;
+// The team's notes come with every quote, oldest first: a handful per quote,
+// so one query beats a request per opened detail.
+const quoteInclude = { items: true, teamNotes: { select: noteSelect, orderBy: { createdAt: "asc" } } } as const;
 
 type QuoteWithItems = Prisma.QuoteRequestGetPayload<{ include: typeof quoteInclude }>;
 
@@ -40,14 +50,13 @@ function shapeQuote(q: QuoteWithItems, match: Matcher) {
     locale: q.locale,
     createdAt: q.createdAt,
     emailSent: q.emailSent,
-    // Read state, star and notes, shared by the team (PATCH /quotes/:id).
+    // Read state and star, shared by the team (PATCH /quotes/:id).
     readAt: q.readAt,
     readBy: q.readBy,
     starredAt: q.starredAt,
     starredBy: q.starredBy,
-    notes: q.notes,
-    notesUpdatedAt: q.notesUpdatedAt,
-    notesUpdatedBy: q.notesUpdatedBy,
+    // The team's notes, oldest first (POST /quotes/:id/notes).
+    teamNotes: q.teamNotes,
     items: q.items.map((item) => ({
       id: item.id,
       name: item.name,
@@ -92,9 +101,9 @@ quotesRouter.get("/quotes/:id", async (req, res, next) => {
 });
 
 /**
- * PATCH /api/quotes/:id  { read?, starred?, notes? }
- * Opening a quote on the dashboard sends `read: true`; "Mark as unread",
- * the star and the notes box send the rest. Rules in services/enquiryState.ts.
+ * PATCH /api/quotes/:id  { read?, starred? }
+ * Opening a quote on the dashboard sends `read: true`; "Mark as unread" and
+ * the star send the rest. Rules in services/enquiryState.ts.
  */
 quotesRouter.patch(
   "/quotes/:id",
@@ -113,7 +122,19 @@ quotesRouter.post(
   }),
 );
 
-/** DELETE /api/quotes/:id?confirm=true — permanent; its basket lines go with it (cascade). */
+/** POST /api/quotes/:id/notes { body } and DELETE …/notes/:noteId (author only). */
+const quoteNotes = {
+  exists: async (id: string) => (await prisma.quoteRequest.count({ where: { id } })) > 0,
+  create: (id: string, body: string, createdBy: string | null) =>
+    prisma.enquiryNote.create({ data: { quoteRequestId: id, body, createdBy }, select: noteSelect }),
+  find: (id: string, noteId: string) =>
+    prisma.enquiryNote.findFirst({ where: { id: noteId, quoteRequestId: id }, select: { createdBy: true } }),
+  remove: (noteId: string) => prisma.enquiryNote.delete({ where: { id: noteId } }),
+};
+quotesRouter.post("/quotes/:id/notes", addNoteRoute(quoteNotes));
+quotesRouter.delete("/quotes/:id/notes/:noteId", deleteNoteRoute(quoteNotes));
+
+/** DELETE /api/quotes/:id?confirm=true — permanent; its basket lines and notes go with it (cascade). */
 quotesRouter.delete(
   "/quotes/:id",
   deleteRoute("quote request", (id) => prisma.quoteRequest.delete({ where: { id } })),

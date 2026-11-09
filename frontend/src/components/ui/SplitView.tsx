@@ -94,12 +94,19 @@ export function SplitView({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const headingId = useId();
   const navRef = useRef<HTMLElement>(null);
+  const detailRef = useRef<HTMLElement>(null);
   const previous = useRef(selectedId);
   // The row to return focus to after "Back to list" (below xl).
   const backTo = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (selectedId && selectedId !== previous.current) headingRef.current?.focus({ preventScroll: true });
+    if (selectedId && selectedId !== previous.current) {
+      // A new item starts at its top: the pane is the same element whichever
+      // item it shows, so it would otherwise keep the last one's scroll (and
+      // open a long request part-way down its notes).
+      if (detailRef.current) detailRef.current.scrollTop = 0;
+      headingRef.current?.focus({ preventScroll: true });
+    }
     if (!selectedId && backTo.current) {
       backTo.current.focus();
       backTo.current = null;
@@ -153,6 +160,7 @@ export function SplitView({
           {list}
         </nav>
         <section
+          ref={detailRef}
           aria-labelledby={detail ? headingId : undefined}
           aria-label={detail ? undefined : "Details"}
           className={cn("min-h-0 lg:overflow-y-auto xl:block", !showing && "hidden")}
@@ -176,14 +184,13 @@ export function SplitView({
  * the selected one carries aria-current="true" and the selected state (02a
  * "After 4a").
  *
- * `unread` (the enquiry lists, email-style): the title and date in 600, an 8px
- * yellow square in the left gutter, and "Unread:" for screen readers. A list
- * that passes it is bold by read state alone; one that doesn't is bold while
- * selected.
+ * `unread` (the enquiry lists, email-style): the title and date in 600, and
+ * "Unread:" for screen readers. A list that passes it is bold by read state
+ * alone; one that doesn't is bold while selected.
  *
  * `aside` sits to the right of the link, OUTSIDE it (a button cannot nest in a
  * link), on the row's own background, so the row reads and hovers as one: the
- * enquiry lists' star.
+ * enquiry lists' envelope and star.
  */
 export function SplitListItem({
   to,
@@ -220,15 +227,7 @@ export function SplitListItem({
         aria-current={selected ? "true" : undefined}
         className={cn("block min-w-0 flex-1 py-3 pl-5 focus-visible:outline-offset-[-2px]", aside ? "pr-1" : "pr-5")}
       >
-        <span className="relative flex items-baseline justify-between gap-3">
-          {unread && (
-            // In the 20px gutter, centred on the title's line; a dark edge so
-            // the yellow still shows on white.
-            <span
-              aria-hidden="true"
-              className="absolute -left-3 top-1/2 h-2 w-2 -translate-y-1/2 border border-black/30 bg-accent"
-            />
-          )}
+        <span className="flex items-baseline justify-between gap-3">
           <span className={cn("min-w-0 truncate text-body text-text", bold && "font-semibold")}>
             {unread && <span className="sr-only">Unread: </span>}
             {title}

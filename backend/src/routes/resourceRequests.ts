@@ -1,6 +1,14 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
-import { deleteRoute, markReadRoute, stateRoute, stateSelect } from "../services/enquiryState.js";
+import {
+  addNoteRoute,
+  deleteNoteRoute,
+  deleteRoute,
+  markReadRoute,
+  noteSelect,
+  stateRoute,
+  stateSelect,
+} from "../services/enquiryState.js";
 
 export const resourceRequestsRouter = Router();
 
@@ -18,7 +26,10 @@ export const resourceRequestsRouter = Router();
  */
 resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
   try {
-    const leads = await prisma.lead.findMany({ orderBy: { createdAt: "desc" } });
+    const leads = await prisma.lead.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { teamNotes: { select: noteSelect, orderBy: { createdAt: "asc" } } },
+    });
     const ids = [...new Set(leads.map((l) => l.dudaProductId).filter((v): v is string => !!v))];
     const products = ids.length
       ? await prisma.hubProduct.findMany({ where: { dudaProductId: { in: ids } }, select: { dudaProductId: true, thumbnailUrl: true } })
@@ -42,14 +53,13 @@ resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
         consentTextEn: l.consentTextEn,
         locale: l.locale,
         createdAt: l.createdAt,
-        // Read state, star and notes, shared by the team (PATCH /resource-requests/:id).
+        // Read state and star, shared by the team (PATCH /resource-requests/:id).
         readAt: l.readAt,
         readBy: l.readBy,
         starredAt: l.starredAt,
         starredBy: l.starredBy,
-        notes: l.notes,
-        notesUpdatedAt: l.notesUpdatedAt,
-        notesUpdatedBy: l.notesUpdatedBy,
+        // The team's notes, oldest first (POST /resource-requests/:id/notes).
+        teamNotes: l.teamNotes,
         file: {
           title: l.downloadTitle,
           fileName: l.fileName,
@@ -68,7 +78,7 @@ resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
 });
 
 /**
- * PATCH /api/resource-requests/:id  { read?, starred?, notes? }
+ * PATCH /api/resource-requests/:id  { read?, starred? }
  * The resource-request twin of PATCH /quotes/:id, named after this page's own
  * route (the rows are `Lead`s). Rules in services/enquiryState.ts.
  */
@@ -89,10 +99,22 @@ resourceRequestsRouter.post(
   }),
 );
 
+/** POST /api/resource-requests/:id/notes { body } and DELETE …/notes/:noteId (author only). */
+const leadNotes = {
+  exists: async (id: string) => (await prisma.lead.count({ where: { id } })) > 0,
+  create: (id: string, body: string, createdBy: string | null) =>
+    prisma.enquiryNote.create({ data: { leadId: id, body, createdBy }, select: noteSelect }),
+  find: (id: string, noteId: string) =>
+    prisma.enquiryNote.findFirst({ where: { id: noteId, leadId: id }, select: { createdBy: true } }),
+  remove: (noteId: string) => prisma.enquiryNote.delete({ where: { id: noteId } }),
+};
+resourceRequestsRouter.post("/resource-requests/:id/notes", addNoteRoute(leadNotes));
+resourceRequestsRouter.delete("/resource-requests/:id/notes/:noteId", deleteNoteRoute(leadNotes));
+
 /**
  * DELETE /api/resource-requests/:id?confirm=true — permanent, consent record
- * included: for someone who asks for their data to be removed. Nothing
- * references a `Lead`, so nothing else changes.
+ * and the team's notes included (cascade): for someone who asks for their data
+ * to be removed.
  */
 resourceRequestsRouter.delete(
   "/resource-requests/:id",
