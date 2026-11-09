@@ -51,8 +51,18 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     }
     // The account must set up two-factor first (invited users, the super
     // admin): every request fails until it has, so go and do it.
+    // ⚠️ Refresh the session FIRST. One signed in before the requirement was
+    // set (an account just made super admin) still holds the old
+    // app_metadata, so /setup-2fa read "nothing owed" and sent it back here:
+    // a reload loop until the token expired. A refreshed session carries the
+    // server's current app_metadata; if the refresh fails, sign out, since a
+    // fresh sign-in carries it too.
     if (body?.error === "mfa_setup_required" && window.location.pathname !== "/setup-2fa") {
-      window.location.assign("/setup-2fa");
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        await supabase.auth.signOut();
+        window.location.assign("/login");
+      } else window.location.assign("/setup-2fa");
     }
     // Disabled by the super admin: the session is useless, so end it and say why.
     if (body?.error === "account_disabled") {

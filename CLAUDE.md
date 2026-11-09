@@ -1381,6 +1381,7 @@ Four parts, and the last is the one that makes it real:
 **Required 2FA (2026-11)** is `app_metadata.mfa_required: true`, on every invited account and the super admin (Josh's choice: existing accounts are unchanged).
 - `requireAuth` answers such an account with no verified factor 403 `mfa_setup_required`, on every route.
 - The dashboard sends it to **`/setup-2fa`** (`pages/SetupTwoFactor.tsx`, light only), through `mfaSetupPending` in `AuthContext` (`sessionNeedsMfaSetup()`), `ProtectedRoute` and `apiFetch`.
+  - ⚠️ **`apiFetch` refreshes the session before going there** (fixed 2026-11-09, the day it shipped). A session signed in before the requirement was set (an account just made super admin) keeps the old `app_metadata` in the browser, so `/setup-2fa` read "nothing owed" and sent it back to the dashboard: a reload loop until the token expired. If the refresh fails it signs out instead.
 - That page uses the same `TotpEnrolment` component as Security. Once the code is accepted it refreshes the session, so the guard sees the factor.
 - Security hides **Turn off** on the last authenticator of such an account.
 - Requiring it for everyone would be a separate, announced change.
