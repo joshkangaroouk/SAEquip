@@ -1,0 +1,6058 @@
+{
+  "meta": {
+    "source_sheet": "SA Equip Product Assignment - ALL PRODUCTS (Gill Houston, SA Equip, 12 Oct 2026)",
+    "duda_ids_from": "saequip-products-2026-10-02 export tab",
+    "generated": "2026-10-13",
+    "null_means": "unknown - do not change this field in Duda",
+    "site_challenge_menu": {
+      "What Needs Removing from the Air?": [
+        "Welding Fume Control",
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction",
+        "Paint Spray Fume Control",
+        "Hydrogen and Hazardous-Gas Ventilation"
+      ],
+      "Where Must Work Happen Safely?": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Temporary Power Distribution",
+        "Shutdown and Turnaround Packages"
+      ],
+      "What Conditions Need Controlling?": [
+        "Paint and Coating Drying",
+        "Humidity and Condensation Control",
+        "Hazardous-Area Cooling",
+        "Temporary and Process Heating",
+        "Equipment and Material Protection"
+      ]
+    },
+    "industries": [
+      "Distilleries & Breweries",
+      "Pharmaceuticals",
+      "Rail & Transport Engineering",
+      "Aviation & Aerospace",
+      "Renewables & Hydrogen",
+      "Petrochemical & Chemical Processing",
+      "Utilities",
+      "Nuclear",
+      "Marine & Commercial Ship Repair",
+      "Construction & Major Projects",
+      "Oil & Gas",
+      "Defence & Naval Shipbuilding"
+    ],
+    "top_level_categories": [
+      "Climate Control and Heating",
+      "Fume, Dust, LEV and Vapour Control",
+      "Lighting and Power"
+    ]
+  },
+  "products": [
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPPWJPY6SMV9MMYX0P8705",
+      "duda_name": "Antistatic Reinforced Ducting",
+      "duda_sku": "SAFD",
+      "sheet_name": "Antistatic Reinforced Ducting",
+      "sheet_sku": "SAFD",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Oil & Gas"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Flexible fume extraction)",
+        "hydrogen_suitability": "Suitable (Anti-static construction)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": [
+        "Industry \"Petrochemical\" expanded to \"Petrochemical & Chemical Processing\"",
+        "Industry \"Distilleries\" expanded to \"Distilleries & Breweries\"",
+        "Industry \"Renewables\" expanded to \"Renewables & Hydrogen\"",
+        "Brand CYCLONE taken from current Duda description (inferred)"
+      ]
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPQTR5A31K13F5W5PZ9BPS",
+      "duda_name": "EX 400VA Transformer",
+      "duda_sku": "SPTR",
+      "sheet_name": "EX 400VA Transformer",
+      "sheet_sku": "SPTR400",
+      "brand": "POWERNET",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary Power Distribution",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Temporary Power Distribution",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Oil & Gas"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": true,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": null,
+        "iecex": null,
+        "inmetro": null,
+        "zone_0": null,
+        "zone_1_2": null,
+        "zone_20": null,
+        "zone_21_22": null,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Suitable for hazardous areas",
+        "atex_zones_raw": "",
+        "iecex_raw": "",
+        "inmetro_raw": ""
+      },
+      "hold_reasons": [
+        "Certification data missing or unclear (ATEX=\"Suitable for hazardous areas\", IECEx=\"\", INMETRO=\"\")",
+        "Tagged Hydrogen and Hazardous-Gas Ventilation but suitability/certification not confirmed"
+      ],
+      "notes": [
+        "Industry \"Petrochemical\" expanded to \"Petrochemical & Chemical Processing\"",
+        "Industry \"Distilleries\" expanded to \"Distilleries & Breweries\"",
+        "Industry \"Renewables\" expanded to \"Renewables & Hydrogen\"",
+        "Brand POWERNET taken from current Duda description (inferred)",
+        "New SKU SPTR400 (Duda currently SPTR) - do not change SKU until Phase 4"
+      ]
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": null,
+      "duda_name": null,
+      "duda_sku": null,
+      "sheet_name": "Filter, Filters – Purchase Only (all SAFU/RF)",
+      "sheet_sku": "SAFU/RF",
+      "brand": null,
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Oil & Gas"
+      ],
+      "sa_range_logos": {
+        "cyclone": null,
+        "endure": null,
+        "flexiheat": null,
+        "lumin": null,
+        "powernet": null,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Applicable / Consumable",
+        "hydrogen_suitability": "Suitable (Component for EX filters)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "Merged row covering several Duda filter products (SAFU/RF). Decision needed on which Duda filter products to keep, merge or delete."
+      ],
+      "notes": [
+        "Industry \"Petrochemical\" expanded to \"Petrochemical & Chemical Processing\"",
+        "Industry \"Distilleries\" expanded to \"Distilleries & Breweries\"",
+        "Industry \"Renewables\" expanded to \"Renewables & Hydrogen\""
+      ]
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPX0JVREZEESJQ5JJBXEDQ",
+      "duda_name": "Anti-Static PU Flexible Duct System",
+      "duda_sku": "SAFD",
+      "sheet_name": "SA CYCLONE Anti-Static PU Flexible Duct System",
+      "sheet_sku": "SAFD",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Flexible fume extraction)",
+        "hydrogen_suitability": "Suitable (Anti-static construction)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPQ0V7SDSSCBTBCFED4K5C",
+      "duda_name": "Antistatic Layflat Ducting",
+      "duda_sku": "SAFD/LF",
+      "sheet_name": "SA CYCLONE Antistatic Layflat Ducting",
+      "sheet_sku": "SAFD/LF",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Blowing clean air into spaces)",
+        "hydrogen_suitability": "Suitable (Anti-static)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPV10E0EVHJ5Q2VPE8E9Y0",
+      "duda_name": "Compact Dust Extraction System",
+      "duda_sku": "SAECDS/SAECBS",
+      "sheet_name": "SA CYCLONE Compact Dust Extraction System",
+      "sheet_sku": "SAECDS/SAECBS",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Confined space surface prep)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [
+        "Labelled SA CYCLONE but SKU prefix (SAE/SE) and current Duda description indicate SA ENDURE. Brand and certification must be confirmed by SA Equip before tags or logos are applied."
+      ],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPSRCSAQY814CBE2FDTGS4",
+      "duda_name": "Compact Filtration Unit",
+      "duda_sku": "SACFU",
+      "sheet_name": "SA CYCLONE Compact Filtration Unit",
+      "sheet_sku": "SACFU",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Air filtration during coating)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPQ2SWZ65RJ411GRG26Z20",
+      "duda_name": "Duct Couplers",
+      "duda_sku": "SAFD/CU",
+      "sheet_name": "SA CYCLONE Duct Couplers",
+      "sheet_sku": "SAFD/CU",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Duct connection)",
+        "hydrogen_suitability": "Suitable (Anti-static / stainless steel)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPV4B7FQ0KTM5NGZYR0JJZ",
+      "duda_name": "Dust Filter Bundle - 12 Panel Filters & 24 Compact Bag Filters",
+      "duda_sku": "SEFU/RF-DU/BD2",
+      "sheet_name": "SA CYCLONE Dust Filter Bundle - 12 Panel Filters & 24 Compact Bag Filters",
+      "sheet_sku": "SEFU/RF-DU/BD2",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Applicable / Consumable",
+        "hydrogen_suitability": "Suitable (Component for EX systems)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "Labelled SA CYCLONE but SKU prefix (SAE/SE) and current Duda description indicate SA ENDURE. Brand and certification must be confirmed by SA Equip before tags or logos are applied."
+      ],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPXQ91HYBYA1JW8HR5KDGW",
+      "duda_name": "EX Air Conditioner",
+      "duda_sku": "SAAC11440",
+      "sheet_name": "SA CYCLONE EX Air Conditioner",
+      "sheet_sku": "SAAC11440",
+      "brand": "CYCLONE",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Paint and Coating Drying",
+        "Humidity and Condensation Control",
+        "Hazardous-Area Cooling",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Humidity and Condensation Control",
+        "Hazardous-Area Cooling",
+        "Paint and Coating Drying",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Climate control for coating)",
+        "hydrogen_suitability": "Not Suitable (Rated for IIB, lacks IIC / Hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPPGA6ZZDDVQEWC02A33HN",
+      "duda_name": "EX Air Mover",
+      "duda_sku": "SAF35 / SAF35D",
+      "sheet_name": "SA CYCLONE EX Air Mover",
+      "sheet_sku": "SAF35 / SAF35D",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (High-power ventilation)",
+        "hydrogen_suitability": "Suitable (Certified for IIB+H2 / Hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPTPXFH8FJ2FQ4445H1DZC",
+      "duda_name": "EX Compact Dust Extraction System",
+      "duda_sku": "SACDES/SACBDS",
+      "sheet_name": "SA CYCLONE EX Compact Dust Extraction System",
+      "sheet_sku": "SACDES/SACBDS",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Dust/debris removal)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPXZVTWFC3S7K1JGTHFKDZ",
+      "duda_name": "EX Dehumidifier",
+      "duda_sku": "SADH11440",
+      "sheet_name": "SA CYCLONE EX Dehumidifier",
+      "sheet_sku": "SADH11440",
+      "brand": "CYCLONE",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Paint and Coating Drying",
+        "Humidity and Condensation Control",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Humidity and Condensation Control",
+        "Paint and Coating Drying",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (200L/day moisture removal)",
+        "hydrogen_suitability": "Not Suitable (Rated for IIB, lacks IIC / Hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPTEHTRR1YJWATW3PN9HAX",
+      "duda_name": "EX Dust Extraction System",
+      "duda_sku": "SADSES",
+      "sheet_name": "SA CYCLONE EX Dust Extraction System",
+      "sheet_sku": "SADSES",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Surface prep dust control)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPV9ZRV4NHVPSQZT7ZP99J",
+      "duda_name": "EX High Capacity Dust Extraction System",
+      "duda_sku": "SADSES/SABDES",
+      "sheet_name": "SA CYCLONE EX High Capacity Dust Extraction System",
+      "sheet_sku": "SADSES/SABDES",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Heavy-duty dust removal)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPWEDCC6T7P0G7NV8PKAXJ",
+      "duda_name": "EX High Power Air Mover",
+      "duda_sku": "SAF35HP",
+      "sheet_name": "SA CYCLONE EX High Power Air Mover",
+      "sheet_sku": "SAF35HP",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (High capacity ventilation)",
+        "hydrogen_suitability": "Suitable (Certified for IIB+H2 / Hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPT8DB09H5JZ3JCN3MVPYS",
+      "duda_name": "EX Paint Vapour Extraction System",
+      "duda_sku": "SAPVES",
+      "sheet_name": "SA CYCLONE EX Paint Vapour Extraction System",
+      "sheet_sku": "SAPVES",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Paint Spray Fume Control",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Toxic Fume and Vapour Extraction",
+        "Paint Spray Fume Control",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Dedicated paint vapour extraction)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPQD17S89DWJ6463XCX4QN",
+      "duda_name": "Extraction Hood",
+      "duda_sku": "SAFD/H",
+      "sheet_name": "SA CYCLONE Extraction Hood",
+      "sheet_sku": "SAFD/H",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (LEV paint/fume capture)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPWW6N9MSPJ9B809ZXSNNP",
+      "duda_name": "Filters",
+      "duda_sku": "SAFU/",
+      "sheet_name": "SA CYCLONE Filters",
+      "sheet_sku": "SAFU/",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Suitable (Consumable component)",
+        "hydrogen_suitability": "Suitable (Component for EX filters)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPPMTHG9BC5Q97DM014PXB",
+      "duda_name": "Filtration Unit",
+      "duda_sku": "SAFU",
+      "sheet_name": "SA CYCLONE Filtration Unit",
+      "sheet_sku": "SAFU",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction",
+        "Paint and Coating Drying"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Air filtration)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPS8XZR15J572J8J9XPBQW",
+      "duda_name": "Fuel Tank Adaptor Flange",
+      "duda_sku": "SAFD FTF",
+      "sheet_name": "SA CYCLONE Fuel Tank Adaptor Flange",
+      "sheet_sku": "SAFD FTF",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Tank entry & ventilation interface)",
+        "hydrogen_suitability": "Suitable (Anti-static / EX compatible)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPTTF35NZANG1VP31N3Q1A",
+      "duda_name": "High Power Air Mover",
+      "duda_sku": "SEF35HP",
+      "sheet_name": "SA CYCLONE High Power Air Mover",
+      "sheet_sku": "SEF35HP",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Vapour/fume clearance)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [
+        "Labelled SA CYCLONE but SKU prefix (SAE/SE) and current Duda description indicate SA ENDURE. Brand and certification must be confirmed by SA Equip before tags or logos are applied.",
+        "SEF35HP appears twice in the source sheet (as SA CYCLONE High Power Air Mover, Certified, and SA ENDURE High Power Air Mover, Not Certified). Both rows map to the same Duda product. Awaiting SA Equip confirmation."
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPVFEABW7DD0C7ZVFJJEXD",
+      "duda_name": "High Volume Dust Extraction System",
+      "duda_sku": "SAEDES/SAEBDS",
+      "sheet_name": "SA CYCLONE High Volume Dust Extraction System",
+      "sheet_sku": "SAEDES/SAEBDS",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Abrasive blasting collection)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [
+        "Labelled SA CYCLONE but SKU prefix (SAE/SE) and current Duda description indicate SA ENDURE. Brand and certification must be confirmed by SA Equip before tags or logos are applied."
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPVM28SMQ4KTSN9KNX86C1",
+      "duda_name": "Lightweight Dust Extraction System",
+      "duda_sku": "SAELDS/SAELBS",
+      "sheet_name": "SA CYCLONE Lightweight Dust Extraction System",
+      "sheet_sku": "SAELDS/SAELBS",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Surface prep dust control)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [
+        "Labelled SA CYCLONE but SKU prefix (SAE/SE) and current Duda description indicate SA ENDURE. Brand and certification must be confirmed by SA Equip before tags or logos are applied."
+      ],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPV6RHWS4CNJSZNBB69KBW",
+      "duda_name": "Lightweight Extraction System",
+      "duda_sku": "SACLDS",
+      "sheet_name": "SA CYCLONE Lightweight Extraction System",
+      "sheet_sku": "SACLDS",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Dust Extraction, Filtration and Containment",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Fume/dust extraction)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPW0XA8HC8JQ747Y7AS8ZN",
+      "duda_name": "Lightweight Filtration Unit",
+      "duda_sku": "SAELFU",
+      "sheet_name": "SA CYCLONE Lightweight Filtration Unit",
+      "sheet_sku": "SAELFU",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Filtration of particulates)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "Labelled SA CYCLONE but SKU prefix (SAE/SE) and current Duda description indicate SA ENDURE. Brand and certification must be confirmed by SA Equip before tags or logos are applied."
+      ],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPQ9F9BG2ESB30D5ZSEZB7",
+      "duda_name": "Manway Adaptor",
+      "duda_sku": "SAFD/MW",
+      "sheet_name": "SA CYCLONE Manway Adaptor",
+      "sheet_sku": "SAFD/MW",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Tank ventilation interface)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPYBNX62JKM2MJ22M0RSVR",
+      "duda_name": "Negative Pressure System",
+      "duda_sku": "SANPES",
+      "sheet_name": "SA CYCLONE Negative Pressure System",
+      "sheet_sku": "SANPES",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Contaminant control during coating)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPT10ZJJB8NXN7W32ZWJ23",
+      "duda_name": "Negative Pressure Unit",
+      "duda_sku": "SANPU",
+      "sheet_name": "SA CYCLONE Negative Pressure Unit",
+      "sheet_sku": "SANPU",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Coating containment control)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPS4YM9H6KWZZJ01TNYBTT",
+      "duda_name": "Portable Trolley",
+      "duda_sku": "",
+      "sheet_name": "SA CYCLONE Portable Trolley",
+      "sheet_sku": "SAAF/TR01",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Applicable / Accessory",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": [
+        "New SKU SAAF/TR01 (Duda currently blank) - SKU update is Phase 4"
+      ]
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPX3AE4734TP9Y98SQNNB2",
+      "duda_name": "PVC Flexible Duct System",
+      "duda_sku": "SEFD",
+      "sheet_name": "SA CYCLONE PVC Flexible Duct System",
+      "sheet_sku": "SEFD",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Fume extraction ducting)",
+        "hydrogen_suitability": "Suitable (Anti-static / EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "Labelled SA CYCLONE but SKU prefix (SAE/SE) and current Duda description indicate SA ENDURE. Brand and certification must be confirmed by SA Equip before tags or logos are applied."
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPVQ4N6FYRYK69WYA8P99Q",
+      "duda_name": "Vapour Extraction System",
+      "duda_sku": "SAEVES",
+      "sheet_name": "SA CYCLONE Vapour Extraction System",
+      "sheet_sku": "SAEVES",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Paint Spray Fume Control",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Toxic Fume and Vapour Extraction",
+        "Paint Spray Fume Control",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Paint spray fume extraction)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [
+        "Labelled SA CYCLONE but SKU prefix (SAE/SE) and current Duda description indicate SA ENDURE. Brand and certification must be confirmed by SA Equip before tags or logos are applied."
+      ],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPQFEGR3VA4HXHS7AYBDVR",
+      "duda_name": "Venturi Air Mover",
+      "duda_sku": "SAV",
+      "sheet_name": "SA CYCLONE Venturi Air Mover",
+      "sheet_sku": "SAV",
+      "brand": "CYCLONE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Toxic Fume and Vapour Extraction",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Toxic Fume and Vapour Extraction",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": true,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Pneumatic fume extraction)",
+        "hydrogen_suitability": "Suitable (Compressed air/steam driven, EX)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPRZJQ8HZJT1R2KYWNK7SM",
+      "duda_name": "Air Mover",
+      "duda_sku": "SEF35",
+      "sheet_name": "SA ENDURE Air Mover",
+      "sheet_sku": "SEF35",
+      "brand": "ENDURE",
+      "category": null,
+      "site_challenges": [
+        "Confined-Space Ventilation"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (General ventilation & drying airflow)",
+        "hydrogen_suitability": "Suitable (Safe area general ventilation)",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Non-standard Site Challenge value: \"Confined-Space Ventilation (Safe Area)\"",
+        "Category column contains \"Suitable (General ventilation and airflow)\" (columns shifted)"
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPTTF35NZANG1VP31N3Q1A",
+      "duda_name": "High Power Air Mover",
+      "duda_sku": "SEF35HP",
+      "sheet_name": "SA ENDURE High Power Air Mover",
+      "sheet_sku": "SEF35HP",
+      "brand": "ENDURE",
+      "category": null,
+      "site_challenges": [
+        "Confined-Space Ventilation"
+      ],
+      "site_challenges_display_order": [
+        "Confined-Space Ventilation"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (General ventilation & drying airflow)",
+        "hydrogen_suitability": "Suitable (Safe area general ventilation)",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Non-standard Site Challenge value: \"Confined-Space Ventilation (Safe Area)\"",
+        "Category column contains \"Suitable (General ventilation and airflow)\" (columns shifted)",
+        "SEF35HP appears twice in the source sheet (as SA CYCLONE High Power Air Mover, Certified, and SA ENDURE High Power Air Mover, Not Certified). Both rows map to the same Duda product. Awaiting SA Equip confirmation."
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPYYP79FXTPEN8S6Y7QHGN",
+      "duda_name": "Compact Filtration Unit (SAECFU)",
+      "duda_sku": "SAECFU",
+      "sheet_name": "SA ENDURE Compact Filtration Unit",
+      "sheet_sku": "SAECFU",
+      "brand": "ENDURE",
+      "category": "Fume, Dust, LEV and Vapour Control",
+      "site_challenges": [
+        "Dust Extraction, Filtration and Containment",
+        "Confined-Space Ventilation",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Confined-Space Ventilation",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Air filtration during coating)",
+        "hydrogen_suitability": "Not Suitable (Safe area only, non-EX)",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "N/A (Safe Area)",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "Tagged Paint and Coating Drying but is non-EX / not suitable - conflicts with SA Equip rule to exclude non-EX products"
+      ],
+      "notes": [
+        "Industry \"Petrochemical\" expanded to \"Petrochemical & Chemical Processing\"",
+        "Industry \"Construction\" expanded to \"Construction & Major Projects\"",
+        "Industry \"Marine\" expanded to \"Marine & Commercial Ship Repair\""
+      ]
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPXAPZHT3A3DFJSA0T9H5S",
+      "duda_name": "Container LEV System",
+      "duda_sku": "SAEWFC",
+      "sheet_name": "SA ENDURE Container LEV System",
+      "sheet_sku": "SAEWFC",
+      "brand": "ENDURE",
+      "category": null,
+      "site_challenges": [
+        "Welding Fume Control",
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction",
+        "Welding Fume Control"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Suitable (Welding LEV specific)",
+        "hydrogen_suitability": "Not Suitable (Safe area only, non-EX)",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Category column contains \"Not Suitable (Welding specific)\" (columns shifted)"
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPRK9QPQ5BR0NJB9EXMEY7",
+      "duda_name": "LED Emergency Tubelight",
+      "duda_sku": "STE100",
+      "sheet_name": "SA ENDURE LED Emergency Tubelight",
+      "sheet_sku": "STE100",
+      "brand": "ENDURE",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting"
+      ],
+      "industries": [],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Temporary lighting)",
+        "hydrogen_suitability": "Not Applicable / Safe Area Lighting",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Non-standard Site Challenge value: \"Hazardous-Area Lighting (Safe Area / Industrial)\"",
+        "No industries assigned"
+      ],
+      "notes": []
+    },
+    {
+      "status": "NEW_PRODUCT_HOLD",
+      "duda_product_id": null,
+      "duda_name": null,
+      "duda_sku": null,
+      "sheet_name": "SA ENDURE LED Max Light",
+      "sheet_sku": "SAML",
+      "brand": "ENDURE",
+      "category": null,
+      "site_challenges": [
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Temporary lighting)",
+        "hydrogen_suitability": "Not Applicable / Safe Area Lighting",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Non-standard Site Challenge value: \"Hazardous-Area Lighting (Safe Area / Industrial)\"",
+        "Category column contains \"Suitable (Temporary lighting)\" (columns shifted)"
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPRFPJSJJ8AMMNEX9YHX3H",
+      "duda_name": "LED Tubelight",
+      "duda_sku": "ST100",
+      "sheet_name": "SA ENDURE LED Tubelight",
+      "sheet_sku": "ST100",
+      "brand": "ENDURE",
+      "category": "Lighting and Power",
+      "site_challenges": [],
+      "site_challenges_display_order": [],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Temporary lighting)",
+        "hydrogen_suitability": "Not Applicable / Safe Area Lighting",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Non-standard Site Challenge value: \"Temporary Lighting\""
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPR96H6VSR07H5YY4GY9SS",
+      "duda_name": "LED Worklamp",
+      "duda_sku": "SAWL",
+      "sheet_name": "SA ENDURE LED Worklamp",
+      "sheet_sku": "SAWL",
+      "brand": "ENDURE",
+      "category": "Lighting and Power",
+      "site_challenges": [],
+      "site_challenges_display_order": [],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Temporary lighting)",
+        "hydrogen_suitability": "Not Applicable / Safe Area Lighting",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Non-standard Site Challenge value: \"Temporary Lighting\""
+      ],
+      "notes": []
+    },
+    {
+      "status": "NEW_PRODUCT_HOLD",
+      "duda_product_id": null,
+      "duda_name": null,
+      "duda_sku": null,
+      "sheet_name": "SA ENDURE LEV Accessories",
+      "sheet_sku": "SEHB/SEFD",
+      "brand": "ENDURE",
+      "category": null,
+      "site_challenges": [
+        "Welding Fume Control",
+        "Dust Extraction, Filtration and Containment"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Welding Fume Control"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Accessory for LEV)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Category column contains \"Suitable (Accessory for LEV systems)\" (columns shifted)"
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPW3A15CA51720DG3A798G",
+      "duda_name": "Mobile LEV System",
+      "duda_sku": "SAEWFS",
+      "sheet_name": "SA ENDURE Mobile LEV System",
+      "sheet_sku": "SAEWFS",
+      "brand": "ENDURE",
+      "category": null,
+      "site_challenges": [
+        "Welding Fume Control",
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction",
+        "Welding Fume Control"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Suitable (Welding LEV specific)",
+        "hydrogen_suitability": "Not Suitable (Safe area only, non-EX)",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Category column contains \"Not Suitable (Welding / Fume specific)\" (columns shifted)"
+      ],
+      "notes": []
+    },
+    {
+      "status": "HOLD",
+      "duda_product_id": "01M1XPWJX7X6BKXZX2TB81VDAF",
+      "duda_name": "Portable LEV System",
+      "duda_sku": "SAEWFP",
+      "sheet_name": "SA ENDURE Portable LEV System",
+      "sheet_sku": "SAEWFP",
+      "brand": "ENDURE",
+      "category": null,
+      "site_challenges": [
+        "Welding Fume Control",
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction"
+      ],
+      "site_challenges_display_order": [
+        "Dust Extraction, Filtration and Containment",
+        "Toxic Fume and Vapour Extraction",
+        "Welding Fume Control"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": true,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Suitable (Welding LEV specific)",
+        "hydrogen_suitability": "Not Suitable (Safe area only, non-EX)",
+        "atex_raw": "Not Certified",
+        "atex_zones_raw": "Not Certified / Safe Area / Non-Hazardous",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [
+        "SA ENDURE safe-area product: Category column holds suitability text and/or Site Challenges use non-standard values. Needs a new safe-area category decision (Phase 5).",
+        "Category column contains \"Not Suitable (Welding / Fume specific)\" (columns shifted)"
+      ],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPM0VGHB160VGQM9WNRJV6",
+      "duda_name": "EX HeatBox",
+      "duda_sku": "SAHB/02-AP",
+      "sheet_name": "SA FLEXIHEAT EX HeatBox",
+      "sheet_sku": "SAHB/02-AP",
+      "brand": "FLEXIHEAT",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Paint and Coating Drying",
+        "Temporary and Process Heating",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Temporary and Process Heating",
+        "Paint and Coating Drying",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": true,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Maintains paint/PFP container temp)",
+        "hydrogen_suitability": "Suitable (Pneumatic / air-powered, no spark)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas)",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": [
+        "ATEX certified but not IECEx (only product like this) - confirm"
+      ]
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XRCFGGHYEJ0QGGXCJ3582N",
+      "duda_name": "EX Heater",
+      "duda_sku": "SAPH18440",
+      "sheet_name": "SA FLEXIHEAT EX Heater",
+      "sheet_sku": "SAPH18440",
+      "brand": "FLEXIHEAT",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying",
+        "Temporary and Process Heating"
+      ],
+      "site_challenges_display_order": [
+        "Temporary and Process Heating",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": true,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (18kW heating capacity for drying)",
+        "hydrogen_suitability": "Not Suitable (Rated for IIB, lacks IIC / Hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPJWJ375C67NJ02D83MWJ9",
+      "duda_name": "EX Heating Jacket",
+      "duda_sku": "SAFH150P/SAFH050P",
+      "sheet_name": "SA FLEXIHEAT EX Heating Jacket",
+      "sheet_sku": "SAFH150P/SAFH050P",
+      "brand": "FLEXIHEAT",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary and Process Heating",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Temporary and Process Heating",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": true,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Pipe heating and frost protection)",
+        "hydrogen_suitability": "Suitable (IIC certified for hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPKX28BY06226NEWAWGDBP",
+      "duda_name": "EX High Power Heating Jacket",
+      "duda_sku": "SAFH150H/SAFH050H",
+      "sheet_name": "SA FLEXIHEAT EX High Power Heating Jacket",
+      "sheet_sku": "SAFH150H/SAFH050H",
+      "brand": "FLEXIHEAT",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary and Process Heating",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Temporary and Process Heating",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": true,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (High-power pipe/equipment heating)",
+        "hydrogen_suitability": "Suitable (IIC certified for hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPKZC9VED0CA5YBE09G159",
+      "duda_name": "EX Temperature Limiter for Heating Jacket",
+      "duda_sku": "SAFH/STM",
+      "sheet_name": "SA FLEXIHEAT EX Temperature Limiter for Heating Jacket",
+      "sheet_sku": "SAFH/STM",
+      "brand": "FLEXIHEAT",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Temporary and Process Heating"
+      ],
+      "site_challenges_display_order": [
+        "Temporary and Process Heating"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": true,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Accessory for heating jackets)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPM0190VBRX83N86GDGXEZ",
+      "duda_name": "EX Temperature Limiter for High Power Heating Jacket",
+      "duda_sku": "SAFH/HTM",
+      "sheet_name": "SA FLEXIHEAT EX Temperature Limiter for High Power Heating Jacket",
+      "sheet_sku": "SAFH/HTM",
+      "brand": "FLEXIHEAT",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Temporary and Process Heating"
+      ],
+      "site_challenges_display_order": [
+        "Temporary and Process Heating"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": true,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Accessory for heating jackets)",
+        "hydrogen_suitability": "Suitable (EX compliant)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPJT6CCYYW1QPNW4HS39GW",
+      "duda_name": "Trolley for EX Heater",
+      "duda_sku": "SAPH/WD",
+      "sheet_name": "SA FLEXIHEAT Trolley for EX Heater",
+      "sheet_sku": "SAPH/WD",
+      "brand": "FLEXIHEAT",
+      "category": "Climate Control and Heating",
+      "site_challenges": [
+        "Temporary and Process Heating"
+      ],
+      "site_challenges_display_order": [
+        "Temporary and Process Heating"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": true,
+        "lumin": false,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Transport for EX heater)",
+        "hydrogen_suitability": "Not Applicable / Mechanical Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPM4YTGJ6ZHM0SRW3SJ38R",
+      "duda_name": "Charging Unit for EX Rechargeable Torch",
+      "duda_sku": "EX150/CR",
+      "sheet_name": "SA LUMIN Charging Unit for EX Rechargeable Torch",
+      "sheet_sku": "EX150/CR",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Applicable / Accessory",
+        "hydrogen_suitability": "Suitable (Accessory for IIC torches)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNZC576HVBHMZ5QHMF8F3",
+      "duda_name": "Compact Floodlight Protective Film",
+      "duda_sku": "SAFL/PF-C",
+      "sheet_name": "SA LUMIN Compact Floodlight Protective Film",
+      "sheet_sku": "SAFL/PF-C",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNXBS6RV1ZE1XTYD2KT07",
+      "duda_name": "Compact Floodlight Protective Shield",
+      "duda_sku": "SAFL/PS-C",
+      "sheet_name": "SA LUMIN Compact Floodlight Protective Shield",
+      "sheet_sku": "SAFL/PS-C",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPM6ZV9A4447ZXM6R4B42S",
+      "duda_name": "EX Headtorch",
+      "duda_sku": "EX600",
+      "sheet_name": "SA LUMIN EX Headtorch",
+      "sheet_sku": "EX600",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": true,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 0, 1 & 2 (Gas)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPP4PQJAK6WM0MBXNMA9VJ",
+      "duda_name": "EX LED Area Light",
+      "duda_sku": "SAAL25/FR",
+      "sheet_name": "SA LUMIN EX LED Area Light",
+      "sheet_sku": "SAAL25/FR",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Suitable (Rated for IIB, lacks IIC)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPMH3NE2X1VY4ATT3EKBQ1",
+      "duda_name": "EX LED Emergency Worklight",
+      "duda_sku": "SAE100",
+      "sheet_name": "SA LUMIN EX LED Emergency Worklight",
+      "sheet_sku": "SAE100",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPN898GQFCAA6S046C7Z0B",
+      "duda_name": "EX LED Floodlight",
+      "duda_sku": "SAFL300",
+      "sheet_name": "SA LUMIN EX LED Floodlight",
+      "sheet_sku": "SAFL300",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNF3HJZ5W62XMD1SVQA9M",
+      "duda_name": "EX LED Rechargeable Floodlight",
+      "duda_sku": "SARF300",
+      "sheet_name": "SA LUMIN EX LED Rechargeable Floodlight",
+      "sheet_sku": "SARF300",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNJDBVVHRSXFNR7P7A0PE",
+      "duda_name": "EX LED Rechargeable Floodlight Kit",
+      "duda_sku": "SARF300/KIT1",
+      "sheet_name": "SA LUMIN EX LED Rechargeable Floodlight Kit",
+      "sheet_sku": "SARF300/KIT1",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPX67P7EDKCECNGPHNA63R",
+      "duda_name": "EX LED Torch",
+      "duda_sku": "EX160",
+      "sheet_name": "SA LUMIN EX LED Torch",
+      "sheet_sku": "EX160",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": true,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified for hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 0, 1 & 2 (Gas)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPP7N5MVZ61653M04HNX2V",
+      "duda_name": "EX LED Tower Light",
+      "duda_sku": "SAAL25/TW",
+      "sheet_name": "SA LUMIN EX LED Tower Light",
+      "sheet_sku": "SAAL25/TW",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Suitable (Rated for IIB, lacks IIC)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPPB65YAQ1FKD69SSQ6RER",
+      "duda_name": "EX LED Tower Light Trolley",
+      "duda_sku": "SAAL/TR",
+      "sheet_name": "SA LUMIN EX LED Tower Light Trolley",
+      "sheet_sku": "SAAL/TR",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Suitable (Tower light head is IIB)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPPD1331H1W8M6AN5JT1DZ",
+      "duda_name": "EX LED Vessel Entry Kit",
+      "duda_sku": "SAVK",
+      "sheet_name": "SA LUMIN EX LED Vessel Entry Kit",
+      "sheet_sku": "SAVK",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Suitable (Low voltage EX system)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPMAZS1E59HZPH8M63E375",
+      "duda_name": "EX LED Worklight 100",
+      "duda_sku": "SA100",
+      "sheet_name": "SA LUMIN EX LED Worklight 100",
+      "sheet_sku": "SA100",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPMDR6DFA7N59050J786M6",
+      "duda_name": "EX LED Worklight 200",
+      "duda_sku": "SA200",
+      "sheet_name": "SA LUMIN EX LED Worklight 200",
+      "sheet_sku": "SA200",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages",
+        "Paint and Coating Drying",
+        "Equipment and Material Protection"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Paint and Coating Drying",
+        "Shutdown and Turnaround Packages",
+        "Equipment and Material Protection"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNMADGCS8SWP6K9KTREXP",
+      "duda_name": "Floodlight Magnetic Bracket",
+      "duda_sku": "SAFL/MB",
+      "sheet_name": "SA LUMIN Floodlight Magnetic Bracket",
+      "sheet_sku": "SAFL/MB",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNVKQATJPAY6H3AGBR167",
+      "duda_name": "Floodlight Protective Film",
+      "duda_sku": "SAFL/PF",
+      "sheet_name": "SA LUMIN Floodlight Protective Film",
+      "sheet_sku": "SAFL/PF",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNSP8R8MJCG0RJTHBV3FC",
+      "duda_name": "Floodlight Protective Shield",
+      "duda_sku": "SAFL/PS",
+      "sheet_name": "SA LUMIN Floodlight Protective Shield",
+      "sheet_sku": "SAFL/PS",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNP6HM1Q84P5HAG63E19V",
+      "duda_name": "Floodlight Scaffold Bracket",
+      "duda_sku": "SAFL/SB",
+      "sheet_name": "SA LUMIN Floodlight Scaffold Bracket",
+      "sheet_sku": "SAFL/SB",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPNR109VZDNESV8CAK0EQK",
+      "duda_name": "Floodlight Tripod Stand",
+      "duda_sku": "SAFL/TS",
+      "sheet_name": "SA LUMIN Floodlight Tripod Stand",
+      "sheet_sku": "SAFL/TS",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPSN2VSVZMD0KNBPSNA6NM",
+      "duda_name": "LED Tasklight",
+      "duda_sku": "SATL100/SG",
+      "sheet_name": "SA LUMIN LED Tasklight",
+      "sheet_sku": "SATL100/SG",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": true,
+        "zone_1_2": true,
+        "zone_20": true,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified for hydrogen)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 0, 1 & 2 (Gas), 20, 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPSQQT33YV4D0HSRSDM3PX",
+      "duda_name": "LED Tasklight Charging Rack",
+      "duda_sku": "SATL100/SG/CR5",
+      "sheet_name": "SA LUMIN LED Tasklight Charging Rack",
+      "sheet_sku": "SATL100/SG/CR5",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (Charging IIC tasklights)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPP021CKN5VWVA1R99R4F2",
+      "duda_name": "Rechargeable Floodlight Protective Case",
+      "duda_sku": "SARF/PBX",
+      "sheet_name": "SA LUMIN Rechargeable Floodlight Protective Case",
+      "sheet_sku": "SARF/PBX",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPSGR38B1RVS17TQQB1VTM",
+      "duda_name": "SA LUMIN Tasklight Adjustable Floor Stand",
+      "duda_sku": "",
+      "sheet_name": "SA LUMIN Tasklight Adjustable Floor Stand",
+      "sheet_sku": "SATL/BU",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Applicable / Accessory",
+        "hydrogen_suitability": "Suitable (Accessory for IIC tasklights)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": [
+        "Industry \"Petrochemical\" expanded to \"Petrochemical & Chemical Processing\"",
+        "Industry \"Construction\" expanded to \"Construction & Major Projects\"",
+        "Industry \"Marine\" expanded to \"Marine & Commercial Ship Repair\"",
+        "SKU SATL/BU is shared by Floor Stand and Base Unit - do NOT write this SKU to Duda until confirmed"
+      ]
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPSEZ4N8AVNXQT684ZZFAG",
+      "duda_name": "SA LUMIN Tasklight Base Unit",
+      "duda_sku": "",
+      "sheet_name": "SA LUMIN Tasklight Base Unit",
+      "sheet_sku": "SATL/BU",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Applicable / Accessory",
+        "hydrogen_suitability": "Suitable (Accessory for IIC tasklights)",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": [
+        "Industry \"Petrochemical\" expanded to \"Petrochemical & Chemical Processing\"",
+        "Industry \"Construction\" expanded to \"Construction & Major Projects\"",
+        "Industry \"Marine\" expanded to \"Marine & Commercial Ship Repair\"",
+        "SKU SATL/BU is shared by Floor Stand and Base Unit - do NOT write this SKU to Duda until confirmed"
+      ]
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPRXQZS3A190T0TC28X5A4",
+      "duda_name": "Tasklight Holster",
+      "duda_sku": "SATL/HR",
+      "sheet_name": "SA LUMIN Tasklight Holster",
+      "sheet_sku": "SATL/HR",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Not Applicable / Accessory",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPN4PWH1MWW0E76JXPYT4J",
+      "duda_name": "Worklight 100 Antistatic Protective Bag (50)",
+      "duda_sku": "SAPB100/50",
+      "sheet_name": "SA LUMIN Worklight 100 Antistatic Protective Bag (50)",
+      "sheet_sku": "SAPB100/50",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPN19XZ1TV3RG132A6STY7",
+      "duda_name": "Worklight 100 Antistatic Protective Film",
+      "duda_sku": "SASP113",
+      "sheet_name": "SA LUMIN Worklight 100 Antistatic Protective Film",
+      "sheet_sku": "SASP113",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPN6H08VXSAG89J3MKT9DN",
+      "duda_name": "Worklight 200 Antistatic Protective Bag (50)",
+      "duda_sku": "SAPB200/50",
+      "sheet_name": "SA LUMIN Worklight 200 Antistatic Protective Bag (50)",
+      "sheet_sku": "SAPB200/50",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPN32F8YCNGWPQZNNRK2Z4",
+      "duda_name": "Worklight 200 Antistatic Protective Film",
+      "duda_sku": "SASP114",
+      "sheet_name": "SA LUMIN Worklight 200 Antistatic Protective Film",
+      "sheet_sku": "SASP114",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPMRYNDHSEJX7Y0MXKYDC9",
+      "duda_name": "Worklight Magnetic Bracket",
+      "duda_sku": "SAFB100",
+      "sheet_name": "SA LUMIN Worklight Magnetic Bracket",
+      "sheet_sku": "SAFB100",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPMTVA7MQTW5RA4CB5631B",
+      "duda_name": "Worklight Magnetic Swivel Bracket",
+      "duda_sku": "SAFB105",
+      "sheet_name": "SA LUMIN Worklight Magnetic Swivel Bracket",
+      "sheet_sku": "SAFB105",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPMMDNRJW2G05WN344MG8R",
+      "duda_name": "Worklight Plain Bracket",
+      "duda_sku": "SAFB090",
+      "sheet_name": "SA LUMIN Worklight Plain Bracket",
+      "sheet_sku": "SAFB090",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPMWM005J15KX20JR3R3PT",
+      "duda_name": "Worklight Scaffold Bracket",
+      "duda_sku": "SAFB110",
+      "sheet_name": "SA LUMIN Worklight Scaffold Bracket",
+      "sheet_sku": "SAFB110",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPMYHVK14V8GHYB49W5B1X",
+      "duda_name": "Worklight Tripod Stand",
+      "duda_sku": "SAFB150",
+      "sheet_name": "SA LUMIN Worklight Tripod Stand",
+      "sheet_sku": "SAFB150",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPN0KA8BQHTKQVFRSEP36P",
+      "duda_name": "Worklight Vertical Line Clamp",
+      "duda_sku": "SAFB115",
+      "sheet_name": "SA LUMIN Worklight Vertical Line Clamp",
+      "sheet_sku": "SAFB115",
+      "brand": "LUMIN",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Tank and Vessel Entry",
+        "Hazardous-Area Lighting"
+      ],
+      "site_challenges_display_order": [
+        "Hazardous-Area Lighting",
+        "Tank and Vessel Entry"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": true,
+        "powernet": false,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": false,
+        "iecex": false,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": false,
+        "zone_20": false,
+        "zone_21_22": false,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": true,
+        "paint_coating_drying_suitability": "Suitable (Lighting for paint booth)",
+        "hydrogen_suitability": "Not Applicable / Accessory",
+        "atex_raw": "Not Certified (Accessory)",
+        "atex_zones_raw": "N/A (Accessory)",
+        "iecex_raw": "Not Certified (Accessory)",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPQPN6HXHM1V5NY2SA3RFW",
+      "duda_name": "EX 3.8KVA Transformer",
+      "duda_sku": "SPTR",
+      "sheet_name": "SA POWERNET EX 3.8KVA Transformer",
+      "sheet_sku": "SPTR",
+      "brand": "POWERNET",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary Power Distribution",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Temporary Power Distribution",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": true,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPRQMEASAAQ00ZN1ZHMMTB",
+      "duda_name": "EX Adaptor Lead",
+      "duda_sku": "R-PNAL",
+      "sheet_name": "SA POWERNET EX Adaptor Lead",
+      "sheet_sku": "R-PNAL",
+      "brand": "POWERNET",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary Power Distribution",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Temporary Power Distribution",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Pharmaceuticals",
+        "Rail & Transport Engineering",
+        "Aviation & Aerospace",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Construction & Major Projects",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": true,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Suitable (Power connectivity)",
+        "hydrogen_suitability": "Suitable (EX certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPR5ETCFJW6BQSWHBJTKN3",
+      "duda_name": "EX Extension Lead",
+      "duda_sku": "PNEL",
+      "sheet_name": "SA POWERNET EX Extension Lead",
+      "sheet_sku": "PNEL",
+      "brand": "POWERNET",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary Power Distribution",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Temporary Power Distribution",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": true,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPR2DCMTNPWD6EEFS8N22Q",
+      "duda_name": "EX Extension Reel",
+      "duda_sku": "PNER",
+      "sheet_name": "SA POWERNET EX Extension Reel",
+      "sheet_sku": "PNER",
+      "brand": "POWERNET",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary Power Distribution",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Temporary Power Distribution",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": true,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": true,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": false,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPQJ63RZ780TM7Q83HZM3K",
+      "duda_name": "EX Mains Distribution Unit",
+      "duda_sku": "SPDU",
+      "sheet_name": "SA POWERNET EX Mains Distribution Unit",
+      "sheet_sku": "SPDU",
+      "brand": "POWERNET",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary Power Distribution",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Temporary Power Distribution",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": true,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    },
+    {
+      "status": "READY",
+      "duda_product_id": "01M1XPQYGXGXJEH33SG8F0XAK9",
+      "duda_name": "EX Splitter Unit",
+      "duda_sku": "SPSB",
+      "sheet_name": "SA POWERNET EX Splitter Unit",
+      "sheet_sku": "SPSB",
+      "brand": "POWERNET",
+      "category": "Lighting and Power",
+      "site_challenges": [
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Temporary Power Distribution",
+        "Shutdown and Turnaround Packages"
+      ],
+      "site_challenges_display_order": [
+        "Temporary Power Distribution",
+        "Hydrogen and Hazardous-Gas Ventilation",
+        "Shutdown and Turnaround Packages"
+      ],
+      "industries": [
+        "Distilleries & Breweries",
+        "Renewables & Hydrogen",
+        "Petrochemical & Chemical Processing",
+        "Utilities",
+        "Nuclear",
+        "Marine & Commercial Ship Repair",
+        "Oil & Gas",
+        "Defence & Naval Shipbuilding"
+      ],
+      "sa_range_logos": {
+        "cyclone": false,
+        "endure": false,
+        "flexiheat": false,
+        "lumin": false,
+        "powernet": true,
+        "rental": null
+      },
+      "cert_logos": {
+        "ex_logo": true,
+        "iecex": true,
+        "inmetro": false,
+        "zone_0": false,
+        "zone_1_2": true,
+        "zone_20": false,
+        "zone_21_22": true,
+        "ukca": null,
+        "made_in_britain": null
+      },
+      "internal_reference": {
+        "key_product": true,
+        "accessory": false,
+        "paint_coating_drying_suitability": "Not Applicable / Supporting",
+        "hydrogen_suitability": "Suitable (IIC certified)",
+        "atex_raw": "Certified",
+        "atex_zones_raw": "Zones 1 & 2 (Gas), 21 & 22 (Dust)",
+        "iecex_raw": "Certified",
+        "inmetro_raw": "Not Certified"
+      },
+      "hold_reasons": [],
+      "notes": []
+    }
+  ],
+  "duda_products_not_in_sheet": [
+    {
+      "duda_product_id": "01M1XPVWR8EGD4KDMBRN0H4669",
+      "duda_name": "EX Vapour Extraction System",
+      "duda_sku": "SAPVES",
+      "action": "DELETE (confirmed duplicate of EX Paint Vapour Extraction System, SAPVES) - Phase 4, after Josh approves"
+    },
+    {
+      "duda_product_id": "01M1XPSXXFV3HVVFFF1086HCVW",
+      "duda_name": "Filters - PURCHASE ONLY",
+      "duda_sku": "SAFU/RF",
+      "action": "DECISION NEEDED: filter consumable; SA Equip merged filters into one row"
+    },
+    {
+      "duda_product_id": "01M1XPSJP5M2T59873K9XFV3B1",
+      "duda_name": "Filter - Purchase Only",
+      "duda_sku": "SAFU/RF",
+      "action": "DECISION NEEDED: filter consumable; SA Equip merged filters into one row"
+    },
+    {
+      "duda_product_id": "01M1XPRW2S2HRB8J6YPNC0MYKN",
+      "duda_name": "Weekly Rental of SA POWERNET Adaptor Lead 110V Stahl-CEAG",
+      "duda_sku": "R-PNAL110EX/01HRE/STA-CEA17",
+      "action": "DECISION NEEDED: SA Equip say \"rental specific\" - keep (Hire) or remove?"
+    },
+    {
+      "duda_product_id": "01M1XPRTB1CVYPKYX46N9MZHNN",
+      "duda_name": "Weekly Rental of SA POWERNET Adaptor Lead 110V ATX-CEAG",
+      "duda_sku": "R-PNAL110EX/01HRE/ATX-CEA17",
+      "action": "DECISION NEEDED: SA Equip say \"rental specific\" - keep (Hire) or remove?"
+    },
+    {
+      "duda_product_id": "01M1XPRNYFEYJ21QM1CCR7AN7M",
+      "duda_name": "Weekly Rental of SA CYCLONE Ducting 30cm",
+      "duda_sku": "R-SAFD30/05-EX",
+      "action": "DECISION NEEDED: SA Equip say \"rental specific\" - keep (Hire) or remove?"
+    },
+    {
+      "duda_product_id": "01M1XPPSMPR4M8TAJ9Z1MRDGJD",
+      "duda_name": "Filter",
+      "duda_sku": "SAFU/RF",
+      "action": "DECISION NEEDED: filter consumable; SA Equip merged filters into one row"
+    }
+  ],
+  "duda_ids_mapped_twice": [
+    "01M1XPTTF35NZANG1VP31N3Q1A"
+  ]
+}
