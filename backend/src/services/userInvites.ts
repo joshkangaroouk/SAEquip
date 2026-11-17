@@ -88,6 +88,8 @@ export interface InviteDeps {
     revokePending: (email: string, by: string, now: Date) => Promise<number>;
     /** Revoke one invite if it is still pending; the count revoked (0 or 1). */
     revoke: (id: string, by: string, now: Date) => Promise<number>;
+    /** Delete one invite if it is EXPIRED or REVOKED (never used, never pending); 0 or 1. */
+    remove: (id: string, now: Date) => Promise<number>;
     /** Mark it used if it is still pending (unused, unrevoked, unexpired); 0 or 1. */
     claim: (id: string, now: Date) => Promise<number>;
     /** Undo a claim whose account could not be created, so the link works again. */
@@ -187,6 +189,40 @@ export function revokeInviteRoute(deps: InviteDeps): RequestHandler {
       }
       console.info(`[invites] ${by} revoked ${id}`);
       res.json({ invite: shapeInvite((await deps.invites.findById(id))!, now) });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+/**
+ * DELETE /api/invites/:id (super admin): clear a DEAD link off the list, one
+ * that has expired or been revoked. 409 `not_removable` for anything else:
+ * - a pending link would have to be revoked first, so a click cannot quietly
+ *   kill a link someone is about to use;
+ * - a used one is the record of who invited the account, and carries
+ *   `acceptedUserId` and `editorGrantError`, which the Users page reads for
+ *   "Website Editor: couldn't be set up" and its Retry.
+ * The delete itself is conditional, so a link cannot change state in between.
+ */
+export function removeInviteRoute(deps: InviteDeps): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      const id = String(req.params.id);
+      const now = deps.now?.() ?? new Date();
+      if ((await deps.invites.remove(id, now)) === 0) {
+        const invite = await deps.invites.findById(id);
+        if (!invite) res.status(404).json({ error: "not_found" });
+        else
+          res.status(409).json({
+            error: "not_removable",
+            status: inviteStatus(invite, now),
+            detail: "Only an expired or revoked invite can be removed.",
+          });
+        return;
+      }
+      console.info(`[invites] ${req.user?.email ?? "unknown"} removed ${id}`);
+      res.json({ ok: true });
     } catch (err) {
       next(err);
     }

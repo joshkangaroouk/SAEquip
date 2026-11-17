@@ -13,9 +13,19 @@ import {
   checkInviteRoute,
   createInviteRoute,
   listInvitesRoute,
+  removeInviteRoute,
   revokeInviteRoute,
   type InviteDeps,
 } from "../services/userInvites.js";
+
+/**
+ * The invites that can be removed: EXPIRED or REVOKED, never used. The same
+ * rule as inviteStatus() (used wins over both; expired is `expiresAt <= now`).
+ */
+export const removableInvite = (now: Date) => ({
+  usedAt: null,
+  OR: [{ revokedAt: { not: null } }, { expiresAt: { lte: now } }],
+});
 
 /** The real storage, Supabase and Duda calls behind services/userInvites.ts. */
 const deps: InviteDeps = {
@@ -38,6 +48,8 @@ const deps: InviteDeps = {
           data: { revokedAt: now, revokedBy: by },
         })
       ).count,
+    // Expired or revoked only, in the delete itself: never a used or pending one.
+    remove: async (id, now) => (await prisma.userInvite.deleteMany({ where: { id, ...removableInvite(now) } })).count,
     // One conditional UPDATE, so two simultaneous submissions cannot both claim it.
     claim: async (id, now) =>
       (
@@ -80,6 +92,7 @@ export const invitesRouter = Router();
 invitesRouter.get("/invites", requireSuperAdmin, listInvitesRoute(deps));
 invitesRouter.post("/invites", requireSuperAdmin, createInviteRoute(deps));
 invitesRouter.post("/invites/:id/revoke", requireSuperAdmin, revokeInviteRoute(deps));
+invitesRouter.delete("/invites/:id", requireSuperAdmin, removeInviteRoute(deps));
 
 /**
  * Public, mounted at /api/accept-invite BEFORE requireAuth: the person has no

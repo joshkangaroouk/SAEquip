@@ -74,7 +74,8 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.mess
  * only from a 2FA session) also gets:
  * - a password reset for anyone;
  * - Invite user: an email in, a link out (5 hours, once), sent by hand;
- * - the invites list, with Revoke and New link;
+ * - the invites list, with Revoke and New link, and Remove for an expired or
+ *   revoked one;
  * - per person: give or remove Website Editor access, disable or enable.
  *
  * The server checks the role on every one of those (requireSuperAdmin); the
@@ -517,6 +518,18 @@ export default function Users() {
     await loadInvites().catch(() => {});
   }
 
+  /** A dead link (expired or revoked) off the list. No confirm: it already does nothing. */
+  async function removeInvite(i: Invite) {
+    try {
+      await apiJson(`/api/invites/${i.id}`, { method: "DELETE" });
+      setInvites((list) => list?.filter((x) => x.id !== i.id) ?? null);
+      toast.success("Invite removed");
+    } catch (e) {
+      toast.error(errorText(e, "Couldn't remove the invite"));
+      await loadInvites().catch(() => {});
+    }
+  }
+
   const rowActions = (u: StaffUser, wide = false) => {
     const actions = superAdmin ? adminActions(u) : [];
     // A reset goes to your own address only, unless you are the super admin:
@@ -686,6 +699,16 @@ export default function Users() {
                       {i.status === "pending" && (
                         <Button variant="secondary" size="sm" onClick={() => void revokeInvite(i)}>
                           Revoke
+                        </Button>
+                      )}
+                      {(i.status === "expired" || i.status === "revoked") && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          aria-label={`Remove the ${i.status} invite for ${i.email}`}
+                          onClick={() => void removeInvite(i)}
+                        >
+                          Remove
                         </Button>
                       )}
                       {i.status !== "used" && (

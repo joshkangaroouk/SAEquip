@@ -1320,6 +1320,9 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
     - It lasts **5 hours** and works **once**.
     - Re-inviting an email revokes its pending link.
     - Only `ALLOWED_EMAIL_DOMAINS` addresses can be invited, and an email that already has an account → 409.
+  - **Remove** (Josh, 2026-11-17): `DELETE /api/invites/:id` (super admin) deletes an EXPIRED or REVOKED invite, no confirm. The delete is conditional (`removeInviteRoute()`), and anything else gets 409 `not_removable`:
+    - a pending link must be revoked first;
+    - a used one stays, because it records who invited the account and carries `acceptedUserId`/`editorGrantError`, which drive "Couldn't be set up" and its Retry.
   - ⚠️ **The link is a bearer credential**: the email is never verified, because the link is sent by hand, so whoever holds it can create that account. That is why it is short, single-use and revocable. The token rides in the URL **fragment** (never sent to a server) and is redeemed only by a POST, so a chat app's link preview cannot use it up.
   - **Public routes**, mounted BEFORE `requireAuth` at `/api/accept-invite`, Postgres-limited per IP (10/min, 50/hour):
     - `POST /check { token }` → `{ email, expiresAt }`, 410 expired/used/revoked, or 404.
