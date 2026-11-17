@@ -37,6 +37,9 @@ interface StaffUser {
   emailConfirmed: boolean;
   mfaEnabled: boolean;
   mfaRequired: boolean;
+  /** Who turned this account's two-factor off from this page, and when. */
+  mfaDisabledBy?: string | null;
+  mfaDisabledAt?: string | null;
   disabled: boolean;
   dudaEditor: boolean;
   dudaAccountName: string | null;
@@ -76,7 +79,8 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.mess
  * - Invite user: an email in, a link out (5 hours, once), sent by hand;
  * - the invites list, with Revoke and New link, and Remove for an expired or
  *   revoked one;
- * - per person: give or remove Website Editor access, disable or enable.
+ * - per person: give or remove Website Editor access, turn two-factor off or
+ *   require it, disable or enable.
  *
  * The server checks the role on every one of those (requireSuperAdmin); the
  * page only decides what to show, from `viewer.superAdmin` in GET /api/users.
@@ -117,6 +121,17 @@ function TwoFactor({ u }: { u: StaffUser }) {
   if (u.mfaEnabled) return <Badge tone="ok">On</Badge>;
   // Invited accounts must set it up before they can do anything.
   if (u.mfaRequired) return <Badge tone="warning">Required, not set up</Badge>;
+  // Turned off by the super admin: say who and when, since it removed a security control.
+  if (u.mfaDisabledAt) {
+    return (
+      <span className="block">
+        <Badge tone="neutral">Off</Badge>
+        <span className="mt-1 block text-label text-muted tabular-nums">
+          Turned off{u.mfaDisabledBy ? ` by ${u.mfaDisabledBy}` : ""}, {formatDateTime(u.mfaDisabledAt)}
+        </span>
+      </span>
+    );
+  }
   return <Badge tone="neutral">Off</Badge>;
 }
 
@@ -486,12 +501,46 @@ export default function Users() {
     });
   }
 
+  async function turnOffMfa(u: StaffUser) {
+    const ok = await confirm({
+      title: `Turn off two-factor for ${who(u)}?`,
+      description:
+        "Their authenticator is removed and two-factor stops being required, so they sign in with just their password. " +
+        "Check with them directly first, for example by phone: after this, anyone with their password can sign in as them. " +
+        "You can require it again here once they're back in.",
+      confirmLabel: "Turn off two-factor",
+      danger: true,
+    });
+    if (!ok) return;
+    await act(u, async () => {
+      await apiJson(`/api/users/${u.id}/two-factor`, { method: "DELETE" });
+      return `Two-factor is off for ${who(u)}. They can sign in with just their password.`;
+    });
+  }
+
+  async function requireMfa(u: StaffUser) {
+    const ok = await confirm({
+      title: `Require two-factor for ${who(u)}?`,
+      description: u.mfaEnabled
+        ? "They already use two-factor. This stops them turning it off."
+        : "Next time they use the Hub, they'll set up an authenticator app on their phone before anything else works.",
+      confirmLabel: "Require two-factor",
+    });
+    if (!ok) return;
+    await act(u, async () => {
+      await apiJson(`/api/users/${u.id}/two-factor`, { method: "POST" });
+      return u.mfaEnabled ? `Two-factor is now required for ${who(u)}` : `${who(u)} will set up two-factor next time they use the Hub`;
+    });
+  }
+
   /** The super admin's actions for one person; none for themselves or another super admin, beyond editor access. */
   function adminActions(u: StaffUser): MenuAction[] {
     const actions: MenuAction[] = [];
     if (u.dudaEditor) actions.push({ label: "Remove Website Editor access", onSelect: () => void removeEditor(u), danger: true });
     else if (!u.disabled) actions.push({ label: u.editorError ? "Retry Website Editor access" : "Give Website Editor access", onSelect: () => void giveEditor(u) });
     if (u.id !== me?.id && u.role !== "super_admin") {
+      if (!u.mfaRequired) actions.push({ label: "Require two-factor", onSelect: () => void requireMfa(u) });
+      if (u.mfaEnabled || u.mfaRequired) actions.push({ label: "Turn off two-factor…", onSelect: () => void turnOffMfa(u), danger: true });
       actions.push(
         u.disabled
           ? { label: "Enable access", onSelect: () => void enable(u) }

@@ -3,7 +3,8 @@ import { EditorAccessError } from "./dudaEditorAccess.js";
 
 /**
  * What the super admin can do to an account from the Users page (2026-11):
- * disable or enable it, and give or remove its Website Editor access. Behind
+ * disable or enable it, give or remove its Website Editor access, and turn
+ * its two-factor off or make it required (see turnOffMfaRoute). Behind
  * requireAuth + requireSuperAdmin (routes/users.ts); the calls are `deps` so
  * the rules are tested without Supabase or Duda.
  *
@@ -21,6 +22,10 @@ export interface AdminUser {
   firstName: string | null;
   lastName: string | null;
   disabled: boolean;
+  /** A confirmed authenticator. */
+  mfaEnabled: boolean;
+  /** `app_metadata.mfa_required`. */
+  mfaRequired: boolean;
 }
 
 export interface UserAdminDeps {
@@ -37,6 +42,13 @@ export interface UserAdminDeps {
   revokeEditor: (r: { staffUserId: string; staffEmail: string }) => Promise<unknown>;
   /** Clears an invite's "couldn't be set up" note once access is granted. */
   clearEditorError: (userId: string) => Promise<void>;
+  /**
+   * Delete EVERY factor (confirmed or half-enrolled) and set `mfa_required`
+   * false, stamping who did it and when. Returns how many factors went.
+   */
+  turnOffMfa: (id: string, by: string) => Promise<number>;
+  /** Set `mfa_required` true and clear the turned-off stamp. */
+  requireMfa: (id: string) => Promise<void>;
 }
 
 /** The refusal for changing `target`'s access, or null when allowed. */
@@ -143,6 +155,86 @@ export function grantEditorRoute(deps: UserAdminDeps): RequestHandler {
         if (!failure) throw err;
         res.status(502).json(failure);
       }
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+/**
+ * Who the super admin may change two-factor for: anyone but themselves (the
+ * super admin must keep it, and their own routes need a 2FA session) and
+ * another super admin (a CLI job, like disabling one).
+ */
+export function mfaChangeRefusal(actorId: string | undefined, target: AdminUser): { status: number; body: object } | null {
+  if (target.id === actorId) {
+    return { status: 409, body: { error: "cannot_change_self", detail: "You can't change your own two-factor here: as super admin you must keep it." } };
+  }
+  if (target.role === "super_admin") {
+    return { status: 409, body: { error: "cannot_change_super_admin", detail: "Another super admin's two-factor can only be changed with the CLI." } };
+  }
+  return null;
+}
+
+/**
+ * DELETE /api/users/:id/two-factor → `{ mfaEnabled: false, mfaRequired: false, factorsRemoved }`.
+ *
+ * ⚠️ It REMOVES a security control from someone else's account (Josh,
+ * 2026-11-17: it was CLI-only, `users:mfa`, until then). The person can then
+ * sign in with just their password, for a lost phone or someone who cannot
+ * use an authenticator. So: super admin with a 2FA session only
+ * (requireSuperAdmin), never their own account or another super admin's, the
+ * result read back from Supabase before it is reported, and who did it stamped
+ * on the account (`mfa_disabled_by`/`_at`), which the Users page shows. The
+ * dialog asks the super admin to check with the person directly first.
+ */
+export function turnOffMfaRoute(deps: UserAdminDeps): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      const user = await target(deps, String(req.params.id), res);
+      if (!user) return;
+      const refusal = mfaChangeRefusal(req.user?.id, user);
+      if (refusal) {
+        res.status(refusal.status).json(refusal.body);
+        return;
+      }
+      const factorsRemoved = await deps.turnOffMfa(user.id, req.user?.email ?? "unknown");
+      const after = await deps.getUser(user.id);
+      if (!after || after.mfaEnabled || after.mfaRequired) {
+        res.status(502).json({ error: "not_applied", detail: "Supabase didn't keep the change. Try again." });
+        return;
+      }
+      console.info(`[users] ${req.user?.email} turned off two-factor for ${user.email} (${factorsRemoved} factor(s) removed)`);
+      res.json({ mfaEnabled: false, mfaRequired: false, factorsRemoved });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+/**
+ * POST /api/users/:id/two-factor → `{ mfaRequired: true, mfaEnabled }`: make
+ * two-factor required again. Without an authenticator, their next request
+ * sends them to /setup-2fa; with one, they can no longer turn it off.
+ */
+export function requireMfaRoute(deps: UserAdminDeps): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      const user = await target(deps, String(req.params.id), res);
+      if (!user) return;
+      const refusal = mfaChangeRefusal(req.user?.id, user);
+      if (refusal) {
+        res.status(refusal.status).json(refusal.body);
+        return;
+      }
+      await deps.requireMfa(user.id);
+      const after = await deps.getUser(user.id);
+      if (!after?.mfaRequired) {
+        res.status(502).json({ error: "not_applied", detail: "Supabase didn't keep the change. Try again." });
+        return;
+      }
+      console.info(`[users] ${req.user?.email} required two-factor for ${user.email}`);
+      res.json({ mfaRequired: true, mfaEnabled: after.mfaEnabled });
     } catch (err) {
       next(err);
     }

@@ -12,7 +12,9 @@ import {
   disableUserRoute,
   enableUserRoute,
   grantEditorRoute,
+  requireMfaRoute,
   revokeEditorRoute,
+  turnOffMfaRoute,
   type UserAdminDeps,
 } from "../services/userAdmin.js";
 
@@ -21,8 +23,9 @@ export const usersRouter = Router();
 /**
  * Staff accounts: the list (everyone signed in), a password-reset trigger
  * (your own address; anyone's for the super admin), and, since 2026-11, the
- * SUPER ADMIN's actions: disable / enable an account
- * and give / remove its Website Editor access. New accounts come from invites
+ * SUPER ADMIN's actions: disable / enable an account,
+ * give / remove its Website Editor access, and turn its two-factor off or make
+ * it required (since 2026-11-17). New accounts come from invites
  * (routes/invites.ts).
  *
  * ⚠️ Every action that changes access is behind requireSuperAdmin (the
@@ -30,8 +33,8 @@ export const usersRouter = Router();
  * `requireAuth` alone proves only "valid token + allowed domain", and
  * ALLOWED_EMAIL_DOMAINS spans two companies, which is far too coarse to gate
  * access. No route can GRANT the super admin role: that stays a CLI job
- * (`npm run users:admin`), as do deleting an account and resetting someone's
- * 2FA (`users:create`, `users:mfa`).
+ * (`npm run users:admin`), as does deleting an account (`users:create`).
+ * `users:mfa` remains the CLI way to reset someone's 2FA.
  *
  * Everyone else still has identical access to the content: super admin adds
  * user management, nothing more.
@@ -52,6 +55,9 @@ interface StaffUser {
   mfaEnabled: boolean;
   /** Two-factor is required for this account (invitees, the super admin). */
   mfaRequired: boolean;
+  /** Who turned this account's two-factor off from the Users page, and when; null otherwise. */
+  mfaDisabledBy: string | null;
+  mfaDisabledAt: string | null;
   /** Disabled by the super admin (banned in Supabase). */
   disabled: boolean;
   /** Has a Duda editor account mapped (see the Website Editor section). */
@@ -92,7 +98,7 @@ usersRouter.get("/users", async (req, res, next) => {
 
     const users: StaffUser[] = allUsers
       .map((u) => {
-        const app = (u.app_metadata ?? {}) as { role?: unknown; mfa_required?: unknown };
+        const app = (u.app_metadata ?? {}) as { role?: unknown; mfa_required?: unknown; mfa_disabled_by?: unknown; mfa_disabled_at?: unknown };
         const dudaAccountName = editorFor.get(u.id) ?? null;
         return {
           id: u.id,
@@ -104,6 +110,8 @@ usersRouter.get("/users", async (req, res, next) => {
           emailConfirmed: !!u.email_confirmed_at,
           mfaEnabled: hasVerifiedFactor(u),
           mfaRequired: app.mfa_required === true,
+          mfaDisabledBy: typeof app.mfa_disabled_by === "string" ? app.mfa_disabled_by : null,
+          mfaDisabledAt: typeof app.mfa_disabled_at === "string" ? app.mfa_disabled_at : null,
           disabled: isDisabled(u.banned_until),
           dudaEditor: dudaAccountName !== null,
           dudaAccountName,
@@ -259,15 +267,43 @@ const adminDeps: UserAdminDeps = {
     if (error || !data.user) return null;
     const u = data.user;
     const meta = (u.user_metadata ?? {}) as { first_name?: unknown; last_name?: unknown };
-    const role = (u.app_metadata as { role?: unknown } | undefined)?.role;
+    const app = (u.app_metadata ?? {}) as { role?: unknown; mfa_required?: unknown };
     return {
       id: u.id,
       email: u.email ?? "",
-      role: typeof role === "string" ? role : null,
+      role: typeof app.role === "string" ? app.role : null,
       firstName: typeof meta.first_name === "string" ? meta.first_name : null,
       lastName: typeof meta.last_name === "string" ? meta.last_name : null,
       disabled: isDisabled(u.banned_until),
+      // getUserById carries `factors` (listUsers does not; see supabaseUsers.ts).
+      mfaEnabled: hasVerifiedFactor(u),
+      mfaRequired: app.mfa_required === true,
     };
+  },
+  turnOffMfa: async (id, by) => {
+    const { data, error } = await supabase.auth.admin.getUserById(id);
+    if (error || !data.user) throw error ?? new Error("No such user.");
+    // Every factor, half-enrolled ones too, as the CLI's --reset does.
+    let removed = 0;
+    for (const f of data.user.factors ?? []) {
+      const { error: delErr } = await supabase.auth.admin.mfa.deleteFactor({ userId: id, id: f.id });
+      if (delErr) throw delErr;
+      removed++;
+    }
+    // Merged over what is there: app_metadata also holds Supabase's own keys.
+    const { error: updErr } = await supabase.auth.admin.updateUserById(id, {
+      app_metadata: { ...(data.user.app_metadata ?? {}), mfa_required: false, mfa_disabled_by: by, mfa_disabled_at: new Date().toISOString() },
+    });
+    if (updErr) throw updErr;
+    return removed;
+  },
+  requireMfa: async (id) => {
+    const { data, error } = await supabase.auth.admin.getUserById(id);
+    if (error || !data.user) throw error ?? new Error("No such user.");
+    const { error: updErr } = await supabase.auth.admin.updateUserById(id, {
+      app_metadata: { ...(data.user.app_metadata ?? {}), mfa_required: true, mfa_disabled_by: null, mfa_disabled_at: null },
+    });
+    if (updErr) throw updErr;
   },
   setDisabled: async (id, disabled) => {
     // A ban stops sign-in and token refresh; requireAuth refuses a banned
@@ -287,3 +323,5 @@ usersRouter.post("/users/:id/disable", requireSuperAdmin, disableUserRoute(admin
 usersRouter.post("/users/:id/enable", requireSuperAdmin, enableUserRoute(adminDeps));
 usersRouter.post("/users/:id/website-editor", requireSuperAdmin, grantEditorRoute(adminDeps));
 usersRouter.delete("/users/:id/website-editor", requireSuperAdmin, revokeEditorRoute(adminDeps));
+usersRouter.post("/users/:id/two-factor", requireSuperAdmin, requireMfaRoute(adminDeps));
+usersRouter.delete("/users/:id/two-factor", requireSuperAdmin, turnOffMfaRoute(adminDeps));

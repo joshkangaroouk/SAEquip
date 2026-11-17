@@ -52,6 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setSession(data.session);
       setLoading(false);
+      /*
+       * ⚠️ A stored session that says a code or a set-up is owed may be out of
+       * date: the super admin can turn someone's two-factor off (or a
+       * requirement may have changed) while this browser holds the old copy,
+       * and it would keep them on the code step or /setup-2fa. Refresh it
+       * once; onAuthStateChange delivers the server's current account. Only
+       * these sessions pay for the round trip, and a refused refresh signs
+       * out as usual.
+       */
+      if (data.session && (sessionNeedsSecondFactor(data.session) || sessionNeedsMfaSetup(data.session))) {
+        void supabase.auth.refreshSession();
+      }
     });
 
     // Keep in sync with sign-in / sign-out / token refresh.

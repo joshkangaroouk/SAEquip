@@ -14,11 +14,15 @@ import { findUserWithFactors } from "../services/supabaseUsers.js";
  * by design. `--reset` deletes their factors so they can sign in with the
  * password alone and enrol again.
  *
- * ⚠️ CLI-only, and this is the most privilege-escalating operation in the
- * repo: it REMOVES a security control from someone else's account. As an HTTP
- * route, anyone already signed in could strip MFA off a colleague and then
- * only need their password. Keep it here, and confirm out-of-band that the
- * request really came from the person who owns the account.
+ * ⚠️ This REMOVES a security control from someone else's account, so confirm
+ * out-of-band that the request really came from the person who owns it. It
+ * was CLI-only until 2026-11-17; the super admin can now also do it from the
+ * Users page ("Turn off two-factor…", services/userAdmin.ts turnOffMfaRoute),
+ * which also stops REQUIRING it. That route is super admin with a 2FA session
+ * only: never open to everyone signed in, who could otherwise strip MFA off a
+ * colleague and then need only their password. This script leaves
+ * `mfa_required` alone, so a required account sets up a new authenticator at
+ * its next sign-in.
  */
 
 const args = process.argv.slice(2);
