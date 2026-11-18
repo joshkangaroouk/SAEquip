@@ -119,17 +119,17 @@ model HubProduct {
   /// The product's interactive 3D model (.glb), if any. Per-product, unlike the
   /// shared Logo catalog — one model belongs to exactly one product. Public and
   /// ungated: the live widget's <model-viewer> loads it directly by URL.
-  glbAssetId String?
-  glbAsset   MediaAsset? @relation("HubProductGlbAsset", fields: [glbAssetId], references: [id])
+  glbAssetId  String?
+  glbAsset    MediaAsset? @relation("HubProductGlbAsset", fields: [glbAssetId], references: [id])
   /// An accessory (bracket, film, charger, trolley…) rather than a main unit.
   /// Drives the listing's "Hide accessories" switch. Set from SA Equip's sheet
   /// (its Accessory column) and switched in the product editor.
-  isAccessory Boolean @default(false)
+  isAccessory Boolean     @default(false)
   /// The product's place in the website's product listing, and in the Hub's
   /// Products page under "Website order", where it is set by dragging (Josh,
   /// 2026-11-18). Null = never placed: those list after every placed product,
   /// A–Z, which is how the listing was ordered before this existed.
-  sortOrder Int?
+  sortOrder   Int?
 }
 
 /// An uploaded asset stored in the Supabase Storage bucket.
@@ -208,11 +208,11 @@ model ProductTextItem {
 }
 
 model Download {
-  id           String     @id @default(cuid())
+  id           String        @id @default(cuid())
   hubProductId String
   mediaAssetId String
   title        String
-  gated        Boolean    @default(true)
+  gated        Boolean       @default(true)
   /// Which resources page lists this file — Datasheets, User Manuals or
   /// Certificates. Explicit rather than read from the free-text `title`, so a
   /// retitled file never silently moves page. Null = on no resources page.
@@ -220,11 +220,11 @@ model Download {
   /// For a CERTIFICATE only: which button it is on the Certificates page. A
   /// database CHECK enforces "set if and only if kind = CERTIFICATE".
   certScheme   CertScheme?
-  sortOrder    Int        @default(0)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  hubProduct   HubProduct @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
-  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  hubProduct   HubProduct    @relation(fields: [hubProductId], references: [id], onDelete: Cascade)
+  mediaAsset   MediaAsset    @relation(fields: [mediaAssetId], references: [id])
   leads        Lead[]
 
   /// One product never lists the same file twice. Verified safe before it was
@@ -244,62 +244,62 @@ model Download {
 /// denormalised approach QuoteRequestItem already uses. A null downloadId
 /// means "the product this came from has since been deleted".
 model Lead {
-  id            String    @id @default(cuid())
-  downloadId    String?
-  name          String
-  email         String
-  company       String?
-  createdAt     DateTime  @default(now())
+  id               String        @id @default(cuid())
+  downloadId       String?
+  name             String
+  email            String
+  company          String?
+  createdAt        DateTime      @default(now())
   // Snapshot of where this lead came from, written at capture time so the row
   // stays self-describing after the download or product is gone.
-  productName   String?
-  productSku    String?
-  downloadTitle String?
+  productName      String?
+  productSku       String?
+  downloadTitle    String?
   /// The file and the product it came from, for the Resource Requests page —
   /// snapshots, like the three above, so the row outlives both.
-  fileName      String?
-  dudaProductId String?
+  fileName         String?
+  dudaProductId    String?
   // The resource request form (2026-10-05). `name` is still written
   // ("First Last") so anything reading it keeps working.
-  firstName     String?
-  lastName      String?
-  phone         String?
-  mobile        String?
+  firstName        String?
+  lastName         String?
+  phone            String?
+  mobile           String?
   /// Required to submit, so true on every request the form sends.
-  privacyConsent   Boolean @default(false)
+  privacyConsent   Boolean       @default(false)
   /// The optional "news and promotions" box.
-  marketingConsent Boolean @default(false)
+  marketingConsent Boolean       @default(false)
   /// The consent wording as the SERVER held it when the visitor agreed — what
   /// they actually consented to, should the wording change later — in the
   /// language they read it in.
-  consentText   String?
+  consentText      String?
   /// The same consent in English, so staff can read what was agreed to
   /// whatever language the form was shown in.
-  consentTextEn String?
+  consentTextEn    String?
   /// The language the form was shown in ("en", "ar", …); null on requests from
   /// before languages existed.
-  locale        String?
+  locale           String?
   /// SUPERSEDED by readAt/readBy (migration 20261109120000_enquiry_read_star_notes,
   /// which copied them across). Nothing reads or writes these any more; they stay
   /// only until a later migration drops them, so the deploy order stays additive.
-  handledAt     DateTime?
-  handledBy     String?
+  handledAt        DateTime?
+  handledBy        String?
   /// Read state, shared by the team (2026-11): when someone first opened the
   /// request on the Resource Requests page, and who (their sign-in email).
   /// Both null = unread. Opening it sets them; "Mark as unread" clears them.
-  readAt        DateTime?
-  readBy        String?
+  readAt           DateTime?
+  readBy           String?
   /// Starred, shared by the team: when and by whom. Both null = not starred.
-  starredAt     DateTime?
-  starredBy     String?
+  starredAt        DateTime?
+  starredBy        String?
   /// SUPERSEDED by `teamNotes` (migration 20261109150000_enquiry_notes, which
   /// copied any text across as a note). Unused; dropped with handledAt later.
-  notes          String?
-  notesUpdatedAt DateTime?
-  notesUpdatedBy String?
+  notes            String?
+  notesUpdatedAt   DateTime?
+  notesUpdatedBy   String?
   /// The team's notes on this request, a small message board (EnquiryNote).
-  teamNotes     EnquiryNote[]
-  download      Download? @relation(fields: [downloadId], references: [id], onDelete: SetNull)
+  teamNotes        EnquiryNote[]
+  download         Download?     @relation(fields: [downloadId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
 }
@@ -398,51 +398,51 @@ model CategoryMirror {
 }
 
 model QuoteRequest {
-  id        String             @id @default(cuid())
+  id             String             @id @default(cuid())
   /// "First Last". Still written for every request, so older quotes and
   /// anything reading `name` keep working after the form split it in two.
-  name      String
-  email     String
-  company   String?
-  phone     String?
-  message   String?
+  name           String
+  email          String
+  company        String?
+  phone          String?
+  message        String?
   /// The basket form's fields since 2026-10-02 — the same set the WordPress
   /// quote form collected. All optional: quotes from before then have none.
-  firstName  String?
-  lastName   String?
+  firstName      String?
+  lastName       String?
   /// "When do you need this equipment?" Free text, not an enum, so relabelling
   /// an option in Duda's widget can never turn a real quote into a 400.
-  requiredBy String?
-  address    String?
-  country    String?
-  postcode   String?
+  requiredBy     String?
+  address        String?
+  country        String?
+  postcode       String?
   /// The page's language when the quote was sent ("en", "fr"…), so staff know
   /// which language to reply in. Null for quotes from before 2026-10-07, or
   /// from a basket widget not yet updated.
-  locale     String?
-  createdAt DateTime           @default(now())
-  emailSent Boolean            @default(false)
+  locale         String?
+  createdAt      DateTime           @default(now())
+  emailSent      Boolean            @default(false)
   /// SUPERSEDED by readAt/readBy (migration 20261109120000_enquiry_read_star_notes,
   /// which copied them across). Nothing reads or writes these any more; they stay
   /// only until a later migration drops them, so the deploy order stays additive.
-  handledAt DateTime?
-  handledBy String?
+  handledAt      DateTime?
+  handledBy      String?
   /// Read state, shared by the team (2026-11): when someone first opened the
   /// quote on the Quote Requests page, and who (their sign-in email). Both
   /// null = unread. Opening it sets them; "Mark as unread" clears them.
-  readAt    DateTime?
-  readBy    String?
+  readAt         DateTime?
+  readBy         String?
   /// Starred, shared by the team: when and by whom. Both null = not starred.
-  starredAt DateTime?
-  starredBy String?
+  starredAt      DateTime?
+  starredBy      String?
   /// SUPERSEDED by `teamNotes` (migration 20261109150000_enquiry_notes, which
   /// copied any text across as a note). Unused; dropped with handledAt later.
   notes          String?
   notesUpdatedAt DateTime?
   notesUpdatedBy String?
   /// The team's notes on this quote, a small message board (EnquiryNote).
-  teamNotes EnquiryNote[]
-  items     QuoteRequestItem[]
+  teamNotes      EnquiryNote[]
+  items          QuoteRequestItem[]
 
   /// /api/quotes lists newest first.
   @@index([createdAt])
@@ -675,4 +675,75 @@ model DudaTranslation {
   fetchedAt  DateTime @updatedAt
 
   @@id([locale, entity, dudaId])
+}
+
+/// The platform activity log: every action in the Hub, for the super admin's
+/// Activity page (2026-11-18). Written by `middleware/activity.ts` — one row
+/// per changing request, plus sign-ins and what the browser reports.
+///
+/// ⚠️ APPEND-ONLY, enforced by Postgres, not by this schema: the migration
+/// turns on row level security with policies that let the app's login insert
+/// and read, and delete only rows older than two years (the retention period),
+/// and takes UPDATE away. Prisma does not model policies, so they live in the
+/// migration's SQL alone.
+///
+/// ⚠️ Never put a customer's name, email, phone or company here, a note's
+/// text, or any password, token or link. `targetLabel` and `actorEmail` are
+/// snapshots, so a row stays readable after the thing (or person) is gone.
+model ActivityEvent {
+  id          String   @id @default(cuid())
+  at          DateTime @default(now())
+  /// "hub" (a dashboard request) | "browser" (reported by the dashboard) |
+  /// "duda" (Duda's own site log).
+  source      String
+  /// Supabase user id. Null for a Duda entry with no matching staff account.
+  actorId     String?
+  actorEmail  String?
+  /// "security" | "products" | "categories" | "options" | "media" | "logos" |
+  /// "translations" | "enquiries" | "users" | "website" | "activity".
+  category    String
+  /// e.g. "product.specs.update" (services/activityCatalog.ts).
+  action      String
+  /// "ok" | "partial" | "failed" | "refused".
+  outcome     String
+  targetType  String?
+  targetId    String?
+  targetLabel String?
+  summary     String
+  details     Json?
+  ip          String?
+  userAgent   String?
+  country     String?
+  city        String?
+  method      String?
+  path        String?
+  status      Int?
+  durationMs  Int?
+  sessionId   String?
+  /// The same for every request of one save in the product editor.
+  batchId     String?
+  /// Dedupes entries copied from Duda's own log.
+  externalKey String?  @unique
+
+  @@index([at])
+  @@index([category, at])
+  @@index([actorId, at])
+  @@index([targetType, targetId, at])
+  @@index([batchId])
+}
+
+/// One row per Supabase session the API has seen: how "Signed in" and
+/// "session used from a new IP" are noticed, since signing in happens browser
+/// → Supabase and never reaches this server. Also the Users page's "Last
+/// active". Ordinary rights (it is updated); swept after two years unseen.
+model ActivitySession {
+  sessionId   String   @id
+  userId      String
+  email       String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  ip          String?
+  userAgent   String?
+
+  @@index([userId, lastSeenAt])
 }

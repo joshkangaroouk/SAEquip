@@ -1301,6 +1301,89 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 - **The Duda session outlives the Hub session.** Once SSO'd, the user holds an independent Duda cookie; signing out of the Hub does not end it. This is why the permission set matters more than session hygiene.
 - **Offboarding: use Disable access or Delete account on the Users page**, which both remove Website Editor access too, verified in Duda (Delete removes it before the account goes, and stops if Duda refuses). Deleting a Supabase user any other way (the Supabase dashboard, a script) does *not* revoke Duda access: remove editor access first, or run `duda:editor-provision -- --email <staff> --revoke --confirm`, or you get orphaned editor access outliving the Hub account.
 
+## Activity log — the super admin's Activity page (2026-11-18)
+
+`/activity` (Admin group, super admin only): everything done in the Hub, who did it, when, and from which IP and device, with filters by category, action, person, date range, outcome, search, item, IP and save, a detail view with the before → after, and a CSV export. Josh's decisions:
+- kept **2 years**, then deleted;
+- **staff actions only**, so website visitors' quote and file requests are not logged;
+- **dashboard only**, so command-line scripts are not logged;
+- **actions, not views.** Sign-ins, CSV exports and opening the Website Editor are logged; opening a quote is too, because it marks it read.
+
+The runbook is `docs/redesign/17-activity-log-runbook.md`.
+
+**Data** (migration `20261118150000_activity_log`):
+- **`ActivityEvent`**: one row per action. It holds who (`actorId`, `actorEmail` snapshot), what (`category`, `action`, `summary`, `details` JSON, `outcome` ok/partial/failed/refused), the target (`targetType`, `targetId`, `targetLabel` snapshot), where (`ip`, `userAgent`, `country`, `city`), the request (`method`, `path`, `status`, `durationMs`), `sessionId` and `batchId`.
+- **`ActivitySession`**: one row per Supabase session the API has seen. It drives "Signed in", "Session used from a new IP" and the Users page's "Active … ago".
+- ⚠️ **`ActivityEvent` is APPEND-ONLY, enforced by Postgres**, not by the app:
+  - row level security, with policies for `saequip_app`: SELECT, INSERT, and DELETE only `at < now() - 730 days`;
+  - `UPDATE` and `TRUNCATE` revoked.
+
+  So even a bug or a hijacked server cannot edit history or delete anything under two years. The policies live only in the migration's SQL: Prisma does not model them, and **the migration needs the `saequip_app` role to exist.** Verified on a throwaway database: update and truncate are refused, a recent delete removes 0 rows, a 3-year-old one 1.
+- The anon and authenticated roles hold no rights on it (checked: the schema's default privileges grant to `saequip_app` only), so Supabase's REST API cannot reach it.
+- **Retention:** `sweepOldActivity()` runs on every Activity page load and on about one write in fifty.
+
+**Capture** (`middleware/activity.ts`, `services/activity.ts`, `services/activityCatalog.ts`):
+- `activityContext` is mounted on **/api only** (index.ts, before every /api route), never /public, so the live widget carries none of it.
+- Every request gets `req.activity`. A changing request writes ONE row when its response ends: the catalogue's default for that route, merged with what the route added through `req.activity.set({ target, summary, details, outcome })`.
+  - `add()` writes extra rows, such as a sign-in.
+  - `refuse()` turns a 403 into one "refused" row (requireAuth, requireSuperAdmin).
+  - GETs write nothing unless they set something (the activity export).
+- ⚠️ **The row is written BEFORE the response finishes** (`res.end` is wrapped), because Vercel may freeze a function once its response is sent. The wait is bounded by `WRITE_TIMEOUT_MS` (1.5s). A failure is logged without the event's details and never changes or fails the response.
+- ⚠️ **EVERY changing route under /api needs a `ROUTE_CATALOGUE` entry**, a real one or a `skip` with its reason. `npm run activity:test` (in pre-push) walks the real app's router stack and fails on a missing or stale entry. A route that slips through is still logged, as `action: "unknown"`, never dropped.
+- Requests are matched on their own path (`matchRoute()`), not `req.route`: by the time an error reaches the app's error handler, Express has restored `req.baseUrl`/`req.params`.
+- **Target names** are snapshots, looked up by type when the row is written: product name, category title, logo alt text, filename, invite email, and a person-free label for an enquiry. **A delete must name its target first**, since the row is gone by then (`nameTargetNow()`, or the route sets the label from the row it already loaded).
+- **Before → after**: `fieldChanges()` for fields, `listChanges()` for lists.
+  - **Product details and images** do one extra Duda GET before writing (about 0.3s; the save goes ahead without it if it fails).
+  - **Specs, benefits, applications, compatible products, categories and files** read their old rows first.
+  - **The website order** names the one product moved ("3rd → 1st", `movedItem()`).
+  - **A category save** now always reads the category first, for the seo merge and the log.
+- `sanitizeDetails()` drops any key mentioning a password, secret, token, authorization or cookie (and `link`/`otp`/`code`), and caps strings at 10,000 characters and lists at 500.
+- ⚠️ **Never put into an event**: a customer's name, email, phone or company; a note's text; any password, token or link.
+  - An enquiry is labelled "Quote request of 14 Nov 2026 (3 items)" or "File request: Datasheet – EX Heater", so a GDPR "Delete request…" leaves nothing personal behind and log rows never need editing.
+  - Request bodies are never copied.
+- **One save = one group**: `inActivityBatch()` (`lib/api.ts`) gives every changing request a uuid `X-Activity-Batch` header. It covers the product editor's save (with its logo switches and translate-on-save batches), New product and "Translate missing". ⚠️ It starts its function synchronously, so the translators still open inside the click.
+- IP is `req.ip`, correct on Vercel only because of `trust proxy`. Country and city come from Vercel's `x-vercel-ip-*` headers, believed only when `process.env.VERCEL`, for the same reason.
+
+**Sign-ins and the browser's events:**
+- **Signed in is noticed by the server**: `requireAuth` reads the verified token's `session_id` and `amr` (`tokenClaims()`), then `noteSession()` upserts `ActivitySession`.
+  - A new row means one "Signed in" (with the method).
+  - A known session from a different IP means "Session used from a new IP".
+  - Per-instance memory first; the write is bounded at 500ms and never fails the request.
+  - ⚠️ That Supabase access tokens carry `session_id` is from Supabase's documentation; confirm on the first live sign-in (an "unknown session id" just logs nothing).
+- **Refusals for a genuine token** (forbidden domain, disabled account, 2FA owed, not the super admin) are one "refused" row each. Anonymous 401s (bots, stale tabs) are not logged.
+- **`POST /api/activity/report`** (anyone signed in, Postgres-limited 60/min per user) takes an allowlist (`REPORTABLE`), stored as `source: "browser"`:
+  - sign-out (`AuthContext.signOut`, before the Supabase sign-out);
+  - password changed (`/reset-password`, before its sign-out);
+  - two-factor on/off;
+  - the Quotes, Resource Requests and Translations CSVs.
+
+  These happen browser → Supabase or in the page, so only the browser can say. A closed tab can miss a sign-out.
+- **Not visible to the Hub at all:** failed sign-in attempts (go straight to Supabase: its dashboard → Authentication → Logs), command-line scripts, edits inside Duda's own editor.
+
+**API** (`routes/activity.ts`, `requireSuperAdmin` except `report`):
+- `GET /api/activity?category&action&actor&targetType&targetId&outcome(ok|problem)&ip&batch&q&from&to&page&pageSize` → the `/api/media` page shape, newest first, without `details`.
+- `GET /api/activity/facets`: categories and actions with labels and counts (from the catalogue), and the people seen, with names from Supabase.
+- `GET /api/activity/:id`: the full row, the actor's name and how many rows share its save.
+- `GET /api/activity/export.csv?<filters>`: through `toCsv` (formula guard), capped at 50,000 rows, and logged itself.
+- `GET /api/users` gains `lastActiveAt` for the super admin.
+
+**Dashboard** (`pages/Activity.tsx`):
+- the sidebar item is `superAdminOnly` (`useAuth().isSuperAdmin`, display only); a non-admin opening the URL gets an empty state and no request;
+- every filter lives in the address, so links land filtered: Users' ⋯ → "View activity", and the product band's "Activity" link;
+- a side panel from 1280 and a dialog below, with:
+  - the time to the second in UK time;
+  - device in words (`lib/userAgent.ts`);
+  - the before → after table;
+  - a paragraph diff of a description (read as text through DOMParser, never rendered);
+  - added/removed lines;
+  - raw JSON;
+  - "Show everything…" quick filters (person, item, IP, save).
+
+**Tests:**
+- `npm run activity:test`: coverage, the middleware end to end against an in-memory store, sessions, the report allowlist and the helpers.
+- A throwaway-Postgres run as an app-like login proved the policies and the real routes' details, including no personal data in a deleted quote's rows.
+- The fixtures harness covered the page: filters, the detail, export, paging, both themes, phone width and axe.
+
 ## Users, password resets and 2FA
 
 ⚠️⚠️ **Two-factor is OFF for the whole Hub since 2026-11-18** (Josh: "turn off 2FA for everyone, for now"). It is one switch, `TWO_FACTOR_ON = false`, in `backend/src/services/twoFactor.ts`. That copy is enforced; `frontend/src/lib/twoFactor.ts` mirrors it for the screens, so change both together. While it is off:
@@ -1323,6 +1406,7 @@ The rest of this section describes two-factor as it works when the switch is on.
   - **`requireSuperAdmin`** (in `middleware/requireAuth.ts`) guards every admin route. It needs the role AND an `aal2` session, so a stolen password alone is not enough. ⚠️ Role only while two-factor is off for the Hub (see the top of this section).
 - ⚠️ **`auth.admin.listUsers()` does NOT return `factors`** — the key is absent from every row, not merely empty. Only `getUserById()` includes them, and the difference is silent: it reads as "nobody has MFA". It made the Users page show Two-factor **Off** for an account with a verified TOTP factor, `users:create --check` report "not enrolled", and — the dangerous one — **`users:mfa` would have told an admin there were no factors to delete, for the one person who cannot get in without that reset.** Everything that needs factors now goes through `services/supabaseUsers.ts` (`listUsersWithFactors`, `findUserWithFactors`, `hasVerifiedFactor`), which re-fetches each user. That is an N+1, accepted deliberately: the staff list is a handful of people, the calls run in parallel, and the alternative is a page that lies about a security control.
 - **`/users`:** everyone signed in sees the list (`GET /api/users`: `listUsersWithFactors`, filtered to allowed domains, joined against `DudaEditorAccount`, with name, role, 2FA required, disabled, the Duda account name and an invite's editor error) and can send a password reset to THEMSELVES. `viewer.superAdmin` tells the page whether to show:
+  - **"Active … ago"** under each last sign-in (`lastActiveAt`, from the activity log's sessions) and **View activity** in each row's ⋯ menu (see "Activity log");
   - **Send reset email** on everyone's row, not just their own: ⚠️ `POST /api/users/password-reset` refuses any address but the caller's own with 403 `super_admin_required` unless the session passes `isSuperAdminSession()` (the role AND `aal2`, the same rule as `requireSuperAdmin`; Josh, 2026-11-09);
   - **Invite user** and the **Invites** list;
   - per person: **Give / Remove Website Editor access**, **Turn off two-factor… / Require two-factor**, **Disable / Enable access** and **Delete account…** (see below).
@@ -1405,7 +1489,7 @@ Four parts, and the last is the one that makes it real:
 1. **`/security`** — the signed-in user enrols their own authenticator (`mfa.enroll` → QR + secret → `mfa.challenge` → `mfa.verify`). Enrolment can only happen in the browser against that user's session: there is no admin API to enrol on someone's behalf, and there shouldn't be, since the secret must reach their app and nobody else's. Cancelling mid-enrolment unenrols the half-finished factor.
 2. **Login challenge** — `signIn()` returns `mfaRequired` by reading `mfa.getAuthenticatorAssuranceLevel()` (`nextLevel === "aal2"` only when a verified factor exists), and `Login.tsx` collects the code. ⚠️ The `if (user) <Navigate to="/">` guard is suppressed while the code is outstanding: the password step already creates a real session, so the redirect would otherwise fire and skip the challenge. ⚠️ **The code is tried against EVERY confirmed authenticator** (`verifyTotpCode()` in `lib/mfa.ts`, fixed 2026-10-12). Each enrolment has its own secret, and it used to challenge only the first, so a backup device added on `/security` could never sign in — the very fallback this section recommends.
 3. **`mfa_required` handling** — `apiFetch` (not just `apiJson`: Products, Quotes, Resource Requests and Media call `apiFetch` directly) signs out and returns to `/login` on that response, because every request will fail identically until a code is entered. ⚠️ **A session that owes its code is known from the session itself** (`mfaPending` in `AuthContext`, via `sessionNeedsSecondFactor()`: a confirmed factor on the session's user and a token that is not `aal2` — the rule supabase-js applies, without its lock). `ProtectedRoute` sends such a session to `/login`, which resumes the code step. It used to live only in the login page's state, so a reload during the code step lost it and stranded the user on a dashboard that loaded nothing (fixed 2026-10-12).
-4. ⚠️ **Server-side enforcement in `requireAuth`** — a user with a **verified** factor must present an `aal2` token, or the API returns `403 mfa_required`. Supabase challenges factors entirely in the browser and an unchallenged session still carries a valid `aal1` token, so **without this check 2FA is decorative** — a caller could enrol, ignore the prompt and keep using the API. `getUser()` validates the token but does not expose `aal`, so it is read from the already-verified JWT payload; `assuranceLevel()` decodes without verifying and is only safe because verification has already happened. Never point it at an unvalidated token.
+4. ⚠️ **Server-side enforcement in `requireAuth`** — a user with a **verified** factor must present an `aal2` token, or the API returns `403 mfa_required`. Supabase challenges factors entirely in the browser and an unchallenged session still carries a valid `aal1` token, so **without this check 2FA is decorative** — a caller could enrol, ignore the prompt and keep using the API. `getUser()` validates the token but does not expose `aal`, so it is read from the already-verified JWT payload; `tokenClaims()` decodes without verifying (`aal`, and the session id and `amr` the activity log uses) and is only safe because verification has already happened. Never point it at an unvalidated token.
 
 **Opt-in per user, deliberately, EXCEPT where it is required.** Only an enrolled *and verified* factor raises the bar, so this cannot lock out staff who haven't set MFA up. An `unverified` factor is ignored: enrolment leaves one behind until the first code is confirmed, and honouring it would lock the user out mid-enrolment.
 

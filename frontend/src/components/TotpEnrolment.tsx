@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
+import { reportActivity } from "../lib/activity";
 import { cn } from "../lib/cn";
 import { Alert, Button, Input } from "./ui";
 
@@ -94,6 +95,7 @@ export function TotpEnrolment({
     }
     setEnrolling(null);
     setCode("");
+    void reportActivity("auth.two_factor_on");
     await onEnrolled();
   }
 

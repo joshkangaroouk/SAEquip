@@ -28,7 +28,8 @@ import {
 } from "../components/ui";
 import { RichHtml } from "../components/RichHtml";
 import { TranslationProgressModal } from "../components/TranslationProgressModal";
-import { apiJson } from "../lib/api";
+import { apiJson, inActivityBatch } from "../lib/api";
+import { reportActivity } from "../lib/activity";
 import { csvUnguard, downloadCsv, parseCsv } from "../lib/csv";
 import { TARGETS, startTranslators, targetLabel, type TargetLocale, type TranslatorSet } from "../lib/translator";
 import {
@@ -482,7 +483,8 @@ export default function Translations() {
       return;
     }
     translators.current = set;
-    void translateMissing({ translators: set, onProgress: setProgress }).then((summary) => {
+    // One run, one group on the Activity page.
+    void inActivityBatch(() => translateMissing({ translators: set, onProgress: setProgress })).then((summary) => {
       set.close();
       translators.current = null;
       setProgress(null);
@@ -507,6 +509,7 @@ export default function Translations() {
       i.text ?? "",
     ]);
     downloadCsv(`translations-${locale}-${new Date().toISOString().slice(0, 10)}.csv`, header, rows);
+    void reportActivity("translation.export", { rows: rows.length, filtered: rows.length !== items.length });
   }
 
   /**

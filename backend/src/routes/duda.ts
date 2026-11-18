@@ -14,6 +14,80 @@ import { shapeHubDownload } from "../services/downloads.js";
 import { toCsv } from "../services/csv.js";
 import { treeFrom } from "./categories.js";
 import { env } from "../env.js";
+import { compareListingOrder } from "../services/productOrder.js";
+import { fieldChanges, listChanges, movedItem, ordinal } from "../services/activity.js";
+
+// --- Activity log: what a product looked like before a write -------------------
+
+/**
+ * The product as it is now, for the activity log's before → after. Best effort
+ * and bounded: a failed or slow read only means the entry has no "before".
+ */
+async function productBefore(id: string): Promise<Awaited<ReturnType<typeof duda.getProduct>> | null> {
+  try {
+    return await Promise.race([
+      duda.getProduct(id),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+const DETAIL_LABELS: Record<string, string> = {
+  name: "Name",
+  sku: "SKU",
+  type: "Type",
+  status: "Status",
+  stock_status: "Stock",
+  price: "Price",
+  compare_at_price: "Compare-at price",
+  requires_shipping: "Requires shipping",
+  managed_inventory: "Managed inventory",
+  quantity: "Quantity",
+  seo_title: "SEO title",
+  seo_description: "Meta description",
+  product_url: "URL slug",
+};
+
+const num = (v: string | null | undefined) => (v == null || v === "" ? null : Number.parseFloat(v));
+
+/** The editable native fields, flattened so before and after compare field by field. */
+function flatDetails(p: {
+  name?: string;
+  sku?: string | null;
+  type?: string;
+  status?: string;
+  stock_status?: string;
+  requires_shipping?: boolean;
+  managed_inventory?: boolean;
+  quantity?: number;
+  prices?: { price: string; compare_at_price?: string | null }[];
+  seo?: { title?: string | null; description?: string | null; product_url?: string | null } | null;
+}): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const set = (k: string, v: unknown) => {
+    if (v !== undefined) out[k] = v;
+  };
+  set("name", p.name);
+  set("sku", p.sku);
+  set("type", p.type);
+  set("status", p.status);
+  set("stock_status", p.stock_status);
+  set("requires_shipping", p.requires_shipping);
+  set("managed_inventory", p.managed_inventory);
+  set("quantity", p.quantity);
+  if (p.prices) {
+    out.price = num(p.prices[0]?.price);
+    out.compare_at_price = num(p.prices[0]?.compare_at_price ?? null);
+  }
+  if (p.seo) {
+    set("seo_title", p.seo.title);
+    set("seo_description", p.seo.description);
+    set("product_url", p.seo.product_url);
+  }
+  return out;
+}
 
 /** A non-negative numeric string, e.g. "400.0". */
 const priceString = z
@@ -375,10 +449,30 @@ dudaRouter.put("/products/order", async (req, res, next) => {
     }
     const ids = parsed.data.ids;
     const places = ids.map((_, i) => i);
+    // The order as it was, for the activity log: which product moved where.
+    const beforeRows = await prisma.hubProduct.findMany({ select: { dudaProductId: true, name: true, sortOrder: true } });
+    const listed = new Set(ids);
+    const en = new Intl.Collator("en", { sensitivity: "base", numeric: true });
+    const beforeOrder = beforeRows
+      .filter((r) => listed.has(r.dudaProductId))
+      .map((r) => ({ ...r, name: r.name ?? "" }))
+      .sort((a, b) => compareListingOrder(a, b, en))
+      .map((r) => r.dudaProductId);
     const [, placed] = await prisma.$transaction([
       prisma.$executeRaw`UPDATE "HubProduct" SET "sortOrder" = NULL WHERE "sortOrder" IS NOT NULL AND NOT ("dudaProductId" = ANY(${ids}::text[]))`,
       prisma.$executeRaw`UPDATE "HubProduct" AS h SET "sortOrder" = v.place FROM unnest(${ids}::text[], ${places}::int[]) AS v(id, place) WHERE h."dudaProductId" = v.id`,
     ]);
+    const moved = movedItem(beforeOrder, ids.filter((id) => beforeOrder.includes(id)));
+    if (moved) {
+      const name = beforeRows.find((r) => r.dudaProductId === moved.item)?.name ?? null;
+      req.activity?.set({
+        summary: `Moved in the website order: ${ordinal(moved.from + 1)} → ${ordinal(moved.to + 1)}`,
+        target: { id: moved.item, label: name },
+        details: { from: moved.from + 1, to: moved.to + 1, of: ids.length },
+      });
+    } else {
+      req.activity?.set({ target: null, details: { placed, of: ids.length } });
+    }
     res.json({ placed, skipped: ids.length - placed });
   } catch (err) {
     next(err);
@@ -555,6 +649,10 @@ dudaRouter.post("/products/export", async (req, res, next) => {
     // Tells the client how many rows actually went out, so it can say so.
     res.setHeader("X-Export-Rows", String(rows.length));
     res.setHeader("Access-Control-Expose-Headers", "Content-Disposition, X-Export-Rows");
+    req.activity?.set({
+      summary: `Exported products to CSV (${rows.length} ${rows.length === 1 ? "row" : "rows"})`,
+      details: { rows: rows.length },
+    });
     res.send(toCsv(header, rows));
   } catch (err) {
     next(err);
@@ -596,6 +694,10 @@ dudaRouter.post("/products", async (req, res, next) => {
       prices: [{ price, compare_at_price: compare_at_price ?? null }],
     });
     await syncHubProduct(created, prisma, { descriptionHtml: description });
+    req.activity?.set({
+      target: { id: created.id, label: created.name },
+      details: { sku: created.sku ?? null, status: created.status ?? null, price, hasDescription: Boolean(description) },
+    });
     res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -659,6 +761,8 @@ dudaRouter.delete("/products/:id", async (req, res, next) => {
     await duda.deleteProduct(req.params.id);
     const hub = await prisma.hubProduct.findUnique({ where: { dudaProductId: req.params.id } });
     if (hub) await prisma.hubProduct.delete({ where: { id: hub.id } });
+    // The row is gone, so the name has to be taken now.
+    req.activity?.set({ target: { label: hub?.name ?? null }, details: { sku: hub?.sku ?? null, slug: hub?.slug ?? null } });
     res.json({ deleted: true });
   } catch (err) {
     next(err);
@@ -727,10 +831,28 @@ dudaRouter.patch("/products/:id", async (req, res, next) => {
     const forDuda = (
       description !== undefined ? { ...parsed.data, description: stripAnchors(description) } : parsed.data
     ) as DudaProductUpdate;
+    // For the activity log's before → after (about 0.3s; skipped if it fails).
+    const [before, hubBefore] = await Promise.all([
+      productBefore(req.params.id),
+      prisma.hubProduct.findUnique({ where: { dudaProductId: req.params.id }, select: { descriptionHtml: true } }),
+    ]);
     const updated = await duda.updateProduct(req.params.id, forDuda);
     // Keep the hub row's name/sku/slug in step — the public widget serves those
     // from HubProduct, so skipping this leaves the live site stale after a rename.
     const hub = await syncHubProduct(updated, prisma, { descriptionHtml: description });
+    const changes = fieldChanges(before ? flatDetails(before) : null, flatDetails(parsed.data), DETAIL_LABELS);
+    const descriptionBefore = hubBefore?.descriptionHtml ?? before?.description ?? null;
+    const descriptionChanged = description !== undefined && description !== descriptionBefore;
+    const changed = [...changes.map((c) => c.label), ...(descriptionChanged ? ["Description"] : [])];
+    req.activity?.set({
+      target: { label: updated.name },
+      summary: changed.length ? `Updated ${changed.join(", ")}` : "Saved product details (no change)",
+      details: {
+        changes,
+        ...(descriptionChanged ? { description: { before: descriptionBefore, after: description } } : {}),
+        ...(before ? {} : { beforeUnavailable: true }),
+      },
+    });
     // The authored copy, so the editor re-baselines on what it sent rather
     // than on Duda's link-free one (which would read as an unsaved change).
     res.json({ ...updated, hubDescriptionHtml: hub.descriptionHtml });
@@ -752,11 +874,23 @@ dudaRouter.put("/products/:id/images", async (req, res, next) => {
   }
 
   try {
+    const before = await productBefore(req.params.id);
     const updated = await duda.updateProductImages(req.params.id, parsed.data.images);
     // images[0] is mirrored as HubProduct.thumbnailUrl, which the compatible
     // carousel shows on OTHER products' pages. Without this a new primary
     // image only reached them the next time this product was opened.
     await syncHubProduct(updated);
+    const shape = (xs: { url: string; alt?: string | null }[]) => xs.map((i) => ({ url: i.url, alt: i.alt ?? null }));
+    const was = before ? shape(before.images ?? []) : null;
+    const now = shape(updated.images ?? []);
+    const urls = listChanges(was?.map((i) => i.url) ?? [], now.map((i) => i.url));
+    req.activity?.set({
+      target: { label: updated.name },
+      summary: was
+        ? `Updated the images (${was.length} → ${now.length}${was[0]?.url !== now[0]?.url ? ", new featured image" : ""})`
+        : `Updated the images (${now.length})`,
+      details: { before: was, after: now, added: was ? urls.added.length : undefined, removed: was ? urls.removed.length : undefined },
+    });
     res.json(updated);
   } catch (err) {
     next(err);
@@ -829,6 +963,19 @@ dudaRouter.put("/products/:id/options", async (req, res, next) => {
     }
 
     const report = await updateOptionsPreservingVariations(req.params.id, refs);
+    const optionSet = (p: { options?: { name: string; choices: { value: string }[] }[] | null }) =>
+      (p.options ?? []).map((o) => `${o.name}: ${o.choices.map((c) => c.value).join(", ")}`);
+    const lost = report.dropped.length + report.failed.length;
+    req.activity?.set({
+      target: { label: report.product.name },
+      outcome: report.failed.length ? "partial" : undefined,
+      summary: lost ? `Changed the options (${lost} combination${lost === 1 ? "" : "s"} lost their SKU or price)` : "Changed the options",
+      details: {
+        before: optionSet(report.before),
+        after: optionSet(report.product),
+        variationData: { restored: report.restored, dropped: report.dropped, failed: report.failed.length },
+      },
+    });
     res.json({
       product: report.product,
       variationData: {
@@ -882,6 +1029,30 @@ dudaRouter.put("/products/:id/variations", async (req, res, next) => {
     }
 
     const product = await duda.getProduct(req.params.id);
+    // Before → after per edited combination, named by its choices.
+    const beforeById = new Map(current.variations.map((v) => [v.id, v]));
+    const afterById = new Map(product.variations.map((v) => [v.id, v]));
+    const comboName = (v: { options?: { choice_value: string }[] | null } | undefined, id: string) =>
+      (v?.options?.length ? v.options.map((o) => o.choice_value).join(" / ") : null) || id;
+    const variationChanges = parsed.data.variations.map((edit) => {
+      const was = beforeById.get(edit.id);
+      const now = afterById.get(edit.id);
+      return {
+        variation: comboName(was, edit.id),
+        changes: fieldChanges(
+          was ? { sku: was.sku, price_difference: was.price_difference, status: was.status } : null,
+          Object.fromEntries(Object.keys(edit).filter((k) => k !== "id").map((k) => [k, (now as Record<string, unknown> | undefined)?.[k] ?? (edit as Record<string, unknown>)[k]])),
+          { sku: "SKU", price_difference: "Price difference", status: "Status" },
+        ),
+        failed: failed.some((f) => f.id === edit.id) || undefined,
+      };
+    });
+    req.activity?.set({
+      target: { label: product.name },
+      outcome: failed.length > 0 ? "partial" : undefined,
+      summary: `Updated ${parsed.data.variations.length} variation${parsed.data.variations.length === 1 ? "" : "s"}${failed.length ? ` (${failed.length} failed)` : ""}`,
+      details: { variations: variationChanges },
+    });
     if (failed.length > 0) {
       res.status(500).json({ error: "partial_variation_save", failed, product });
       return;
@@ -1038,6 +1209,11 @@ dudaRouter.put("/products/:id/compatible", async (req, res, next) => {
       return;
     }
 
+    const beforeLinks = await prisma.compatibleLink.findMany({
+      where: { hubProductId: hub.id },
+      orderBy: { sortOrder: "asc" },
+      select: { related: { select: { name: true, dudaProductId: true } } },
+    });
     const saved = await prisma.$transaction(async (tx) => {
       await tx.compatibleLink.deleteMany({ where: { hubProductId: hub.id } });
       if (wanted.length) {
@@ -1058,6 +1234,17 @@ dudaRouter.put("/products/:id/compatible", async (req, res, next) => {
       });
     });
 
+    const was = beforeLinks.map((l) => l.related.name ?? l.related.dudaProductId);
+    const now = saved.map((c) => c.related.name ?? c.related.dudaProductId);
+    const diff = listChanges(was, now);
+    req.activity?.set({
+      target: { label: hub.name },
+      summary:
+        diff.added.length || diff.removed.length
+          ? `Updated compatible products (${[diff.added.length && `${diff.added.length} added`, diff.removed.length && `${diff.removed.length} removed`].filter(Boolean).join(", ")})`
+          : "Reordered compatible products",
+      details: { ...diff, before: was, after: now },
+    });
     res.json(
       saved.map((c) => ({
         id: c.id,
@@ -1124,6 +1311,9 @@ dudaRouter.put("/products/:id/categories", async (req, res, next) => {
     // `sortOrder` (SA Equip's Site Challenge priority, which decides the two
     // labels a listing card shows). Recreating every link on each editor save
     // would quietly reset that order to the tree's. A new link has no order.
+    const beforeIds = (await prisma.productCategory.findMany({ where: { hubProductId: hub.id }, select: { dudaCategoryId: true } })).map(
+      (c) => c.dudaCategoryId,
+    );
     const saved = await prisma.$transaction(async (tx) => {
       await tx.productCategory.deleteMany({ where: { hubProductId: hub.id, dudaCategoryId: { notIn: wanted } } });
       if (wanted.length) {
@@ -1134,7 +1324,20 @@ dudaRouter.put("/products/:id/categories", async (req, res, next) => {
       }
       return tx.productCategory.findMany({ where: { hubProductId: hub.id }, select: { dudaCategoryId: true } });
     });
-    res.json(saved.map((c) => c.dudaCategoryId));
+    const afterIds = saved.map((c) => c.dudaCategoryId);
+    const titles = new Map(
+      (await prisma.categoryMirror.findMany({ where: { dudaCategoryId: { in: [...beforeIds, ...afterIds] } }, select: { dudaCategoryId: true, title: true } })).map(
+        (c) => [c.dudaCategoryId, c.title],
+      ),
+    );
+    const named = (ids: string[]) => ids.map((id) => titles.get(id) ?? id);
+    const diff = listChanges(named(beforeIds), named(afterIds));
+    req.activity?.set({
+      target: { label: hub.name },
+      summary: `Changed the categories (${[diff.added.length && `${diff.added.length} added`, diff.removed.length && `${diff.removed.length} removed`].filter(Boolean).join(", ") || "no change"})`,
+      details: diff,
+    });
+    res.json(afterIds);
   } catch (err) {
     next(err);
   }
@@ -1155,6 +1358,11 @@ dudaRouter.put("/products/:id/accessory", async (req, res, next) => {
   try {
     const hub = await ensureHubProduct(req.params.id);
     const updated = await prisma.hubProduct.update({ where: { id: hub.id }, data: { isAccessory: parsed.data.isAccessory } });
+    req.activity?.set({
+      target: { label: hub.name },
+      summary: updated.isAccessory ? "Marked as an accessory" : "Marked as a main product (not an accessory)",
+      details: { changes: fieldChanges({ isAccessory: hub.isAccessory }, { isAccessory: updated.isAccessory }, { isAccessory: "Accessory" }) },
+    });
     res.json({ isAccessory: updated.isAccessory });
   } catch (err) {
     next(err);
@@ -1194,6 +1402,21 @@ dudaRouter.put("/products/:id/model3d", async (req, res, next) => {
       include: { glbAsset: true },
     });
 
+    const previous = hub.glbAssetId
+      ? await prisma.mediaAsset.findUnique({ where: { id: hub.glbAssetId }, select: { filename: true } })
+      : null;
+    req.activity?.set({
+      target: { label: hub.name },
+      summary: updated.glbAsset ? (hub.glbAssetId ? "Replaced the 3D model" : "Added a 3D model") : "Removed the 3D model",
+      details: {
+        changes: fieldChanges(
+          { model: previous?.filename ?? null },
+          { model: updated.glbAsset?.filename ?? null },
+          { model: "3D model" },
+        ),
+      },
+    });
+
     const model3d = updated.glbAsset
       ? {
           mediaAssetId: updated.glbAsset.id,
@@ -1215,14 +1438,27 @@ async function replaceTextItems(
   items: { text: string }[],
 ) {
   return prisma.$transaction(async (tx) => {
+    // The old list first: the activity log's before → after.
+    const before = await tx.productTextItem.findMany({ where: { hubProductId, kind }, orderBy: { sortOrder: "asc" }, select: { text: true } });
     await tx.productTextItem.deleteMany({ where: { hubProductId, kind } });
     if (items.length > 0) {
       await tx.productTextItem.createMany({
         data: items.map((it, i) => ({ hubProductId, kind, text: it.text, sortOrder: i })),
       });
     }
-    return tx.productTextItem.findMany({ where: { hubProductId, kind }, orderBy: { sortOrder: "asc" } });
+    const saved = await tx.productTextItem.findMany({ where: { hubProductId, kind }, orderBy: { sortOrder: "asc" } });
+    return { before: before.map((b) => b.text), saved };
   });
+}
+
+/** The activity entry for a replaced list: what was added and removed, and both lists whole. */
+function listActivity(noun: string, before: string[], after: string[]) {
+  const diff = listChanges(before, after);
+  const parts = [diff.added.length && `${diff.added.length} added`, diff.removed.length && `${diff.removed.length} removed`].filter(Boolean);
+  return {
+    summary: parts.length ? `Updated ${noun} (${parts.join(", ")})` : `Reordered ${noun}`,
+    details: { ...diff, before, after },
+  };
 }
 
 /**
@@ -1238,15 +1474,21 @@ dudaRouter.put("/products/:id/specs", async (req, res, next) => {
   try {
     const hub = await ensureHubProduct(req.params.id);
     const rows = parsed.data.rows;
-    const saved = await prisma.$transaction(async (tx) => {
+    const { before, saved } = await prisma.$transaction(async (tx) => {
+      const before = await tx.specRow.findMany({ where: { hubProductId: hub.id }, orderBy: { sortOrder: "asc" }, select: { label: true, value: true } });
       await tx.specRow.deleteMany({ where: { hubProductId: hub.id } });
       if (rows.length > 0) {
         await tx.specRow.createMany({
           data: rows.map((r, i) => ({ hubProductId: hub.id, label: r.label, value: r.value, sortOrder: i })),
         });
       }
-      return tx.specRow.findMany({ where: { hubProductId: hub.id }, orderBy: { sortOrder: "asc" } });
+      const saved = await tx.specRow.findMany({ where: { hubProductId: hub.id }, orderBy: { sortOrder: "asc" } });
+      return { before, saved };
     });
+    // A row reads "Label: value"; a continuation line (no label) "  value"; a
+    // sub-heading (no value) "Label:".
+    const line = (r: { label: string; value: string }) => (r.label ? `${r.label}: ${r.value}`.trimEnd() : `  ${r.value}`);
+    req.activity?.set({ target: { label: hub.name }, ...listActivity("technical specs", before.map(line), saved.map(line)) });
     res.json(saved);
   } catch (err) {
     next(err);
@@ -1262,7 +1504,8 @@ dudaRouter.put("/products/:id/benefits", async (req, res, next) => {
   }
   try {
     const hub = await ensureHubProduct(req.params.id);
-    const saved = await replaceTextItems(hub.id, TextItemKind.BENEFIT, parsed.data.items);
+    const { before, saved } = await replaceTextItems(hub.id, TextItemKind.BENEFIT, parsed.data.items);
+    req.activity?.set({ target: { label: hub.name }, ...listActivity("key benefits", before, saved.map((i) => i.text)) });
     res.json(saved);
   } catch (err) {
     next(err);
@@ -1278,7 +1521,8 @@ dudaRouter.put("/products/:id/applications", async (req, res, next) => {
   }
   try {
     const hub = await ensureHubProduct(req.params.id);
-    const saved = await replaceTextItems(hub.id, TextItemKind.APPLICATION, parsed.data.items);
+    const { before, saved } = await replaceTextItems(hub.id, TextItemKind.APPLICATION, parsed.data.items);
+    req.activity?.set({ target: { label: hub.name }, ...listActivity("applications", before, saved.map((i) => i.text)) });
     res.json(saved);
   } catch (err) {
     next(err);

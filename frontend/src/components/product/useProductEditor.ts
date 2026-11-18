@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, apiJson } from "../../lib/api";
+import { ApiError, apiJson, inActivityBatch } from "../../lib/api";
 import { useTranslateOnSave } from "./useTranslateOnSave";
 import { toast } from "../ui";
 import type {
@@ -311,7 +311,7 @@ export function useProductEditor(
    *
    * Returns true only if everything committed.
    */
-  const save = useCallback(async (): Promise<boolean> => {
+  const saveNow = useCallback(async (): Promise<boolean> => {
     if (!productId || !draft || !baseline || saving) return false;
     if (!isValid) {
       toast.error("Fix the highlighted fields before saving.");
@@ -720,6 +720,10 @@ export function useProductEditor(
     }
     return false;
   }, [productId, draft, baseline, saving, isValid, dirty, translate]);
+
+  // One save, one group on the Activity page (every request it makes, the
+  // translation batches included). Started synchronously: see inActivityBatch.
+  const save = useCallback(() => inActivityBatch(saveNow), [saveNow]);
 
   return {
     context,

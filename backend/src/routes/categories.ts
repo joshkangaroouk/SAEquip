@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { CATEGORY_ROOT, duda, type DudaCategorySummary } from "../services/duda.js";
 import { prisma } from "../prisma.js";
+import { fieldChanges } from "../services/activity.js";
 import { categorySortKey, compareKeys, withAncestors } from "../services/categoryTree.js";
 
 export const categoriesRouter = Router();
@@ -272,6 +273,12 @@ categoriesRouter.put("/categories/reorder", async (req, res, next) => {
       ),
     );
 
+    const title = (id: string) => flat.find((c) => c.id === id)?.title ?? id;
+    req.activity?.set({
+      target: parentId === CATEGORY_ROOT ? null : { id: parentId, label: title(parentId) },
+      summary: parentId === CATEGORY_ROOT ? "Reordered the top-level categories" : `Reordered the subcategories of "${title(parentId)}"`,
+      details: { order: ids.map(title) },
+    });
     res.json({ count: flat.length, categories: await treeFrom(flat) });
   } catch (err) {
     next(err);
@@ -361,7 +368,7 @@ categoriesRouter.put("/categories/:id/products", async (req, res, next) => {
     // Every ancestor of this one — the set an addition has to fill in.
     const ancestors = withAncestors([categoryId], flat).filter((id) => id !== categoryId);
 
-    await prisma.$transaction(async (tx) => {
+    const change = await prisma.$transaction(async (tx) => {
       const before = await tx.productCategory.findMany({
         where: { dudaCategoryId: categoryId },
         select: { hubProductId: true },
@@ -385,11 +392,30 @@ categoriesRouter.put("/categories/:id/products", async (req, res, next) => {
           skipDuplicates: true,
         });
       }
+      return { added, removed };
     });
 
     const links = await prisma.productCategory.findMany({
       where: { dudaCategoryId: categoryId },
       select: { hubProduct: { select: { dudaProductId: true } } },
+    });
+    const names = new Map(
+      (
+        await prisma.hubProduct.findMany({
+          where: { id: { in: [...change.added, ...change.removed] } },
+          select: { id: true, name: true, dudaProductId: true },
+        })
+      ).map((h) => [h.id, h.name ?? h.dudaProductId]),
+    );
+    const parts = [change.added.length && `${change.added.length} added`, change.removed.length && `${change.removed.length} removed`].filter(Boolean);
+    req.activity?.set({
+      target: { label: flat.find((c) => c.id === categoryId)?.title ?? null },
+      summary: `Changed the category's products (${parts.join(", ") || "no change"})`,
+      details: {
+        added: change.added.map((id) => names.get(id) ?? id),
+        removed: change.removed.map((id) => names.get(id) ?? id),
+        ...(change.removed.length && subtree.size > 1 ? { alsoRemovedFromSubcategories: subtree.size - 1 } : {}),
+      },
     });
     res.json({ ids: links.map((l) => l.hubProduct.dudaProductId) });
   } catch (err) {
@@ -433,6 +459,15 @@ categoriesRouter.post("/categories", async (req, res, next) => {
 
     const created = await duda.createCategory(parsed.data);
     await mirrorImage(created.id);
+    const parentTitle =
+      parentId === CATEGORY_ROOT
+        ? null
+        : ((await prisma.categoryMirror.findUnique({ where: { dudaCategoryId: parentId }, select: { title: true } }))?.title ?? parentId);
+    req.activity?.set({
+      target: { id: created.id, label: created.title },
+      summary: parentTitle ? `Created the category "${created.title}" under "${parentTitle}"` : `Created the top-level category "${created.title}"`,
+      details: { parent: parentTitle, url: created.seo?.url ?? null },
+    });
     res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -493,14 +528,51 @@ categoriesRouter.patch("/categories/:id", async (req, res, next) => {
         ? ((await duda.listAllCategories()).find((c) => c.id === req.params.id)?.parent_id || CATEGORY_ROOT)
         : undefined;
 
+    // The category as it is now: the seo merge needs it, and so does the
+    // activity log's before → after.
+    const current = await duda.getCategory(req.params.id);
     const payload = { ...parsed.data };
     if (payload.seo) {
-      const current = await duda.getCategory(req.params.id);
       payload.seo = { ...current.seo, ...payload.seo };
     }
 
     const updated = await duda.updateCategory(req.params.id, payload);
     await mirrorImage(req.params.id);
+    {
+      const flatten = (c: { title?: string; description?: string; image?: { url?: string } | null; seo?: { url?: string; title?: string; description?: string } }) => ({
+        title: c.title,
+        description: c.description,
+        image: c.image?.url,
+        url: c.seo?.url,
+        seo_title: c.seo?.title,
+        seo_description: c.seo?.description,
+      });
+      const sent = flatten(parsed.data as never);
+      const after = Object.fromEntries(Object.entries(flatten(updated)).filter(([k]) => (sent as Record<string, unknown>)[k] !== undefined));
+      const changes = fieldChanges(flatten(current), after, {
+        title: "Name",
+        description: "Description",
+        image: "Image",
+        url: "Page URL",
+        seo_title: "SEO title",
+        seo_description: "Meta description",
+      });
+      const moved = nextParent !== undefined && previousParent !== undefined && nextParent !== previousParent;
+      if (moved) {
+        const titles = new Map(
+          (await prisma.categoryMirror.findMany({ where: { dudaCategoryId: { in: [previousParent, nextParent] } }, select: { dudaCategoryId: true, title: true } })).map(
+            (c) => [c.dudaCategoryId, c.title],
+          ),
+        );
+        const name = (id: string) => (id === CATEGORY_ROOT ? "the top level" : titles.get(id) ?? id);
+        changes.push({ field: "parent", label: "Parent", before: name(previousParent), after: name(nextParent) });
+      }
+      req.activity?.set({
+        target: { label: updated.title },
+        summary: changes.length ? `Edited ${changes.map((c) => c.label).join(", ")}` : "Saved the category (no change)",
+        details: { changes },
+      });
+    }
 
     /*
      * ⚠️ A MOVE breaks "never in a child without its parent" for every product
@@ -565,6 +637,11 @@ categoriesRouter.delete("/categories/:id", async (req, res, next) => {
       return;
     }
 
+    // Named now: the mirror row is removed below.
+    req.activity?.set({
+      target: { label: flat.find((c) => c.id === req.params.id)?.title ?? null },
+      details: children.length ? { subcategoriesMovedToTopLevel: children.map((c) => c.title) } : undefined,
+    });
     await duda.deleteCategory(req.params.id);
     /*
      * Every Hub-side table is keyed on the Duda id with no foreign key —

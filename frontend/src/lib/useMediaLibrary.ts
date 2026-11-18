@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDebounced } from "../hooks/useDebounced";
 import { apiJson } from "./api";
 import type { MediaAsset } from "./types";
 
@@ -22,16 +23,6 @@ interface MediaPage {
   page: number;
   pageSize: number;
   pageCount: number;
-}
-
-/** Delay a fast-changing value, so typing doesn't fire a request per keystroke. */
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return debounced;
 }
 
 /**

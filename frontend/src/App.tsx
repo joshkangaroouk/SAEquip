@@ -15,6 +15,7 @@ import Translations from "./pages/Translations";
 import Status from "./pages/Status";
 import UsersPage from "./pages/Users";
 import Security from "./pages/Security";
+import Activity from "./pages/Activity";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AcceptInvite from "./pages/AcceptInvite";
@@ -114,6 +115,7 @@ export const router = createBrowserRouter([
       },
       { path: "/translations", element: <Translations />, handle: { crumbs: { group: "Catalogue", title: "Translations" } } },
       { path: "/users", element: <UsersPage />, handle: { crumbs: { group: "Admin", title: "Users" } } },
+      { path: "/activity", element: <Activity />, handle: { crumbs: { group: "Admin", title: "Activity" } } },
       { path: "/security", element: <Security />, handle: { crumbs: { group: "Admin", title: "Security" } } },
       { path: "/status", element: <Status />, handle: { crumbs: { title: "Status" } } },
     ],

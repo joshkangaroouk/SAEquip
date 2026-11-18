@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { CertScheme, DownloadKind, type Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { fieldChanges, listChanges } from "../services/activity.js";
 import { ensureHubProduct } from "../services/hubProduct.js";
 import { shapeHubDownload } from "../services/downloads.js";
 
@@ -118,6 +119,11 @@ downloadsRouter.post("/products/:id/downloads", async (req, res, next) => {
       },
       include: downloadInclude,
     });
+    req.activity?.set({
+      target: { label: hub.name },
+      summary: `Added the file "${created.title}"`,
+      details: { title: created.title, file: asset.filename, gated: created.gated },
+    });
     res.status(201).json(await shapeDownload(created));
   } catch (err) {
     next(err);
@@ -180,10 +186,11 @@ downloadsRouter.put("/products/:id/downloads", async (req, res, next) => {
       return;
     }
 
-    await prisma.$transaction(async (tx) => {
+    const before = await prisma.$transaction(async (tx) => {
       const existing = await tx.download.findMany({
         where: { hubProductId: hub.id },
-        select: { id: true, mediaAssetId: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, mediaAssetId: true, title: true, kind: true, certScheme: true },
       });
       const wanted = new Set(ids);
       const removed = existing.filter((e) => !wanted.has(e.mediaAssetId)).map((e) => e.id);
@@ -213,12 +220,26 @@ downloadsRouter.put("/products/:id/downloads", async (req, res, next) => {
           });
         }
       }
+      return existing;
     });
 
     const saved = await prisma.download.findMany({
       where: { hubProductId: hub.id },
       orderBy: { sortOrder: "asc" },
       include: { mediaAsset: true },
+    });
+    // "Datasheet (Datasheet)", "ATEX Certificate (Certificate, EX)": the title
+    // and the type that decides which resources page lists it.
+    const line = (d: { title: string; kind: string | null; certScheme: string | null }) =>
+      `${d.title}${d.kind ? ` (${[d.kind.charAt(0) + d.kind.slice(1).toLowerCase(), d.certScheme].filter(Boolean).join(", ")})` : ""}`;
+    const was = before.map(line);
+    const now = saved.map(line);
+    const diff = listChanges(was, now);
+    const parts = [diff.added.length && `${diff.added.length} added`, diff.removed.length && `${diff.removed.length} removed`].filter(Boolean);
+    req.activity?.set({
+      target: { label: hub.name },
+      summary: parts.length ? `Updated files (${parts.join(", ")})` : "Reordered files",
+      details: { ...diff, before: was, after: now },
     });
     res.json(await Promise.all(saved.map(shapeHubDownload)));
   } catch (err) {
@@ -260,6 +281,7 @@ downloadsRouter.put("/products/:id/downloads/reorder", async (req, res, next) =>
       orderBy: { sortOrder: "asc" },
       include: downloadInclude,
     });
+    req.activity?.set({ target: { label: hub.name }, details: { order: reordered.map((d) => d.title) } });
     res.json(await Promise.all(reordered.map(shapeDownload)));
   } catch (err) {
     next(err);
@@ -290,6 +312,13 @@ downloadsRouter.patch("/products/:id/downloads/:downloadId", async (req, res, ne
       data,
       include: downloadInclude,
     });
+    req.activity?.set({
+      target: { label: hub.name },
+      summary: `Edited the file "${updated.title}"`,
+      details: {
+        changes: fieldChanges({ title: existing.title, gated: existing.gated }, { ...parsed.data }, { title: "Title", gated: "Request form" }),
+      },
+    });
     res.json(await shapeDownload(updated));
   } catch (err) {
     next(err);
@@ -318,6 +347,7 @@ downloadsRouter.delete("/products/:id/downloads/:downloadId", async (req, res, n
       return;
     }
     const leadCount = dl._count.leads;
+    req.activity?.set({ target: { label: hub.name }, summary: `Removed the file "${dl.title}"`, details: { title: dl.title, requestsDetached: leadCount } });
     const force = req.query.force === "true";
     if (leadCount >= 1 && !force) {
       res.status(409).json({ error: "has_leads", leadCount });

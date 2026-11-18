@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { z } from "zod";
+import { nameTargetNow } from "./activity.js";
 
 /**
  * Read state, stars and the team's notes on quote requests and resource
@@ -93,6 +94,15 @@ export function stateRoute(model: StateModel): RequestHandler {
         return;
       }
       const data = stateChanges(parsed.data, current, req.user?.email);
+      // "Opened", "Marked as unread", "Starred", "Unstarred" (the target says which request).
+      const did = [
+        "readAt" in data && (data.readAt ? "Opened" : "Marked as unread"),
+        "starredAt" in data && (data.starredAt ? "Starred" : "Unstarred"),
+      ].filter(Boolean) as string[];
+      req.activity?.set({
+        summary: did.length ? did.join(" and ") : parsed.data.read ? "Opened (already read)" : "No change",
+        details: { read: parsed.data.read, starred: parsed.data.starred, changed: did.length > 0 },
+      });
       res.json(Object.keys(data).length > 0 ? await model.update(id, data) : current);
     } catch (err) {
       next(err);
@@ -124,6 +134,7 @@ export function markReadRoute(model: MarkReadModel): RequestHandler {
     try {
       const ids = [...new Set(parsed.data.ids)];
       await model.markRead(ids, { readAt: new Date(), readBy: req.user?.email ?? null });
+      req.activity?.set({ details: { count: ids.length, ids } });
       res.json({ requests: await model.states(ids) });
     } catch (err) {
       next(err);
@@ -149,6 +160,10 @@ export function deleteRoute(kind: string, remove: (id: string) => Promise<unknow
     }
     try {
       const id = String(req.params.id);
+      // Named before it goes. The name carries no personal details (the date
+      // and item count, or the file asked for), so the activity entry keeps
+      // nothing the deletion was meant to remove.
+      await nameTargetNow(req);
       await remove(id);
       console.info(`[enquiries] ${kind} ${id} deleted by ${req.user?.email ?? "unknown"}`);
       res.json({ ok: true });
@@ -200,7 +215,11 @@ export function addNoteRoute(model: NotesModel): RequestHandler {
         res.status(404).json({ error: "not_found" });
         return;
       }
-      res.status(201).json(await model.create(id, parsed.data.body, req.user?.email ?? null));
+      const note = await model.create(id, parsed.data.body, req.user?.email ?? null);
+      // ⚠️ Never the note's text: it can describe the customer, and deleting
+      // the request (a GDPR removal) deletes its notes; a copy here would not go.
+      req.activity?.set({ details: { noteId: note.id, length: parsed.data.body.length } });
+      res.status(201).json(note);
     } catch (err) {
       next(err);
     }
@@ -226,6 +245,7 @@ export function deleteNoteRoute(model: NotesModel): RequestHandler {
         return;
       }
       await model.remove(String(req.params.noteId));
+      req.activity?.set({ details: { noteId: String(req.params.noteId) } });
       res.json({ ok: true });
     } catch (err) {
       next(err);

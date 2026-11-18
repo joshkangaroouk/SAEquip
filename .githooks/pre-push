@@ -39,6 +39,13 @@ if ! npm run --silent script-guards:test --workspace=backend > /dev/null 2>&1; t
   exit 1
 fi
 
+echo "pre-push ▸ activity log (every changing route catalogued)"
+if ! npm run --silent activity:test --workspace=backend > /dev/null 2>&1; then
+  npm run --silent activity:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30
+  echo "✗ activity log tests failed — push stopped"
+  exit 1
+fi
+
 echo "pre-push ▸ widget tests"
 if ! npm run --silent widget:test --workspace=backend > /dev/null 2>&1; then
   npm run --silent widget:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30

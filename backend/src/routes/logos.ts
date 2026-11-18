@@ -62,6 +62,10 @@ const createSchema = z
   })
   .strict();
 
+/** How the activity log names a logo: its alt text, as the public site shows it. */
+const logoName = (l: { alt: string | null; label: string | null }, fallback = "a logo") => l.alt || l.label || fallback;
+const KIND_NAME = { SA_LOGO: "SA range logo", CERT_LOGO: "certification logo" } as const;
+
 /** POST /api/logos — append a catalog entry referencing an existing image MediaAsset. */
 logosRouter.post("/logos", async (req, res, next) => {
   const parsed = createSchema.safeParse(req.body);
@@ -90,6 +94,11 @@ logosRouter.post("/logos", async (req, res, next) => {
         sortOrder: (max._max.sortOrder ?? -1) + 1,
       },
       include: logoInclude,
+    });
+    req.activity?.set({
+      target: { id: logo.id, label: logoName(logo, asset.filename) },
+      summary: `Added the ${KIND_NAME[kind]} "${logoName(logo, asset.filename)}"`,
+      details: { kind, image: asset.filename, label: logo.label, alt: logo.alt },
     });
     res.status(201).json(await shapeLogo(logo));
   } catch (err) {
@@ -142,6 +151,19 @@ logosRouter.patch("/logos/:id", async (req, res, next) => {
       data.mediaAssetId = asset.id;
     }
     const logo = await prisma.logo.update({ where: { id: req.params.id }, data, include: logoInclude });
+    const oldImage = data.mediaAssetId
+      ? (await prisma.mediaAsset.findUnique({ where: { id: existing.mediaAssetId }, select: { filename: true } }))?.filename ?? null
+      : null;
+    const changes = [
+      ...("label" in data ? [{ field: "label", label: "Label", before: existing.label, after: logo.label }] : []),
+      ...("alt" in data ? [{ field: "alt", label: "Alt text", before: existing.alt, after: logo.alt }] : []),
+      ...(data.mediaAssetId ? [{ field: "image", label: "Image", before: oldImage, after: logo.mediaAsset.filename }] : []),
+    ].filter((c) => c.before !== c.after);
+    req.activity?.set({
+      target: { label: logoName(logo) },
+      summary: data.mediaAssetId ? `Replaced the image of "${logoName(logo)}"` : `Edited the logo "${logoName(logo)}"`,
+      details: { changes },
+    });
     res.json(await shapeLogo(logo));
   } catch (err) {
     next(err);
@@ -201,6 +223,10 @@ logosRouter.put("/logos/reorder", async (req, res, next) => {
       where: { kind },
       orderBy: { sortOrder: "asc" },
       include: logoInclude,
+    });
+    req.activity?.set({
+      summary: `Reordered the ${KIND_NAME[kind]}s`,
+      details: { kind, order: reordered.map((l) => logoName(l)) },
     });
     res.json(await Promise.all(reordered.map(shapeLogo)));
   } catch (err) {
@@ -268,10 +294,17 @@ logosRouter.put("/products/:id/logos/:logoId", async (req, res, next) => {
       res.status(404).json({ error: "logo_not_found" });
       return;
     }
+    const key = { hubProductId_logoId: { hubProductId: hub.id, logoId: logo.id } };
+    const wasOn = Boolean(await prisma.productLogo.findUnique({ where: key, select: { logoId: true } }));
     await prisma.productLogo.upsert({
-      where: { hubProductId_logoId: { hubProductId: hub.id, logoId: logo.id } },
+      where: key,
       create: { hubProductId: hub.id, logoId: logo.id },
       update: {},
+    });
+    req.activity?.set({
+      target: { label: hub.name },
+      summary: `Switched on the ${KIND_NAME[logo.kind]} "${logoName(logo)}"${wasOn ? " (already on)" : ""}`,
+      details: { logo: logoName(logo), logoId: logo.id, kind: logo.kind, wasAlreadyOn: wasOn },
     });
     res.json({ logoId: logo.id, active: true });
   } catch (err) {
@@ -283,8 +316,14 @@ logosRouter.put("/products/:id/logos/:logoId", async (req, res, next) => {
 logosRouter.delete("/products/:id/logos/:logoId", async (req, res, next) => {
   try {
     const hub = await ensureHubProduct(req.params.id);
-    await prisma.productLogo.deleteMany({
-      where: { hubProductId: hub.id, logoId: req.params.logoId },
+    const [logo, removed] = await Promise.all([
+      prisma.logo.findUnique({ where: { id: req.params.logoId }, select: { alt: true, label: true, kind: true } }),
+      prisma.productLogo.deleteMany({ where: { hubProductId: hub.id, logoId: req.params.logoId } }),
+    ]);
+    req.activity?.set({
+      target: { label: hub.name },
+      summary: `Switched off the ${logo ? KIND_NAME[logo.kind] : "logo"} "${logo ? logoName(logo) : req.params.logoId}"${removed.count ? "" : " (already off)"}`,
+      details: { logo: logo ? logoName(logo) : null, logoId: req.params.logoId, kind: logo?.kind ?? null, wasOn: removed.count > 0 },
     });
     res.json({ logoId: req.params.logoId, active: false });
   } catch (err) {
@@ -305,6 +344,11 @@ logosRouter.delete("/logos/:id", async (req, res, next) => {
     }
     const unlinkedFromProducts = logo._count.productLinks;
     await prisma.logo.delete({ where: { id: logo.id } });
+    req.activity?.set({
+      target: { label: logoName(logo) },
+      summary: `Deleted the ${KIND_NAME[logo.kind]} "${logoName(logo)}" (it was on ${unlinkedFromProducts} product${unlinkedFromProducts === 1 ? "" : "s"})`,
+      details: { kind: logo.kind, unlinkedFromProducts },
+    });
     res.json({ deleted: true, unlinkedFromProducts });
   } catch (err) {
     next(err);

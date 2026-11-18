@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiJson } from "../lib/api";
 import { initialsFrom } from "../lib/initials";
-import { formatDateTime } from "../lib/format";
+import { formatDateTime, formatDateTimeSeconds, formatRelative } from "../lib/format";
 import { TWO_FACTOR_ON } from "../lib/twoFactor";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -46,6 +47,8 @@ interface StaffUser {
   dudaAccountName: string | null;
   /** Website Editor access was ticked on the invite but could not be set up. */
   editorError: string | null;
+  /** When the API last saw them (the activity log). Sent to the super admin only. */
+  lastActiveAt?: string | null;
 }
 
 type InviteStatus = "pending" | "used" | "revoked" | "expired";
@@ -66,6 +69,16 @@ function when(iso: string | null): string {
   if (!iso) return "never";
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** "Active 5 minutes ago" under the last sign-in, for the super admin (the activity log's sessions). */
+function LastActive({ iso }: { iso?: string | null }) {
+  if (!iso) return null;
+  return (
+    <span className="t-help block text-muted" title={formatDateTimeSeconds(iso)}>
+      Active {formatRelative(iso)}
+    </span>
+  );
 }
 
 const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
@@ -446,6 +459,7 @@ function InviteDialog({
 }
 
 export default function Users() {
+  const navigate = useNavigate();
   const { user: me } = useAuth();
   const confirm = useConfirm();
   const [users, setUsers] = useState<StaffUser[] | null>(null);
@@ -619,7 +633,9 @@ export default function Users() {
 
   /** The super admin's actions for one person; none for themselves or another super admin, beyond editor access. */
   function adminActions(u: StaffUser): MenuAction[] {
-    const actions: MenuAction[] = [];
+    const actions: MenuAction[] = [
+      { label: "View activity", onSelect: () => navigate(`/activity?actor=${encodeURIComponent(u.id)}&range=all`) },
+    ];
     if (u.dudaEditor) actions.push({ label: "Remove Website Editor access", onSelect: () => void removeEditor(u), danger: true });
     else if (!u.disabled) actions.push({ label: u.editorError ? "Retry Website Editor access" : "Give Website Editor access", onSelect: () => void giveEditor(u) });
     if (u.id !== me?.id && u.role !== "super_admin") {
@@ -749,7 +765,10 @@ export default function Users() {
                     <TD>
                       <WebsiteEditor u={u} />
                     </TD>
-                    <TD className="whitespace-nowrap text-muted">{when(u.lastSignInAt)}</TD>
+                    <TD className="whitespace-nowrap text-muted">
+                      {when(u.lastSignInAt)}
+                      <LastActive iso={u.lastActiveAt} />
+                    </TD>
                     <TD className="whitespace-nowrap text-muted">{when(u.createdAt)}</TD>
                     <TD className="w-px whitespace-nowrap">{rowActions(u)}</TD>
                   </TR>
@@ -777,7 +796,10 @@ export default function Users() {
                   </div>
                   <div>
                     <dt className="t-label">Last sign-in</dt>
-                    <dd className="mt-1 text-body text-text">{when(u.lastSignInAt)}</dd>
+                    <dd className="mt-1 text-body text-text">
+                      {when(u.lastSignInAt)}
+                      <LastActive iso={u.lastActiveAt} />
+                    </dd>
                   </div>
                   <div>
                     <dt className="t-label">Added</dt>

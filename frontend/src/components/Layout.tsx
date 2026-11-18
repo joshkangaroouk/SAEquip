@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, Outlet, useLocation, useMatches } from "react-router-dom";
 import {
+  Activity,
   BarChart3,
   FileDown,
   FolderTree,
@@ -50,6 +51,11 @@ interface NavItem {
    * requests the count nobody has opened yet (unread, shared by the team).
    */
   badge?: "liveProducts" | "unreadQuotes" | "unreadResourceRequests";
+  /**
+   * Shown only to the super admin (the Activity log). Display only: the
+   * server's requireSuperAdmin is what protects the page's data.
+   */
+  superAdminOnly?: true;
 }
 
 interface NavGroup {
@@ -96,6 +102,7 @@ const NAV: NavGroup[] = [
     label: "Admin",
     items: [
       { to: "/users", label: "Users", icon: Users },
+      { to: "/activity", label: "Activity", icon: Activity, superAdminOnly: true },
       { to: "/security", label: "Security", icon: KeyRound },
     ],
   },
@@ -156,6 +163,7 @@ function NavRow({
 }
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+  const { isSuperAdmin } = useAuth();
   const { products } = useProductIndex();
   const enquiries = useEnquiryCounts();
   const badges: Record<NonNullable<NavItem["badge"]>, { count: number; noun: string }> = {
@@ -168,6 +176,8 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Main">
       {NAV.map((group, g) => {
+        const items = group.items.filter((item) => !item.superAdminOnly || isSuperAdmin);
+        if (!items.length) return null;
         const labelId = group.label ? `${idBase}-group-${g}` : undefined;
         return (
           <div key={group.label ?? "top"}>
@@ -178,7 +188,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
               </p>
             )}
             <ul aria-labelledby={labelId} className="flex flex-col gap-0.5">
-              {group.items.map((item) => (
+              {items.map((item) => (
                 <li key={item.to}>
                   <NavRow item={item} badge={item.badge && badges[item.badge]} onNavigate={onNavigate} />
                 </li>

@@ -2,27 +2,40 @@ import type { Request, Response, NextFunction } from "express";
 import { env } from "../env.js";
 import { supabase } from "../supabase.js";
 import { TWO_FACTOR_ON } from "../services/twoFactor.js";
+import { noteSession } from "../services/activity.js";
 
 /**
- * Read the `aal` claim from an ALREADY-VERIFIED Supabase access token.
+ * Read claims from an ALREADY-VERIFIED Supabase access token: `aal`, the
+ * session id and how the session signed in (`amr`).
  *
  * ⚠️ This decodes without verifying, which is only safe because
  * `supabase.auth.getUser(token)` has already validated the token against the
  * auth server before this is called. Never call it on an unvalidated token —
  * a JWT payload is attacker-controlled until the signature is checked.
  *
- * The claim is not exposed on the user object, so reading the payload is the
- * only way to know whether the session cleared a second factor.
+ * The claims are not exposed on the user object, so reading the payload is the
+ * only way to know whether the session cleared a second factor, and which
+ * session a request belongs to (the activity log's "Signed in").
  */
-function assuranceLevel(token: string): string | null {
+type TokenClaims = { aal: string | null; sessionId: string | null; signInMethod: string | null; signedInAt: number | null };
+function tokenClaims(token: string): TokenClaims {
+  const none: TokenClaims = { aal: null, sessionId: null, signInMethod: null, signedInAt: null };
   try {
     const payload = token.split(".")[1];
-    if (!payload) return null;
+    if (!payload) return none;
     const json = Buffer.from(payload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
-    const claims = JSON.parse(json) as { aal?: unknown };
-    return typeof claims.aal === "string" ? claims.aal : null;
+    const claims = JSON.parse(json) as { aal?: unknown; session_id?: unknown; amr?: unknown };
+    // `amr`: [{ method: "password", timestamp: <seconds> }, …]; the first is how
+    // the session began.
+    const first = Array.isArray(claims.amr) ? (claims.amr[0] as { method?: unknown; timestamp?: unknown } | undefined) : undefined;
+    return {
+      aal: typeof claims.aal === "string" ? claims.aal : null,
+      sessionId: typeof claims.session_id === "string" && claims.session_id.length <= 100 ? claims.session_id : null,
+      signInMethod: typeof first?.method === "string" ? first.method.slice(0, 40) : null,
+      signedInAt: typeof first?.timestamp === "number" ? first.timestamp * 1000 : null,
+    };
   } catch {
-    return null;
+    return none;
   }
 }
 
@@ -73,13 +86,19 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   const email = data.user.email ?? "";
   const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  // From here the token is genuine, so a refusal names someone: the activity
+  // log records it ("Was refused access"). Anonymous 401s above are bots and
+  // stale tabs, and are not logged.
+  const who = { id: data.user.id, email };
   if (!domain || !env.allowedEmailDomains.includes(domain)) {
+    req.activity?.refuse("forbidden_domain", who);
     res.status(403).json({ error: "forbidden_domain" });
     return;
   }
 
   const bannedUntil = data.user.banned_until ? Date.parse(data.user.banned_until) : NaN;
   if (bannedUntil > Date.now()) {
+    req.activity?.refuse("account_disabled", who);
     res.status(403).json({ error: "account_disabled", detail: "This account has been disabled." });
     return;
   }
@@ -88,6 +107,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   const hasVerifiedFactor = (data.user.factors ?? []).some((f) => f.status === "verified");
   // Not while two-factor is off for the Hub (services/twoFactor.ts).
   if (TWO_FACTOR_ON && meta.mfa_required === true && !hasVerifiedFactor) {
+    req.activity?.refuse("mfa_setup_required", who);
     res.status(403).json({
       error: "mfa_setup_required",
       detail: "This account must set up two-factor authentication before it can be used.",
@@ -95,8 +115,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  const aal = assuranceLevel(token);
+  const claims = tokenClaims(token);
+  const aal = claims.aal;
   if (hasVerifiedFactor && aal !== "aal2") {
+    req.activity?.refuse("mfa_required", who);
     // A distinct code so the dashboard can send the user through the second
     // factor rather than showing them a generic "signed out".
     res.status(403).json({
@@ -106,7 +128,16 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  req.user = { id: data.user.id, email, role: typeof meta.role === "string" ? meta.role : null, aal };
+  req.user = {
+    id: data.user.id,
+    email,
+    role: typeof meta.role === "string" ? meta.role : null,
+    aal,
+    sessionId: claims.sessionId,
+  };
+  // "Signed in" / "session used from a new IP" (services/activity.ts). Bounded
+  // and never throws, so it cannot fail the request.
+  await noteSession(req, who, claims.sessionId, { method: claims.signInMethod, at: claims.signedInAt });
   next();
 }
 
@@ -132,10 +163,12 @@ export function isSuperAdminSession(user: Request["user"]): boolean {
  */
 export function requireSuperAdmin(req: Request, res: Response, next: NextFunction): void {
   if (req.user?.role !== "super_admin") {
+    req.activity?.refuse("super_admin_required");
     res.status(403).json({ error: "super_admin_required", detail: "Only the super admin can do this." });
     return;
   }
   if (TWO_FACTOR_ON && req.user.aal !== "aal2") {
+    req.activity?.refuse("super_admin_required");
     res.status(403).json({
       error: "super_admin_required",
       detail: "Set up two-factor authentication on Security, then sign in again with your code.",

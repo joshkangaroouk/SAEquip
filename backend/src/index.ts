@@ -2,6 +2,7 @@ import express, { Router, type ErrorRequestHandler } from "express";
 import cors from "cors";
 import { env } from "./env.js";
 import { requireAuth } from "./middleware/requireAuth.js";
+import { activityContext } from "./middleware/activity.js";
 import { dudaRouter } from "./routes/duda.js";
 import { mediaRouter } from "./routes/media.js";
 import { logosRouter } from "./routes/logos.js";
@@ -15,6 +16,7 @@ import { acceptInviteRouter, invitesRouter } from "./routes/invites.js";
 import { translationsRouter } from "./routes/translations.js";
 import { usersRouter } from "./routes/users.js";
 import { websiteEditorRouter } from "./routes/websiteEditor.js";
+import { activityRouter } from "./routes/activity.js";
 import { publicRouter, publicCors } from "./routes/public.js";
 import { DudaApiError, InvalidDudaIdError } from "./services/duda.js";
 import { StorageError, ensureBuckets } from "./services/storage.js";
@@ -47,6 +49,12 @@ app.use("/public", publicCors, publicRouter);
 
 // --- Everything else: permissive CORS ---
 app.use(cors());
+
+// --- The activity log (middleware/activity.ts): every /api request gets
+// `req.activity`, and a changing one writes its row before its response ends.
+// Before every /api route so it also sees requireAuth's refusals and the error
+// handler's final status. Not on /public: visitors are not logged. ---
+app.use("/api", activityContext);
 
 // --- Public ---
 app.get("/api/health", (_req, res) => {
@@ -85,6 +93,7 @@ api.use(translationsRouter);
 api.use(usersRouter);
 api.use(invitesRouter);
 api.use(websiteEditorRouter);
+api.use(activityRouter);
 app.use("/api", requireAuth, api);
 
 /** Prisma known-request errors carry a string `code` like "P2002". */

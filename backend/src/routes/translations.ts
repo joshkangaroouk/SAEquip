@@ -7,6 +7,19 @@ import { collectSources } from "../services/i18n/sources.js";
 import { saveTranslations } from "../services/i18n/store.js";
 import { clearOverlayCache } from "../services/i18n/overlay.js";
 import { harvestDuda, siteLanguages } from "../services/i18n/dudaHarvest.js";
+import { normaliseSource, sourceHash } from "../services/i18n/normalise.js";
+
+/** The activity log's names for the languages. */
+const LOCALE_NAMES: Record<string, string> = {
+  ar: "Arabic",
+  zh: "Chinese",
+  fr: "French",
+  de: "German",
+  "pt-br": "Portuguese",
+  es: "Spanish",
+};
+/** How many of a staff batch's edits the activity log shows with before → after. */
+const STAFF_DETAIL_LIMIT = 20;
 import { LISTABLE } from "../services/hubProduct.js";
 
 /**
@@ -151,12 +164,55 @@ translationsRouter.put("/translations/batch", async (req, res, next) => {
     return;
   }
   try {
+    // A staff edit's previous text, for the activity log's before → after.
+    // Only the first few: a spreadsheet import can carry hundreds.
+    const shown = origin === "STAFF" ? items.slice(0, STAFF_DETAIL_LIMIT) : [];
+    const shownHashes = shown.map((i) => sourceHash(normaliseSource(i.sourceText)));
+    const previous = shown.length
+      ? new Map(
+          (
+            await prisma.translation.findMany({
+              where: { locale, sourceHash: { in: shownHashes } },
+              select: { kind: true, sourceHash: true, text: true },
+            })
+          ).map((t) => [`${t.kind}:${t.sourceHash}`, t.text]),
+        )
+      : new Map<string, string | null>();
+
     const results = await saveTranslations(locale, items, {
       origin,
       engine: origin === "MT" ? engine ?? "chrome" : undefined,
       updatedBy: origin === "STAFF" ? req.user?.email : undefined,
     });
     clearOverlayCache(); // this instance shows the change at once; others within a minute
+
+    const counts: Record<string, number> = {};
+    for (const r of results) counts[r.status] = (counts[r.status] ?? 0) + 1;
+    const saved = counts.saved ?? 0;
+    const language = LOCALE_NAMES[locale] ?? locale;
+    req.activity?.set({
+      summary:
+        origin === "STAFF"
+          ? items.length === 1
+            ? `Edited a ${language} translation`
+            : `Edited ${items.length} ${language} translations (${saved} saved)`
+          : `Saved ${saved} machine translation${saved === 1 ? "" : "s"} into ${language}`,
+      outcome: counts.rejected && !saved ? "failed" : undefined,
+      details: {
+        locale,
+        origin,
+        engine: origin === "MT" ? engine ?? "chrome" : undefined,
+        counts,
+        edits: shown.map((item, i) => ({
+          kind: item.kind,
+          english: item.sourceText.slice(0, 500),
+          before: previous.get(`${item.kind}:${shownHashes[i]}`) ?? null,
+          after: item.text,
+          status: results[i]?.status,
+          reason: results[i]?.reason,
+        })),
+      },
+    });
     res.json({ results });
   } catch (err) {
     next(err);
@@ -178,6 +234,19 @@ translationsRouter.post("/translations/duda/refresh", async (req, res, next) => 
     }
     const report = await harvestDuda(langs[0], { confirm: true });
     clearOverlayCache();
+    req.activity?.set({
+      summary: report.refused
+        ? `Refresh from Duda refused for ${LOCALE_NAMES[report.locale] ?? report.locale}`
+        : `Refreshed ${LOCALE_NAMES[report.locale] ?? report.locale} names from Duda (${report.written} written)`,
+      details: {
+        locale: report.locale,
+        products: { found: report.products.found, translated: report.products.translated, failed: report.products.failed.length },
+        categories: { found: report.categories.found, translated: report.categories.translated, failed: report.categories.failed.length },
+        options: report.options,
+        written: report.written,
+        refused: report.refused,
+      },
+    });
     res.json({ report, remaining: langs.slice(1).map((l) => l.locale) });
   } catch (err) {
     next(err);

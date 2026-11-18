@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { duda, DudaApiError } from "../services/duda.js";
 import { emptyUsage, getOptionUsage, invalidateOptionUsage } from "../services/optionUsage.js";
-import { deleteChoiceCascade, deleteOptionCascade } from "../services/optionCascade.js";
+import { deleteChoiceCascade, deleteOptionCascade, type CascadeReport } from "../services/optionCascade.js";
 
 export const optionsRouter = Router();
 
@@ -69,6 +69,17 @@ optionsRouter.get("/options", async (_req, res, next) => {
   }
 });
 
+/** The activity log's view of a cascade: which products were rewritten, and what was lost. */
+function cascadeDetails(report: CascadeReport) {
+  return {
+    productsUpdated: report.productsUpdated.map((p) => p.name),
+    productsFailed: report.productsFailed.map((p) => p.name),
+    variationDataRestored: report.variationDataRestored,
+    variationDataDropped: report.variationDataDropped,
+    variationDataFailed: report.variationDataFailed,
+  };
+}
+
 /**
  * POST /api/options
  * Creates a catalog option. 409s at the per-catalog cap with an explicit
@@ -104,6 +115,11 @@ optionsRouter.post("/options", async (req, res, next) => {
 
     const created = await duda.createOption(parsed.data);
     invalidateOptionUsage();
+    req.activity?.set({
+      target: { id: created.id, label: created.name },
+      summary: `Created the product option "${created.name}"`,
+      details: { type: created.type, values: (created.choices ?? []).map((c) => c.value) },
+    });
     res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -135,6 +151,17 @@ optionsRouter.put("/options/:id", async (req, res, next) => {
       type: parsed.data.type ?? (current.type === "COLOR" ? "COLOR" : "TEXT"),
     });
     invalidateOptionUsage();
+    req.activity?.set({
+      target: { label: updated.name },
+      summary: current.name !== updated.name ? `Renamed the product option "${current.name}" to "${updated.name}"` : `Saved the product option "${updated.name}"`,
+      details: {
+        changes: [
+          ...(current.name !== updated.name ? [{ field: "name", label: "Name", before: current.name, after: updated.name }] : []),
+          ...(current.type !== updated.type ? [{ field: "type", label: "Type", before: current.type, after: updated.type }] : []),
+        ],
+        productsAffected: usage.productCount,
+      },
+    });
     res.json({ ...updated, affectedProducts: usage.productCount });
   } catch (err) {
     next(err);
@@ -151,7 +178,15 @@ optionsRouter.put("/options/:id", async (req, res, next) => {
  */
 optionsRouter.delete("/options/:id", async (req, res, next) => {
   try {
-    const usage = (await getOptionUsage({ fresh: true })).get(req.params.id) ?? emptyUsage();
+    const [usageIndex, list] = await Promise.all([getOptionUsage({ fresh: true }), duda.listOptions()]);
+    const usage = usageIndex.get(req.params.id) ?? emptyUsage();
+    const option = list.results.find((o) => o.id === req.params.id);
+    // Named now: the option is gone by the time the entry is written.
+    req.activity?.set({
+      target: { label: option?.name ?? null },
+      summary: `Deleted the product option "${option?.name ?? req.params.id}"`,
+      details: { values: option?.choices.map((c) => c.value) ?? [], productsUsingIt: usage.productCount },
+    });
     if (usage.productCount > 0 && req.query.confirm !== "true") {
       res.status(409).json({
         error: "option_in_use",
@@ -163,6 +198,13 @@ optionsRouter.delete("/options/:id", async (req, res, next) => {
 
     if (usage.productCount > 0) {
       const report = await deleteOptionCascade(req.params.id);
+      req.activity?.set({
+        outcome: report.catalogDeleted ? undefined : "partial",
+        summary: report.catalogDeleted
+          ? `Deleted the product option "${option?.name ?? req.params.id}" and removed it from ${report.productsUpdated.length} product${report.productsUpdated.length === 1 ? "" : "s"}`
+          : `Could not finish deleting "${option?.name ?? req.params.id}": ${report.productsFailed.length} product(s) failed, so it was kept`,
+        details: { values: option?.choices.map((c) => c.value) ?? [], ...cascadeDetails(report) },
+      });
       // 207-style partial: the products that failed still use it, so the
       // option was kept and the response says which.
       res.status(report.catalogDeleted ? 200 : 502).json({
@@ -222,6 +264,11 @@ optionsRouter.post("/options/:id/choices", async (req, res, next) => {
     invalidateOptionUsage();
 
     const choice = (updated.choices ?? []).find((c) => !before.has(c.id));
+    req.activity?.set({
+      target: { label: option.name },
+      summary: `Added "${parsed.data.value}" to the product option "${option.name}"`,
+      details: { value: parsed.data.value, choiceId: choice?.id ?? null },
+    });
     if (!choice) {
       res.status(502).json({
         error: "choice_not_returned",
@@ -272,6 +319,12 @@ optionsRouter.delete("/options/:id/choices/:choiceId", async (req, res, next) =>
     // check.
     const usage = (await getOptionUsage({ fresh: true })).get(req.params.id) ?? emptyUsage();
     const affected = usage.choiceUsage[req.params.choiceId] ?? 0;
+    const value = option.choices.find((c) => c.id === req.params.choiceId)?.value ?? req.params.choiceId;
+    req.activity?.set({
+      target: { label: option.name },
+      summary: `Removed "${value}" from the product option "${option.name}"`,
+      details: { value, productsOfferingIt: affected },
+    });
 
     if (affected > 0 && req.query.force !== "true") {
       res.status(409).json({
@@ -285,6 +338,10 @@ optionsRouter.delete("/options/:id/choices/:choiceId", async (req, res, next) =>
 
     if (affected > 0) {
       const report = await deleteChoiceCascade(req.params.id, req.params.choiceId);
+      req.activity?.set({
+        outcome: report.catalogDeleted ? undefined : "partial",
+        details: { value, ...cascadeDetails(report) },
+      });
       res.status(report.catalogDeleted ? 200 : 502).json({
         deleted: report.catalogDeleted,
         cascade: report,
@@ -303,6 +360,7 @@ optionsRouter.delete("/options/:id/choices/:choiceId", async (req, res, next) =>
       // leaking a raw "Duda error 400: {...}".
       if (err instanceof DudaApiError && /connected to variations/i.test(err.body)) {
         const report = await deleteChoiceCascade(req.params.id, req.params.choiceId);
+        req.activity?.set({ outcome: report.catalogDeleted ? undefined : "partial", details: { value, ...cascadeDetails(report) } });
         res.status(report.catalogDeleted ? 200 : 502).json({ deleted: report.catalogDeleted, cascade: report });
         return;
       }

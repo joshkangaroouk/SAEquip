@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Factor } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { reportActivity } from "../lib/activity";
 import { useAuth } from "../auth/AuthContext";
 import { useSignOut } from "../hooks/useSignOut";
 import { PageHeader, Alert, Badge, Button, ButtonLink, Card, CardHeader, toast, useConfirm } from "../components/ui";
@@ -55,6 +56,7 @@ export default function Security() {
       toast.error(error.message);
       return;
     }
+    void reportActivity("auth.two_factor_off");
     toast.success("Two-factor turned off.");
     await load();
   }

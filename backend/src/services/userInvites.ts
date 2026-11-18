@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { RequestHandler } from "express";
 import { z } from "zod";
+import { nameTargetNow } from "./activity.js";
 import { assessPassword } from "./passwordPolicy.js";
 
 /**
@@ -167,6 +168,12 @@ export function createInviteRoute(deps: InviteDeps): RequestHandler {
         expiresAt: new Date(now.getTime() + INVITE_TTL_MS),
       });
       console.info(`[invites] ${by} invited ${email} (${invite.id})`);
+      // Never the token or the link: whoever holds it can create the account.
+      req.activity?.set({
+        target: { id: invite.id, label: email },
+        summary: `Created an invite link for ${email}`,
+        details: { websiteEditor: invite.grantWebsiteEditor, expiresAt: invite.expiresAt },
+      });
       res.status(201).json({ invite: shapeInvite(invite, now), token });
     } catch (err) {
       next(err);
@@ -188,7 +195,9 @@ export function revokeInviteRoute(deps: InviteDeps): RequestHandler {
         return;
       }
       console.info(`[invites] ${by} revoked ${id}`);
-      res.json({ invite: shapeInvite((await deps.invites.findById(id))!, now) });
+      const revoked = (await deps.invites.findById(id))!;
+      req.activity?.set({ target: { label: revoked.email }, summary: `Revoked the invite link for ${revoked.email}` });
+      res.json({ invite: shapeInvite(revoked, now) });
     } catch (err) {
       next(err);
     }
@@ -210,6 +219,7 @@ export function removeInviteRoute(deps: InviteDeps): RequestHandler {
     try {
       const id = String(req.params.id);
       const now = deps.now?.() ?? new Date();
+      await nameTargetNow(req); // the row may be gone by the time the entry is written
       if ((await deps.invites.remove(id, now)) === 0) {
         const invite = await deps.invites.findById(id);
         if (!invite) res.status(404).json({ error: "not_found" });
@@ -326,6 +336,12 @@ export function acceptInviteRoute(deps: InviteDeps): RequestHandler {
       }
       await deps.invites.accepted(invite.id, created.id);
       console.info(`[invites] ${invite.email} accepted ${invite.id} (user ${created.id})`);
+      // No one is signed in yet: the new account is the one acting.
+      req.activity?.set({
+        actor: { id: created.id, email: invite.email },
+        target: { id: created.id, label: invite.email },
+        details: { invitedBy: invite.createdBy, inviteId: invite.id, websiteEditor: invite.grantWebsiteEditor },
+      });
 
       if (invite.grantWebsiteEditor) {
         try {
@@ -340,6 +356,10 @@ export function acceptInviteRoute(deps: InviteDeps): RequestHandler {
           const message = err instanceof Error ? err.message : "unknown error";
           await deps.invites.setEditorError(invite.id, message.slice(0, 500));
           console.warn(`[invites] Website Editor access for ${invite.email} not set up: ${message}`);
+          req.activity?.set({
+            outcome: "partial",
+            details: { invitedBy: invite.createdBy, inviteId: invite.id, websiteEditor: "could not be set up" },
+          });
         }
       }
       res.status(201).json({ ok: true, email: invite.email });

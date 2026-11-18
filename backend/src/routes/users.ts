@@ -69,6 +69,11 @@ interface StaffUser {
   dudaAccountName: string | null;
   /** Website Editor access was ticked on the invite but could not be set up. */
   editorError: string | null;
+  /**
+   * When the API last saw them (the activity log's sessions, to five minutes).
+   * Super admin only, like the Activity page: null for anyone else.
+   */
+  lastActiveAt: string | null;
 }
 
 const fullName = (meta: Record<string, unknown> | undefined): string | null => {
@@ -89,13 +94,18 @@ usersRouter.get("/users", async (req, res, next) => {
     // entirely, so Two-factor rendered "Off" for accounts that had it on.
     const allUsers = await listUsersWithFactors(env.allowedEmailDomains);
 
-    const [editors, editorErrors] = await Promise.all([
+    const superAdmin = isSuperAdminSession(req.user);
+    const [editors, editorErrors, lastSeen] = await Promise.all([
       prisma.dudaEditorAccount.findMany({ select: { staffUserId: true, dudaAccountName: true } }),
       prisma.userInvite.findMany({
         where: { acceptedUserId: { not: null }, editorGrantError: { not: null } },
         select: { acceptedUserId: true, editorGrantError: true },
       }),
+      superAdmin
+        ? prisma.activitySession.groupBy({ by: ["userId"], _max: { lastSeenAt: true } })
+        : Promise.resolve([] as { userId: string; _max: { lastSeenAt: Date | null } }[]),
     ]);
+    const lastActive = new Map(lastSeen.map((r) => [r.userId, r._max.lastSeenAt?.toISOString() ?? null]));
     const editorFor = new Map(editors.map((e) => [e.staffUserId, e.dudaAccountName]));
     const errorFor = new Map(editorErrors.map((i) => [i.acceptedUserId, i.editorGrantError]));
 
@@ -119,13 +129,14 @@ usersRouter.get("/users", async (req, res, next) => {
           dudaEditor: dudaAccountName !== null,
           dudaAccountName,
           editorError: dudaAccountName ? null : errorFor.get(u.id) ?? null,
+          lastActiveAt: lastActive.get(u.id) ?? null,
         };
       })
       .sort((a, b) => a.email.localeCompare(b.email));
 
-    // Whether the person looking may manage users (the page shows the controls).
-    // The same rule as requireSuperAdmin, so the page never offers what the routes refuse.
-    const superAdmin = isSuperAdminSession(req.user);
+    // `superAdmin` (above): whether the person looking may manage users (the page
+    // shows the controls). The same rule as requireSuperAdmin, so the page never
+    // offers what the routes refuse.
     res.json({ users, allowedDomains: env.allowedEmailDomains, viewer: { superAdmin, twoFactorOn: TWO_FACTOR_ON } });
   } catch (err) {
     next(err);
@@ -258,6 +269,10 @@ usersRouter.post("/users/password-reset", resetLimiter, async (req, res, next) =
       return;
     }
     console.log(`[users] password reset requested for ${email} by ${req.user?.email}`);
+    req.activity?.set({
+      target: { label: email },
+      summary: own ? "Sent themselves a password reset email" : `Sent ${email} a password reset email`,
+    });
     res.json({ ok: true });
   } catch (err) {
     next(err);

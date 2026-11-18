@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, Card, CardHeader, Field, Input, RichTextEditor, Select, StatusBadge, Toggle, toast } from "../components/ui";
-import { apiJson } from "../lib/api";
+import { apiJson, inActivityBatch } from "../lib/api";
 import type { ProductDetail } from "../lib/types";
 import { useTranslateOnSave } from "../components/product/useTranslateOnSave";
 import { ProductBand } from "../components/product/ProductBand";
@@ -80,7 +80,13 @@ export default function ProductNew() {
     suppress: () => leaving.current,
   });
 
-  async function create(then: "edit" | "another") {
+  // One create, one group on the Activity page (with its translation batches).
+  // Started synchronously, so translate.begin() is still inside the click.
+  function create(then: "edit" | "another") {
+    return inActivityBatch(() => createNow(then));
+  }
+
+  async function createNow(then: "edit" | "another") {
     if (!valid || saving) return;
     // A description is translated as soon as the product exists. ⚠️ Started
     // HERE, before the first await, because Chrome downloads a language pack

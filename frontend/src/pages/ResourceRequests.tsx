@@ -40,6 +40,7 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import type { EnquiryNote, ResourceRequest, ResourceRequestsResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
+import { reportActivity } from "../lib/activity";
 import { refreshEnquiryCounts } from "../lib/enquiryCounts";
 import { formatDateTime, formatShortDate } from "../lib/format";
 import { languageName } from "../lib/language";
@@ -68,6 +69,7 @@ function exportRequests(requests: ResourceRequest[]) {
     notesCsv(r.teamNotes),
   ]);
   downloadCsv(`resource-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
+  void reportActivity("enquiry.file_request.export", { rows: rows.length });
 }
 
 function RequestDetail({

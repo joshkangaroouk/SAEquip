@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { DudaApiError } from "../services/duda.js";
 import { dudaSso } from "../services/dudaSso.js";
+import type { ActivityRecorder } from "../services/activity.js";
 
 /**
  * Website Editor — mints Duda editor SSO links for the signed-in staff member.
@@ -48,11 +49,23 @@ const ssoBody = z.object({ siteName: z.string().trim().min(1).max(64) }).strict(
 
 /** Audit every attempt — granted or denied. Never records the minted URL. */
 async function audit(
-  req: { user?: { id: string; email: string }; ip?: string; headers: Record<string, unknown> },
+  req: { user?: { id: string; email: string }; ip?: string; headers: Record<string, unknown>; activity?: ActivityRecorder },
   siteName: string,
   outcome: string,
   dudaAccountName: string | null,
 ): Promise<void> {
+  // The platform activity log too (never the link itself).
+  req.activity?.set({
+    target: { id: siteName, label: siteName },
+    summary:
+      outcome === "granted"
+        ? "Opened the Website Editor"
+        : outcome === "duda_error"
+          ? "Could not open the Website Editor (Duda refused)"
+          : "Was refused the Website Editor",
+    outcome: outcome === "granted" ? undefined : outcome === "duda_error" ? "failed" : "refused",
+    details: { outcome, dudaAccount: dudaAccountName },
+  });
   try {
     const ua = req.headers["user-agent"];
     await prisma.dudaSsoAudit.create({

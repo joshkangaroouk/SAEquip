@@ -92,6 +92,7 @@ export function disableUserRoute(deps: UserAdminDeps): RequestHandler {
     try {
       const user = await target(deps, String(req.params.id), res);
       if (!user) return;
+      req.activity?.set({ target: { label: user.email } });
       const refusal = accessChangeRefusal(req.user?.id, user);
       if (refusal) {
         res.status(refusal.status).json(refusal.body);
@@ -109,6 +110,11 @@ export function disableUserRoute(deps: UserAdminDeps): RequestHandler {
           editorError = editorFailure(err)?.detail ?? "Couldn't remove Website Editor access.";
         }
       }
+      req.activity?.set({
+        summary: `Disabled ${user.email}${editorRevoked ? " and removed their Website Editor access" : ""}`,
+        outcome: editorError ? "partial" : undefined,
+        details: { editorRevoked, editorError },
+      });
       res.json({ disabled: true, editorRevoked, ...(editorError ? { editorError } : {}) });
     } catch (err) {
       next(err);
@@ -139,6 +145,7 @@ export function deleteUserRoute(deps: UserAdminDeps): RequestHandler {
       }
       const user = await target(deps, String(req.params.id), res);
       if (!user) return;
+      req.activity?.set({ target: { label: user.email } });
       const refusal = accessChangeRefusal(req.user?.id, user, "delete");
       if (refusal) {
         res.status(refusal.status).json(refusal.body);
@@ -164,6 +171,10 @@ export function deleteUserRoute(deps: UserAdminDeps): RequestHandler {
         return;
       }
       console.info(`[users] ${req.user?.email} deleted ${user.email}${editorRevoked ? " (Website Editor access removed first)" : ""}`);
+      req.activity?.set({
+        summary: `Deleted the account ${user.email}${editorRevoked ? " (Website Editor access removed first)" : ""}`,
+        details: { editorRevoked, name: [user.firstName, user.lastName].filter(Boolean).join(" ") || null },
+      });
       res.json({ deleted: true, editorRevoked });
     } catch (err) {
       next(err);
@@ -177,6 +188,7 @@ export function enableUserRoute(deps: UserAdminDeps): RequestHandler {
     try {
       const user = await target(deps, String(req.params.id), res);
       if (!user) return;
+      req.activity?.set({ target: { label: user.email } });
       const refusal = accessChangeRefusal(req.user?.id, user);
       if (refusal) {
         res.status(refusal.status).json(refusal.body);
@@ -184,6 +196,7 @@ export function enableUserRoute(deps: UserAdminDeps): RequestHandler {
       }
       await deps.setDisabled(user.id, false);
       console.info(`[users] ${req.user?.email} enabled ${user.email}`);
+      req.activity?.set({ summary: `Enabled ${user.email}` });
       res.json({ disabled: false });
     } catch (err) {
       next(err);
@@ -197,6 +210,7 @@ export function grantEditorRoute(deps: UserAdminDeps): RequestHandler {
     try {
       const user = await target(deps, String(req.params.id), res);
       if (!user) return;
+      req.activity?.set({ target: { label: user.email } });
       if (user.disabled) {
         res.status(409).json({ error: "account_disabled", detail: "Enable the account first." });
         return;
@@ -211,6 +225,10 @@ export function grantEditorRoute(deps: UserAdminDeps): RequestHandler {
         });
         await deps.clearEditorError(user.id);
         console.info(`[users] ${req.user?.email} gave ${user.email} Website Editor access (${result.dudaAccountName})`);
+        req.activity?.set({
+          summary: `Gave ${user.email} Website Editor access`,
+          details: { dudaAccount: result.dudaAccountName, aliased: result.aliased },
+        });
         res.json({ dudaAccountName: result.dudaAccountName, aliased: result.aliased });
       } catch (err) {
         const failure = editorFailure(err);
@@ -255,6 +273,7 @@ export function turnOffMfaRoute(deps: UserAdminDeps): RequestHandler {
     try {
       const user = await target(deps, String(req.params.id), res);
       if (!user) return;
+      req.activity?.set({ target: { label: user.email } });
       const refusal = mfaChangeRefusal(req.user?.id, user);
       if (refusal) {
         res.status(refusal.status).json(refusal.body);
@@ -267,6 +286,7 @@ export function turnOffMfaRoute(deps: UserAdminDeps): RequestHandler {
         return;
       }
       console.info(`[users] ${req.user?.email} turned off two-factor for ${user.email} (${factorsRemoved} factor(s) removed)`);
+      req.activity?.set({ summary: `Turned off two-factor for ${user.email}`, details: { factorsRemoved } });
       res.json({ mfaEnabled: false, mfaRequired: false, factorsRemoved });
     } catch (err) {
       next(err);
@@ -284,6 +304,7 @@ export function requireMfaRoute(deps: UserAdminDeps): RequestHandler {
     try {
       const user = await target(deps, String(req.params.id), res);
       if (!user) return;
+      req.activity?.set({ target: { label: user.email } });
       const refusal = mfaChangeRefusal(req.user?.id, user);
       if (refusal) {
         res.status(refusal.status).json(refusal.body);
@@ -301,6 +322,7 @@ export function requireMfaRoute(deps: UserAdminDeps): RequestHandler {
         return;
       }
       console.info(`[users] ${req.user?.email} required two-factor for ${user.email}`);
+      req.activity?.set({ summary: `Required two-factor for ${user.email}` });
       res.json({ mfaRequired: true, mfaEnabled: after.mfaEnabled });
     } catch (err) {
       next(err);
@@ -314,9 +336,11 @@ export function revokeEditorRoute(deps: UserAdminDeps): RequestHandler {
     try {
       const user = await target(deps, String(req.params.id), res);
       if (!user) return;
+      req.activity?.set({ target: { label: user.email } });
       try {
         await deps.revokeEditor({ staffUserId: user.id, staffEmail: user.email });
         console.info(`[users] ${req.user?.email} removed Website Editor access from ${user.email}`);
+        req.activity?.set({ summary: `Removed Website Editor access from ${user.email}` });
         res.json({ ok: true });
       } catch (err) {
         const failure = editorFailure(err);

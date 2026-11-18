@@ -59,6 +59,8 @@ const hasData = (d: PreservedData): boolean =>
 
 export interface OptionChangeReport {
   product: DudaProduct;
+  /** The product as it was before the change (the activity log's "before"). */
+  before: DudaProduct;
   /** Combinations whose sku/price/status were carried across. */
   restored: number;
   /** Combinations that had data but could not be carried, as readable labels. */
@@ -101,7 +103,7 @@ export async function updateOptionsPreservingVariations(
     hasData({ sku: v.sku, price_difference: v.price_difference, status: v.status }),
   );
   if (withData.length === 0) {
-    return { product, restored: 0, dropped: [], failed: [] };
+    return { product, before, restored: 0, dropped: [], failed: [] };
   }
 
   const common = new Set(
@@ -146,7 +148,7 @@ export async function updateOptionsPreservingVariations(
 
   // Re-read so the caller returns the restored values, not the blanked ones.
   const finalProduct = restored > 0 ? await duda.getProduct(productId) : product;
-  return { product: finalProduct, restored, dropped, failed };
+  return { product: finalProduct, before, restored, dropped, failed };
 }
 
 /** Variation count a given attachment set will generate. */

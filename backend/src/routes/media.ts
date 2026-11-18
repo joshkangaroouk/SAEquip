@@ -192,6 +192,11 @@ mediaRouter.post("/media", async (req, res, next) => {
     });
 
     const url = await resolveUrl(asset.kind, asset.storagePath);
+    req.activity?.set({
+      target: { id: asset.id, label: asset.filename },
+      summary: `Uploaded "${asset.filename}"`,
+      details: { kind: asset.kind, mimeType: asset.mimeType, sizeBytes: asset.sizeBytes },
+    });
     res.status(201).json({ ...asset, url, thumbnailUrl: null, usage: 0 });
   } catch (err) {
     next(err);
@@ -387,8 +392,15 @@ mediaRouter.delete("/media/:id", async (req, res, next) => {
     // onDelete, so the row delete would fail on the FK anyway — but only
     // after the object had already been removed from the bucket, leaving a
     // logo pointing at nothing.
+    // Named now: the row is gone by the time the activity entry is written.
+    req.activity?.set({
+      target: { label: asset.filename },
+      summary: `Deleted "${asset.filename}"`,
+      details: { kind: asset.kind, sizeBytes: asset.sizeBytes, uploadedBy: asset.uploadedBy },
+    });
     const { logos, products } = await assetUsage(asset.id);
     if (logos.length > 0 || products.length > 0) {
+      req.activity?.set({ summary: `Could not delete "${asset.filename}": it is in use` });
       res.status(409).json({ error: "in_use", count: products.length, logos: logos.length });
       return;
     }

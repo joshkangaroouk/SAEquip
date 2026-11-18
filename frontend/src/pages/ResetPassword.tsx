@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { reportActivity } from "../lib/activity";
 import { useForceLightTheme } from "../lib/theme";
 import { Alert, Button, Field, Input, Loader } from "../components/ui";
 import { AuthShell } from "../components/AuthShell";
@@ -108,6 +109,8 @@ export default function ResetPassword() {
       setError(error.message);
       return;
     }
+    // Recorded while the recovery session can still say who it was.
+    await reportActivity("auth.password_changed");
     await supabase.auth.signOut();
     navigate("/login", { replace: true });
   }

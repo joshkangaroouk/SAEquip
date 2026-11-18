@@ -17,10 +17,31 @@ export const API_BASE =
   import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://localhost:4000" : "");
 
 /**
+ * The activity log's "one save" (backend middleware/activity.ts): every
+ * changing request made while `inActivityBatch()` runs carries the same
+ * `X-Activity-Batch` id, so the Activity page can show a product save, with
+ * its logo switches and translation batches, as one group.
+ *
+ * ⚠️ `fn` is STARTED synchronously, before anything is awaited: the product
+ * editor's save opens Chrome's translators inside the click, which needs the
+ * click's user activation still to be live.
+ */
+let activityBatch: string | null = null;
+export function inActivityBatch<T>(fn: () => Promise<T>): Promise<T> {
+  const previous = activityBatch;
+  const mine = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : null;
+  activityBatch = mine;
+  return fn().finally(() => {
+    if (activityBatch === mine) activityBatch = previous;
+  });
+}
+
+/**
  * fetch wrapper for backend calls. Automatically attaches the current Supabase
  * session's access token as an `Authorization: Bearer <token>` header.
  */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const batch = activityBatch;
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -28,6 +49,10 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   const headers = new Headers(init.headers);
   if (session?.access_token) {
     headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+  const method = (init.method ?? "GET").toUpperCase();
+  if (batch && method !== "GET" && method !== "HEAD" && !headers.has("X-Activity-Batch")) {
+    headers.set("X-Activity-Batch", batch);
   }
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });

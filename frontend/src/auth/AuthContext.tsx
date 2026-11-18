@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { reportActivity } from "../lib/activity";
 import { sessionNeedsMfaSetup, sessionNeedsSecondFactor, verifyTotpCode } from "../lib/mfa";
 
 type AuthContextValue = {
@@ -112,6 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    // Before the session goes: the report needs its token (lib/activity.ts).
+    await reportActivity("auth.sign_out");
     await supabase.auth.signOut();
   }
 

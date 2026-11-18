@@ -48,6 +48,7 @@ import { downloadCsv } from "../lib/csv";
 import { refreshEnquiryCounts } from "../lib/enquiryCounts";
 import { formatDateTime, formatShortDate } from "../lib/format";
 import { languageName } from "../lib/language";
+import { reportActivity } from "../lib/activity";
 
 function itemsSummary(quote: QuoteRequest): string {
   return quote.items.map((item) => `${item.name} x${item.quantity}`).join("; ");
@@ -77,6 +78,7 @@ function exportQuotes(requests: QuoteRequest[]) {
     notesCsv(q.teamNotes),
   ]);
   downloadCsv(`quote-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
+  void reportActivity("enquiry.quote.export", { rows: rows.length });
 }
 
 function formatOptions(options: Record<string, unknown> | null): string | null {

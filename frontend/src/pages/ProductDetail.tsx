@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import { ExternalLink } from "lucide-react";
 import {
   Alert,
@@ -58,6 +59,8 @@ const XL = "(min-width: 1280px)";
  */
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
+  // The product's history on the Activity page, for the super admin.
+  const { isSuperAdmin } = useAuth();
   // Saved against the account (Supabase user_metadata), so it follows the user
   // across sessions and machines rather than living in this browser.
   const { value: hideCommerce, setValue: setHideCommerce } = useHideCommerceFields();
@@ -209,6 +212,17 @@ export default function ProductDetail() {
                     >
                       Refresh
                     </button>
+                    {isSuperAdmin && (
+                      <>
+                        {" · "}
+                        <Link
+                          to={`/activity?targetType=product&targetId=${encodeURIComponent(product.id)}&range=all`}
+                          className="text-text underline underline-offset-2"
+                        >
+                          Activity
+                        </Link>
+                      </>
+                    )}
                   </span>
                 )}
               </>
