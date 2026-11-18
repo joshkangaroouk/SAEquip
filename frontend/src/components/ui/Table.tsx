@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "../../lib/cn";
 
 /**
@@ -85,16 +86,14 @@ export function TBody({ className, children, ...rest }: React.HTMLAttributes<HTM
  * while selected, the second cue. Visual only — the caller sets whatever ARIA
  * its list pattern needs.
  */
-export function TR({
-  hover = false,
-  selected = false,
-  className,
-  children,
-  onClick,
-  ...rest
-}: React.HTMLAttributes<HTMLTableRowElement> & { hover?: boolean; selected?: boolean }) {
+export const TR = forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement> & { hover?: boolean; selected?: boolean }>(function TR(
+  { hover = false, selected = false, className, children, onClick, ...rest },
+  // A ref so a sortable list can drag the row itself (SortableList, as="tbody").
+  ref,
+) {
   return (
     <tr
+      ref={ref}
       data-selected={selected || undefined}
       className={cn(
         "group/row border-b border-border last:border-0",
@@ -116,7 +115,7 @@ export function TR({
       {children}
     </tr>
   );
-}
+});
 
 export function TH({ className, children, ...rest }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (

@@ -13,6 +13,7 @@ import { sendQuoteNotification } from "../services/email.js";
 import { productFacets } from "../services/facets.js";
 import { LISTABLE, LISTED_DOWNLOAD, PUBLIC_DOWNLOAD } from "../services/hubProduct.js";
 import { categorySortKey, compareKeys } from "../services/categoryTree.js";
+import { compareListingOrder } from "../services/productOrder.js";
 import { quoteProductMatcher } from "../services/quoteProducts.js";
 import { CONSENT_TEXT, KIND_BUTTON, RESOURCE_TYPES, SCHEME_BUTTON, SCHEME_ORDER } from "../services/downloadKinds.js";
 import { LOCALES, normaliseLocale } from "../services/i18n/locales.js";
@@ -321,8 +322,9 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
           // range and zone logos for the listing's Use / Range / ATEX zone filters.
           logos: { select: { logo: { select: { kind: true, label: true, alt: true, sortOrder: true, mediaAsset: { select: { filename: true, storagePath: true } } } } } },
           isAccessory: true,
+          // The product's place in the listing (services/productOrder.ts).
+          sortOrder: true,
         },
-        orderBy: { name: "asc" },
       }),
       tablesFor(parseLang(req.query.lang)),
     ]);
@@ -367,7 +369,20 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
         parentId: c.parentId,
         depth: depthOf(c.dudaCategoryId),
       })),
-      products: products
+      /*
+       * ⚠️ In the order set on the Hub's Products page (compareListingOrder):
+       * placed products first, then the never-placed ones by name in the
+       * page's language. The widget shows them exactly as they come, so this
+       * is the listing's order in every language. It used to be A–Z only.
+       */
+      products: [...products]
+        .sort((a, b) =>
+          compareListingOrder(
+            { sortOrder: a.sortOrder, name: productName(tables, a.dudaProductId, a.name ?? "") },
+            { sortOrder: b.sortOrder, name: productName(tables, b.dudaProductId, b.name ?? "") },
+            sorter,
+          ),
+        )
         .map((p) => ({
           name: productName(tables, p.dudaProductId, p.name ?? ""),
           nameEn: p.name ?? "",
@@ -390,9 +405,7 @@ publicRouter.get("/catalogue", contentLimiter, async (req, res, next) => {
             .filter((l) => l.kind === "CERT_LOGO")
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((l) => ({ url: publicImageUrl(l.mediaAsset.storagePath), alt: tr(tables, "LOGO_TEXT", (l.alt || l.label || "").trim()) })),
-        }))
-        // In the page's language: a translated list in English order reads as random.
-        .sort((a, b) => (tables ? sorter.compare(a.name, b.name) : 0)),
+        })),
     });
   } catch (err) {
     next(err);

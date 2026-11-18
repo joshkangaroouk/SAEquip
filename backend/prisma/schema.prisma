@@ -125,6 +125,11 @@ model HubProduct {
   /// Drives the listing's "Hide accessories" switch. Set from SA Equip's sheet
   /// (its Accessory column) and switched in the product editor.
   isAccessory Boolean @default(false)
+  /// The product's place in the website's product listing, and in the Hub's
+  /// Products page under "Website order", where it is set by dragging (Josh,
+  /// 2026-11-18). Null = never placed: those list after every placed product,
+  /// A–Z, which is how the listing was ordered before this existed.
+  sortOrder Int?
 }
 
 /// An uploaded asset stored in the Supabase Storage bucket.

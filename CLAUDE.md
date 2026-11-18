@@ -282,6 +282,9 @@ category template, or the page shows two listings.
 
 - **One fetch of `/public/catalogue`**, filtered client-side. 96 products is ~29KB, so a
   round trip per checkbox would cost more than it saves.
+- **The products come in the order set on the Hub's Products page** (Website order, see
+  "The products listing"), and the widget never re-sorts them, so that order holds on every
+  category page and in every language.
 - ⚠️ **The page's category is a fixed BASE FILTER, not a checkbox.** On
   `/category/lighting-and-power` the grid only ever shows that category's products, and no
   control can widen past it — the visitor widens by navigating, which is what the megamenu is
@@ -2386,6 +2389,11 @@ no round trip per checkbox. The product card shape is identical to `compatible` 
 (`LISTABLE`) and categories come in the dashboard's order (`categorySortKey`). Revisit only if the catalogue
 reaches the thousands.
 
+⚠️ **Products come in the website order** (`compareListingOrder()` in
+`services/productOrder.ts`, 2026-11-18): placed products by `HubProduct.sortOrder`, then the
+never-placed ones A–Z by name in the page's language. It was A–Z only. Measured on the live
+88 before any drag: none moved, so the switch itself changed nothing on the site.
+
 ### `npm run duda:assign-product-types --workspace=backend`
 
 Derives each product's **product type** from the WooCommerce export and writes `ProductCategory`
@@ -2648,6 +2656,33 @@ Rules the generator follows, each of which came from a bad first draft:
 Columns are Product / SKU / Status / **Categories** — price and variation count were
 dropped (2026-09-30): both live on the product page, and neither is what you scan a
 96-row list for now that assignment is the active work.
+
+**Website order: drag to set the listing's order** (Josh, 2026-11-18; runbook
+`docs/redesign/16-product-order-runbook.md`):
+- **The default sort.** It is the order of the website's product listing, so what the page
+  shows is what the site shows. Each row gets a drag handle (pointer, or Space and the arrow
+  keys).
+- **It shows every row**, with no pager, so a product can be dragged anywhere in the list.
+- **Only the dragged product moves.** It goes right after the row now above it in the view
+  (or before the one below, at the top), so with a filter or search on nothing else changes
+  places, on any page of the site (`placeNextTo()`). Hidden products keep their place.
+- **Saving.** Each drop saves EVERY product's place (`PUT /api/products/order { ids }`, any
+  signed-in user) in one SQL statement. Saves run one after another, so a slow one cannot
+  land after a newer one.
+  - A Hub row the list leaves out (a product created after the tab loaded) goes back to
+    unplaced, so it never shares a number.
+  - A failed save says so and reloads what the server holds.
+  - The site shows the new order within about two minutes (the edge cache).
+- ⚠️ **The order rule is written twice and must stay identical**: `compareWebsiteOrder()` in
+  `frontend/src/lib/productOrder.ts` (the page) and `compareListingOrder()` in
+  `backend/src/services/productOrder.ts` (`/public/catalogue`). Both put placed products
+  first, then the rest A–Z with the same English collator.
+- **New products are unplaced**: they list after the placed ones, A–Z, until dragged.
+- **The carousels are unchanged**: the category carousel and Compatible products keep their
+  own order.
+- **`SortableList` table rows** (`as="tbody"`) are real `TR`s (`TR` takes a ref), with
+  `rowProps` for hover and the row click. dnd-kit's screen-reader text goes to `<body>`,
+  since a `<div>` inside a `<table>` is invalid. `onReorder` also gets `{ id, from, to }`.
 
 - ⚠️ **Category ids come from the HUB, never Duda's `categories` array on the product.**
   The Hub is the source of truth; Duda's copy is only as fresh as the last

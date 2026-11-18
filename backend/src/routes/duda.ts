@@ -307,6 +307,7 @@ dudaRouter.get("/products", async (_req, res, next) => {
           dudaProductId: true,
           createdAt: true,
           categories: { select: { dudaCategoryId: true } },
+          sortOrder: true,
         },
       }),
     ]);
@@ -332,10 +333,53 @@ dudaRouter.get("/products", async (_req, res, next) => {
         // Duda's own creation time from the ULID, falling back to the Hub
         // row for any id that is not one. See createdFromUlid above.
         created_at: (createdFromUlid(p.id) ?? h?.createdAt)?.toISOString() ?? null,
+        // Its place in the website's listing; null = never placed (services/productOrder.ts).
+        sort_order: h?.sortOrder ?? null,
       };
     });
 
     res.json(summaries);
+  } catch (err) {
+    next(err);
+  }
+});
+
+const orderSchema = z
+  .object({
+    // Duda product ids, every product, in the new order. Capped at the store's limit.
+    ids: z
+      .array(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/))
+      .min(1)
+      .max(1000)
+      .refine((ids) => new Set(ids).size === ids.length, { message: "Each product may appear once." }),
+  })
+  .strict();
+
+/**
+ * PUT /api/products/order { ids } — the website's listing order, from the
+ * Products page's "Website order" (Josh, 2026-11-18). Every signed-in user,
+ * like the rest of the content.
+ *
+ * The page sends EVERY product in the new order, and this stores each one's
+ * place, 0..n-1, in one statement. A Hub row it does not name (a product
+ * created since that tab loaded) goes back to unplaced, so it lists after the
+ * placed ones rather than sharing a number with one of them. An id with no
+ * Hub row is skipped: such a product is not on the website's listing anyway.
+ */
+dudaRouter.put("/products/order", async (req, res, next) => {
+  try {
+    const parsed = orderSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "validation_error", details: parsed.error.flatten() });
+      return;
+    }
+    const ids = parsed.data.ids;
+    const places = ids.map((_, i) => i);
+    const [, placed] = await prisma.$transaction([
+      prisma.$executeRaw`UPDATE "HubProduct" SET "sortOrder" = NULL WHERE "sortOrder" IS NOT NULL AND NOT ("dudaProductId" = ANY(${ids}::text[]))`,
+      prisma.$executeRaw`UPDATE "HubProduct" AS h SET "sortOrder" = v.place FROM unnest(${ids}::text[], ${places}::int[]) AS v(id, place) WHERE h."dudaProductId" = v.id`,
+    ]);
+    res.json({ placed, skipped: ids.length - placed });
   } catch (err) {
     next(err);
   }

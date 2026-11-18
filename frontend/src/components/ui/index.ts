@@ -13,7 +13,7 @@ export { Badge, StatusBadge } from "./Badge";
 export { Toaster, toast } from "./Toast";
 export { FileDropzone, UploadList, useUploadQueue, type FileDropzoneProps, type UploadItem } from "./FileDropzone";
 export { FileInput } from "./FileInput";
-export { SortableList, DragHandle, type DragHandleProps } from "./SortableList";
+export { SortableList, DragHandle, type DragHandleProps, type ReorderMove, type SortableRowProps } from "./SortableList";
 export { EmptyState } from "./EmptyState";
 export { Highlight } from "./Highlight";
 export { FilePreview, FileTypeIcon } from "./FilePreview";

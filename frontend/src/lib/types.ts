@@ -27,6 +27,8 @@ export interface ProductSummary {
    * date field at all. Falls back to the Hub row's own timestamp.
    */
   created_at: string | null;
+  /** Its place in the website's listing; null = never placed (lib/productOrder.ts). */
+  sort_order: number | null;
 }
 
 export interface MediaAsset {

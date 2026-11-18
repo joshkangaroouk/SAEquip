@@ -1,8 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ExternalLink, Pencil, Plus, Search, X } from "lucide-react";
-import { apiFetch } from "../lib/api";
+import { apiFetch, apiJson } from "../lib/api";
 import { fetchProductIndex } from "../lib/productIndex";
+import { compareWebsiteOrder, placeNextTo } from "../lib/productOrder";
 import { productPageUrl } from "../lib/site";
 import {
   PageHeader,
@@ -10,6 +11,7 @@ import {
   Alert,
   Badge,
   Button,
+  DragHandle,
   EmptyState,
   Highlight,
   Input,
@@ -17,6 +19,7 @@ import {
   SegmentedControl,
   SelectMenu,
   Skeleton,
+  SortableList,
   StatusBadge,
   Table,
   TBody,
@@ -26,6 +29,8 @@ import {
   TR,
   toast,
   usePagedList,
+  type DragHandleProps,
+  type ReorderMove,
 } from "../components/ui";
 import type { ProductSummary, StoreInfo } from "../lib/types";
 import { cn } from "../lib/cn";
@@ -38,7 +43,7 @@ interface CategoryNode {
   parent_id: string;
 }
 
-type SortKey = "recent" | "oldest" | "name" | "name-desc";
+type SortKey = "website" | "recent" | "oldest" | "name" | "name-desc";
 type StatusTab = "all" | "live" | "hidden";
 
 /** One category on a row. `stale` marks an id Duda no longer knows. */
@@ -49,6 +54,8 @@ interface Chip {
 }
 
 const SORTS: { value: SortKey; label: string }[] = [
+  // The website's listing order, set by dragging here (lib/productOrder.ts).
+  { value: "website", label: "Website order" },
   { value: "recent", label: "Recently added" },
   { value: "oldest", label: "Oldest first" },
   { value: "name", label: "Name A–Z" },
@@ -73,7 +80,13 @@ export default function Products() {
   const [products, setProducts] = useState<ProductSummary[] | null>(null);
   const [cats, setCats] = useState<CategoryNode[]>([]);
   const [categoryId, setCategoryId] = useState("");
-  const [sort, setSort] = useState<SortKey>("recent");
+  // Website order by default (Josh, 2026-11-18): what the page shows is what
+  // the website's listing shows.
+  const [sort, setSort] = useState<SortKey>("website");
+  const [orderSave, setOrderSave] = useState<"idle" | "saving" | "saved">("idle");
+  // Saves run one after another, so a slow one can never land after a newer one.
+  const saveChain = useRef<Promise<unknown>>(Promise.resolve());
+  const pendingSaves = useRef(0);
   const [status, setStatus] = useState<StatusTab>("all");
   const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -186,7 +199,8 @@ export default function Products() {
     const byDate = (a: ProductSummary, b: ProductSummary) =>
       (b.created_at ?? "").localeCompare(a.created_at ?? "");
     const sorted = [...out];
-    if (sort === "name") sorted.sort(byName);
+    if (sort === "website") sorted.sort(compareWebsiteOrder);
+    else if (sort === "name") sorted.sort(byName);
     else if (sort === "name-desc") sorted.sort((a, b) => byName(b, a));
     else if (sort === "oldest") sorted.sort((a, b) => byDate(b, a));
     else sorted.sort(byDate);
@@ -195,6 +209,44 @@ export default function Products() {
 
   // Client-side, back to page 1 whenever what is shown or its order changes.
   const paged = usePagedList(filtered ?? [], { resetKeys: [status, q, categoryId, sort] });
+
+  /*
+   * ⚠️ Website order shows EVERY row on one page, so a product can be dragged
+   * anywhere in the list; a pager would stop a drag at the page's edge.
+   */
+  const byWebsiteOrder = sort === "website";
+  const rows = byWebsiteOrder ? (filtered ?? []) : paged.pageItems;
+
+  /**
+   * A row dropped in Website order. Only the dragged product moves: it goes
+   * right after the row now above it in THIS view (or before the one below,
+   * at the top), so with a filter on nothing else changes places, on any page
+   * of the website. The page then saves EVERY product's place.
+   */
+  function moveProduct(view: ProductSummary[], move: ReorderMove) {
+    if (!products) return;
+    const full = [...products].sort(compareWebsiteOrder).map((p) => p.id);
+    const prev = move.to > 0 ? view[move.to - 1].id : null;
+    const next = move.to < view.length - 1 ? view[move.to + 1].id : null;
+    const order = placeNextTo(full, move.id, prev, next);
+    const place = new Map(order.map((id, i) => [id, i]));
+    setProducts(products.map((p) => ({ ...p, sort_order: place.get(p.id) ?? null })));
+
+    pendingSaves.current++;
+    setOrderSave("saving");
+    saveChain.current = saveChain.current.then(async () => {
+      try {
+        await apiJson("/api/products/order", { method: "PUT", body: JSON.stringify({ ids: order }) });
+        if (--pendingSaves.current === 0) setOrderSave("saved");
+      } catch (e) {
+        pendingSaves.current--;
+        setOrderSave("idle");
+        toast.error(`The new order wasn't saved: ${e instanceof Error ? e.message : "try again"}`);
+        // Back to what the server holds.
+        fetchProductIndex().then(setProducts, () => {});
+      }
+    });
+  }
 
   const liveCount = matched?.filter(isLive).length ?? 0;
   const counts = matched ? { all: matched.length, live: liveCount, hidden: matched.length - liveCount } : null;
@@ -274,6 +326,11 @@ export default function Products() {
   const head = (
     <THead>
       <TR>
+        {byWebsiteOrder && (
+          <TH className="w-px pr-0">
+            <span className="sr-only">Move</span>
+          </TH>
+        )}
         {/* `w-px`: the other columns shrink to their content and Product takes the rest. */}
         <TH>Product</TH>
         <TH className="hidden w-px xl:table-cell">SKU</TH>
@@ -285,6 +342,129 @@ export default function Products() {
       </TR>
     </THead>
   );
+
+  /** One row's cells, with the drag handle first in Website order. */
+  const rowCells = (p: ProductSummary, handle?: DragHandleProps) => {
+    const chips = chipsFor(p);
+    const named = chips.filter((c) => !c.stale);
+    const stale = chips.find((c) => c.stale);
+    const names = named.map((c) => c.label).join(", ");
+    const liveUrl = productPageUrl(p);
+    return (
+      <>
+        {handle && (
+          <TD className="w-px pr-0">
+            <DragHandle handle={handle} label={`Move ${p.name}: drag, or press Space then the arrow keys`} />
+          </TD>
+        )}
+        <TD>
+          <div className="flex items-center gap-3">
+            {/* Decorative: the name beside it is the link. */}
+            <Thumb src={p.thumbnail} size={56} fallback="box" />
+            <div className="min-w-0">
+              <Link to={`/products/${p.id}`} className="font-medium text-text">
+                <Highlight text={p.name} query={query} />
+              </Link>
+              {/* Wraps at its hyphens, so the column can narrow at 1024. */}
+              {p.slug && <div className="t-code-sm text-muted">{p.slug}</div>}
+              {/* The folded columns (see `wide`). */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 xl:hidden">
+                <span className="mt-1.5 sm:hidden">
+                  <StatusBadge status={p.status} />
+                </span>
+                {p.sku && (
+                  <span className="mt-1.5 whitespace-nowrap">
+                    <span className="text-label text-muted">SKU </span>
+                    <span className="t-code-sm text-text">
+                      <Highlight text={p.sku} query={query} />
+                    </span>
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </TD>
+        <TD className="t-code hidden whitespace-nowrap text-text xl:table-cell">
+          {p.sku ? (
+            <Highlight text={p.sku} query={query} />
+          ) : (
+            <>
+              <span aria-hidden="true" className="text-muted">
+                —
+              </span>
+              <span className="sr-only">No SKU</span>
+            </>
+          )}
+        </TD>
+        <TD className={wide}>
+          <StatusBadge status={p.status} />
+        </TD>
+        <TD className={wide}>
+          {chips.length === 0 ? (
+            <>
+              <span aria-hidden="true" className="text-muted">
+                —
+              </span>
+              <span className="sr-only">None</span>
+            </>
+          ) : (
+            <div className="flex flex-col items-start gap-1">
+              {named.length > 0 && (
+                // The names on hover (title) and, since a title
+                // is not reliably read out, for screen readers.
+                <span className="whitespace-nowrap text-muted" title={names}>
+                  {named.length} {named.length === 1 ? "category" : "categories"}
+                  <span className="sr-only">: {names}</span>
+                </span>
+              )}
+              {/* Still shown: it is a fault to fix, not a list (KEEP-F). */}
+              {stale && <Badge tone="danger">{stale.label}</Badge>}
+            </div>
+          )}
+        </TD>
+        <TD className="w-px whitespace-nowrap">
+          <div className="flex items-center justify-end gap-1">
+            {/* Not below `sm`, where the name beside it is the same link. */}
+            <Link
+              to={`/products/${p.id}`}
+              className={cn(iconAction, "hidden sm:inline-flex")}
+              aria-label={`Edit ${p.name}`}
+              title="Edit"
+            >
+              <Pencil size={16} aria-hidden="true" />
+            </Link>
+            {liveUrl ? (
+              <a
+                href={liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(iconAction, "inline-flex")}
+                aria-label={`View ${p.name} on the website (opens in a new tab)`}
+                title="View on website"
+              >
+                <ExternalLink size={16} aria-hidden="true" />
+              </a>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon
+                disabled
+                aria-label={`View ${p.name} on the website: ${
+                  isLive(p) ? "it has no page address yet" : "hidden products are not on the website"
+                }`}
+                title={isLive(p) ? "No page address yet" : "Hidden products are not on the website"}
+                // Disabled icon controls use --border-input (02a "After 3b").
+                className="border-transparent bg-transparent disabled:border-transparent disabled:bg-transparent disabled:text-border-input"
+              >
+                <ExternalLink size={16} aria-hidden="true" />
+              </Button>
+            )}
+          </div>
+        </TD>
+      </>
+    );
+  };
 
   return (
     <>
@@ -414,6 +594,16 @@ export default function Products() {
         />
       </div>
 
+      {byWebsiteOrder && (
+        <p className="t-help -mt-1 mb-3">
+          The order products appear in on the website's product listings. Drag a row by its handle to move it; it saves
+          straight away, and the website shows it within a couple of minutes.{" "}
+          <span role="status" className="font-medium text-text">
+            {orderSave === "saving" ? "Saving…" : orderSave === "saved" ? "Saved" : ""}
+          </span>
+        </p>
+      )}
+
       {/*
         * ⚠️ The real table, with the real header and real row heights (a 56px
         * thumbnail), and as many rows as the default page, so the only thing
@@ -426,6 +616,11 @@ export default function Products() {
             <TBody>
               {Array.from({ length: 20 }, (_, i) => (
                 <TR key={i}>
+                  {byWebsiteOrder && (
+                    <TD className="w-px pr-0">
+                      <Skeleton className="h-8.5 w-8.5" />
+                    </TD>
+                  )}
                   <TD>
                     <div className="flex items-center gap-3">
                       <Skeleton className="h-14 w-14 shrink-0" />
@@ -481,135 +676,37 @@ export default function Products() {
           <div ref={tableTop} className="scroll-mt-20">
             <Table>
               {head}
-              <TBody>
-                {paged.pageItems.map((p) => {
-                  const chips = chipsFor(p);
-                  const named = chips.filter((c) => !c.stale);
-                  const stale = chips.find((c) => c.stale);
-                  const names = named.map((c) => c.label).join(", ");
-                  const liveUrl = productPageUrl(p);
-                  return (
+              {byWebsiteOrder ? (
+                <SortableList
+                  as="tbody"
+                  items={rows}
+                  getId={(p) => p.id}
+                  onReorder={moveProduct}
+                  rowProps={(p) => ({ hover: true, onClick: () => navigate(`/products/${p.id}`) })}
+                  renderItem={(p, handle) => rowCells(p, handle)}
+                />
+              ) : (
+                <TBody>
+                  {rows.map((p) => (
                     <TR key={p.id} hover onClick={() => navigate(`/products/${p.id}`)}>
-                      <TD>
-                        <div className="flex items-center gap-3">
-                          {/* Decorative: the name beside it is the link. */}
-                          <Thumb src={p.thumbnail} size={56} fallback="box" />
-                          <div className="min-w-0">
-                            <Link to={`/products/${p.id}`} className="font-medium text-text">
-                              <Highlight text={p.name} query={query} />
-                            </Link>
-                            {/* Wraps at its hyphens, so the column can narrow at 1024. */}
-                            {p.slug && <div className="t-code-sm text-muted">{p.slug}</div>}
-                            {/* The folded columns (see `wide`). */}
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 xl:hidden">
-                              <span className="mt-1.5 sm:hidden">
-                                <StatusBadge status={p.status} />
-                              </span>
-                              {p.sku && (
-                                <span className="mt-1.5 whitespace-nowrap">
-                                  <span className="text-label text-muted">SKU </span>
-                                  <span className="t-code-sm text-text">
-                                    <Highlight text={p.sku} query={query} />
-                                  </span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </TD>
-                      <TD className="t-code hidden whitespace-nowrap text-text xl:table-cell">
-                        {p.sku ? (
-                          <Highlight text={p.sku} query={query} />
-                        ) : (
-                          <>
-                            <span aria-hidden="true" className="text-muted">
-                              —
-                            </span>
-                            <span className="sr-only">No SKU</span>
-                          </>
-                        )}
-                      </TD>
-                      <TD className={wide}>
-                        <StatusBadge status={p.status} />
-                      </TD>
-                      <TD className={wide}>
-                        {chips.length === 0 ? (
-                          <>
-                            <span aria-hidden="true" className="text-muted">
-                              —
-                            </span>
-                            <span className="sr-only">None</span>
-                          </>
-                        ) : (
-                          <div className="flex flex-col items-start gap-1">
-                            {named.length > 0 && (
-                              // The names on hover (title) and, since a title
-                              // is not reliably read out, for screen readers.
-                              <span className="whitespace-nowrap text-muted" title={names}>
-                                {named.length} {named.length === 1 ? "category" : "categories"}
-                                <span className="sr-only">: {names}</span>
-                              </span>
-                            )}
-                            {/* Still shown: it is a fault to fix, not a list (KEEP-F). */}
-                            {stale && <Badge tone="danger">{stale.label}</Badge>}
-                          </div>
-                        )}
-                      </TD>
-                      <TD className="w-px whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Not below `sm`, where the name beside it is the same link. */}
-                          <Link
-                            to={`/products/${p.id}`}
-                            className={cn(iconAction, "hidden sm:inline-flex")}
-                            aria-label={`Edit ${p.name}`}
-                            title="Edit"
-                          >
-                            <Pencil size={16} aria-hidden="true" />
-                          </Link>
-                          {liveUrl ? (
-                            <a
-                              href={liveUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn(iconAction, "inline-flex")}
-                              aria-label={`View ${p.name} on the website (opens in a new tab)`}
-                              title="View on website"
-                            >
-                              <ExternalLink size={16} aria-hidden="true" />
-                            </a>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              icon
-                              disabled
-                              aria-label={`View ${p.name} on the website: ${
-                                isLive(p) ? "it has no page address yet" : "hidden products are not on the website"
-                              }`}
-                              title={isLive(p) ? "No page address yet" : "Hidden products are not on the website"}
-                              // Disabled icon controls use --border-input (02a "After 3b").
-                              className="border-transparent bg-transparent disabled:border-transparent disabled:bg-transparent disabled:text-border-input"
-                            >
-                              <ExternalLink size={16} aria-hidden="true" />
-                            </Button>
-                          )}
-                        </div>
-                      </TD>
+                      {rowCells(p)}
                     </TR>
-                  );
-                })}
-              </TBody>
+                  ))}
+                </TBody>
+              )}
             </Table>
           </div>
-          <Pagination
-            className="mt-4"
-            page={paged.page}
-            total={paged.total}
-            pageSize={paged.pageSize}
-            onPageChange={goToPage}
-            onPageSizeChange={paged.setPageSize}
-            label="products"
-          />
+          {!byWebsiteOrder && (
+            <Pagination
+              className="mt-4"
+              page={paged.page}
+              total={paged.total}
+              pageSize={paged.pageSize}
+              onPageChange={goToPage}
+              onPageSizeChange={paged.setPageSize}
+              label="products"
+            />
+          )}
         </>
       )}
     </>

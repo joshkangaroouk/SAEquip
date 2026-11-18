@@ -18,15 +18,26 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "../../lib/cn";
+import { TR } from "./Table";
 
 /** Props to spread onto whatever element should act as the drag handle. */
 export type DragHandleProps = Record<string, unknown>;
 
+/** What a drag did: which item moved, from where to where, in `items`. */
+export interface ReorderMove {
+  id: string;
+  from: number;
+  to: number;
+}
+
+/** Props for one row (as="tbody": a table `TR`, so `hover` and `onClick` work as on any row). */
+export type SortableRowProps = React.HTMLAttributes<HTMLTableRowElement> & { hover?: boolean; selected?: boolean };
+
 interface SortableListProps<T> {
   items: T[];
   getId: (item: T) => string;
-  /** Called with the full re-ordered array after a drag completes. */
-  onReorder: (next: T[]) => void;
+  /** Called with the full re-ordered array after a drag completes, and what moved. */
+  onReorder: (next: T[], move: ReorderMove) => void;
   /** Render one row. `handle` must be spread onto the grab element (see DragHandle). */
   renderItem: (item: T, handle: DragHandleProps, index: number) => ReactNode;
   /** Container element — "div" for lists, "tbody" for table rows. Default "div". */
@@ -34,6 +45,8 @@ interface SortableListProps<T> {
   className?: string;
   /** dnd-kit sorting strategy — use rectSortingStrategy for multi-column grids. */
   strategy?: SortingStrategy;
+  /** as="tbody" only: props for each row's `TR` (hover, onClick, className…). */
+  rowProps?: (item: T) => SortableRowProps;
 }
 
 /** A ready-made grip handle. Spread the `handle` from renderItem onto it. */
@@ -74,12 +87,14 @@ function SortableNode<T>({
   index,
   as,
   renderItem,
+  rowProps,
 }: {
   id: string;
   item: T;
   index: number;
   as: "div" | "tbody";
   renderItem: SortableListProps<T>["renderItem"];
+  rowProps?: SortableListProps<T>["rowProps"];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
@@ -91,11 +106,19 @@ function SortableNode<T>({
     position: "relative",
     zIndex: isDragging ? 1 : undefined,
   };
-  // For table rows we render a <tr>; otherwise a <div>. The drag handle props
-  // (attributes + listeners) are handed to renderItem to attach to the grip.
-  const tag = as === "tbody" ? "tr" : "div";
+  // The drag handle props (attributes + listeners) are handed to renderItem to
+  // attach to the grip.
   const handle: DragHandleProps = { ...attributes, ...listeners };
-  return createElement(tag, { ref: setNodeRef, style }, renderItem(item, handle, index));
+  if (as === "tbody") {
+    // The table's own row, so hover, the row click and its guard behave as on any row.
+    const props = rowProps?.(item) ?? {};
+    return (
+      <TR {...props} ref={setNodeRef} style={{ ...props.style, ...style }}>
+        {renderItem(item, handle, index)}
+      </TR>
+    );
+  }
+  return createElement("div", { ref: setNodeRef, style }, renderItem(item, handle, index));
 }
 
 /**
@@ -110,6 +133,7 @@ export function SortableList<T>({
   as = "div",
   className,
   strategy = verticalListSortingStrategy,
+  rowProps,
 }: SortableListProps<T>) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -123,7 +147,7 @@ export function SortableList<T>({
     const from = ids.indexOf(String(active.id));
     const to = ids.indexOf(String(over.id));
     if (from === -1 || to === -1) return;
-    onReorder(arrayMove(items, from, to));
+    onReorder(arrayMove(items, from, to), { id: String(active.id), from, to });
   }
 
   const children = items.map((item, index) => (
@@ -134,11 +158,20 @@ export function SortableList<T>({
       index={index}
       as={as}
       renderItem={renderItem}
+      rowProps={rowProps}
     />
   ));
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      // ⚠️ dnd-kit renders its screen-reader text as <div>s beside the list
+      // unless given a container, and a <div> inside a <table> is invalid. So
+      // table rows put it in <body>.
+      accessibility={as === "tbody" ? { container: document.body } : undefined}
+    >
       <SortableContext items={ids} strategy={strategy}>
         {as === "tbody" ? (
           <tbody className={cn("divide-y divide-border", className)}>{children}</tbody>
