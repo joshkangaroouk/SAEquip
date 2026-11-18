@@ -10,6 +10,7 @@ import { isSuperAdminSession, requireSuperAdmin } from "../middleware/requireAut
 import { TWO_FACTOR_ON } from "../services/twoFactor.js";
 import { grantEditorAccess, revokeEditorAccess } from "../services/dudaEditorAccess.js";
 import {
+  deleteUserRoute,
   disableUserRoute,
   enableUserRoute,
   grantEditorRoute,
@@ -34,7 +35,8 @@ export const usersRouter = Router();
  * `requireAuth` alone proves only "valid token + allowed domain", and
  * ALLOWED_EMAIL_DOMAINS spans two companies, which is far too coarse to gate
  * access. No route can GRANT the super admin role: that stays a CLI job
- * (`npm run users:admin`), as does deleting an account (`users:create`).
+ * (`npm run users:admin`). Deleting an account is here too since 2026-11-18,
+ * Website Editor access removed first (deleteUserRoute).
  * `users:mfa` remains the CLI way to reset someone's 2FA.
  *
  * Everyone else still has identical access to the content: super admin adds
@@ -299,6 +301,11 @@ const adminDeps: UserAdminDeps = {
     if (updErr) throw updErr;
     return removed;
   },
+  // A hard delete (not Supabase's soft delete), so the email can be invited again.
+  deleteUser: async (id) => {
+    const { error } = await supabase.auth.admin.deleteUser(id);
+    if (error) throw error;
+  },
   requireMfa: async (id) => {
     const { data, error } = await supabase.auth.admin.getUserById(id);
     if (error || !data.user) throw error ?? new Error("No such user.");
@@ -323,6 +330,7 @@ const adminDeps: UserAdminDeps = {
 
 usersRouter.post("/users/:id/disable", requireSuperAdmin, disableUserRoute(adminDeps));
 usersRouter.post("/users/:id/enable", requireSuperAdmin, enableUserRoute(adminDeps));
+usersRouter.delete("/users/:id", requireSuperAdmin, deleteUserRoute(adminDeps));
 usersRouter.post("/users/:id/website-editor", requireSuperAdmin, grantEditorRoute(adminDeps));
 usersRouter.delete("/users/:id/website-editor", requireSuperAdmin, revokeEditorRoute(adminDeps));
 usersRouter.post("/users/:id/two-factor", requireSuperAdmin, requireMfaRoute(adminDeps));

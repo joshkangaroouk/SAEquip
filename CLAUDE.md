@@ -1296,7 +1296,7 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 ### Two limits to remember
 
 - **The Duda session outlives the Hub session.** Once SSO'd, the user holds an independent Duda cookie; signing out of the Hub does not end it. This is why the permission set matters more than session hygiene.
-- **Offboarding: use Disable access on the Users page**, which removes Website Editor access too, verified in Duda. Deleting a Supabase user (CLI) does *not* revoke Duda access: remove editor access first, or run `duda:editor-provision -- --email <staff> --revoke --confirm`, or you get orphaned editor access outliving the Hub account.
+- **Offboarding: use Disable access or Delete account on the Users page**, which both remove Website Editor access too, verified in Duda (Delete removes it before the account goes, and stops if Duda refuses). Deleting a Supabase user any other way (the Supabase dashboard, a script) does *not* revoke Duda access: remove editor access first, or run `duda:editor-provision -- --email <staff> --revoke --confirm`, or you get orphaned editor access outliving the Hub account.
 
 ## Users, password resets and 2FA
 
@@ -1322,7 +1322,7 @@ The rest of this section describes two-factor as it works when the switch is on.
 - **`/users`:** everyone signed in sees the list (`GET /api/users`: `listUsersWithFactors`, filtered to allowed domains, joined against `DudaEditorAccount`, with name, role, 2FA required, disabled, the Duda account name and an invite's editor error) and can send a password reset to THEMSELVES. `viewer.superAdmin` tells the page whether to show:
   - **Send reset email** on everyone's row, not just their own: ⚠️ `POST /api/users/password-reset` refuses any address but the caller's own with 403 `super_admin_required` unless the session passes `isSuperAdminSession()` (the role AND `aal2`, the same rule as `requireSuperAdmin`; Josh, 2026-11-09);
   - **Invite user** and the **Invites** list;
-  - per person: **Give / Remove Website Editor access**, **Turn off two-factor… / Require two-factor** and **Disable / Enable access** (see below).
+  - per person: **Give / Remove Website Editor access**, **Turn off two-factor… / Require two-factor**, **Disable / Enable access** and **Delete account…** (see below).
 - **Invites** (2026-11, `services/userInvites.ts`, `routes/invites.ts`, the `UserInvite` table from migration `20261109170000_user_invites`):
   - **Creating one:** `POST /api/invites { email, grantWebsiteEditor? }` (super admin) answers `{ invite, token }`. The browser builds `/invite#t=<token>`, and the super admin sends it by hand.
   - **Security:**
@@ -1347,6 +1347,10 @@ The rest of this section describes two-factor as it works when the switch is on.
   - It refuses your own account and another super admin's.
   - `requireAuth` answers a banned account 403 `account_disabled` at once, and the dashboard signs it out with the reason.
   - ⚠️ **Disabling also removes Website Editor access**, verified in Duda, because a Duda session outlives the Hub one. Enabling does NOT give it back.
+- **Delete account…** (`deleteUserRoute()`, super admin; Josh, 2026-11-18, it was CLI-only): `DELETE /api/users/:id?confirm=true`, behind a typed "delete" confirmation. A hard delete in Supabase, so the person is signed out at once and the email can be invited again.
+  - It refuses your own account and another super admin's.
+  - ⚠️ **Website Editor access is revoked FIRST, verified in Duda, and a failed revoke keeps the account** (502 `editor_revoke_failed`). Once the account is gone there is no row left on the Users page to retry from, while their Duda session would carry on. The Duda customer account itself stays, holding no site.
+  - What they did stays: notes, read and star stamps, invites and the SSO audit name an email, not a live account.
 - **Turn off two-factor… / Require two-factor** (`services/userAdmin.ts`, super admin; Josh, 2026-11-17, for someone who has lost their phone or cannot use an authenticator):
   - ⚠️ **Turn off REMOVES a security control from someone else's account**, which is why it was CLI-only until then. `DELETE /api/users/:id/two-factor` (`turnOffMfaRoute()`) deletes every factor and sets `mfa_required` false, so they sign in with just their password.
   - **Require** is `POST /api/users/:id/two-factor` (`requireMfaRoute()`). It sets `mfa_required` true, so without an authenticator their next request goes to `/setup-2fa`. Turn off then Require is the lost-phone path that keeps 2FA.
@@ -1357,7 +1361,7 @@ The rest of this section describes two-factor as it works when the switch is on.
     - who did it and when are stamped in `app_metadata` (`mfa_disabled_by`/`_at`, cleared by Require), and the Users page shows "Turned off by …" under Off;
     - the dialog asks the super admin to check with the person directly first.
   - **The person's open tab catches up.** `AuthContext` refreshes a stored session that says a code or a set-up is owed, once on load, so a tab left on the code step or `/setup-2fa` gets the account's current state from the server.
-- **Still CLI-only, deliberately:** granting super admin and deleting an account (`users:create`). `users:mfa --reset` still works as a CLI way to reset 2FA; unlike the Users page it leaves `mfa_required` as it was. Account creation also stays available with the CLI:
+- **Still CLI-only, deliberately:** granting super admin. `users:mfa --reset` still works as a CLI way to reset 2FA; unlike the Users page it leaves `mfa_required` as it was. Account creation also stays available with the CLI:
 
   ```
   npm run users:create --workspace=backend -- --email <addr> --check

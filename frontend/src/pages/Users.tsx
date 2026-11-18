@@ -81,7 +81,7 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.mess
  * - the invites list, with Revoke and New link, and Remove for an expired or
  *   revoked one;
  * - per person: give or remove Website Editor access, turn two-factor off or
- *   require it, disable or enable.
+ *   require it, disable or enable, delete.
  *
  * The server checks the role on every one of those (requireSuperAdmin); the
  * page only decides what to show, from `viewer.superAdmin` in GET /api/users.
@@ -249,6 +249,72 @@ function UsersSkeleton() {
 }
 
 /**
+ * Delete account (super admin): permanent, so "delete" must be typed, like
+ * deleting a request. The server removes Website Editor access first and
+ * keeps the account if Duda refuses; the dialog then stays open with the reason.
+ */
+function DeleteUserDialog({
+  user,
+  onClose,
+  onConfirm,
+}: {
+  user: StaffUser | null;
+  onClose: () => void;
+  /** Resolves true once deleted. */
+  onConfirm: (u: StaffUser) => Promise<boolean>;
+}) {
+  const [typed, setTyped] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  useEffect(() => {
+    if (user) setTyped("");
+  }, [user]);
+  const ready = typed.trim().toLowerCase() === "delete";
+  const who = user ? (user.name ?? user.email) : "";
+
+  async function confirm() {
+    if (!user || !ready || deleting) return;
+    setDeleting(true);
+    const ok = await onConfirm(user);
+    setDeleting(false);
+    if (ok) onClose();
+  }
+
+  return (
+    <Modal
+      open={user !== null}
+      onClose={() => !deleting && onClose()}
+      dismissable={!deleting}
+      size="md"
+      title={`Delete ${who}'s account?`}
+      description={`${user?.email ?? ""} is signed out at once and can't sign in again.${
+        user?.dudaEditor ? " Their Website Editor access is removed first, and checked with Duda." : ""
+      } Their notes and history stay. This can't be undone; to stop them signing in for now, use Disable access instead.`}
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="danger-solid" onClick={() => void confirm()} disabled={!ready} loading={deleting}>
+            Delete account
+          </Button>
+        </div>
+      }
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void confirm();
+        }}
+      >
+        <Field label="Type delete to confirm">
+          <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoFocus />
+        </Field>
+      </form>
+    </Modal>
+  );
+}
+
+/**
  * Invite user: an email (and whether to give Website Editor access) in, a link
  * out. The link is shown ONCE (only a hash of it is kept), with Copy, its
  * expiry, and a reminder that whoever has it can create the account.
@@ -390,6 +456,7 @@ export default function Users() {
   const [sending, setSending] = useState<string | null>(null);
   const [busyUser, setBusyUser] = useState<string | null>(null);
   const [inviting, setInviting] = useState<{ email: string; grantWebsiteEditor: boolean } | null | false>(false);
+  const [deletingUser, setDeletingUser] = useState<StaffUser | null>(null);
 
   const loadUsers = useCallback(async () => {
     // `allowedDomains` is ALLOWED_EMAIL_DOMAINS, which GET /api/users already returns.
@@ -466,6 +533,20 @@ export default function Users() {
       }
       return `${who(u)} is disabled${res.editorRevoked ? ", and their Website Editor access removed" : ""}`;
     });
+  }
+
+  /** For the delete dialog: true once gone, so it closes; a refusal keeps it open. */
+  async function deleteUser(u: StaffUser): Promise<boolean> {
+    try {
+      const res = await apiJson<{ editorRevoked: boolean }>(`/api/users/${u.id}?confirm=true`, { method: "DELETE" });
+      toast.success(`${who(u)}'s account is deleted${res.editorRevoked ? ", and their Website Editor access removed" : ""}`);
+      setUsers((list) => list?.filter((x) => x.id !== u.id) ?? null);
+      return true;
+    } catch (e) {
+      toast.error(errorText(e, "Couldn't delete the account"));
+      await loadUsers().catch(() => {});
+      return false;
+    }
   }
 
   async function enable(u: StaffUser) {
@@ -550,6 +631,7 @@ export default function Users() {
           ? { label: "Enable access", onSelect: () => void enable(u) }
           : { label: "Disable access…", onSelect: () => void disable(u), danger: true },
       );
+      actions.push({ label: "Delete account…", onSelect: () => setDeletingUser(u), danger: true });
     }
     return actions;
   }
@@ -807,6 +889,7 @@ export default function Users() {
           onCreated={() => void loadInvites().catch(() => {})}
         />
       )}
+      {superAdmin && <DeleteUserDialog user={deletingUser} onClose={() => setDeletingUser(null)} onConfirm={deleteUser} />}
     </>
   );
 }

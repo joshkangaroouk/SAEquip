@@ -4,8 +4,8 @@ import { TWO_FACTOR_ON } from "./twoFactor.js";
 
 /**
  * What the super admin can do to an account from the Users page (2026-11):
- * disable or enable it, give or remove its Website Editor access, and turn
- * its two-factor off or make it required (see turnOffMfaRoute). Behind
+ * disable or enable it, delete it, give or remove its Website Editor access,
+ * and turn its two-factor off or make it required (see turnOffMfaRoute). Behind
  * requireAuth + requireSuperAdmin (routes/users.ts); the calls are `deps` so
  * the rules are tested without Supabase or Duda.
  *
@@ -50,12 +50,18 @@ export interface UserAdminDeps {
   turnOffMfa: (id: string, by: string) => Promise<number>;
   /** Set `mfa_required` true and clear the turned-off stamp. */
   requireMfa: (id: string) => Promise<void>;
+  /** Delete the Supabase account for good. */
+  deleteUser: (id: string) => Promise<void>;
 }
 
 /** The refusal for changing `target`'s access, or null when allowed. */
-export function accessChangeRefusal(actorId: string | undefined, target: AdminUser): { status: number; body: object } | null {
+export function accessChangeRefusal(
+  actorId: string | undefined,
+  target: AdminUser,
+  verb: "disable" | "delete" = "disable",
+): { status: number; body: object } | null {
   if (target.id === actorId) {
-    return { status: 409, body: { error: "cannot_change_self", detail: "You can't disable your own account." } };
+    return { status: 409, body: { error: "cannot_change_self", detail: `You can't ${verb} your own account.` } };
   }
   if (target.role === "super_admin") {
     return {
@@ -104,6 +110,61 @@ export function disableUserRoute(deps: UserAdminDeps): RequestHandler {
         }
       }
       res.json({ disabled: true, editorRevoked, ...(editorError ? { editorError } : {}) });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+/**
+ * DELETE /api/users/:id?confirm=true → `{ deleted: true, editorRevoked }`
+ * (Josh, 2026-11-18; it was CLI-only). The account is gone for good: signed
+ * out at once (requireAuth's getUser finds no user) and unable to sign in.
+ * Disable is the reversible one.
+ *
+ * ⚠️ Website Editor access is removed FIRST, verified in Duda, and a revoke
+ * that fails stops the delete: a Duda session outlives the Hub one, and once
+ * the account is gone the Users page has no row left to retry from. The Duda
+ * customer account itself stays, holding no site.
+ *
+ * What the person did stays: notes, read and star stamps, invites and the SSO
+ * audit record names and emails, not a live account.
+ */
+export function deleteUserRoute(deps: UserAdminDeps): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      if (req.query.confirm !== "true") {
+        res.status(400).json({ error: "confirm_required", detail: "Deleting an account needs ?confirm=true." });
+        return;
+      }
+      const user = await target(deps, String(req.params.id), res);
+      if (!user) return;
+      const refusal = accessChangeRefusal(req.user?.id, user, "delete");
+      if (refusal) {
+        res.status(refusal.status).json(refusal.body);
+        return;
+      }
+      let editorRevoked = false;
+      if (await deps.hasEditor(user.id)) {
+        try {
+          await deps.revokeEditor({ staffUserId: user.id, staffEmail: user.email });
+          editorRevoked = true;
+        } catch (err) {
+          const failure = editorFailure(err);
+          res.status(502).json({
+            error: "editor_revoke_failed",
+            detail: `Couldn't remove their Website Editor access, so the account was kept: ${failure?.detail ?? "Duda refused."} Try again, or remove the access first.`,
+          });
+          return;
+        }
+      }
+      await deps.deleteUser(user.id);
+      if (await deps.getUser(user.id)) {
+        res.status(502).json({ error: "not_applied", detail: "Supabase didn't delete the account. Try again." });
+        return;
+      }
+      console.info(`[users] ${req.user?.email} deleted ${user.email}${editorRevoked ? " (Website Editor access removed first)" : ""}`);
+      res.json({ deleted: true, editorRevoked });
     } catch (err) {
       next(err);
     }
