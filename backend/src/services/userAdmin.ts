@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { EditorAccessError } from "./dudaEditorAccess.js";
+import { TWO_FACTOR_ON } from "./twoFactor.js";
 
 /**
  * What the super admin can do to an account from the Users page (2026-11):
@@ -225,6 +226,11 @@ export function requireMfaRoute(deps: UserAdminDeps): RequestHandler {
       const refusal = mfaChangeRefusal(req.user?.id, user);
       if (refusal) {
         res.status(refusal.status).json(refusal.body);
+        return;
+      }
+      // Nothing would enforce it while two-factor is off for the Hub.
+      if (!TWO_FACTOR_ON) {
+        res.status(409).json({ error: "two_factor_off", detail: "Two-factor is turned off for the Hub at the moment." });
         return;
       }
       await deps.requireMfa(user.id);

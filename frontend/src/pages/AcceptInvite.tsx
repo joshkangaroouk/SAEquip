@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { useForceLightTheme } from "../lib/theme";
 import { assessPassword } from "../lib/passwordPolicy";
 import { formatDateTime } from "../lib/format";
+import { TWO_FACTOR_ON } from "../lib/twoFactor";
 import { AuthShell } from "../components/AuthShell";
 import { Alert, Button, Field, Input, Loader } from "../components/ui";
 
@@ -37,7 +38,8 @@ async function post(path: string, body: unknown) {
  * - The email comes from the invite and cannot be changed: the server ignores
  *   anything but the token, the name and the password.
  * - Once the account exists the page signs in with it and goes to /setup-2fa:
- *   an invited account can do nothing until two-factor is set up.
+ *   an invited account can do nothing until two-factor is set up. While
+ *   two-factor is off for the Hub (lib/twoFactor.ts) it goes to the dashboard.
  */
 export default function AcceptInvite() {
   useForceLightTheme();
@@ -96,7 +98,7 @@ export default function AcceptInvite() {
           setSubmitting(false);
           return;
         }
-        navigate("/setup-2fa", { replace: true });
+        navigate(TWO_FACTOR_ON ? "/setup-2fa" : "/", { replace: true });
         return;
       }
       if (status === 410 && (json.error === "expired" || json.error === "used" || json.error === "revoked")) {
@@ -189,7 +191,7 @@ export default function AcceptInvite() {
         <Button type="submit" className="mt-6 w-full" disabled={!ready} loading={submitting}>
           Create account
         </Button>
-        <p className="t-help mt-3">Next, you'll set up two-factor authentication with an app on your phone.</p>
+        {TWO_FACTOR_ON && <p className="t-help mt-3">Next, you'll set up two-factor authentication with an app on your phone.</p>}
       </form>
     </AuthShell>
   );

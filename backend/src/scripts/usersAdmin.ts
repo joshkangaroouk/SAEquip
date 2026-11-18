@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { supabase } from "../supabase.js";
 import { findUserWithFactors, hasVerifiedFactor } from "../services/supabaseUsers.js";
+import { TWO_FACTOR_ON } from "../services/twoFactor.js";
 
 /**
  * The super admin role (2026-11): who may invite people, disable accounts and
@@ -17,6 +18,8 @@ import { findUserWithFactors, hasVerifiedFactor } from "../services/supabaseUser
  * Becoming super admin also makes two-factor REQUIRED (`mfa_required`): the
  * account can do nothing until an authenticator is set up, and the super admin
  * routes need a 2FA-verified session. Revoking the role leaves 2FA required.
+ * ⚠️ Not while two-factor is off for the Hub (services/twoFactor.ts): then
+ * the role is granted alone.
  *
  * Dry run without --confirm.
  */
@@ -51,9 +54,11 @@ async function main() {
 
   // Merged over what is there: app_metadata also holds Supabase's own keys
   // (provider, providers), which must survive.
-  const next = grant ? { ...app, role: "super_admin", mfa_required: true } : { ...app, role: null };
-  console.log(`\n→ ${grant ? "make super admin (2FA becomes required)" : "remove the super admin role (2FA stays required)"}`);
-  if (grant && !hasVerifiedFactor(user)) {
+  const next = grant ? { ...app, role: "super_admin", ...(TWO_FACTOR_ON ? { mfa_required: true } : {}) } : { ...app, role: null };
+  console.log(
+    `\n→ ${grant ? (TWO_FACTOR_ON ? "make super admin (2FA becomes required)" : "make super admin (2FA is off for the Hub, so not required)") : "remove the super admin role (2FA left as it is)"}`,
+  );
+  if (grant && TWO_FACTOR_ON && !hasVerifiedFactor(user)) {
     console.log("  ⚠ no authenticator yet: the dashboard will ask for one at the next visit, and nothing else works until then.");
   }
   if (!flag("confirm")) {

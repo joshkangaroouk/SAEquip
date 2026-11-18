@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useSignOut } from "../hooks/useSignOut";
 import { PageHeader, Alert, Badge, Button, ButtonLink, Card, CardHeader, toast, useConfirm } from "../components/ui";
 import { TotpEnrolment } from "../components/TotpEnrolment";
+import { TWO_FACTOR_ON } from "../lib/twoFactor";
 
 /**
  * Two-factor setup for the signed-in user.
@@ -106,17 +107,28 @@ export default function Security() {
             </ul>
           )}
 
-          {/* The steps show while two-factor is off, and while another device is being added. */}
-          <TotpEnrolment
-            className={on ? "mt-5" : undefined}
-            idleSteps={!on}
-            startLabel={on ? "Add another device" : "Turn on two-factor"}
-            startVariant={on ? "secondary" : "primary"}
-            onEnrolled={async () => {
-              toast.success("Two-factor is on. You'll be asked for a code next time you sign in.");
-              await load();
-            }}
-          />
+          {/*
+            The steps show while two-factor is off, and while another device is
+            being added. Not at all while two-factor is off for the Hub
+            (lib/twoFactor.ts): an authenticator left on is still listed above,
+            so it can be turned off.
+          */}
+          {TWO_FACTOR_ON ? (
+            <TotpEnrolment
+              className={on ? "mt-5" : undefined}
+              idleSteps={!on}
+              startLabel={on ? "Add another device" : "Turn on two-factor"}
+              startVariant={on ? "secondary" : "primary"}
+              onEnrolled={async () => {
+                toast.success("Two-factor is on. You'll be asked for a code next time you sign in.");
+                await load();
+              }}
+            />
+          ) : (
+            <Alert tone="info" live="off" className={on ? "mt-5" : undefined}>
+              Two-factor is turned off for the Hub at the moment, so you sign in with your password alone.
+            </Alert>
+          )}
         </Card>
 
         <Card>

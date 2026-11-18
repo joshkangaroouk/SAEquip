@@ -7,6 +7,7 @@ import { supabase } from "../supabase.js";
 import { hasVerifiedFactor, listUsersWithFactors } from "../services/supabaseUsers.js";
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import { isSuperAdminSession, requireSuperAdmin } from "../middleware/requireAuth.js";
+import { TWO_FACTOR_ON } from "../services/twoFactor.js";
 import { grantEditorAccess, revokeEditorAccess } from "../services/dudaEditorAccess.js";
 import {
   disableUserRoute,
@@ -121,8 +122,9 @@ usersRouter.get("/users", async (req, res, next) => {
       .sort((a, b) => a.email.localeCompare(b.email));
 
     // Whether the person looking may manage users (the page shows the controls).
-    const superAdmin = req.user?.role === "super_admin" && req.user.aal === "aal2";
-    res.json({ users, allowedDomains: env.allowedEmailDomains, viewer: { superAdmin } });
+    // The same rule as requireSuperAdmin, so the page never offers what the routes refuse.
+    const superAdmin = isSuperAdminSession(req.user);
+    res.json({ users, allowedDomains: env.allowedEmailDomains, viewer: { superAdmin, twoFactorOn: TWO_FACTOR_ON } });
   } catch (err) {
     next(err);
   }

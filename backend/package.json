@@ -25,6 +25,7 @@
     "users:create": "tsx src/scripts/createStaffUser.ts",
     "users:mfa": "tsx src/scripts/manageMfa.ts",
     "users:admin": "tsx src/scripts/usersAdmin.ts",
+    "users:2fa-off-all": "tsx src/scripts/twoFactorOffAll.ts",
     "wp:scrape-compatible": "tsx src/scripts/wpScrapeCompatible.ts",
     "duda:fix-casing": "tsx src/scripts/dudaFixProductCasing.ts",
     "duda:seo-fill": "tsx src/scripts/dudaSeoFill.ts",

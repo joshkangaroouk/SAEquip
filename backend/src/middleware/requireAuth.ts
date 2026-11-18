@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { env } from "../env.js";
 import { supabase } from "../supabase.js";
+import { TWO_FACTOR_ON } from "../services/twoFactor.js";
 
 /**
  * Read the `aal` claim from an ALREADY-VERIFIED Supabase access token.
@@ -85,7 +86,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   const meta = (data.user.app_metadata ?? {}) as { role?: unknown; mfa_required?: unknown };
   const hasVerifiedFactor = (data.user.factors ?? []).some((f) => f.status === "verified");
-  if (meta.mfa_required === true && !hasVerifiedFactor) {
+  // Not while two-factor is off for the Hub (services/twoFactor.ts).
+  if (TWO_FACTOR_ON && meta.mfa_required === true && !hasVerifiedFactor) {
     res.status(403).json({
       error: "mfa_setup_required",
       detail: "This account must set up two-factor authentication before it can be used.",
@@ -120,15 +122,20 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
  * use but only the super admin can point at SOMEONE ELSE (the password reset).
  */
 export function isSuperAdminSession(user: Request["user"]): boolean {
-  return user?.role === "super_admin" && user.aal === "aal2";
+  return user?.role === "super_admin" && (!TWO_FACTOR_ON || user.aal === "aal2");
 }
 
+/**
+ * ⚠️ While two-factor is off for the Hub (services/twoFactor.ts) this needs
+ * the role only: the super admin has no authenticator to sign in with. An
+ * account that still has one is held to its code by requireAuth anyway.
+ */
 export function requireSuperAdmin(req: Request, res: Response, next: NextFunction): void {
   if (req.user?.role !== "super_admin") {
     res.status(403).json({ error: "super_admin_required", detail: "Only the super admin can do this." });
     return;
   }
-  if (req.user.aal !== "aal2") {
+  if (TWO_FACTOR_ON && req.user.aal !== "aal2") {
     res.status(403).json({
       error: "super_admin_required",
       detail: "Set up two-factor authentication on Security, then sign in again with your code.",

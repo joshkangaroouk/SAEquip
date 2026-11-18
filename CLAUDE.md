@@ -1300,6 +1300,16 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 
 ## Users, password resets and 2FA
 
+⚠️⚠️ **Two-factor is OFF for the whole Hub since 2026-11-18** (Josh: "turn off 2FA for everyone, for now"). It is one switch, `TWO_FACTOR_ON = false`, in `backend/src/services/twoFactor.ts`. That copy is enforced; `frontend/src/lib/twoFactor.ts` mirrors it for the screens, so change both together. While it is off:
+- **Not required for anyone.** `requireAuth` never answers `mfa_setup_required`, invites create accounts without `mfa_required`, and `users:admin --super-admin` does not set it.
+- ⚠️ **The super admin's routes need the role only** (`requireSuperAdmin`, `isSuperAdminSession()`), so **a stolen super admin password is now enough** to invite, disable and give Website Editor access.
+- **Nothing in the dashboard sets it up.** "Require two-factor" is refused (409 `two_factor_off`) and hidden, Security shows a note instead of "Turn on two-factor", and an accepted invite goes straight to the dashboard.
+- **An authenticator someone still HAS is honoured**: `requireAuth` still asks that account for its code.
+- **Existing authenticators were removed** by `npm run users:2fa-off-all --workspace=backend -- --by <email> --confirm` (dry run without `--confirm`). It deletes every factor and clears `mfa_required` on every account in the project. It stamps `mfa_disabled_by`/`_at` and `mfa_was_required` on each, then reads every account back.
+- **To turn it back on:** set both constants to true and deploy. Then use "Require two-factor" on the Users page for each person (`mfa_was_required` says who had it before), or `users:admin --super-admin --confirm` for the super admin.
+
+The rest of this section describes two-factor as it works when the switch is on.
+
 ### Accounts
 
 - **Public signup is disabled**; `ALLOWED_EMAIL_DOMAINS` gates who can sign in at all (`requireAuth`).
@@ -1307,7 +1317,7 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
   - The role is `app_metadata.role = "super_admin"`. Only the service role can write `app_metadata`, so the server trusts it, reading it from `getUser()` on every request; a role in `user_metadata` (which users can edit) is ignored.
   - ⚠️ **Only the CLI grants it**: `npm run users:admin --workspace=backend -- --email <addr> --check | --super-admin | --revoke-super-admin [--confirm]`. No route can, so a dashboard bug or a stolen session cannot make anyone super admin.
   - Becoming super admin also sets `mfa_required`.
-  - **`requireSuperAdmin`** (in `middleware/requireAuth.ts`) guards every admin route. It needs the role AND an `aal2` session, so a stolen password alone is not enough.
+  - **`requireSuperAdmin`** (in `middleware/requireAuth.ts`) guards every admin route. It needs the role AND an `aal2` session, so a stolen password alone is not enough. ⚠️ Role only while two-factor is off for the Hub (see the top of this section).
 - ⚠️ **`auth.admin.listUsers()` does NOT return `factors`** — the key is absent from every row, not merely empty. Only `getUserById()` includes them, and the difference is silent: it reads as "nobody has MFA". It made the Users page show Two-factor **Off** for an account with a verified TOTP factor, `users:create --check` report "not enrolled", and — the dangerous one — **`users:mfa` would have told an admin there were no factors to delete, for the one person who cannot get in without that reset.** Everything that needs factors now goes through `services/supabaseUsers.ts` (`listUsersWithFactors`, `findUserWithFactors`, `hasVerifiedFactor`), which re-fetches each user. That is an N+1, accepted deliberately: the staff list is a handful of people, the calls run in parallel, and the alternative is a page that lies about a security control.
 - **`/users`:** everyone signed in sees the list (`GET /api/users`: `listUsersWithFactors`, filtered to allowed domains, joined against `DudaEditorAccount`, with name, role, 2FA required, disabled, the Duda account name and an invite's editor error) and can send a password reset to THEMSELVES. `viewer.superAdmin` tells the page whether to show:
   - **Send reset email** on everyone's row, not just their own: ⚠️ `POST /api/users/password-reset` refuses any address but the caller's own with 403 `super_admin_required` unless the session passes `isSuperAdminSession()` (the role AND `aal2`, the same rule as `requireSuperAdmin`; Josh, 2026-11-09);

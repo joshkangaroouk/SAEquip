@@ -4,6 +4,7 @@ import { env } from "../env.js";
 import { prisma } from "../prisma.js";
 import { supabase } from "../supabase.js";
 import { requireSuperAdmin } from "../middleware/requireAuth.js";
+import { TWO_FACTOR_ON } from "../services/twoFactor.js";
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import { isBreachedPassword } from "../services/passwordPolicy.js";
 import { findUserWithFactors } from "../services/supabaseUsers.js";
@@ -78,7 +79,8 @@ const deps: InviteDeps = {
       email_confirm: true,
       user_metadata: { first_name: firstName, last_name: lastName },
       // app_metadata: only the service role can write it, so the API can trust it.
-      app_metadata: { mfa_required: true, invited_by: invitedBy },
+      // Required unless two-factor is off for the Hub (services/twoFactor.ts).
+      app_metadata: { mfa_required: TWO_FACTOR_ON, invited_by: invitedBy },
     });
     if (error || !data.user) return { error: error?.message ?? "Supabase returned no user." };
     return { id: data.user.id };

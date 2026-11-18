@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiJson } from "../lib/api";
 import { initialsFrom } from "../lib/initials";
 import { formatDateTime } from "../lib/format";
+import { TWO_FACTOR_ON } from "../lib/twoFactor";
 import { useAuth } from "../auth/AuthContext";
 import {
   PageHeader,
@@ -351,7 +352,9 @@ function InviteDialog({
             You won't be able to see it again; if it's lost, make a new one.
           </Alert>
           <p className="t-help">
-            They'll choose a password and set up two-factor before they can use the Hub.
+            {TWO_FACTOR_ON
+              ? "They'll choose a password and set up two-factor before they can use the Hub."
+              : "They'll choose a password, then they can use the Hub."}
             {made.invite.grantWebsiteEditor && " Website Editor access is set up when they create the account."}
           </p>
         </div>
@@ -539,7 +542,8 @@ export default function Users() {
     if (u.dudaEditor) actions.push({ label: "Remove Website Editor access", onSelect: () => void removeEditor(u), danger: true });
     else if (!u.disabled) actions.push({ label: u.editorError ? "Retry Website Editor access" : "Give Website Editor access", onSelect: () => void giveEditor(u) });
     if (u.id !== me?.id && u.role !== "super_admin") {
-      if (!u.mfaRequired) actions.push({ label: "Require two-factor", onSelect: () => void requireMfa(u) });
+      // Not while two-factor is off for the Hub: the server refuses it then.
+      if (TWO_FACTOR_ON && !u.mfaRequired) actions.push({ label: "Require two-factor", onSelect: () => void requireMfa(u) });
       if (u.mfaEnabled || u.mfaRequired) actions.push({ label: "Turn off two-factor…", onSelect: () => void turnOffMfa(u), danger: true });
       actions.push(
         u.disabled
@@ -787,7 +791,9 @@ export default function Users() {
         <Alert tone="info" live="off" title="Adding someone" className="mt-5">
           Only email addresses at {listDomains(allowedDomains)} can sign in.{" "}
           {superAdmin
-            ? "Use Invite user: they'll set a password and two-factor before they can use the Hub."
+            ? TWO_FACTOR_ON
+              ? "Use Invite user: they'll set a password and two-factor before they can use the Hub."
+              : "Use Invite user: they'll set a password, then they can use the Hub."
             : "New accounts are invited by the Hub's super admin."}
         </Alert>
       )}
