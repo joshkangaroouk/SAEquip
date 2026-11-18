@@ -91,6 +91,9 @@ export const realDeps = { duda: dudaSso as Duda, db: prismaDb };
 
 const gone = (err: DudaApiError) => /ResourceNotExist|doesn't exist|not exist/i.test(err.body);
 
+/** A lookup that found no such account: a 404, or Duda's 400 "Account … doesn't exist." */
+export const accountMissing = (err: DudaApiError) => err.status === 404 || (err.status === 400 && gone(err));
+
 /** Duda's own message if its error body has one, else the status. Never the raw body. */
 function dudaMessage(err: unknown): string {
   if (!(err instanceof DudaApiError)) return err instanceof Error ? err.message : "unknown error";
@@ -146,7 +149,7 @@ export async function grantEditorAccess(
   let name = forced ?? mapping?.dudaAccountName ?? input.staffEmail;
   let aliased = false;
 
-  // 1. The Duda account: reuse a CUSTOMER, create on 404, never use a STAFF one.
+  // 1. The Duda account: reuse a CUSTOMER, create one if missing, never use a STAFF one.
   let exists = false;
   for (;;) {
     try {
@@ -168,7 +171,10 @@ export async function grantEditorAccess(
       steps.push(`Duda account ${name} already exists: reusing it`);
     } catch (err) {
       if (err instanceof EditorAccessError) throw err;
-      if (!(err instanceof DudaApiError) || err.status !== 404) {
+      // ⚠️ Duda answers a missing account with 400 "Account <name> doesn't
+      // exist." (measured live, 2026-11-18), not a 404, so that means "create"
+      // too. Any other error still stops.
+      if (!(err instanceof DudaApiError) || !accountMissing(err)) {
         throw new EditorAccessError("duda_error", `Couldn't look up the Duda account (${dudaMessage(err)}).`);
       }
     }

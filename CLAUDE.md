@@ -1255,7 +1255,7 @@ The `/website` page (top of the sidebar) lets a staff member SSO straight into t
     - CUSTOMER accounts only. A Duda STAFF email falls back automatically to `name+saequip@domain`, while a FORCED name (`--duda-account`) that is STAFF is refused;
     - the fixed `EDITOR_PERMISSIONS`;
     - a revoke verified with Duda before the Hub rows go;
-    - a 404 on lookup means "create", and any other Duda error stops;
+    - a lookup that finds no account means "create": ⚠️ Duda answers 400 "Account … doesn't exist.", not 404 (`accountMissing()`, measured 2026-11-18, when giving Gillian access failed at the lookup). Any other Duda error stops;
     - Duda's raw body is never passed on.
   - **CLI:** `npm run duda:editor-provision --workspace=backend -- --email <staff> --supabase-user-id <uuid> --confirm` (also `--check` read-only, and `--revoke`).
   - **Audit:** `DudaEditorSiteAccess.grantedBy` records the super admin who granted it (null for a CLI grant).
