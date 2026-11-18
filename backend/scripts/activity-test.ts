@@ -31,6 +31,7 @@ import { ROUTE_CATALOGUE, matchRoute, allActions, REPORTABLE } from "../src/serv
 import { activityContext } from "../src/middleware/activity.js";
 import { requireSuperAdmin } from "../src/middleware/requireAuth.js";
 import { reportBody } from "../src/routes/activity.js";
+import { summariseGroup, type GroupMember } from "../src/services/activityGroups.js";
 
 let pass = 0;
 let fail = 0;
@@ -309,6 +310,58 @@ check(ordinal(1) === "1st" && ordinal(2) === "2nd" && ordinal(3) === "3rd" && or
   const long = sanitizeDetails({ s: "x".repeat(20_000), list: Array.from({ length: 600 }, (_, i) => i) }) as { s: string; list: unknown[] };
   check(long.s.length < 10_100 && long.s.endsWith("[cut]"), "long text is cut");
   check(long.list.length === 501, "long lists are cut, saying so");
+}
+
+// ---- 7. One row per save -------------------------------------------------------------
+
+{
+  const t0 = Date.parse("2026-11-18T16:01:11Z");
+  const row = (i: number, action: string, summary: string, extra: Partial<GroupMember> = {}): GroupMember => ({
+    id: `r${i}`,
+    at: new Date(t0 + i * 500),
+    category: action.startsWith("translation") ? "translations" : "products",
+    action,
+    outcome: "ok",
+    summary,
+    targetType: action.startsWith("translation") ? null : "product",
+    targetId: action.startsWith("translation") ? null : "P1",
+    targetLabel: action.startsWith("translation") ? null : "EX Heater",
+    details: null,
+    ...extra,
+  });
+  const mt = (i: number, locale: string, counts: Record<string, number>, outcome = "ok") =>
+    row(i, "translation.save", "Saved machine translations", { outcome, details: { origin: "MT", locale, counts } });
+  const label = (a: string) => ({ "product.logo.on": "Switched a logo on" })[a] ?? a;
+
+  // The save Josh saw: the description, then six languages, Chinese refused (stored as "failed" before the fix).
+  const save = [
+    row(0, "product.details.update", "Updated Description"),
+    mt(1, "ar", { saved: 1 }),
+    mt(2, "zh", { rejected: 1 }, "failed"),
+    mt(3, "fr", { saved: 1 }),
+    mt(4, "de", { saved: 1 }),
+    mt(5, "pt-br", { saved: 1 }),
+    mt(6, "es", { saved: 1 }),
+  ];
+  const g = summariseGroup(save, label);
+  check(g.representative.id === "r0", "a save is represented by its own change, not a translation");
+  check(g.summary === "Updated Description · translated into 5 languages (Chinese kept in English)", "one line for the whole save", g.summary);
+  check(g.outcome === "ok", "a refused machine translation does not flag the save as failed", g.outcome);
+
+  const logos = summariseGroup(
+    [row(0, "product.specs.update", "Updated technical specs (1 added)"), row(1, "product.logo.on", "Switched on EX"), row(2, "product.logo.on", "Switched on UKCA")],
+    label,
+  );
+  check(logos.summary === "Updated technical specs (1 added) · Switched a logo on (2)", "same-action rows fold together", logos.summary);
+
+  const half = summariseGroup([row(0, "product.details.update", "Updated Name"), row(1, "product.specs.update", "Updated technical specs", { outcome: "failed" })], label);
+  check(half.outcome === "partial", "one part saved and one failed: partly done", half.outcome);
+
+  const run = summariseGroup([mt(0, "fr", { saved: 20 }), mt(1, "de", { saved: 5, rejected: 1 })], label);
+  check(run.summary === "Saved 25 machine translations in 2 languages (German kept in English)", "a Translate missing run: one line", run.summary);
+
+  const single = summariseGroup([row(0, "product.details.update", "Updated Name")], label);
+  check(single.summary === "Updated Name", "a lone row keeps its own wording");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

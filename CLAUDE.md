@@ -1342,6 +1342,14 @@ The runbook is `docs/redesign/17-activity-log-runbook.md`.
   - An enquiry is labelled "Quote request of 14 Nov 2026 (3 items)" or "File request: Datasheet – EX Heater", so a GDPR "Delete request…" leaves nothing personal behind and log rows never need editing.
   - Request bodies are never copied.
 - **One save = one group**: `inActivityBatch()` (`lib/api.ts`) gives every changing request a uuid `X-Activity-Batch` header. It covers the product editor's save (with its logo switches and translate-on-save batches), New product and "Translate missing". ⚠️ It starts its function synchronously, so the translators still open inside the click.
+- **…and ONE row on the page** (Josh, 2026-11-18: one save showed as eight rows).
+  - `GET /api/activity` groups rows by `COALESCE("batchId", id)` in SQL (`whereSql()`, which must stay in step with `whereFor()`), pages over the groups, and folds each with `summariseGroup()` (`services/activityGroups.ts`).
+  - The line reads like "Updated Description · translated into 5 languages (Chinese kept in English)". Same-action rows fold to "Switched a logo on (3)".
+  - The representative is the save's own change, never a translation.
+  - The detail returns the save's `members`, and the page lists each as a disclosure.
+  - Filters apply to rows BEFORE grouping.
+  - Rows are never merged in the table itself, which is append-only.
+- ⚠️ **A machine translation the safety check refuses is NOT a failure**: the English is shown, by design. It is recorded as "Kept N … in English", outcome ok; only a refused STAFF edit is `failed`. A row stored as `failed` before this (the first live save's Chinese) can't be edited, so grouping and the page's badge ignore machine-translation rows' outcome.
 - IP is `req.ip`, correct on Vercel only because of `trust proxy`. Country and city come from Vercel's `x-vercel-ip-*` headers, believed only when `process.env.VERCEL`, for the same reason.
 
 **Sign-ins and the browser's events:**
@@ -1361,9 +1369,9 @@ The runbook is `docs/redesign/17-activity-log-runbook.md`.
 - **Not visible to the Hub at all:** failed sign-in attempts (go straight to Supabase: its dashboard → Authentication → Logs), command-line scripts, edits inside Duda's own editor.
 
 **API** (`routes/activity.ts`, `requireSuperAdmin` except `report`):
-- `GET /api/activity?category&action&actor&targetType&targetId&outcome(ok|problem)&ip&batch&q&from&to&page&pageSize` → the `/api/media` page shape, newest first, without `details`.
+- `GET /api/activity?category&action&actor&targetType&targetId&outcome(ok|problem)&ip&batch&q&from&to&page&pageSize` → the `/api/media` page shape, newest first, ONE item per save (`batchCount` says how many rows it stands for), without `details`.
 - `GET /api/activity/facets`: categories and actions with labels and counts (from the catalogue), and the people seen, with names from Supabase.
-- `GET /api/activity/:id`: the full row, the actor's name and how many rows share its save.
+- `GET /api/activity/:id`: the full row, the actor's name, and its save's `members`, `groupSummary` and `groupOutcome`.
 - `GET /api/activity/export.csv?<filters>`: through `toCsv` (formula guard), capped at 50,000 rows, and logged itself.
 - `GET /api/users` gains `lastActiveAt` for the super admin.
 

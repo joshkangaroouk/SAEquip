@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Download, Search, X } from "lucide-react";
+import { ChevronRight, Download, Search, X } from "lucide-react";
 import {
   Alert,
   Badge,
@@ -59,6 +59,20 @@ interface ActivityItem {
   city: string | null;
   batchId: string | null;
   status: number | null;
+  /** How many rows this line stands for: a save's changes are one line (the server groups them). */
+  batchCount: number;
+}
+
+/** One row of a save, as the detail lists them. */
+interface SaveMember {
+  id: string;
+  at: string;
+  category: string;
+  action: string;
+  outcome: ActivityItem["outcome"];
+  summary: string;
+  details: unknown;
+  status: number | null;
 }
 
 interface ActivityDetail extends ActivityItem {
@@ -69,7 +83,10 @@ interface ActivityDetail extends ActivityItem {
   durationMs: number | null;
   sessionId: string | null;
   actorName: string | null;
-  batchCount: number;
+  /** Every row of its save (empty when it stands alone), and the save's own line and outcome. */
+  members: SaveMember[];
+  groupSummary: string | null;
+  groupOutcome: ActivityItem["outcome"] | null;
 }
 
 interface ActivityPage {
@@ -570,7 +587,13 @@ export default function Activity() {
                             </button>
                             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                               <span className="t-help text-muted [overflow-wrap:anywhere]">
-                                {[item.targetLabel, categoryLabel.get(item.category) ?? item.category].filter(Boolean).join(" · ")}
+                                {[
+                                  item.targetLabel,
+                                  categoryLabel.get(item.category) ?? item.category,
+                                  item.batchCount > 1 ? `${item.batchCount} changes in one save` : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
                                 {/* Who, on narrow screens, where its column is hidden. */}
                                 <span className="md:hidden"> · {whoOf(item)}</span>
                               </span>
@@ -597,7 +620,7 @@ export default function Activity() {
             {selectedId ? (
               <>
                 <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
-                  <h2 className="t-section min-w-0 text-text [overflow-wrap:anywhere]">{detail?.id === selectedId ? detail.summary : "Entry"}</h2>
+                  <h2 className="t-section min-w-0 text-text [overflow-wrap:anywhere]">{detail?.id === selectedId ? (detail.groupSummary ?? detail.summary) : "Entry"}</h2>
                   <button
                     type="button"
                     onClick={() => select(null)}
@@ -617,7 +640,7 @@ export default function Activity() {
       </div>
 
       {!wide && (
-        <Modal open={selectedId !== null} onClose={() => select(null)} title={detail?.id === selectedId ? detail.summary : "Entry"} size="lg">
+        <Modal open={selectedId !== null} onClose={() => select(null)} title={detail?.id === selectedId ? (detail.groupSummary ?? detail.summary) : "Entry"} size="lg">
           {detailBody}
         </Modal>
       )}
@@ -670,7 +693,10 @@ function ActivitySkeleton() {
 
 type Change = { field?: string; label: string; before?: unknown; after?: unknown };
 
-const KNOWN_DETAIL_KEYS = new Set(["changes", "description", "added", "removed", "before", "after", "variations", "edits"]);
+// `origin` and `engine` are how a translation was made, shown as nothing; `locale` is shown as a language.
+const KNOWN_DETAIL_KEYS = new Set(["changes", "description", "added", "removed", "before", "after", "variations", "edits", "origin", "engine", "locale"]);
+
+const LANGUAGE_NAMES: Record<string, string> = { ar: "Arabic", zh: "Chinese", fr: "French", de: "German", "pt-br": "Portuguese", es: "Spanish" };
 
 function ActivityDetailView({
   entry,
@@ -684,29 +710,19 @@ function ActivityDetailView({
   onNarrow: (changes: Partial<Record<FilterKey, string | null>>) => void;
 }) {
   const [raw, setRaw] = useState(false);
-  const details = (entry.details && typeof entry.details === "object" ? entry.details : {}) as Record<string, unknown>;
   const href = targetHref(entry.targetType, entry.targetId);
   const device = describeDevice(entry.userAgent);
   const place = placeOf(entry.city, entry.country);
   const noun = entry.targetType ? TARGET_NOUN[entry.targetType] ?? "item" : null;
-  const changes = Array.isArray(details.changes) ? (details.changes as Change[]) : [];
-  const description = details.description as { before?: string | null; after?: string | null } | undefined;
-  const added = Array.isArray(details.added) ? (details.added as unknown[]) : null;
-  const removed = Array.isArray(details.removed) ? (details.removed as unknown[]) : null;
-  const variations = Array.isArray(details.variations) ? (details.variations as { variation: string; changes: Change[]; failed?: boolean }[]) : [];
-  const edits = Array.isArray(details.edits)
-    ? (details.edits as { kind: string; english: string; before: string | null; after: string; status?: string; reason?: string }[])
-    : [];
-  const otherFacts = Object.entries(details).filter(([k, v]) => !KNOWN_DETAIL_KEYS.has(k) && v !== null && v !== undefined && typeof v !== "object");
-  const beforeAfterLists =
-    !added && Array.isArray(details.before) && Array.isArray(details.after) ? { before: details.before as unknown[], after: details.after as unknown[] } : null;
+  const outcome = entry.groupOutcome ?? entry.outcome;
+  const save = entry.members.length > 1 ? entry.members : null;
 
   return (
     <div className="space-y-6">
-      {entry.outcome !== "ok" && (
-        <Alert tone={entry.outcome === "partial" ? "warning" : "danger"}>
-          {entry.outcome === "refused" ? "This was refused." : entry.outcome === "partial" ? "This was only partly done." : "This failed."}
-          {entry.status ? ` The server answered ${entry.status}.` : ""}
+      {outcome !== "ok" && (
+        <Alert tone={outcome === "partial" ? "warning" : "danger"}>
+          {outcome === "refused" ? "This was refused." : outcome === "partial" ? "This was only partly done." : "This failed."}
+          {!save && entry.status ? ` The server answered ${entry.status}.` : ""}
         </Alert>
       )}
 
@@ -768,9 +784,103 @@ function ActivityDetailView({
             <span className="t-code">{entry.sessionId.slice(0, 8)}</span>
           </Detail>
         )}
-        {entry.batchId && entry.batchCount > 1 && <Detail label="Part of a save">{`${entry.batchCount} changes in one save`}</Detail>}
       </DefinitionGrid>
 
+      {save ? (
+        <section>
+          <h3 className="t-label mb-2">{`In this save (${save.length} changes)`}</h3>
+          <ul className="divide-y divide-border border border-border">
+            {save.map((m) => (
+              <li key={m.id}>
+                <details open={m.id === entry.id} className="group/member">
+                  {/* A flex summary loses the browser's own marker, hence the chevron. */}
+                  <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2.5 transition-colors duration-[120ms] hover:bg-surface-2 [&::-webkit-details-marker]:hidden">
+                    <ChevronRight
+                      size={14}
+                      aria-hidden="true"
+                      className="mt-0.5 shrink-0 text-muted transition-transform duration-[120ms] group-open/member:rotate-90"
+                    />
+                    <span className="min-w-0 flex-1 text-help text-text [overflow-wrap:anywhere]">{m.summary}</span>
+                    {memberBadge(m)}
+                    <time dateTime={m.at} className="t-help shrink-0 tabular-nums text-muted">
+                      {new Date(m.at).toLocaleTimeString("en-GB", { timeZone: "Europe/London" })}
+                    </time>
+                  </summary>
+                  <div className="border-t border-border px-3 py-3">
+                    <ChangesView details={m.details} />
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <ChangesView details={entry.details} />
+      )}
+
+      <section>
+        <h3 className="t-label mb-2">Show everything…</h3>
+        <div className="flex flex-wrap gap-2">
+          {entry.actorId && (
+            <Button variant="secondary" size="xs" onClick={() => onNarrow({ actor: entry.actorId })}>
+              By this person
+            </Button>
+          )}
+          {entry.targetType && entry.targetId && (
+            <Button variant="secondary" size="xs" onClick={() => onNarrow({ targetType: entry.targetType, targetId: entry.targetId })}>
+              On this {noun ?? "item"}
+            </Button>
+          )}
+          {entry.ip && (
+            <Button variant="secondary" size="xs" onClick={() => onNarrow({ ip: entry.ip })}>
+              From this IP
+            </Button>
+          )}
+        </div>
+      </section>
+
+      {(save || (entry.details !== null && entry.details !== undefined)) && (
+        <section>
+          <button type="button" onClick={() => setRaw((r) => !r)} aria-expanded={raw} className="t-help text-muted underline underline-offset-2">
+            {raw ? "Hide raw details" : "Show raw details"}
+          </button>
+          {raw && (
+            // Focusable, so the box can be scrolled from the keyboard too.
+            <pre
+              tabIndex={0}
+              aria-label="Raw details"
+              className="mt-2 max-h-80 overflow-auto border border-border bg-surface-2 p-3 font-mono text-help text-text"
+            >
+              {JSON.stringify(save ? save.map((m) => ({ summary: m.summary, details: m.details })) : entry.details, null, 2)}
+            </pre>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** What one row changed: its before → after, description diff, added/removed lines and other facts. */
+function ChangesView({ details: raw }: { details: unknown }) {
+  const details = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const changes = Array.isArray(details.changes) ? (details.changes as Change[]) : [];
+  const description = details.description as { before?: string | null; after?: string | null } | undefined;
+  const added = Array.isArray(details.added) ? (details.added as unknown[]) : null;
+  const removed = Array.isArray(details.removed) ? (details.removed as unknown[]) : null;
+  const variations = Array.isArray(details.variations) ? (details.variations as { variation: string; changes: Change[]; failed?: boolean }[]) : [];
+  const edits = Array.isArray(details.edits)
+    ? (details.edits as { kind: string; english: string; before: string | null; after: string; status?: string; reason?: string }[])
+    : [];
+  const otherFacts = Object.entries(details).filter(([k, v]) => !KNOWN_DETAIL_KEYS.has(k) && v !== null && v !== undefined && typeof v !== "object");
+  const counts = details.counts && typeof details.counts === "object" ? Object.entries(details.counts as Record<string, unknown>) : [];
+  const beforeAfterLists =
+    !added && Array.isArray(details.before) && Array.isArray(details.after) ? { before: details.before as unknown[], after: details.after as unknown[] } : null;
+  const nothing =
+    !changes.length && !description && !added?.length && !removed?.length && !beforeAfterLists && !variations.length && !edits.length && !otherFacts.length && !counts.length && typeof details.locale !== "string";
+  if (nothing) return <p className="t-help text-muted">No further detail.</p>;
+
+  return (
+    <div className="space-y-6">
       {changes.length > 0 && <ChangesTable changes={changes} />}
 
       {description && (description.before ?? null) !== (description.after ?? null) && (
@@ -837,51 +947,39 @@ function ActivityDetailView({
         </DefinitionGrid>
       )}
 
-      <section>
-        <h3 className="t-label mb-2">Show everything…</h3>
-        <div className="flex flex-wrap gap-2">
-          {entry.actorId && (
-            <Button variant="secondary" size="xs" onClick={() => onNarrow({ actor: entry.actorId })}>
-              By this person
-            </Button>
-          )}
-          {entry.targetType && entry.targetId && (
-            <Button variant="secondary" size="xs" onClick={() => onNarrow({ targetType: entry.targetType, targetId: entry.targetId })}>
-              On this {noun ?? "item"}
-            </Button>
-          )}
-          {entry.ip && (
-            <Button variant="secondary" size="xs" onClick={() => onNarrow({ ip: entry.ip })}>
-              From this IP
-            </Button>
-          )}
-          {entry.batchId && entry.batchCount > 1 && (
-            <Button variant="secondary" size="xs" onClick={() => onNarrow({ batch: entry.batchId })}>
-              In this save ({entry.batchCount})
-            </Button>
-          )}
-        </div>
-      </section>
-
-      {entry.details !== null && entry.details !== undefined && (
-        <section>
-          <button type="button" onClick={() => setRaw((r) => !r)} aria-expanded={raw} className="t-help text-muted underline underline-offset-2">
-            {raw ? "Hide raw details" : "Show raw details"}
-          </button>
-          {raw && (
-            // Focusable, so the box can be scrolled from the keyboard too.
-            <pre
-              tabIndex={0}
-              aria-label="Raw details"
-              className="mt-2 max-h-80 overflow-auto border border-border bg-surface-2 p-3 font-mono text-help text-text"
-            >
-              {JSON.stringify(entry.details, null, 2)}
-            </pre>
-          )}
-        </section>
+      {(counts.length > 0 || typeof details.locale === "string") && (
+        <DefinitionGrid>
+          {typeof details.locale === "string" && <Detail label="Language">{LANGUAGE_NAMES[details.locale] ?? details.locale}</Detail>}
+          {counts.map(([k, v]) => (
+            <Detail key={k} label={COUNT_LABEL[k] ?? humanise(k)}>
+              {String(v)}
+            </Detail>
+          ))}
+        </DefinitionGrid>
       )}
     </div>
   );
+}
+
+/** A machine translation's counts, in words. */
+const COUNT_LABEL: Record<string, string> = {
+  saved: "Translated",
+  rejected: "Kept in English",
+  unchanged: "Already up to date",
+  "kept-staff": "Kept a staff edit",
+  "pass-through": "Needs no translation",
+};
+
+/**
+ * A save's row, flagged. ⚠️ A machine translation the safety check refused is
+ * not a failure (the English shows instead), whatever an older row stored.
+ */
+function memberBadge(m: SaveMember): ReactNode {
+  const d = (m.details ?? {}) as { origin?: unknown; counts?: { rejected?: unknown } };
+  if (m.action === "translation.save" && d.origin === "MT") {
+    return typeof d.counts?.rejected === "number" && d.counts.rejected > 0 ? <Badge tone="neutral">Kept in English</Badge> : null;
+  }
+  return outcomeBadge(m.outcome);
 }
 
 function humanise(key: string): string {

@@ -15,6 +15,7 @@ import {
   type ActivityCategory,
 } from "../services/activityCatalog.js";
 import { toCsv } from "../services/csv.js";
+import { summariseGroup } from "../services/activityGroups.js";
 
 /**
  * The platform activity log (CLAUDE.md "Activity log"). Reading it is for the
@@ -107,6 +108,34 @@ function whereFor(f: Filters): Prisma.ActivityEventWhereInput {
   return and.length ? { AND: and } : {};
 }
 
+/**
+ * The same filters as SQL, for the grouped list (Prisma cannot group on an
+ * expression). ⚠️ Keep the two in step: whereFor() still serves the members'
+ * fetch and the export.
+ */
+function whereSql(f: Filters): Prisma.Sql {
+  const c: Prisma.Sql[] = [];
+  if (f.category) c.push(Prisma.sql`"category" = ${f.category}`);
+  if (f.action) c.push(Prisma.sql`"action" = ${f.action}`);
+  if (f.actor) c.push(Prisma.sql`"actorId" = ${f.actor}`);
+  if (f.targetType) c.push(Prisma.sql`"targetType" = ${f.targetType}`);
+  if (f.targetId) c.push(Prisma.sql`"targetId" = ${f.targetId}`);
+  if (f.ip) c.push(Prisma.sql`"ip" = ${f.ip}`);
+  if (f.batch) c.push(Prisma.sql`"batchId" = ${f.batch}`);
+  if (f.outcome === "ok") c.push(Prisma.sql`"outcome" = 'ok'`);
+  if (f.outcome === "problem") c.push(Prisma.sql`"outcome" IN ('failed', 'refused', 'partial')`);
+  if (f.from) c.push(Prisma.sql`"at" >= ${new Date(f.from)}`);
+  if (f.to) c.push(Prisma.sql`"at" < ${new Date(f.to)}`);
+  if (f.q) {
+    // ILIKE with the wildcards in the search escaped, so "%" finds a percent sign.
+    const like = `%${f.q.replace(/[\\%_]/g, "\\$&")}%`;
+    c.push(
+      Prisma.sql`("summary" ILIKE ${like} OR "targetLabel" ILIKE ${like} OR "actorEmail" ILIKE ${like} OR "ip" ILIKE ${like} OR "action" ILIKE ${like})`,
+    );
+  }
+  return c.length ? Prisma.sql`WHERE ${Prisma.join(c, " AND ")}` : Prisma.empty;
+}
+
 function parseFilters(req: Request): Filters | null {
   const raw: Record<string, string> = {};
   for (const [k, v] of Object.entries(req.query)) if (typeof v === "string" && v !== "") raw[k] = v;
@@ -135,6 +164,16 @@ const LIST_SELECT = {
   status: true,
 } satisfies Prisma.ActivityEventSelect;
 
+/**
+ * GET /api/activity — ONE row per save, newest first (Josh, 2026-11-18). Rows
+ * sharing a batch id (a product save's details, logo switches and machine
+ * translations) fold into one line (services/activityGroups.ts); a row with
+ * no batch is its own group. Filters apply to the rows first, so a filter for
+ * translations shows only translation rows, still grouped by their save.
+ *
+ * Each item is the group's representative row, with the group's own
+ * `summary` and `outcome` and `batchCount` (its rows).
+ */
 activityRouter.get("/activity", requireSuperAdmin, async (req, res, next) => {
   try {
     const filters = parseFilters(req);
@@ -147,17 +186,41 @@ activityRouter.get("/activity", requireSuperAdmin, async (req, res, next) => {
     // Forget what is past the retention period. Cheap (an indexed range), and
     // it means the period holds even if nothing else ever triggers the sweep.
     await sweepOldActivity().catch((err: Error) => console.error("[activity] sweep failed:", err.message));
-    const where = whereFor(filters);
-    const [total, items] = await Promise.all([
-      prisma.activityEvent.count({ where }),
-      prisma.activityEvent.findMany({
-        where,
-        select: LIST_SELECT,
-        orderBy: [{ at: "desc" }, { id: "desc" }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
+
+    const where = whereSql(filters);
+    const [totals, groups] = await Promise.all([
+      prisma.$queryRaw<{ n: bigint }[]>`
+        SELECT count(DISTINCT COALESCE("batchId", "id")) AS n FROM "ActivityEvent" ${where}`,
+      prisma.$queryRaw<{ gkey: string; started: Date }[]>`
+        SELECT COALESCE("batchId", "id") AS gkey, min("at") AS started
+        FROM "ActivityEvent" ${where}
+        GROUP BY 1
+        ORDER BY started DESC, gkey DESC
+        LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`,
     ]);
+    const total = Number(totals[0]?.n ?? 0);
+    const keys = groups.map((g) => g.gkey);
+    const members = keys.length
+      ? await prisma.activityEvent.findMany({
+          where: { AND: [whereFor(filters), { OR: [{ batchId: { in: keys } }, { id: { in: keys } }] }] },
+          select: { ...LIST_SELECT, details: true },
+          orderBy: { at: "asc" },
+        })
+      : [];
+    const byKey = new Map<string, typeof members>();
+    for (const m of members) {
+      const k = m.batchId ?? m.id;
+      byKey.set(k, [...(byKey.get(k) ?? []), m]);
+    }
+    const labels = new Map(allActions().map((a) => [a.action, a.label]));
+    const items = keys.flatMap((k) => {
+      const rows = byKey.get(k);
+      if (!rows?.length) return [];
+      const { representative, summary, outcome } = summariseGroup(rows, (a) => labels.get(a) ?? a);
+      const { details: _details, ...rep } = representative as (typeof rows)[number];
+      void _details;
+      return [{ ...rep, summary, outcome, batchCount: rows.length }];
+    });
     res.json({ items, total, page, pageSize, pageCount: Math.max(1, Math.ceil(total / pageSize)) });
   } catch (err) {
     next(err);
@@ -285,11 +348,27 @@ activityRouter.get("/activity/:id", requireSuperAdmin, async (req, res, next) =>
       res.status(404).json({ error: "not_found" });
       return;
     }
-    const [batchCount, names] = await Promise.all([
-      row.batchId ? prisma.activityEvent.count({ where: { batchId: row.batchId } }) : Promise.resolve(0),
+    const [members, names] = await Promise.all([
+      row.batchId
+        ? prisma.activityEvent.findMany({
+            where: { batchId: row.batchId },
+            orderBy: { at: "asc" },
+            select: { id: true, at: true, category: true, action: true, outcome: true, summary: true, targetType: true, targetId: true, targetLabel: true, details: true, status: true },
+          })
+        : Promise.resolve([]),
       staffNames(),
     ]);
-    res.json({ ...row, actorName: (row.actorId && names.get(row.actorId)) || null, batchCount });
+    // Every row of its save, so the page can show what one save did.
+    const labels = new Map(allActions().map((a) => [a.action, a.label]));
+    const group = members.length > 1 ? summariseGroup(members, (a) => labels.get(a) ?? a) : null;
+    res.json({
+      ...row,
+      actorName: (row.actorId && names.get(row.actorId)) || null,
+      batchCount: members.length,
+      members: members.length > 1 ? members : [],
+      groupSummary: group?.summary ?? null,
+      groupOutcome: group?.outcome ?? null,
+    });
   } catch (err) {
     next(err);
   }

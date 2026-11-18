@@ -190,14 +190,21 @@ translationsRouter.put("/translations/batch", async (req, res, next) => {
     for (const r of results) counts[r.status] = (counts[r.status] ?? 0) + 1;
     const saved = counts.saved ?? 0;
     const language = LOCALE_NAMES[locale] ?? locale;
+    const kept = counts.rejected ?? 0;
     req.activity?.set({
       summary:
         origin === "STAFF"
           ? items.length === 1
             ? `Edited a ${language} translation`
             : `Edited ${items.length} ${language} translations (${saved} saved)`
-          : `Saved ${saved} machine translation${saved === 1 ? "" : "s"} into ${language}`,
-      outcome: counts.rejected && !saved ? "failed" : undefined,
+          : saved
+            ? `Saved ${saved} machine translation${saved === 1 ? "" : "s"} into ${language}${kept ? ` (${kept} kept in English)` : ""}`
+            : kept
+              ? `Kept ${kept} ${language} string${kept === 1 ? "" : "s"} in English: the machine translation didn't pass the safety check`
+              : `No new ${language} translations`,
+      // ⚠️ A machine translation the safety check refuses is NOT a failure:
+      // the English is shown instead, by design. Only a refused STAFF edit is.
+      outcome: origin === "STAFF" && kept && !saved ? "failed" : undefined,
       details: {
         locale,
         origin,
