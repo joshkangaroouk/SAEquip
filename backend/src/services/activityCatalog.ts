@@ -129,6 +129,13 @@ export const ROUTE_CATALOGUE: Record<string, CatalogueEntry> = {
   "POST /api/translations/duda/refresh": { action: "translation.duda_refresh", category: "translations", label: "Refreshed names from Duda" },
 
   // --- Enquiries -------------------------------------------------------------
+  // Reads of customer data (Josh, 2026-11-19: "yes" to logging list loads,
+  // USERS-AUDIT M10). The lists at most once per person per 10 minutes
+  // (noteCustomerDataView); a single request by its address every time, as the
+  // dashboard never asks for one that way.
+  "GET /api/quotes": { action: "enquiry.quote.list", category: "enquiries", label: "Viewed the quote requests" },
+  "GET /api/quotes/:id": { action: "enquiry.quote.view", category: "enquiries", label: "Viewed a quote request", target: { type: "quote", param: "id" } },
+  "GET /api/resource-requests": { action: "enquiry.file_request.list", category: "enquiries", label: "Viewed the resource requests" },
   "PATCH /api/quotes/:id": { action: "enquiry.quote.state", category: "enquiries", label: "Changed a quote request", target: { type: "quote", param: "id" } },
   "POST /api/quotes/mark-read": { action: "enquiry.quote.mark_read", category: "enquiries", label: "Marked quote requests as read" },
   "POST /api/quotes/:id/notes": { action: "enquiry.quote.note_add", category: "enquiries", label: "Added a note", target: { type: "quote", param: "id" } },

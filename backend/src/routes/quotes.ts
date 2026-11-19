@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { noteCustomerDataView } from "../services/activity.js";
 import { isEmailConfigured } from "../services/email.js";
 import { quoteProductMatcher, type MatchedProduct } from "../services/quoteProducts.js";
 import {
@@ -70,12 +71,14 @@ function shapeQuote(q: QuoteWithItems, match: Matcher) {
 }
 
 /** GET /api/quotes */
-quotesRouter.get("/quotes", async (_req, res, next) => {
+quotesRouter.get("/quotes", async (req, res, next) => {
   try {
     const requests = await prisma.quoteRequest.findMany({
       orderBy: { createdAt: "desc" },
       include: quoteInclude,
     });
+    // Customer data: logged (services/activity.ts noteCustomerDataView).
+    await noteCustomerDataView(req, "enquiry.quote.list", `Viewed the quote requests (${requests.length})`, { rows: requests.length });
     const match = await quoteProductMatcher();
     res.json({ emailEnabled: isEmailConfigured(), requests: requests.map((r) => shapeQuote(r, match)) });
   } catch (err) {
@@ -94,6 +97,9 @@ quotesRouter.get("/quotes/:id", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    // One customer's details, by address: logged every time (the dashboard
+    // itself never asks this way).
+    req.activity?.set({ summary: "Viewed a quote request" });
     res.json(shapeQuote(quote, await quoteProductMatcher()));
   } catch (err) {
     next(err);

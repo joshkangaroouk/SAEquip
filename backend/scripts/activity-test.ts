@@ -21,6 +21,7 @@ import {
   listChanges,
   movedItem,
   flushActivity,
+  noteCustomerDataView,
   noteSession,
   ordinal,
   planEvents,
@@ -352,6 +353,28 @@ srv.close();
   await flushActivity(batched("u9"), 200);
   check(rows[2]?.batchId === batchId, "a fresh save of your own is");
   delete store.batchStart;
+
+  // M10 (Josh: "yes"): loading a customer list is logged, once per person per 10 minutes.
+  const view = () => req({ method: "GET", originalUrl: "/api/quotes", url: "/api/quotes" });
+  const quiet = view();
+  check(planEvents(quiet, 200).rows.length === 0, "a GET the route did not mark writes nothing");
+  store.loggedSince = async () => false;
+  const first = view();
+  await noteCustomerDataView(first, "enquiry.quote.list", "Viewed the quote requests (12)", { rows: 12 });
+  const firstPlan = planEvents(first, 200).rows[0];
+  check(firstPlan?.action === "enquiry.quote.list" && firstPlan.summary === "Viewed the quote requests (12)", "loading the quote list is logged, with the count");
+  check(JSON.stringify(firstPlan?.details) === JSON.stringify({ rows: 12 }) && !firstPlan?.target, "and nothing about any customer in it: a count, no target");
+  store.loggedSince = async () => true;
+  const again = view();
+  await noteCustomerDataView(again, "enquiry.quote.list", "Viewed the quote requests (12)", { rows: 12 });
+  check(planEvents(again, 200).rows.length === 0, "a second load within 10 minutes is not");
+  store.loggedSince = async () => {
+    throw new Error("db down");
+  };
+  const failing = view();
+  await noteCustomerDataView(failing, "enquiry.quote.list", "Viewed the quote requests (12)", { rows: 12 });
+  check(planEvents(failing, 200).rows.length === 1, "if the check fails, the view is logged anyway");
+  delete store.loggedSince;
 }
 
 // ---- 5. What the browser may report ---------------------------------------------------

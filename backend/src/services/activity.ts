@@ -223,6 +223,8 @@ export type ActivityStore = {
   problemBudget?: (actorId: string) => Promise<boolean>;
   /** The first row of a save, to check a browser-sent batch id (USERS-AUDIT M9). */
   batchStart?: (batchId: string) => Promise<{ actorId: string | null; at: Date } | null>;
+  /** Whether `actorId` has a row for `action` since `since` (noteCustomerDataView). */
+  loggedSince?: (actorId: string, action: string, since: Date) => Promise<boolean>;
 };
 
 /**
@@ -299,6 +301,9 @@ const prismaStore: ActivityStore = {
   async problemBudget(actorId) {
     const { totalHits } = await problemLimiter.increment(actorId);
     return totalHits <= PROBLEM_ROWS_PER_MINUTE;
+  },
+  async loggedSince(actorId, action, since) {
+    return !!(await prisma.activityEvent.findFirst({ where: { actorId, action, at: { gt: since } }, select: { id: true } }));
   },
   async batchStart(batchId) {
     return prisma.activityEvent.findFirst({ where: { batchId }, orderBy: { at: "asc" }, select: { actorId: true, at: true } });
@@ -504,6 +509,32 @@ export async function nameTargetNow(req: Request): Promise<void> {
   } catch {
     // The id is still recorded.
   }
+}
+
+/** How often the same person's view of the same customer list is logged again. */
+export const VIEW_EVERY_MS = 10 * 60 * 1000;
+
+/**
+ * Log that someone loaded a list of customer data (the quote and resource
+ * requests: names, emails, phones, companies). The log's rule is "actions, not
+ * views", and this is its one exception (Josh, 2026-11-19, USERS-AUDIT M10):
+ * "who took the customer list?" is the first question a data-protection
+ * incident asks, and before this the honest answer was "the log can't say".
+ *
+ * At most once per person per list every VIEW_EVERY_MS, so a working morning
+ * on the Quotes page is a row, not dozens. The check reads the table, so it
+ * holds across server instances; if it fails, the view is logged anyway.
+ */
+export async function noteCustomerDataView(req: Request, action: string, summary: string, details: Record<string, unknown>): Promise<void> {
+  const rec = req.activity;
+  const actorId = req.user?.id;
+  if (!rec || !actorId) return;
+  try {
+    if (await store.loggedSince?.(actorId, action, new Date(Date.now() - VIEW_EVERY_MS))) return;
+  } catch {
+    // Log it: a duplicate row beats a missing one.
+  }
+  rec.set({ summary, details });
 }
 
 let writes = 0;

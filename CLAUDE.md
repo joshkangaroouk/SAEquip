@@ -1318,6 +1318,7 @@ Withheld on purpose: **`E_COMMERCE`** (product editing stays in the Hub — a se
 - **staff actions only**, so website visitors' quote and file requests are not logged;
 - **dashboard only**, so command-line scripts are not logged;
 - **actions, not views.** Sign-ins, CSV exports and opening the Website Editor are logged; opening a quote is too, because it marks it read.
+  - ⚠️ **One exception: customer data** (Josh, 2026-11-19, USERS-AUDIT M10). Loading the Quote Requests or Resource Requests list is logged ("Viewed the quote requests (12)", a count and nothing about any customer), at most once per person per list every 10 minutes (`noteCustomerDataView()`, which checks the table, so it holds across instances). `GET /api/quotes/:id` is logged every time: the dashboard never asks that way, so it is a script reading one customer.
 
 The runbook is `docs/redesign/17-activity-log-runbook.md`.
 

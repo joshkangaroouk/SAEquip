@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
+import { noteCustomerDataView } from "../services/activity.js";
 import {
   addNoteRoute,
   deleteNoteRoute,
@@ -24,12 +25,14 @@ export const resourceRequestsRouter = Router();
  * ⚠️ Returns every row, like /api/quotes. Fine at today's volume; page it if
  * the list grows into the thousands.
  */
-resourceRequestsRouter.get("/resource-requests", async (_req, res, next) => {
+resourceRequestsRouter.get("/resource-requests", async (req, res, next) => {
   try {
     const leads = await prisma.lead.findMany({
       orderBy: { createdAt: "desc" },
       include: { teamNotes: { select: noteSelect, orderBy: { createdAt: "asc" } } },
     });
+    // Customer data: logged (services/activity.ts noteCustomerDataView).
+    await noteCustomerDataView(req, "enquiry.file_request.list", `Viewed the resource requests (${leads.length})`, { rows: leads.length });
     const ids = [...new Set(leads.map((l) => l.dudaProductId).filter((v): v is string => !!v))];
     const products = ids.length
       ? await prisma.hubProduct.findMany({ where: { dudaProductId: { in: ids } }, select: { dudaProductId: true, thumbnailUrl: true } })
