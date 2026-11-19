@@ -57,8 +57,17 @@ export function inviteStatus(i: Pick<InviteRow, "usedAt" | "revokedAt" | "expire
   return "pending";
 }
 
-/** What the Users page gets: everything but the token, which is never stored. */
-export const shapeInvite = (i: InviteRow, now: Date = new Date()) => ({ ...i, status: inviteStatus(i, now) });
+/**
+ * What the Users page gets: the row and its status, never the token (which is
+ * not stored) and never its hash. The database row carries `tokenHash`, and
+ * spreading it whole used to send that to the browser too (USERS-AUDIT L8):
+ * harmless, as a SHA-256 of 256 random bits cannot be redeemed, but not
+ * something the page needs.
+ */
+export const shapeInvite = (i: InviteRow, now: Date = new Date()) => {
+  const { tokenHash: _hash, ...row } = i as InviteRow & { tokenHash?: unknown };
+  return { ...row, status: inviteStatus(row, now) };
+};
 
 /** A name as typed, minus control characters and runs of spaces. */
 const name = z
@@ -190,8 +199,11 @@ export function revokeInviteRoute(deps: InviteDeps): RequestHandler {
       const by = req.user?.email ?? "unknown";
       if ((await deps.invites.revoke(id, by, now)) === 0) {
         const invite = await deps.invites.findById(id);
-        if (!invite) res.status(404).json({ error: "not_found" });
-        else res.status(409).json({ error: "not_pending", status: inviteStatus(invite, now) });
+        if (!invite) res.status(404).json({ error: "not_found", detail: "That invite no longer exists. Refresh the page." });
+        else {
+          const status = inviteStatus(invite, now);
+          res.status(409).json({ error: "not_pending", status, detail: `That invite can't be revoked: it has already ${status === "expired" ? "expired" : `been ${status}`}.` });
+        }
         return;
       }
       console.info(`[invites] ${by} revoked ${id}`);
@@ -222,7 +234,7 @@ export function removeInviteRoute(deps: InviteDeps): RequestHandler {
       await nameTargetNow(req); // the row may be gone by the time the entry is written
       if ((await deps.invites.remove(id, now)) === 0) {
         const invite = await deps.invites.findById(id);
-        if (!invite) res.status(404).json({ error: "not_found" });
+        if (!invite) res.status(404).json({ error: "not_found", detail: "That invite no longer exists. Refresh the page." });
         else
           res.status(409).json({
             error: "not_removable",

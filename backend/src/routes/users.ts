@@ -227,7 +227,7 @@ usersRouter.post("/users/password-reset", resetLimiter, async (req, res, next) =
   }
   const domain = email.split("@")[1] ?? "";
   if (!env.allowedEmailDomains.includes(domain)) {
-    res.status(403).json({ error: "forbidden_domain" });
+    res.status(403).json({ error: "forbidden_domain", detail: "Only staff addresses can be sent a reset email." });
     return;
   }
 

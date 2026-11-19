@@ -19,6 +19,30 @@ const LINK_PROBLEM: Record<Exclude<LinkState, "checking" | "ready">, string> = {
   error: "Something went wrong checking your link. Try again in a moment.",
 };
 
+/**
+ * The token for THIS tab, so a reload or a failed check can try again
+ * (USERS-AUDIT L11). It used to live only in memory once it was taken off the
+ * address bar, so a reload during the form said "This invite link isn't
+ * valid". `sessionStorage` is per tab, never sent anywhere, and gone when the
+ * tab closes; it is cleared as soon as the link is used or found dead.
+ */
+const TOKEN_KEY = "hub-invite-token";
+function storedToken(): string {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+function storeToken(token: string | null) {
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage blocked: a reload will need the link again */
+  }
+}
+
 async function post(path: string, body: unknown) {
   const res = await fetch(`${API_BASE}/api/accept-invite${path}`, {
     method: "POST",
@@ -44,8 +68,14 @@ async function post(path: string, body: unknown) {
 export default function AcceptInvite() {
   useForceLightTheme();
   const navigate = useNavigate();
-  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("t") ?? "");
+  const [token] = useState(() => {
+    const fromLink = new URLSearchParams(window.location.hash.slice(1)).get("t") ?? "";
+    if (fromLink) storeToken(fromLink);
+    return fromLink || storedToken();
+  });
   const [state, setState] = useState<LinkState>("checking");
+  /** Bumped by "Try again" to re-run the check after a temporary failure. */
+  const [attempt, setAttempt] = useState(0);
   const [invite, setInvite] = useState<{ email: string; expiresAt: string } | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -63,6 +93,7 @@ export default function AcceptInvite() {
       return;
     }
     let cancelled = false;
+    setState("checking");
     post("/check", { token })
       .then(({ status, json }) => {
         if (cancelled) return;
@@ -70,14 +101,18 @@ export default function AcceptInvite() {
           setInvite({ email: String(json.email), expiresAt: String(json.expiresAt) });
           setState("ready");
         } else if (status === 410 && (json.error === "expired" || json.error === "used" || json.error === "revoked")) {
+          storeToken(null);
           setState(json.error);
-        } else setState(status === 404 ? "invalid" : "error");
+        } else if (status === 404) {
+          storeToken(null);
+          setState("invalid");
+        } else setState("error"); // 429, 5xx: worth another go, so the token is kept
       })
       .catch(() => !cancelled && setState("error"));
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, attempt]);
 
   const verdict = assessPassword(password);
   const mismatch = confirm.length > 0 && confirm !== password;
@@ -98,10 +133,12 @@ export default function AcceptInvite() {
           setSubmitting(false);
           return;
         }
+        storeToken(null);
         navigate(TWO_FACTOR_ON ? "/setup-2fa" : "/", { replace: true });
         return;
       }
       if (status === 410 && (json.error === "expired" || json.error === "used" || json.error === "revoked")) {
+        storeToken(null);
         setState(json.error);
       } else if (json.error === "weak_password" && Array.isArray(json.problems)) {
         setProblems(json.problems.map(String));
@@ -110,6 +147,16 @@ export default function AcceptInvite() {
         setError("There's already an account for this email. Sign in instead, or reset your password.");
       } else if (status === 429) {
         setError("Too many attempts. Wait a minute and try again.");
+      } else if (json.error === "forbidden_domain") {
+        // Trying again cannot help (USERS-AUDIT L12).
+        setError("This invite is for an address that can't sign in to the Hub any more. Ask the person who sent it.");
+      } else if (json.error === "validation_error") {
+        setError("Your name or password wasn't accepted. Names can be up to 80 characters and passwords up to 256.");
+      } else if (json.error === "create_failed") {
+        setError(
+          `The account couldn't be created${typeof json.detail === "string" ? ` (${json.detail})` : ""}. ` +
+            "Your invite still works: try again, or ask the person who sent it.",
+        );
       } else {
         setError(typeof json.detail === "string" ? json.detail : "Something went wrong creating your account. Try again.");
       }
@@ -133,6 +180,11 @@ export default function AcceptInvite() {
         <Alert tone="danger" className="mt-5">
           {LINK_PROBLEM[state as keyof typeof LINK_PROBLEM]}
         </Alert>
+        {state === "error" && token && (
+          <Button className="mt-6 w-full" onClick={() => setAttempt((n) => n + 1)}>
+            Try again
+          </Button>
+        )}
         <p className="t-help mt-6">
           <Link to="/login" className="font-semibold text-text underline underline-offset-2">
             Go to sign in
@@ -161,7 +213,7 @@ export default function AcceptInvite() {
             </Field>
           </div>
           <Field label="Password" htmlFor="password">
-            <Input id="password" type="password" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input id="password" type="password" required autoComplete="new-password" maxLength={256} value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
           <Field label="Confirm password" htmlFor="confirm" error={mismatch ? "The two passwords don't match." : undefined}>
             <Input id="confirm" type="password" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />

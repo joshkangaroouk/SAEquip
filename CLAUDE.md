@@ -1444,7 +1444,7 @@ The rest of this section describes two-factor as it works when the switch is on.
       3. `auth.admin.createUser` with `email_confirm`, the names in `user_metadata`, and `app_metadata { mfa_required: true, invited_by }`.
       4. A refused create releases the claim, so the link works again.
       5. If Website Editor was ticked it is granted then. A Duda failure is stored in `UserInvite.editorGrantError` and shown as "Couldn't be set up" with a Retry; it never costs the account.
-  - **The `/invite` page** (`pages/AcceptInvite.tsx`) takes the token off the address bar at once. It shows the email read-only, asks for names and a password, then signs in and goes to `/setup-2fa`.
+  - **The `/invite` page** (`pages/AcceptInvite.tsx`) takes the token off the address bar at once. It keeps it in `sessionStorage` for that tab (cleared once the link is used or found dead), so a reload or a temporary failure can try again ("Try again" on a failed check; it used to read "This invite link isn't valid" after a reload). The Users page's invite dialog cannot be dismissed while the invite is being made or once its link shows: Escape mid-request used to create the invite unseen and revoke the one already sent. Invite responses never include `tokenHash` (`shapeInvite()`). It shows the email read-only, asks for names and a password, then signs in and goes to `/setup-2fa`.
 - **Disable / Enable** (`services/userAdmin.ts`, super admin): a Supabase ban (`ban_duration` `876000h` / `none`).
   - It refuses your own account and another super admin's.
   - `requireAuth` answers a banned account 403 `account_disabled` at once, and the dashboard signs it out with the reason.

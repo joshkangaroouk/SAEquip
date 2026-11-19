@@ -74,7 +74,7 @@ export function accessChangeRefusal(
 
 async function target(deps: UserAdminDeps, id: string, res: Parameters<RequestHandler>[1]): Promise<AdminUser | null> {
   const user = await deps.getUser(id);
-  if (!user) res.status(404).json({ error: "not_found" });
+  if (!user) res.status(404).json({ error: "not_found", detail: "That account no longer exists. Refresh the page." });
   return user;
 }
 

@@ -394,6 +394,14 @@ function InviteDialog({
     <Modal
       open={open}
       onClose={onClose}
+      /*
+       * ⚠️ Not dismissable while the invite is being made, or once its link is
+       * on screen (USERS-AUDIT L13). Escape mid-request still created the
+       * invite, revoking any link already sent to that person, and the new link
+       * was never seen; Escape or a stray click after it lost a link that cannot
+       * be shown again. Done is the way out.
+       */
+      dismissable={!busy && !made}
       size="md"
       title={made ? "Invite link ready" : "Invite user"}
       description={
