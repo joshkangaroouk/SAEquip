@@ -55,6 +55,8 @@ export default function Login() {
   const [code, setCode] = useState("");
   // Sent here by the API refusing a disabled account (lib/api.ts).
   const [disabled] = useState(() => new URLSearchParams(window.location.search).get("disabled") === "1");
+  // Sent here by the API refusing a session that has ended elsewhere (lib/api.ts).
+  const [ended] = useState(() => new URLSearchParams(window.location.search).get("ended") === "1");
 
   /*
    * ⚠️ Already signed in → home, EXCEPT while the code is outstanding.
@@ -105,7 +107,8 @@ export default function Login() {
     setCode("");
     setError(null);
     setPassword("");
-    await signOut();
+    const { error } = await signOut();
+    if (error) setError(error);
   }
 
   if (showCode) {
@@ -154,6 +157,11 @@ export default function Login() {
       {disabled && (
         <Alert tone="danger" className="mt-5">
           This account has been disabled. Ask the Hub's administrator if you think that's a mistake.
+        </Alert>
+      )}
+      {ended && !disabled && (
+        <Alert tone="info" className="mt-5">
+          Your session ended, for example because you signed out on another device. Sign in again.
         </Alert>
       )}
       <form onSubmit={onSubmit}>

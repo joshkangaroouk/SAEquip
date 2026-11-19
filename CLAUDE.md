@@ -1526,6 +1526,21 @@ Encourage a second enrolled device instead.
 
 **Dashboard prerequisite**: MFA/TOTP must be enabled under Authentication → Multi-Factor, or `mfa.enroll()` fails.
 
+### Signing out, and a session that ended elsewhere (2026-11-19, USERS-AUDIT M5/M6)
+
+- ⚠️ **Every sign-out is LOCAL (this device) except finishing a password reset**, which is
+  global on purpose. supabase-js defaults to global, so signing out of a laptop used to revoke
+  the phone too. Local still revokes this session on the server.
+- **A 401 for a token the dashboard sent ends the session here** (`apiFetch`). It refreshes once
+  first; a refusal signs out locally and opens `/login?ended=1`. A network failure
+  (`isAuthRetryableFetchError`) does not: Supabase being unreachable says nothing about the
+  session. Before this a revoked session (another device, a deleted account) left the dashboard
+  failing every request with "unauthorized" for up to an hour.
+- **A sign-out Supabase could not be reached for keeps the session**: `signOut()` returns the
+  error and the sidebar shows it, rather than bouncing off `/login` back to the dashboard.
+- **"Duda error" labels only errors that came from Duda** (`upstream_status`); a Hub refusal's
+  `detail` is shown as written, and bare codes get words (`errorWords()` in `lib/api.ts`).
+
 ### Verified live (2026-10-02, throwaway accounts, all deleted)
 
 - **Public signup is OFF**: `signUp` with the anon key for an allowed-domain address →

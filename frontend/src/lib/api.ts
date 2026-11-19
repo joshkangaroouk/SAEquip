@@ -1,3 +1,4 @@
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
 /**
@@ -71,7 +72,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
       .json()
       .catch(() => null)) as { error?: unknown } | null;
     if (body?.error === "mfa_required") {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       window.location.assign("/login");
     }
     // The account must set up two-factor first (invited users, the super
@@ -85,18 +86,40 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     if (body?.error === "mfa_setup_required" && window.location.pathname !== "/setup-2fa") {
       const { error } = await supabase.auth.refreshSession();
       if (error) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "local" });
         window.location.assign("/login");
       } else window.location.assign("/setup-2fa");
     }
     // Disabled by the super admin: the session is useless, so end it and say why.
     if (body?.error === "account_disabled") {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       window.location.assign("/login?disabled=1");
+    }
+  }
+
+  /*
+   * ⚠️ A 401 for a token we DID send means the session is gone on the server:
+   * signed out on another device (or everywhere after a password change),
+   * or the account deleted. It used to be ignored, so the dashboard stayed on
+   * screen failing every request with "unauthorized" until its refresh failed,
+   * up to an hour later (USERS-AUDIT M6). Refresh once to tell that apart from
+   * a token that simply expired in flight; a refusal the server meant ends the
+   * session here too. A network failure (Supabase unreachable) does NOT: it
+   * says nothing about the session, and signing everyone out on a blip would
+   * be worse than the stale screen.
+   */
+  if (res.status === 401 && session?.access_token && !PUBLIC_PATHS.has(window.location.pathname)) {
+    const { error } = await supabase.auth.refreshSession();
+    if (error && !isAuthRetryableFetchError(error)) {
+      await supabase.auth.signOut({ scope: "local" });
+      window.location.assign("/login?ended=1");
     }
   }
   return res;
 }
+
+/** Pages that work without a session; a 401 there must not navigate away. */
+const PUBLIC_PATHS = new Set(["/login", "/forgot-password", "/reset-password", "/invite"]);
 
 /**
  * A failed backend call, with the pieces callers actually branch on.
@@ -122,6 +145,21 @@ export class ApiError extends Error {
     this.upstreamStatus = opts.upstreamStatus;
     this.body = opts.body;
   }
+}
+
+/** Words for the error codes the API sends without a `detail`; anything else as sent. */
+const ERROR_WORDS: Record<string, string> = {
+  unauthorized: "Your session has ended. Sign in again.",
+  not_found: "That no longer exists. Refresh the page.",
+  forbidden_domain: "Only staff email addresses can be used for this.",
+  rate_limited: "Too many attempts. Wait a minute and try again.",
+  super_admin_required: "Only the super admin can do this.",
+  internal_error: "Something went wrong on the server. Try again.",
+  no_editor_access: "You don't have Website Editor access.",
+};
+function errorWords(code: unknown): string | undefined {
+  if (typeof code !== "string" || !code) return undefined;
+  return ERROR_WORDS[code] ?? code;
 }
 
 /**
@@ -158,11 +196,20 @@ export async function apiJson<T = unknown>(path: string, init: RequestInit = {})
   if (!res.ok) {
     const details = json.details as { fieldErrors?: Record<string, string[]> } | undefined;
     const fieldErrors = details?.fieldErrors;
+    const upstream = json.upstream_status as number | undefined;
+    /*
+     * ⚠️ "Duda error" only when the error came from Duda (`upstream_status`).
+     * Every `detail` used to be labelled that way, so the Hub refusing on
+     * purpose read as Duda failing: "Duda error : You can't disable your own
+     * account." (USERS-AUDIT M5). A bare code gets words where it has some.
+     */
     const message = details
       ? `Validation error: ${JSON.stringify(fieldErrors ?? details)}`
       : json.detail
-        ? `Duda error ${(json.upstream_status as number | undefined) ?? ""}: ${String(json.detail)}`
-        : (json.error as string | undefined) || `Request failed (${res.status})`;
+        ? upstream !== undefined
+          ? `Duda error ${upstream}: ${String(json.detail)}`
+          : String(json.detail)
+        : errorWords(json.error) || `Request failed (${res.status})`;
 
     throw new ApiError(message, {
       status: res.status,

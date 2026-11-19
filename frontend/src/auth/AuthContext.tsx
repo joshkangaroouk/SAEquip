@@ -36,10 +36,28 @@ type AuthContextValue = {
     password: string,
   ) => Promise<{ error: string | null; mfaRequired: boolean }>;
   verifyMfa: (code: string) => Promise<{ error: string | null }>;
-  signOut: () => Promise<void>;
+  /** `error` when Supabase could not be reached: the session is then still here. */
+  signOut: () => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+/**
+ * Supabase's sign-in refusals in the Hub's words. A disabled account used to
+ * see Supabase's raw "User is banned" (USERS-AUDIT L16).
+ */
+function signInErrorWords(error: { code?: string; message: string; status?: number }): string {
+  switch (error.code) {
+    case "user_banned":
+      return "This account has been disabled. Ask the Hub's administrator if you think that's a mistake.";
+    case "invalid_credentials":
+      return "That email and password don't match an account.";
+    case "over_request_rate_limit":
+      return "Too many sign-in attempts. Wait a few minutes and try again.";
+    default:
+      return error.status === 429 ? "Too many sign-in attempts. Wait a few minutes and try again." : error.message;
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -94,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message, mfaRequired: false };
+    if (error) return { error: signInErrorWords(error), mfaRequired: false };
 
     const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalError) return { error: aalError.message, mfaRequired: false };
@@ -112,10 +130,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return verifyTotpCode(code);
   }
 
-  async function signOut() {
+  /**
+   * ⚠️ LOCAL scope: this device only (USERS-AUDIT M6). supabase-js defaults to
+   * GLOBAL, so signing out of a laptop also revoked the phone, whose dashboard
+   * then failed every request. The local scope still revokes THIS session on
+   * the server. /reset-password signs out globally on purpose.
+   *
+   * ⚠️ supabase-js keeps the session when it cannot reach Supabase (network,
+   * 5xx, 429), so the error is returned for the caller to say so; going to
+   * /login regardless bounced straight back to the dashboard, silently.
+   */
+  async function signOut(): Promise<{ error: string | null }> {
     // Before the session goes: the report needs its token (lib/activity.ts).
-    await reportActivity("auth.sign_out");
-    await supabase.auth.signOut();
+    // Not from a session that still owes its code or its set-up: the API
+    // refuses those, and the refusal was logged instead of the sign-out.
+    if (session && !sessionNeedsSecondFactor(session) && !sessionNeedsMfaSetup(session)) {
+      await reportActivity("auth.sign_out");
+    }
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    return { error: error ? "Couldn't reach the sign-in service, so you're still signed in. Check your connection and try again." : null };
   }
 
   const value: AuthContextValue = {

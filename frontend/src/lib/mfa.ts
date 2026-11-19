@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { TWO_FACTOR_ON } from "./twoFactor";
 
 /**
  * Raise the current session to aal2 with a code from ANY of the user's
@@ -78,7 +79,9 @@ function tokenAal(accessToken: string): string | null {
 export function sessionNeedsMfaSetup(
   session: { user: { app_metadata?: Record<string, unknown>; factors?: { status: string }[] | null } } | null,
 ): boolean {
-  if (!session) return false;
+  // Nothing is required while two-factor is off for the Hub, whatever an
+  // account's flag says: the server does not ask (USERS-AUDIT L14).
+  if (!session || !TWO_FACTOR_ON) return false;
   const required = session.user.app_metadata?.mfa_required === true;
   return required && !(session.user.factors ?? []).some((f) => f.status === "verified");
 }

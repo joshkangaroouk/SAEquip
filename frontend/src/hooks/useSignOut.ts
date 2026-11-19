@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../auth/AuthContext";
 import { clearProductIndex } from "../lib/productIndex";
 import { clearEnquiryCounts } from "../lib/enquiryCounts";
@@ -9,7 +10,12 @@ export function useSignOut() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   return useCallback(async () => {
-    await signOut();
+    const { error } = await signOut();
+    // Still signed in: say so rather than bounce off /login back to the dashboard.
+    if (error) {
+      toast.error(error);
+      return;
+    }
     clearProductIndex();
     clearEnquiryCounts();
     navigate("/login", { replace: true });
