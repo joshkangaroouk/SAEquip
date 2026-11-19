@@ -28,6 +28,7 @@ import { ApiError, apiFetch, apiJson } from "../lib/api";
 import { formatDateTimeSeconds, formatRelative } from "../lib/format";
 import { describeDevice } from "../lib/userAgent";
 import { useDebounced } from "../hooks/useDebounced";
+import { accessAlertCount, markActivitySeen } from "../lib/accessAlerts";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { cn } from "../lib/cn";
 
@@ -199,6 +200,16 @@ export default function Activity() {
   const wide = useMediaQuery(XL);
   const listTop = useRef<HTMLDivElement>(null);
   const searchId = useId();
+
+  /*
+   * The sidebar's badge (lib/accessAlerts.ts): opening this page is looking,
+   * so the count is taken as it opens and then cleared on every computer. The
+   * note below keeps what it said, with a way to see just those entries.
+   */
+  const [arrivedWith, setArrivedWith] = useState(() => accessAlertCount() ?? 0);
+  useEffect(() => {
+    if (isSuperAdmin) void markActivitySeen();
+  }, [isSuperAdmin]);
 
   const get = (k: FilterKey) => params.get(k) ?? "";
   const range = get("range") || "7d";
@@ -534,6 +545,28 @@ export default function Activity() {
 
       <div className={cn(wide && "grid grid-cols-[minmax(0,1fr)_24rem] items-start gap-5")}>
         <div className="min-w-0">
+          {arrivedWith > 0 && (
+            <Alert
+              tone="info"
+              className="mb-4"
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setFilters({ category: "users", range: "90d", from: null, to: null, id: null });
+                    setArrivedWith(0);
+                  }}
+                >
+                  Show Users &amp; access
+                </Button>
+              }
+            >
+              {arrivedWith === 1
+                ? "1 access change by someone else since you last looked: an invite, an account change, Website Editor access, a password or two-factor."
+                : `${arrivedWith} access changes by others since you last looked: invites, account changes, Website Editor access, passwords or two-factor.`}
+            </Alert>
+          )}
           {error && <Alert tone="danger">{error}</Alert>}
 
           {initialLoad && <ActivitySkeleton />}

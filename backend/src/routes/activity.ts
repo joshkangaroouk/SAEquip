@@ -9,6 +9,7 @@ import { requireSuperAdmin } from "../middleware/requireAuth.js";
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import { sweepOldActivity } from "../services/activity.js";
 import {
+  ACCESS_ALERT,
   CATEGORY_LABELS,
   OTHER_ACTIONS,
   REPORTABLE,
@@ -296,6 +297,32 @@ const LONDON = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
+});
+
+/**
+ * GET /api/activity/unseen?since=<ISO time> → `{ count, since }`: the badge on
+ * the sidebar's Activity item. How many access changes (ACCESS_ALERT) someone
+ * ELSE made after `since`, which the browser keeps as the account's
+ * `activitySeenAt` (set when the page is opened). No `since`, or nonsense:
+ * the last 7 days; never more than 90 back. Writes nothing.
+ */
+activityRouter.get("/activity/unseen", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const DAY = 24 * 60 * 60 * 1000;
+    const asked = Date.parse(String(req.query.since ?? ""));
+    const since = new Date(Number.isFinite(asked) ? Math.max(asked, Date.now() - 90 * DAY) : Date.now() - 7 * DAY);
+    const count = await prisma.activityEvent.count({
+      where: {
+        at: { gt: since },
+        OR: [{ category: { in: ACCESS_ALERT.categories } }, { action: { in: ACCESS_ALERT.actions } }],
+        NOT: { actorId: req.user!.id },
+      },
+    });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ count, since: since.toISOString() });
+  } catch (err) {
+    next(err);
+  }
 });
 
 activityRouter.get("/activity/export.csv", requireSuperAdmin, async (req, res, next) => {

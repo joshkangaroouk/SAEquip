@@ -1390,6 +1390,7 @@ The runbook is `docs/redesign/17-activity-log-runbook.md`.
 
 **Dashboard** (`pages/Activity.tsx`):
 - the sidebar item is `superAdminOnly` (`useAuth().isSuperAdmin`, display only); a non-admin opening the URL gets an empty state and no request;
+- ⚠️ **the sidebar item carries a badge: access changes by someone ELSE since the super admin last opened the page** (Josh, 2026-11-19, USERS-AUDIT L18; `lib/accessAlerts.ts`, `GET /api/activity/unseen?since=`). It counts the "Users & access" category (invites, accounts disabled, enabled or deleted, Website Editor access, two-factor turned off or required, and refused attempts at any of them) plus a person changing their own password or two-factor (`ACCESS_ALERT`); sign-ins are left out as routine. "Last opened" is `activitySeenAt` in the super admin's `user_metadata`, so it follows them between computers; opening the page sets it and shows a note with the count and "Show Users & access". Refreshed on load, on window focus (at most once a minute) and every 5 minutes. There is still no email: an alert reaches the super admin only when the dashboard is open.
 - every filter lives in the address, so links land filtered: Users' ⋯ → "View activity", and the product band's "Activity" link;
 - a side panel from 1280 and a dialog below, with:
   - the time to the second in UK time;

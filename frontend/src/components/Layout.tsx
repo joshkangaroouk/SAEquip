@@ -22,6 +22,7 @@ import { useThemePreference } from "../hooks/useUserPreference";
 import { cn } from "../lib/cn";
 import { useProductIndex } from "../lib/productIndex";
 import { useEnquiryCounts } from "../lib/enquiryCounts";
+import { SEEN_KEY, useAccessAlerts } from "../lib/accessAlerts";
 import { useSignOut } from "../hooks/useSignOut";
 import { initialsFrom } from "../lib/initials";
 import logo from "../assets/saequip-logo-unframed.svg";
@@ -50,7 +51,7 @@ interface NavItem {
    * Products carries the live product count; Quote requests and Resource
    * requests the count nobody has opened yet (unread, shared by the team).
    */
-  badge?: "liveProducts" | "unreadQuotes" | "unreadResourceRequests";
+  badge?: "liveProducts" | "unreadQuotes" | "unreadResourceRequests" | "accessChanges";
   /**
    * Shown only to the super admin (the Activity log). Display only: the
    * server's requireSuperAdmin is what protects the page's data.
@@ -102,7 +103,8 @@ const NAV: NavGroup[] = [
     label: "Admin",
     items: [
       { to: "/users", label: "Users", icon: Users },
-      { to: "/activity", label: "Activity", icon: Activity, superAdminOnly: true },
+      // The badge: access changes by others since the super admin last looked (lib/accessAlerts.ts).
+      { to: "/activity", label: "Activity", icon: Activity, superAdminOnly: true, badge: "accessChanges" },
       { to: "/security", label: "Security", icon: KeyRound },
     ],
   },
@@ -163,13 +165,16 @@ function NavRow({
 }
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, user } = useAuth();
   const { products } = useProductIndex();
   const enquiries = useEnquiryCounts();
+  const seenAt = (user?.user_metadata as Record<string, unknown> | undefined)?.[SEEN_KEY];
+  const accessChanges = useAccessAlerts(isSuperAdmin, typeof seenAt === "string" ? seenAt : null);
   const badges: Record<NonNullable<NavItem["badge"]>, { count: number; noun: string }> = {
     liveProducts: { count: products?.filter((p) => p.status === "ACTIVE").length ?? 0, noun: "live" },
     unreadQuotes: { count: enquiries?.quotes ?? 0, noun: "unread" },
     unreadResourceRequests: { count: enquiries?.resourceRequests ?? 0, noun: "unread" },
+    accessChanges: { count: accessChanges ?? 0, noun: "access changes since you last looked" },
   };
   // Per instance: the drawer renders a second copy of the nav.
   const idBase = useId();

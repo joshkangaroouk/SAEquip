@@ -213,6 +213,19 @@ export const REPORTABLE = [
 ] as const;
 export type Reportable = (typeof REPORTABLE)[number];
 
+/**
+ * What the super admin's Activity badge counts (Josh, 2026-11-19, USERS-AUDIT
+ * L18): changes to who can get in, made by someone else since they last
+ * opened the page. Everything under "Users & access" (invites, accounts
+ * disabled, enabled or deleted, Website Editor access, two-factor turned off
+ * or required, and refused attempts at any of them), plus a person changing
+ * their own password or two-factor. Sign-ins are left out: they are routine.
+ */
+export const ACCESS_ALERT = {
+  categories: ["users"] as ActivityCategory[],
+  actions: ["auth.password_changed", "auth.two_factor_on", "auth.two_factor_off"],
+};
+
 /** Every action the log can hold, with its category and label: the page's filter. */
 export function allActions(): { action: string; category: ActivityCategory; label: string }[] {
   const seen = new Map<string, { action: string; category: ActivityCategory; label: string }>();
