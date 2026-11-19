@@ -1033,11 +1033,18 @@ Quote Requests and Resource Requests work like a **shared mailbox** (Josh's choi
   - Clicking a list star toggles it without opening the row.
 - **Notes are a small message board on each request** (`NoteBoard`): oldest first, each with who wrote it and when. The box at the bottom adds one with **Add note** or Cmd/Ctrl + Enter.
   - Only a note's author can delete it (with a confirm), and the server enforces that too.
-  - Leaving the page with text not yet added asks first.
+  - **Leaving with text not yet added asks first**: closing the tab (`beforeunload`), and any in-app navigation, opening another request included (a `useBlocker` in `NoteBoard` that also compares the query, since switching request only changes `?id=`). ⚠️ Before 2026-11-19 only closing the tab asked: the board is mounted with `key={id}`, so clicking another request silently threw the typed note away. Deleting the request does not ask (`leavingDeleted`): its note goes with it.
   - It replaced a single autosaving box the same day.
-- **The CSVs gain Starred and Notes columns.** The Notes cell holds every note as "[date, who] text", one per line (`notesCsv()`).
+- **The CSVs gain Starred and Notes columns.** The Notes cell holds every note as "[2026-11-18 12:00, who] text", one per line (`notesCsv()`).
+- **What the exports carry** (audited 2026-11-19, against production-shaped rows exported from the real pages):
+  - **Quotes:** the Items cell has one line per item with everything the detail's table shows, "2 × EX Heater (SAPH18440) — Hire/Purchase: Hire" (`itemsCsv()`). It used to be "EX Heater x2", which dropped the SKU and the options, the part a quote is priced on.
+  - **Resource requests:** Privacy consent, the consent wording in English, and whether the file is still listed, beside Marketing emails.
+  - **Both:** dates as "2026-11-18 09:15" in UK time (`formatCsvDateTime()`). They used the browser's own locale, so a US-set laptop wrote "Nov 18, 2026, 9:15 AM", and a spreadsheet could not sort either. A Reference column (the request's id) lets a later CRM import tell rows apart.
+  - ⚠️ **A value starting `+`, `-`, `=` or `@` gets a leading apostrophe** (the formula-injection guard in `lib/csv.ts`), so an international phone number reads `'+44 …`. A CRM import will likely keep the apostrophe, so strip it there. Deliberate: without it Excel evaluates "+44 7700 900123" as a formula. No stored phone starts with `+` yet (2026-11-19).
 - **"Mark all as read"** (page header, with a confirm) sends only the ids the page shows as unread, so a request that arrived after the page loaded is not marked read unseen.
 - **The list filter** is All / Unread / Starred. A row opened or unstarred under a filter stays visible until the filter changes (`touched` in `useEnquiryActions()`).
+- **The search covers what was asked for, not just who asked** (2026-11-19): a quote's basket (product names and SKUs), and a resource request's product, SKU, file title and file name, besides name, company and email.
+- **Export CSV exports what the list shows** (2026-11-19), as the Products page does: with a filter or search on, the button reads "Export CSV (N)". It used to export every request whatever was on screen.
 - **The email and phone numbers are links**: a reply with the usual subject, and `tel:` with digits only.
 - **Delete request…** (⋯ menu) is for a GDPR removal request. The confirmation asks for "delete" to be typed, and the route refuses without `?confirm=true`. The request's notes go with it.
   - ⚠️ It is permanent, and there are no backups.

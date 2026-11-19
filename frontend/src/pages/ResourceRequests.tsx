@@ -42,13 +42,16 @@ import type { EnquiryNote, ResourceRequest, ResourceRequestsResponse } from "../
 import { downloadCsv } from "../lib/csv";
 import { reportActivity } from "../lib/activity";
 import { refreshEnquiryCounts } from "../lib/enquiryCounts";
-import { formatDateTime, formatShortDate } from "../lib/format";
+import { formatCsvDateTime, formatDateTime, formatShortDate } from "../lib/format";
 import { languageName } from "../lib/language";
 
 function exportRequests(requests: ResourceRequest[]) {
+  // The consent columns are the record of what each person agreed to, as the
+  // detail shows it: worth having beside "Marketing emails" in a CRM import.
   const header = [
     "Name", "First name", "Last name", "Company", "Email", "Telephone", "Mobile",
-    "Marketing emails", "Language", "Product", "SKU", "File", "File name", "Date", "Starred", "Notes",
+    "Marketing emails", "Privacy consent", "Language", "Product", "SKU", "File", "File name", "File still listed",
+    "Submitted (UK time)", "Starred", "Notes", "Consent wording (English)", "Reference",
   ];
   const rows = requests.map((r) => [
     r.name,
@@ -59,14 +62,18 @@ function exportRequests(requests: ResourceRequest[]) {
     r.phone ?? "",
     r.mobile ?? "",
     r.marketingConsent ? "Yes" : "No",
+    r.privacyConsent ? "Yes" : "No",
     languageName(r.locale),
     r.file.productName ?? "",
     r.file.productSku ?? "",
     r.file.title ?? "",
     r.file.fileName ?? "",
-    formatDateTime(r.createdAt),
+    r.file.stillListed ? "Yes" : "No, since removed",
+    formatCsvDateTime(r.createdAt),
     isStarred(r) ? "Yes" : "",
     notesCsv(r.teamNotes),
+    r.consentTextEn ?? r.consentText ?? "",
+    r.id,
   ]);
   downloadCsv(`resource-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
   void reportActivity("enquiry.file_request.export", { rows: rows.length });
@@ -242,7 +249,16 @@ export default function ResourceRequests() {
   }, []);
 
   const requests = data?.requests ?? [];
-  const shown = filterEnquiries(requests, filter, query, (r) => [r.name, r.company, r.email], touched);
+  // The file and its product too: "who asked for the EX Heater datasheet?" (audit, 2026-11-19).
+  const shown = filterEnquiries(
+    requests,
+    filter,
+    query,
+    (r) => [r.name, r.company, r.email, r.file.productName, r.file.productSku, r.file.title, r.file.fileName],
+    touched,
+  );
+  // Export what the list shows, as the Products page does.
+  const narrowed = filter !== "all" || query.trim() !== "";
   const selected = selectedId ? requests.find((r) => r.id === selectedId) ?? null : null;
   const unread = requests.filter(isUnread);
   useAutoRead(selected, setState);
@@ -266,8 +282,14 @@ export default function ResourceRequests() {
             <Button variant="secondary" size="sm" disabled={unread.length === 0} onClick={() => void markAllRead()}>
               Mark all as read
             </Button>
-            <Button variant="secondary" size="sm" disabled={requests.length === 0} onClick={() => exportRequests(requests)}>
-              Export CSV
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={shown.length === 0}
+              onClick={() => exportRequests(shown)}
+              title={narrowed ? `Exports the ${shown.length} resource requests matching the current search and filter` : "Exports every resource request"}
+            >
+              {narrowed ? `Export CSV (${shown.length})` : "Export CSV"}
             </Button>
           </>
         }
@@ -303,6 +325,7 @@ export default function ResourceRequests() {
                     resetTouched();
                   }}
                   searchLabel="Search resource requests"
+                  placeholder="Name, company, email, product or file…"
                 />
                 {shown.length === 0 ? (
                   <p className="px-5 py-6 text-body text-muted">No resource requests match.</p>

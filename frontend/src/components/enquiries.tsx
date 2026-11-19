@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useBlocker } from "react-router-dom";
 import { Mail, Search, Star } from "lucide-react";
 import { Button, ButtonLink, DropdownMenu, Field, Input, Modal, SegmentedControl, Skeleton, Textarea, toast, useConfirm } from "./ui";
 import { apiJson } from "../lib/api";
 import { cn } from "../lib/cn";
 import { refreshEnquiryCounts } from "../lib/enquiryCounts";
-import { formatDateTime } from "../lib/format";
+import { formatCsvDateTime, formatDateTime } from "../lib/format";
 import type { EnquiryNote, EnquiryRow, EnquiryState } from "../lib/types";
 
 /**
@@ -55,6 +56,14 @@ function optimistic(e: EnquiryState, patch: StatePatch, now: string): Partial<En
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * True only while a delete leaves the request it deleted: that request's
+ * unsent note goes with it, so NoteBoard's "leave without adding?" must not
+ * ask. The router checks blockers synchronously as the navigation starts, so a
+ * flag set around that one call is enough.
+ */
+let leavingDeleted = false;
 
 /**
  * Everything a page does to its requests: change one's state (read, star),
@@ -135,7 +144,12 @@ export function useEnquiryActions<T extends EnquiryRow>({
     async (id: string, onRemoved?: () => void): Promise<boolean> => {
       try {
         await apiJson(`${base}/${id}?confirm=true`, { method: "DELETE" });
-        onRemoved?.();
+        leavingDeleted = true;
+        try {
+          onRemoved?.();
+        } finally {
+          leavingDeleted = false;
+        }
         setList((list) => list.filter((e) => e.id !== id));
         refreshEnquiryCounts();
         toast.success(`Deleted the ${noun}`);
@@ -483,6 +497,41 @@ export function NoteBoard({
   }
 
   const unsent = draft.trim() !== "";
+
+  /*
+   * ⚠️ Switching to another request only changes the address's ?id=, and the
+   * board is mounted with `key={id}`, so the typed note used to vanish without
+   * a word (audit, 2026-11-19). The blocker asks first, for that and for any
+   * other in-app navigation (the sidebar, Back); beforeunload below covers
+   * closing the tab. Read from a ref at navigation time, not from this
+   * render's `unsent`.
+   */
+  const unsentRef = useRef(unsent);
+  unsentRef.current = unsent;
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      unsentRef.current &&
+      !leavingDeleted &&
+      (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search),
+  );
+  useEffect(() => {
+    if (blocker.state !== "blocked") return;
+    let live = true;
+    void confirm({
+      title: "Leave without adding your note?",
+      description: "The note you've typed hasn't been added, so it will be lost.",
+      confirmLabel: "Discard note",
+      danger: true,
+    }).then((leave) => {
+      if (!live) return;
+      if (leave) blocker.proceed();
+      else blocker.reset();
+    });
+    return () => {
+      live = false;
+    };
+  }, [blocker, confirm]);
+
   useEffect(() => {
     if (!unsent) return;
     const warn = (e: BeforeUnloadEvent) => {
@@ -566,9 +615,9 @@ export function NoteBoard({
   );
 }
 
-/** A request's notes for one CSV cell: "[date, who] text", one note per line, oldest first. */
+/** A request's notes for one CSV cell: "[2026-11-18 12:00, who] text", one note per line, oldest first. */
 export function notesCsv(notes: EnquiryNote[]): string {
-  return notes.map((n) => `[${formatDateTime(n.createdAt)}, ${n.createdBy ?? "unknown"}] ${n.body}`).join("\n");
+  return notes.map((n) => `[${formatCsvDateTime(n.createdAt)}, ${n.createdBy ?? "unknown"}] ${n.body}`).join("\n");
 }
 
 /**
@@ -605,6 +654,7 @@ export function EnquiryToolbar<T extends EnquiryState>({
   filter,
   onFilter,
   searchLabel,
+  placeholder = "Name, company or email…",
 }: {
   all: T[];
   query: string;
@@ -613,6 +663,8 @@ export function EnquiryToolbar<T extends EnquiryState>({
   onFilter: (f: EnquiryFilter) => void;
   /** e.g. "Search quote requests". */
   searchLabel: string;
+  /** What the search covers, e.g. "Name, company, email or product…". */
+  placeholder?: string;
 }) {
   return (
     <div className="sticky top-16 z-10 space-y-3 border-b border-border bg-surface p-4 lg:top-0">
@@ -627,7 +679,7 @@ export function EnquiryToolbar<T extends EnquiryState>({
           type="search"
           value={query}
           onChange={(e) => onQuery(e.target.value)}
-          placeholder="Name, company or email…"
+          placeholder={placeholder}
           aria-label={searchLabel}
           className="pl-9"
         />

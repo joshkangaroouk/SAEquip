@@ -46,18 +46,29 @@ import { useAuth } from "../auth/AuthContext";
 import type { EnquiryNote, QuoteRequest, QuotesResponse } from "../lib/types";
 import { downloadCsv } from "../lib/csv";
 import { refreshEnquiryCounts } from "../lib/enquiryCounts";
-import { formatDateTime, formatShortDate } from "../lib/format";
+import { formatCsvDateTime, formatDateTime, formatShortDate } from "../lib/format";
 import { languageName } from "../lib/language";
 import { reportActivity } from "../lib/activity";
 
-function itemsSummary(quote: QuoteRequest): string {
-  return quote.items.map((item) => `${item.name} x${item.quantity}`).join("; ");
+/**
+ * The basket for one CSV cell, one line per item, everything the detail's table
+ * shows: "2 × EX Heater (SAPH18440) — Hire/Purchase: Hire". It used to be
+ * "EX Heater x2", which dropped the SKU and the options (Hire or Purchase, the
+ * filter type), the part a quote is priced on.
+ */
+function itemsCsv(quote: QuoteRequest): string {
+  return quote.items
+    .map((item) => {
+      const options = formatOptions(item.options);
+      return `${item.quantity} × ${item.name}${item.sku ? ` (${item.sku})` : ""}${options ? ` — ${options}` : ""}`;
+    })
+    .join("\n");
 }
 
 function exportQuotes(requests: QuoteRequest[]) {
   const header = [
     "Name", "First name", "Last name", "Company", "Email", "Telephone", "When needed",
-    "Address", "Postcode", "Country", "Message", "Language", "Date", "Items", "Starred", "Notes",
+    "Address", "Postcode", "Country", "Message", "Language", "Submitted (UK time)", "Items", "Starred", "Notes", "Reference",
   ];
   const rows = requests.map((q) => [
     q.name,
@@ -72,10 +83,11 @@ function exportQuotes(requests: QuoteRequest[]) {
     q.country ?? "",
     q.message ?? "",
     q.locale ? languageName(q.locale) : "",
-    formatDateTime(q.createdAt),
-    itemsSummary(q),
+    formatCsvDateTime(q.createdAt),
+    itemsCsv(q),
     isStarred(q) ? "Yes" : "",
     notesCsv(q.teamNotes),
+    q.id,
   ]);
   downloadCsv(`quote-requests-${new Date(Date.now()).toISOString().slice(0, 10)}.csv`, header, rows);
   void reportActivity("enquiry.quote.export", { rows: rows.length });
@@ -295,7 +307,16 @@ export default function Quotes() {
   }, []);
 
   const requests = data?.requests ?? [];
-  const shown = filterEnquiries(requests, filter, query, (q) => [q.name, q.company, q.email], touched);
+  // The basket too, so "who asked for an EX Heater?" is one search.
+  const shown = filterEnquiries(
+    requests,
+    filter,
+    query,
+    (q) => [q.name, q.company, q.email, ...q.items.flatMap((i) => [i.name, i.sku])],
+    touched,
+  );
+  // Export what the list shows, as the Products page does (audit, 2026-11-19).
+  const narrowed = filter !== "all" || query.trim() !== "";
   const selected = selectedId ? requests.find((q) => q.id === selectedId) ?? null : null;
   const unread = requests.filter(isUnread);
   useAutoRead(selected, setState);
@@ -329,10 +350,11 @@ export default function Quotes() {
             <Button
               variant="secondary"
               size="sm"
-              disabled={requests.length === 0}
-              onClick={() => exportQuotes(requests)}
+              disabled={shown.length === 0}
+              onClick={() => exportQuotes(shown)}
+              title={narrowed ? `Exports the ${shown.length} quote requests matching the current search and filter` : "Exports every quote request"}
             >
-              Export CSV
+              {narrowed ? `Export CSV (${shown.length})` : "Export CSV"}
             </Button>
           </>
         }
@@ -368,6 +390,7 @@ export default function Quotes() {
                     resetTouched();
                   }}
                   searchLabel="Search quote requests"
+                  placeholder="Name, company, email or product…"
                 />
                 {shown.length === 0 ? (
                   <p className="px-5 py-6 text-body text-muted">No quote requests match.</p>

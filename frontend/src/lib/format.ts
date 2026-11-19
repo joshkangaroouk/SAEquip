@@ -45,3 +45,24 @@ export function formatDateTimeSeconds(iso: string): string {
     timeZoneName: "short",
   });
 }
+
+const CSV_PARTS = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/London",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/**
+ * "2026-11-18 09:15", in UK time, for a CSV cell. The same in every browser
+ * (formatDateTime() follows the browser's own locale, so an export made on a
+ * US-set laptop read "Nov 18, 2026, 9:15 AM"), and a spreadsheet sorts it as
+ * written and reads it as a date.
+ */
+export function formatCsvDateTime(iso: string): string {
+  const p = Object.fromEntries(CSV_PARTS.formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}
