@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { readAuthRedirect } from "./authRedirect";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -22,4 +23,12 @@ if (!url || !anonKey) {
  * must land on /reset-password (where the password is changed and the session
  * is then torn down) rather than on the app root.
  */
+
+/**
+ * ⚠️ Read BEFORE `createClient`, which clears the token from the address once
+ * it has exchanged it. /reset-password uses it to show its form only for the
+ * session the recovery link created (lib/authRedirect.ts).
+ */
+export const landedWith = readAuthRedirect(window.location.href);
+
 export const supabase = createClient(url, anonKey);

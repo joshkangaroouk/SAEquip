@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { landedWith, supabase } from "../lib/supabase";
+import { authRedirectMessage } from "../lib/authRedirect";
 import { reportActivity } from "../lib/activity";
 import { useForceLightTheme } from "../lib/theme";
 import { Alert, Button, Field, Input, Loader } from "../components/ui";
@@ -27,11 +28,42 @@ import { needsSecondFactor, verifyTotpCode } from "../lib/mfa";
  * on ("AAL2 session is required to update email or password when MFA is
  * enabled"). Without this step the page showed that raw error and the only
  * way out was the CLI. The code raises the recovery session to aal2 first.
+ *
+ * ⚠️ The form appears ONLY for the session the recovery link created
+ * (USERS-AUDIT M3, 2026-11-19). It used to appear for any session, and
+ * supabase-js keeps an existing session when the link in the address fails:
+ * on a shared computer, someone opening their own EXPIRED link changed the
+ * password of whoever was already signed in. Now the page:
+ * - shows the link's own error when Supabase put one in the address;
+ * - checks the session belongs to the user the link's token names
+ *   (`landedWith`, read before the Supabase client cleared the address);
+ * - remembers that for this tab only, so a reload keeps working;
+ * - names the account it is about to change.
  */
+const RECOVERY_KEY = "hub-recovery-user";
+
+function rememberedRecoveryUser(): string | null {
+  try {
+    return sessionStorage.getItem(RECOVERY_KEY);
+  } catch {
+    return null;
+  }
+}
+function rememberRecoveryUser(id: string | null) {
+  try {
+    if (id) sessionStorage.setItem(RECOVERY_KEY, id);
+    else sessionStorage.removeItem(RECOVERY_KEY);
+  } catch {
+    /* storage blocked: a reload will simply ask for a new link */
+  }
+}
 export default function ResetPassword() {
   useForceLightTheme(); // auth pages are light only (redesign 02a Q15)
   const navigate = useNavigate();
-  const [ready, setReady] = useState<"checking" | "ok" | "no-session">("checking");
+  const [ready, setReady] = useState<"checking" | "ok" | "no-session" | "link-error">(
+    landedWith.error ? "link-error" : "checking",
+  );
+  const [email, setEmail] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -43,32 +75,40 @@ export default function ResetPassword() {
    * ⚠️ Both a listener AND a getSession() call, because the recovery token
    * arrives in the URL FRAGMENT and the Supabase client exchanges it
    * asynchronously on load. A lone getSession() races that exchange and
-   * usually loses — reporting "this link has expired" on a link that is
-   * perfectly good. onAuthStateChange fires PASSWORD_RECOVERY once the
-   * exchange completes; getSession() covers the case where it already had.
+   * usually loses, reporting "this link has expired" on a link that is
+   * perfectly good. Whichever sees the session first decides, and only a
+   * session for the link's own user (or this tab's remembered one) counts.
    */
   useEffect(() => {
+    if (landedWith.error) {
+      rememberRecoveryUser(null);
+      return;
+    }
     let settled = false;
+    const expected = landedWith.recovery ? landedWith.recoveryUserId : rememberedRecoveryUser();
+
+    const accept = (session: { user: { id: string; email?: string | null } } | null) => {
+      if (settled || !session || !expected || session.user.id !== expected) return false;
+      settled = true;
+      rememberRecoveryUser(session.user.id);
+      setEmail(session.user.email ?? null);
+      setReady("ok");
+      void needsSecondFactor().then(setNeedsCode);
+      return true;
+    };
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
-        settled = true;
-        setReady("ok");
-        void needsSecondFactor().then(setNeedsCode);
-      }
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION") accept(session);
     });
 
     supabase.auth.getSession().then(({ data }) => {
-      if (settled) return;
-      if (data.session) {
-        settled = true;
-        setReady("ok");
-        void needsSecondFactor().then(setNeedsCode);
-        return;
-      }
+      if (accept(data.session)) return;
       // Give the fragment exchange a moment before declaring the link dead.
       setTimeout(() => {
-        if (!settled) setReady("no-session");
+        if (!settled) {
+          rememberRecoveryUser(null);
+          setReady("no-session");
+        }
       }, 1500);
     });
 
@@ -111,7 +151,9 @@ export default function ResetPassword() {
     }
     // Recorded while the recovery session can still say who it was.
     await reportActivity("auth.password_changed");
-    await supabase.auth.signOut();
+    rememberRecoveryUser(null);
+    // Global on purpose: a new password should end every session, not only this one.
+    await supabase.auth.signOut({ scope: "global" });
     navigate("/login", { replace: true });
   }
 
@@ -119,10 +161,12 @@ export default function ResetPassword() {
     <AuthShell title="Choose a new password">
       {ready === "checking" && <Loader label="Checking your link…" />}
 
-      {ready === "no-session" && (
+      {(ready === "no-session" || ready === "link-error") && (
         <>
           <Alert tone="danger" className="mt-5">
-            This reset link is invalid or has expired. Request a new one.
+            {ready === "link-error" && landedWith.error
+              ? authRedirectMessage(landedWith.error)
+              : "Open the reset link from your email to choose a new password. If it has expired, request a new one."}
           </Alert>
           <Button className="mt-6 w-full" onClick={() => navigate("/forgot-password")}>
             Request a new link
@@ -132,6 +176,11 @@ export default function ResetPassword() {
 
       {ready === "ok" && (
         <form onSubmit={onSubmit}>
+          {email && (
+            <p className="t-help mt-4">
+              Choosing a new password for <strong className="font-semibold text-text">{email}</strong>.
+            </p>
+          )}
           <div className="mt-6 space-y-4">
             <Field label="New password" htmlFor="password">
               <Input
