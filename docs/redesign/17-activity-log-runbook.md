@@ -35,7 +35,7 @@ psql "$DIRECT_URL" -Atc "SELECT relname, relrowsecurity FROM pg_class WHERE reln
 psql "$DIRECT_URL" -Atc "SELECT policyname, cmd, roles::text, coalesce(qual,'') FROM pg_policies WHERE tablename = 'ActivityEvent' ORDER BY 1;"
 psql "$DATABASE_URL" -Atc "SELECT p, has_table_privilege(current_user, 'public.\"ActivityEvent\"', p) FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE']) p;"
 psql "$DATABASE_URL" -Atc "SELECT has_table_privilege(current_user, 'public.\"ActivitySession\"', 'UPDATE');"
-psql "$DIRECT_URL" -Atc "SELECT grantee FROM information_schema.role_table_grants WHERE table_name IN ('ActivityEvent','ActivitySession') AND grantee IN ('anon','authenticated');"
+psql "$DIRECT_URL" -Atc "SELECT grantee FROM information_schema.role_table_grants WHERE table_name IN ('ActivityEvent','ActivitySession') AND grantee IN ('anon','authenticated','service_role');"
 ```
 
 Expected:

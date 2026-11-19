@@ -1325,7 +1325,7 @@ The runbook is `docs/redesign/17-activity-log-runbook.md`.
   - row level security, with policies for `saequip_app`: SELECT, INSERT, and DELETE only `at < now() - 730 days`;
   - `UPDATE` and `TRUNCATE` revoked.
 
-  So even a bug or a hijacked server cannot edit history or delete anything under two years. The policies live only in the migration's SQL: Prisma does not model them, and **the migration needs the `saequip_app` role to exist.** Verified on a throwaway database: update and truncate are refused, a recent delete removes 0 rows, a 3-year-old one 1.
+  So even a bug or a hijacked server cannot edit history or delete anything under two years, provided the owner's `DIRECT_URL` is not in the server's environment (it was until 2026-11-19; see "The runtime role cannot do DDL"). The policies live only in the migration's SQL: Prisma does not model them, and **the migration needs the `saequip_app` role to exist.** Verified on a throwaway database: update and truncate are refused, a recent delete removes 0 rows, a 3-year-old one 1.
 - The anon and authenticated roles hold no rights on it (checked: the schema's default privileges grant to `saequip_app` only), so Supabase's REST API cannot reach it.
 - **Retention:** `sweepOldActivity()` runs on every Activity page load and on about one write in fifty.
 
@@ -1551,7 +1551,7 @@ lands on `/reset-password`**, not the site root.
 ## Environment variables
 
 See `backend/.env.example` and `frontend/.env.example` for the full annotated list. Highlights:
-- Backend **requires**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL_DOMAINS`, `DUDA_API_USER`, `DUDA_API_PASS`. `WIDGET_ALLOWED_ORIGINS` must include every domain allowed to call `/public/*` (Duda domains + the frontend origin + localhost for dev) — CORS rejects anything not listed, no trailing slashes.
+- Backend **requires**: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL_DOMAINS`, `DUDA_API_USER`, `DUDA_API_PASS`. `DIRECT_URL` (the owner connection) is for migrations only, in a local `.env`, and must not be set on Vercel. `WIDGET_ALLOWED_ORIGINS` must include every domain allowed to call `/public/*` (Duda domains + the frontend origin + localhost for dev) — CORS rejects anything not listed, no trailing slashes.
 - Backend **optional**: `RESEND_API_KEY` + `QUOTE_NOTIFY_FROM` + `QUOTE_NOTIFY_TO` (all-or-nothing for email).
 - Frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. ⚠️ **`VITE_API_BASE_URL` must stay UNSET in production** — that is what makes the API resolve same-origin. It only falls back to `http://localhost:4000` under `import.meta.env.DEV`. Setting it in Vercel silently points the dashboard elsewhere. (Any `VITE_*` value is baked in at build time, so a change needs a redeploy, not a restart.)
 
@@ -1623,6 +1623,12 @@ normally, while `DROP TABLE`, `TRUNCATE`, `CREATE TABLE`, `ALTER TABLE` and
 ⚠️ **Vercel's `DATABASE_URL` must be updated to match**, or production still runs as the
 owner. Nothing runs migrations at deploy time (`buildCommand` is the API bundle check,
 `prisma generate` and the frontend build), so the restricted role is safe there.
+
+⚠️ **`DIRECT_URL` must NOT be set on Vercel** (2026-11-19). `env.ts` used to REQUIRE it,
+so the owner password sat in the live function's environment, readable by any code running
+there, which undid the split above. It is optional now: Prisma Client never connects through
+`directUrl` (its runtime datasource is `DATABASE_URL` alone; a query ran normally with
+`DIRECT_URL` pointed at a dead address). Migrations run from a laptop, which has it in `.env`.
 
 ⚠️ **A `.env` copy taken before a credential change is not matched by the `.env` gitignore
 rule.** `.env.backup*` is now ignored explicitly; one such file was a `git add -A` away

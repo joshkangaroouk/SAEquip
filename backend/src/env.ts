@@ -14,9 +14,16 @@ const envSchema = z.object({
   DATABASE_URL: z
     .string()
     .min(1, "DATABASE_URL is required (Supabase pooler string, port 6543, ?pgbouncer=true)"),
-  DIRECT_URL: z
-    .string()
-    .min(1, "DIRECT_URL is required (Supabase direct string, port 5432)"),
+  /**
+   * ⚠️ OPTIONAL, and it must stay unset on Vercel. It is the `postgres`
+   * OWNER's credential, used only by `prisma migrate` (schema.prisma's
+   * `directUrl`); Prisma Client never connects through it (its runtime
+   * datasource is DATABASE_URL alone, checked 2026-11-19 against a dead
+   * DIRECT_URL). Requiring it here forced the owner password into the live
+   * function's environment, where any code running in the function could read
+   * it and undo the restricted `saequip_app` role (USERS-AUDIT M1).
+   */
+  DIRECT_URL: z.string().optional(),
 
   // Supabase auth (server-side).
   SUPABASE_URL: z.string().url("SUPABASE_URL must be a valid URL"),
