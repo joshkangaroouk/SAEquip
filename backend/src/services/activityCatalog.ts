@@ -154,6 +154,7 @@ export const ROUTE_CATALOGUE: Record<string, CatalogueEntry> = {
   "DELETE /api/invites/:id": { action: "invite.remove", category: "users", label: "Removed an invite", target: { type: "invite", param: "id" } },
   "POST /api/accept-invite": { action: "invite.accept", category: "users", label: "Accepted an invite and created their account", target: { type: "user" } },
   "POST /api/accept-invite/check": { skip: "changes nothing: it only says whether an invite link still works" },
+  "POST /api/csp-report": { skip: "a browser's security-policy report: no one signed in, and it is only a log line" },
 
   // --- Website ---------------------------------------------------------------
   "POST /api/website/sso": { action: "website.editor_open", category: "website", label: "Opened the Website Editor", target: { type: "site" } },

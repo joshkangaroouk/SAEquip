@@ -13,6 +13,7 @@ import { quotesRouter } from "./routes/quotes.js";
 import { resourceRequestsRouter } from "./routes/resourceRequests.js";
 import { enquiriesRouter } from "./routes/enquiries.js";
 import { acceptInviteRouter, invitesRouter } from "./routes/invites.js";
+import { cspReportRouter } from "./routes/cspReport.js";
 import { translationsRouter } from "./routes/translations.js";
 import { usersRouter } from "./routes/users.js";
 import { websiteEditorRouter } from "./routes/websiteEditor.js";
@@ -72,6 +73,10 @@ app.get("/api/health", (_req, res) => {
 // --- Public: accepting an invite (the person has no account yet). Its own
 // rate limits; mounted BEFORE the requireAuth'd /api router so it is reached. ---
 app.use("/api/accept-invite", acceptInviteRouter);
+
+// --- Public: the browser's Content-Security-Policy reports (routes/cspReport.ts).
+// Sent with no credentials, so it too sits before requireAuth. ---
+app.use("/api/csp-report", cspReportRouter);
 
 // --- Protected (single) ---
 app.get("/api/me", requireAuth, (req, res) => {
