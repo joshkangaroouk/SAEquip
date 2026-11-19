@@ -37,6 +37,9 @@ function cell(v: Cell): string {
  * "2560m³/hr") arrive as mojibake. CRLF line endings, as RFC 4180 specifies
  * and Excel expects.
  */
+/** One CSV line (no line ending), for a caller that builds the file itself. */
+export const csvLine = (cells: Cell[]): string => cells.map(cell).join(",");
+
 export function toCsv(header: string[], rows: Cell[][]): string {
   const lines = [header.map(cell).join(","), ...rows.map((r) => r.map(cell).join(","))];
   return "﻿" + lines.join("\r\n") + "\r\n";

@@ -27,13 +27,22 @@ export const API_BASE =
  * editor's save opens Chrome's translators inside the click, which needs the
  * click's user activation still to be live.
  */
-let activityBatch: string | null = null;
+/*
+ * ⚠️ A list of the batches still running, newest last, not a single saved
+ * "previous" (USERS-AUDIT M9). With overlapping saves the old way leaked: A
+ * starts, B starts, A ends (B is current, so nothing changes), then B ends and
+ * restores A, and every later change in the tab was filed under A until a
+ * reload. Each batch now removes only itself.
+ */
+const activeBatches: string[] = [];
+const currentBatch = () => activeBatches[activeBatches.length - 1] ?? null;
 export function inActivityBatch<T>(fn: () => Promise<T>): Promise<T> {
-  const previous = activityBatch;
   const mine = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : null;
-  activityBatch = mine;
+  if (!mine) return fn();
+  activeBatches.push(mine);
   return fn().finally(() => {
-    if (activityBatch === mine) activityBatch = previous;
+    const i = activeBatches.lastIndexOf(mine);
+    if (i >= 0) activeBatches.splice(i, 1);
   });
 }
 
@@ -42,7 +51,7 @@ export function inActivityBatch<T>(fn: () => Promise<T>): Promise<T> {
  * session's access token as an `Authorization: Bearer <token>` header.
  */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const batch = activityBatch;
+  const batch = currentBatch();
   const {
     data: { session },
   } = await supabase.auth.getSession();

@@ -21,6 +21,7 @@ import type { Request } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { supabase } from "../supabase.js";
+import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import {
   matchRoute,
   type ActivityCategory,
@@ -75,9 +76,21 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * Keys never stored, whatever a route hands over: anything mentioning a
  * password, secret, token, authorization or cookie, and the exact names a
  * login link or one-time code would travel under. (Not a bare "link"
- * substring: `unlinkedFromProducts` is a count, not a credential.)
+ * substring: `unlinkedFromProducts` is a count, not a credential. Nor a bare
+ * `url`: a category's page URL is ordinary detail. A URL's VALUE is scanned
+ * instead, by SECRET_VALUE.) Named credentials added 2026-11-19 (USERS-AUDIT
+ * L5): api keys, JWTs, signed/SSO URLs and reset/invite/login links.
  */
-const SECRET_KEY = /password|passwd|secret|token|authori[sz]ation|cookie|^(link|signedurl|ssourl|otp|code)$/i;
+const SECRET_KEY =
+  /password|passwd|secret|token|authori[sz]ation|cookie|api_?key|jwt|signed_?url|sso_?url|(reset|invite|login|magic|recovery)_?(link|url)|^(link|signedurl|ssourl|otp|code)$/i;
+/**
+ * Values that look like a credential, whatever key they sit under
+ * (USERS-AUDIT L5): a URL carrying a token or signature in its query or
+ * fragment, or a bare JWT. Replaced, not dropped, so the entry still says
+ * something was there.
+ */
+const SECRET_VALUE =
+  /[?#&](access_token|refresh_token|token|t|code|sig|signature|otp|jwt|x-amz-signature)=|^eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{5,}$/i;
 const MAX_STRING = 10_000;
 const MAX_ITEMS = 500;
 const MAX_DEPTH = 6;
@@ -89,7 +102,10 @@ const MAX_DEPTH = 6;
  */
 export function sanitizeDetails(value: unknown, depth = 0): unknown {
   if (value === null || value === undefined) return undefined;
-  if (typeof value === "string") return value.length > MAX_STRING ? `${value.slice(0, MAX_STRING)}… [cut]` : value;
+  if (typeof value === "string") {
+    if (SECRET_VALUE.test(value)) return "[removed: looked like a credential]";
+    return value.length > MAX_STRING ? `${value.slice(0, MAX_STRING)}… [cut]` : value;
+  }
   if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
   if (typeof value === "boolean") return value;
   if (value instanceof Date) return value.toISOString();
@@ -200,7 +216,28 @@ export type ActivityStore = {
     userAgent: string | null;
   }): Promise<{ inserted: boolean; previousIp: string | null }>;
   sweep(cutoff: Date): Promise<void>;
+  /**
+   * Whether `actorId` may add another refused/failed row this minute
+   * (USERS-AUDIT L2). Absent (the tests' store) means always.
+   */
+  problemBudget?: (actorId: string) => Promise<boolean>;
+  /** The first row of a save, to check a browser-sent batch id (USERS-AUDIT M9). */
+  batchStart?: (batchId: string) => Promise<{ actorId: string | null; at: Date } | null>;
 };
+
+/**
+ * Refused and failed rows per person per minute, beyond which they are dropped
+ * (with a console line). Anyone signed in could otherwise fill the append-only
+ * table, which nothing may delete for two years, by looping a refused request.
+ * Postgres-backed so the budget holds across instances; failures are rare, so
+ * the extra write is too.
+ */
+const PROBLEM_ROWS_PER_MINUTE = 30;
+const problemLimiter = new PgRateLimitStore("activity-problems");
+problemLimiter.init({ windowMs: 60_000 } as never);
+
+/** A save's rows stop joining its group this long after its first. */
+const BATCH_WINDOW_MS = 30 * 60 * 1000;
 
 const prismaStore: ActivityStore = {
   async insert(rows) {
@@ -259,6 +296,13 @@ const prismaStore: ActivityStore = {
     await prisma.activityEvent.deleteMany({ where: { at: { lt: cutoff } } });
     await prisma.activitySession.deleteMany({ where: { lastSeenAt: { lt: cutoff } } });
   },
+  async problemBudget(actorId) {
+    const { totalHits } = await problemLimiter.increment(actorId);
+    return totalHits <= PROBLEM_ROWS_PER_MINUTE;
+  },
+  async batchStart(batchId) {
+    return prisma.activityEvent.findFirst({ where: { batchId }, orderBy: { at: "asc" }, select: { actorId: true, at: true } });
+  },
 };
 
 let store: ActivityStore = prismaStore;
@@ -284,6 +328,8 @@ export class ActivityRecorder {
   patch: ActivityPatch | null = null;
   extra: ActivityEventInput[] = [];
   refusal: { reason: string; actor: Actor | null } | null = null;
+  /** Work that may still add rows (a slow session check), awaited before the write. */
+  pending: Promise<void>[] = [];
 
   constructor(readonly facts: RequestFacts) {}
 
@@ -392,7 +438,16 @@ export function planEvents(req: Request, status: number): { rows: ActivityEventI
   const meta: boolean[] = [];
   // No one to attribute it to (an anonymous request) means no row.
   if (primary && actor) {
-    rows.push({ ...primary, actor, outcome: primary.outcome ?? outcomeFor(status) });
+    const outcome = primary.outcome ?? outcomeFor(status);
+    // ⚠️ The catalogue's wording is the success tense ("Deleted an account").
+    // When the request failed or was refused before its route said anything,
+    // say so in the line itself, not only in the outcome column (USERS-AUDIT L3).
+    const routeSpoke = !!rec.patch?.summary;
+    const summary =
+      routeSpoke || outcome === "ok" || outcome === "partial" || primary.action === "security.refused"
+        ? primary.summary
+        : `${outcome === "refused" ? "Refused" : "Failed"}: ${primary.summary}`;
+    rows.push({ ...primary, summary, actor, outcome });
     meta.push(true);
   }
   for (const e of rec.extra) {
@@ -458,9 +513,48 @@ let writes = 0;
  * write, so the middleware can end the response at once.
  */
 export function flushActivity(req: Request, status: number): Promise<void> | null {
-  const { rows, meta } = planEvents(req, status);
-  if (!rows.length) return null;
+  const rec = req.activity;
+  // A slow session check may still add a "Signed in" (USERS-AUDIT L1): wait for
+  // it, inside the middleware's bounded write.
+  if (rec?.pending.length) {
+    return Promise.allSettled(rec.pending).then(() => {
+      rec.pending = [];
+      return flushActivity(req, status) ?? undefined;
+    });
+  }
+  const planned = planEvents(req, status);
+  if (!planned.rows.length) return null;
   return (async () => {
+    let { rows, meta } = planned;
+
+    // Refused and failed rows: within each person's budget only.
+    const keep: boolean[] = [];
+    for (const e of rows) {
+      const problem = e.outcome === "refused" || e.outcome === "failed";
+      let ok = true;
+      if (problem && e.actor?.id && store.problemBudget) {
+        ok = await store.problemBudget(e.actor.id).catch(() => true);
+        if (!ok) console.warn(`[activity] dropped a ${e.outcome} row for ${e.actor.id}: over ${PROBLEM_ROWS_PER_MINUTE}/minute`);
+      }
+      keep.push(ok);
+    }
+    if (keep.includes(false)) {
+      rows = rows.filter((_, i) => keep[i]);
+      meta = meta.filter((_, i) => keep[i]);
+      if (!rows.length) return;
+    }
+
+    // ⚠️ The batch id comes from the browser (USERS-AUDIT M9). It joins a save
+    // only for the person who started it, and only within BATCH_WINDOW_MS of
+    // its first row; otherwise a fixed id would fold someone's later actions
+    // into an old group, out of sight at the top of the list.
+    const batchId = rec?.facts.batchId;
+    if (batchId && store.batchStart) {
+      const start = await store.batchStart(batchId).catch(() => null);
+      const actorId = req.user?.id ?? rows[0].actor?.id ?? null;
+      if (start && (start.actorId !== actorId || Date.now() - start.at.getTime() > BATCH_WINDOW_MS)) rec!.facts.batchId = null;
+    }
+
     const labels = await Promise.all(
       rows.map(async (e) => {
         if (!e.target?.id || e.target.label) return null;
@@ -512,14 +606,35 @@ export async function noteSession(
   if (seen.size > 2000) seen.clear();
   seen.set(sessionId, { ip, at: now });
 
-  try {
-    const result = await Promise.race([
-      store.touchSession({ sessionId, userId: user.id, email: user.email, ip, userAgent: rec.facts.userAgent }),
-      new Promise<null>((r) => setTimeout(() => r(null), SESSION_TIMEOUT_MS)),
-    ]);
-    if (!result) return;
+  /*
+   * ⚠️ The rows are added when the write ANSWERS, not only if it answers
+   * within SESSION_TIMEOUT_MS (USERS-AUDIT L1). The session was marked seen
+   * above, so a write that landed late used to lose its "Signed in" for good:
+   * every later check found the row and said "not new". A slow one now joins
+   * `rec.pending`, which the request's own (bounded) activity write awaits.
+   */
+  const touch = store
+    .touchSession({ sessionId, userId: user.id, email: user.email, ip, userAgent: rec.facts.userAgent })
+    .then((result) => addSessionRows(rec, user, ip, signIn, result))
+    .catch((err: Error) => console.error("[activity] session check failed:", err.message));
+  const inTime = await Promise.race([touch.then(() => true), new Promise<false>((r) => setTimeout(() => r(false), SESSION_TIMEOUT_MS))]);
+  if (!inTime) rec.pending.push(touch);
+}
+
+function addSessionRows(
+  rec: ActivityRecorder,
+  user: { id: string; email: string },
+  ip: string | null,
+  signIn: { method: string | null; at: number | null },
+  result: { inserted: boolean; previousIp: string | null },
+): void {
+  {
     const actor = { id: user.id, email: user.email };
     if (result.inserted) {
+      // Each sign-in also sweeps what is past the retention period, so the two
+      // years hold whenever anyone uses the Hub, not only when the Activity
+      // page is opened (USERS-AUDIT L6).
+      void sweepOldActivity().catch(() => {});
       rec.add({
         category: "security",
         action: "auth.sign_in",
@@ -538,8 +653,6 @@ export async function noteSession(
         details: { previousIp: result.previousIp, ip },
       });
     }
-  } catch (err) {
-    console.error("[activity] session check failed:", (err as Error).message);
   }
 }
 

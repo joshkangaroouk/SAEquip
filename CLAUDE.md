@@ -1329,7 +1329,7 @@ The runbook is `docs/redesign/17-activity-log-runbook.md`.
 
   So even a bug or a hijacked server cannot edit history or delete anything under two years, provided the owner's `DIRECT_URL` is not in the server's environment (it was until 2026-11-19; see "The runtime role cannot do DDL"). The policies live only in the migration's SQL: Prisma does not model them, and **the migration needs the `saequip_app` role to exist.** Verified on a throwaway database: update and truncate are refused, a recent delete removes 0 rows, a 3-year-old one 1.
 - The anon and authenticated roles hold no rights on it (checked: the schema's default privileges grant to `saequip_app` only), so Supabase's REST API cannot reach it.
-- **Retention:** `sweepOldActivity()` runs on every Activity page load and on about one write in fifty.
+- **Retention:** `sweepOldActivity()` runs on every Activity page load, on every new sign-in and on about one write in fifty. The database only stops EARLY deletes; deletion itself still needs someone to use the Hub now and then.
 
 **Capture** (`middleware/activity.ts`, `services/activity.ts`, `services/activityCatalog.ts`):
 - `activityContext` is mounted on **/api only** (index.ts, before every /api route), never /public, so the live widget carries none of it.
@@ -1339,18 +1339,20 @@ The runbook is `docs/redesign/17-activity-log-runbook.md`.
   - GETs write nothing unless they set something (the activity export).
 - ⚠️ **The row is written BEFORE the response finishes** (`res.end` is wrapped), because Vercel may freeze a function once its response is sent. The wait is bounded by `WRITE_TIMEOUT_MS` (1.5s). A failure is logged without the event's details and never changes or fails the response.
 - ⚠️ **EVERY changing route under /api needs a `ROUTE_CATALOGUE` entry**, a real one or a `skip` with its reason. `npm run activity:test` (in pre-push) walks the real app's router stack and fails on a missing or stale entry. A route that slips through is still logged, as `action: "unknown"`, never dropped.
-- Requests are matched on their own path (`matchRoute()`), not `req.route`: by the time an error reaches the app's error handler, Express has restored `req.baseUrl`/`req.params`.
+- **Refused and failed rows are budgeted**: 30 a minute per person (Postgres-backed), beyond which they are dropped with a console line, because anyone signed in could otherwise loop a refused request into a table nothing may delete for two years. A failure the route never described reads "Failed: …" / "Refused: …", not the catalogue's success wording.
+- **A slow session check no longer loses "Signed in"**: past its 500 ms bound it joins `rec.pending`, which the request's own bounded write awaits.
+- Requests are matched on their own path (`matchRoute()`), not `req.route` (case-insensitively, as Express routes): by the time an error reaches the app's error handler, Express has restored `req.baseUrl`/`req.params`.
 - **Target names** are snapshots, looked up by type when the row is written: product name, category title, logo alt text, filename, invite email, and a person-free label for an enquiry. **A delete must name its target first**, since the row is gone by then (`nameTargetNow()`, or the route sets the label from the row it already loaded).
 - **Before → after**: `fieldChanges()` for fields, `listChanges()` for lists.
   - **Product details and images** do one extra Duda GET before writing (about 0.3s; the save goes ahead without it if it fails).
   - **Specs, benefits, applications, compatible products, categories and files** read their old rows first.
   - **The website order** names the one product moved ("3rd → 1st", `movedItem()`).
   - **A category save** now always reads the category first, for the seo merge and the log.
-- `sanitizeDetails()` drops any key mentioning a password, secret, token, authorization or cookie (and `link`/`otp`/`code`), and caps strings at 10,000 characters and lists at 500.
+- `sanitizeDetails()` drops any key mentioning a password, secret, token, authorization or cookie (and `link`/`otp`/`code`; since 2026-11-19 also api keys, JWTs, signed/SSO URLs and reset/invite/login links), replaces any VALUE that looks like a credential (a URL with a token or signature in it, a bare JWT) whatever its key, and caps strings at 10,000 characters and lists at 500. A bare `url` key is kept: a category's page URL is ordinary detail.
 - ⚠️ **Never put into an event**: a customer's name, email, phone or company; a note's text; any password, token or link.
   - An enquiry is labelled "Quote request of 14 Nov 2026 (3 items)" or "File request: Datasheet – EX Heater", so a GDPR "Delete request…" leaves nothing personal behind and log rows never need editing.
   - Request bodies are never copied.
-- **One save = one group**: `inActivityBatch()` (`lib/api.ts`) gives every changing request a uuid `X-Activity-Batch` header. It covers the product editor's save (with its logo switches and translate-on-save batches), New product and "Translate missing". ⚠️ It starts its function synchronously, so the translators still open inside the click.
+- **One save = one group**: `inActivityBatch()` (`lib/api.ts`) gives every changing request a uuid `X-Activity-Batch` header. It covers the product editor's save (with its logo switches and translate-on-save batches), New product and "Translate missing". ⚠️ It starts its function synchronously, so the translators still open inside the click. ⚠️ Running batches are a LIST, each removing only itself (2026-11-19): overlapping saves used to leak one id onto every later change in the tab. ⚠️ **The id comes from the browser, so the server checks it** (`flushActivity`): it joins a group only for the person whose row started it, within 30 minutes of that row; otherwise the row is written ungrouped. Group members are capped at 200.
 - **…and ONE row on the page** (Josh, 2026-11-18: one save showed as eight rows).
   - `GET /api/activity` groups rows by `COALESCE("batchId", id)` in SQL (`whereSql()`, which must stay in step with `whereFor()`), pages over the groups, and folds each with `summariseGroup()` (`services/activityGroups.ts`).
   - The line reads like "Updated Description · translated into 5 languages (Chinese kept in English)". Same-action rows fold to "Switched a logo on (3)".
@@ -1381,7 +1383,7 @@ The runbook is `docs/redesign/17-activity-log-runbook.md`.
 - `GET /api/activity?category&action&actor&targetType&targetId&outcome(ok|problem)&ip&batch&q&from&to&page&pageSize` → the `/api/media` page shape, newest first, ONE item per save (`batchCount` says how many rows it stands for), without `details`.
 - `GET /api/activity/facets`: categories and actions with labels and counts (from the catalogue), and the people seen, with names from Supabase.
 - `GET /api/activity/:id`: the full row, the actor's name, and its save's `members`, `groupSummary` and `groupOutcome`.
-- `GET /api/activity/export.csv?<filters>`: through `toCsv` (formula guard), capped at 50,000 rows, and logged itself.
+- `GET /api/activity/export.csv?<filters>`: through `csvLine` (formula guard), capped at 50,000 rows AND at 4 MB (`EXPORT_BYTES`; Vercel refuses a response over 4.5 MB, which one description edit's details could make out of a few thousand rows), with details cut to 2,000 characters. A full file sets `X-Export-Truncated: <written>/<matched>`, the page says so, and the log line counts what was actually written.
 - `GET /api/users` gains `lastActiveAt` for the super admin.
 
 **Dashboard** (`pages/Activity.tsx`):

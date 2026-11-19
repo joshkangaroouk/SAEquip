@@ -377,6 +377,12 @@ export default function Activity() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      // The file has a size limit (the server's EXPORT_BYTES): say when it was reached.
+      const cut = res.headers.get("x-export-truncated");
+      if (cut) {
+        const [got, of] = cut.split("/");
+        toast.warning(`The file holds the newest ${got} of ${of} entries, the most one download can carry. Narrow the dates for the rest.`);
+      }
       setReloadTick((t) => t + 1); // the export is itself an entry
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed");

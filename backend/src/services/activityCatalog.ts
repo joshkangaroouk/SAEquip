@@ -238,7 +238,10 @@ function compile(key: string): Compiled {
       return seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     })
     .join("/");
-  return { key, method, re: new RegExp(`^${pattern}$`), params, literals };
+  // ⚠️ Case-insensitive, as Express routes are by default (USERS-AUDIT L4):
+  // `/api/Users/:id/disable` still runs, and used to be logged as `unknown`,
+  // losing the route's own target and before → after.
+  return { key, method, re: new RegExp(`^${pattern}$`, "i"), params, literals };
 }
 
 // Most literal segments first, so `PUT /api/products/order` wins over a

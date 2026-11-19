@@ -20,8 +20,10 @@ import {
   fileRequestLabel,
   listChanges,
   movedItem,
+  flushActivity,
   noteSession,
   ordinal,
+  planEvents,
   quoteLabel,
   sanitizeDetails,
   type ActivityRow,
@@ -48,6 +50,7 @@ let rows: ActivityRow[] = [];
 let insertDelay = 0;
 let insertHangs = false;
 let insertedAt = 0;
+let touchDelay = 0;
 const sessions = new Map<string, { ip: string | null }>();
 const store: ActivityStore = {
   async insert(r) {
@@ -60,6 +63,7 @@ const store: ActivityStore = {
     return `${type} named ${id}`;
   },
   async touchSession(s) {
+    if (touchDelay) await new Promise((res) => setTimeout(res, touchDelay));
     const prev = sessions.get(s.sessionId);
     sessions.set(s.sessionId, { ip: s.ip });
     return { inserted: !prev, previousIp: prev?.ip ?? null };
@@ -118,6 +122,7 @@ check(matchRoute("PUT", "/api/logos/reorder")?.key === "PUT /api/logos/reorder",
 check(matchRoute("POST", "/api/accept-invite/")?.key === "POST /api/accept-invite", "a trailing slash still matches");
 check(matchRoute("DELETE", "/api/quotes/q1/notes/n1")?.params.noteId === "n1", "nested params");
 check(matchRoute("GET", "/api/products") === null, "a GET that is not an export has no entry");
+check(matchRoute("POST", "/api/Users/abc/disable")?.key === "POST /api/users/:id/disable", "a different-case path still matches (Express routes it)");
 
 // ---- 3. The middleware, end to end --------------------------------------------------
 
@@ -284,6 +289,71 @@ srv.close();
   check(e.activity!.extra.length === 0, "no session id (an old token): nothing, no error");
 }
 
+// ---- 4b. The fixes of 2026-11-19 (USERS-AUDIT L1–L3, M9) ---------------------------------
+
+{
+  __forgetSessionsForTest();
+  sessions.clear();
+  rows = [];
+  const req = (extra: Record<string, unknown> = {}) =>
+    ({
+      method: "GET",
+      originalUrl: "/api/products",
+      url: "/api/products",
+      user: { id: "u9", email: `u9@${TEST_DOMAIN}`, sessionId: "sess-slow" },
+      activity: new ActivityRecorder({ ip: "9.9.9.9", userAgent: "ua", country: null, city: null, batchId: null }),
+      ...extra,
+    }) as unknown as Request;
+
+  // L1: a session write slower than the 500 ms bound still records "Signed in".
+  touchDelay = 700;
+  const slow = req();
+  await noteSession(slow, { id: "u9", email: `u9@${TEST_DOMAIN}` }, "sess-slow", { method: "password", at: null });
+  check(slow.activity!.extra.length === 0 && slow.activity!.pending.length === 1, "a slow session write is kept pending, not dropped");
+  await flushActivity(slow, 200);
+  touchDelay = 0;
+  check(rows.some((r) => r.action === "auth.sign_in" && r.actorId === "u9"), "and its 'Signed in' is written with the request");
+
+  // L3: a failure the route never described says so in the line.
+  const failed = req({ method: "DELETE", originalUrl: "/api/users/abc", url: "/api/users/abc" });
+  const plan = planEvents(failed, 404);
+  check(plan.rows[0]?.summary === "Failed: Deleted an account" && plan.rows[0]?.outcome === "failed", "a failed delete does not read as done", plan.rows[0]?.summary);
+  const said = req({ method: "DELETE", originalUrl: "/api/users/abc", url: "/api/users/abc" });
+  said.activity!.set({ summary: "Deleted the account x" });
+  check(planEvents(said, 200).rows[0]?.summary === "Deleted the account x", "a route's own wording is kept");
+
+  // L2: refused rows beyond the person's budget are dropped.
+  rows = [];
+  store.problemBudget = async () => false;
+  const refused = req({ method: "POST", originalUrl: "/api/invites", url: "/api/invites" });
+  refused.activity!.refuse("super_admin_required");
+  await flushActivity(refused, 403);
+  check(rows.length === 0, "a refused row over the budget is not written");
+  store.problemBudget = async () => true;
+  await flushActivity(refused, 403);
+  check(rows.length === 1 && rows[0].outcome === "refused", "within the budget it is");
+  delete store.problemBudget;
+
+  // M9: a browser-sent batch id joins a save only for its own person, while it is fresh.
+  rows = [];
+  const batchId = "11111111-2222-3333-4444-555555555555";
+  const batched = (who: string) => {
+    const r = req({ method: "PUT", originalUrl: "/api/products/p1/specs", url: "/api/products/p1/specs", user: { id: who, email: `${who}@${TEST_DOMAIN}` } });
+    r.activity!.facts.batchId = batchId;
+    return r;
+  };
+  store.batchStart = async () => ({ actorId: "someone-else", at: new Date() });
+  await flushActivity(batched("u9"), 200);
+  check(rows[0]?.batchId === null, "another person's batch id is not joined");
+  store.batchStart = async () => ({ actorId: "u9", at: new Date(Date.now() - 2 * 60 * 60 * 1000) });
+  await flushActivity(batched("u9"), 200);
+  check(rows[1]?.batchId === null, "nor a batch id hours old");
+  store.batchStart = async () => ({ actorId: "u9", at: new Date() });
+  await flushActivity(batched("u9"), 200);
+  check(rows[2]?.batchId === batchId, "a fresh save of your own is");
+  delete store.batchStart;
+}
+
 // ---- 5. What the browser may report ---------------------------------------------------
 
 check(reportBody.safeParse({ action: "auth.sign_out" }).success, "report: a listed action is accepted");
@@ -310,6 +380,20 @@ check(ordinal(1) === "1st" && ordinal(2) === "2nd" && ordinal(3) === "3rd" && or
   const long = sanitizeDetails({ s: "x".repeat(20_000), list: Array.from({ length: 600 }, (_, i) => i) }) as { s: string; list: unknown[] };
   check(long.s.length < 10_100 && long.s.endsWith("[cut]"), "long text is cut");
   check(long.list.length === 501, "long lists are cut, saying so");
+  const secrets = sanitizeDetails({
+    resetLink: "a",
+    inviteUrl: "b",
+    apiKey: "c",
+    jwt: "d",
+    signed_url: "e",
+    page: "https://h.example/invite#t=abcdefghijklmnop",
+    file: "https://x.supabase.co/storage/v1/object/sign/f.pdf?token=eyJabc",
+    bare: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.c2lnbmF0dXJlLWhlcmU",
+    url: "/category/oil---gas",
+  }) as Record<string, unknown>;
+  check(!["resetLink", "inviteUrl", "apiKey", "jwt", "signed_url"].some((k) => k in secrets), "credential-named keys are dropped", Object.keys(secrets).join(","));
+  check([secrets.page, secrets.file, secrets.bare].every((v) => String(v).startsWith("[removed")), "credential-looking values are replaced whatever their key");
+  check(secrets.url === "/category/oil---gas", "an ordinary URL is kept");
 }
 
 // ---- 7. One row per save -------------------------------------------------------------

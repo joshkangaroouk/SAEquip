@@ -14,7 +14,7 @@ import {
   allActions,
   type ActivityCategory,
 } from "../services/activityCatalog.js";
-import { toCsv } from "../services/csv.js";
+import { csvLine } from "../services/csv.js";
 import { summariseGroup } from "../services/activityGroups.js";
 
 /**
@@ -205,6 +205,7 @@ activityRouter.get("/activity", requireSuperAdmin, async (req, res, next) => {
           where: { AND: [whereFor(filters), { OR: [{ batchId: { in: keys } }, { id: { in: keys } }] }] },
           select: { ...LIST_SELECT, details: true },
           orderBy: { at: "asc" },
+          take: MEMBERS_CAP * keys.length,
         })
       : [];
     const byKey = new Map<string, typeof members>();
@@ -281,6 +282,11 @@ activityRouter.get("/activity/facets", requireSuperAdmin, async (_req, res, next
 });
 
 const EXPORT_CAP = 50_000;
+/** Under Vercel's 4.5 MB response limit, with room for the headers. */
+const EXPORT_BYTES = 4_000_000;
+const DETAILS_CHARS = 2_000;
+/** A save's rows shown together; a save is a few dozen at most (M9). */
+const MEMBERS_CAP = 200;
 const LONDON = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
   year: "numeric",
@@ -303,9 +309,21 @@ activityRouter.get("/activity/export.csv", requireSuperAdmin, async (req, res, n
       staffNames(),
     ]);
     const actionLabels = new Map(allActions().map((a) => [a.action, a.label]));
-    const csv = toCsv(
-      ["Time (UTC)", "Time (UK)", "Person", "Email", "Category", "Action", "Summary", "Target type", "Target", "Outcome", "IP", "City", "Country", "Device", "Method", "Path", "Status", "Save", "Details"],
-      rows.map((r) => [
+    /*
+     * ⚠️ Built line by line within EXPORT_BYTES (USERS-AUDIT M11). A function's
+     * response cannot exceed 4.5 MB on Vercel, and one description edit's
+     * details run to 20 KB, so the 50,000-row cap was never reachable: a big
+     * export failed at the platform after its "Exported" row was written as a
+     * success. Details are cut to DETAILS_CHARS here (the page has them whole),
+     * and a file that is full says so in a header and in the log.
+     */
+    const header = ["Time (UTC)", "Time (UK)", "Person", "Email", "Category", "Action", "Summary", "Target type", "Target", "Outcome", "IP", "City", "Country", "Device", "Method", "Path", "Status", "Save", "Details"];
+    const lines: string[] = [csvLine(header)];
+    let bytes = Buffer.byteLength(lines[0]) + 3;
+    let written = 0;
+    for (const r of rows) {
+      const details = r.details === null ? null : JSON.stringify(r.details);
+      const line = csvLine([
         r.at.toISOString(),
         LONDON.format(r.at),
         (r.actorId && names.get(r.actorId)) || null,
@@ -324,14 +342,24 @@ activityRouter.get("/activity/export.csv", requireSuperAdmin, async (req, res, n
         r.path,
         r.status,
         r.batchId,
-        r.details === null ? null : JSON.stringify(r.details),
-      ]),
-    );
+        details && details.length > DETAILS_CHARS ? `${details.slice(0, DETAILS_CHARS)}… [cut: the Activity page has it all]` : details,
+      ]);
+      const size = Buffer.byteLength(line) + 2;
+      if (bytes + size > EXPORT_BYTES) break;
+      lines.push(line);
+      bytes += size;
+      written++;
+    }
+    const full = written < rows.length;
+    const csv = "\uFEFF" + lines.join("\r\n") + "\r\n";
     req.activity?.set({
-      summary: `Exported the activity log (${rows.length} ${rows.length === 1 ? "entry" : "entries"})`,
-      details: { rows: rows.length, capped: rows.length === EXPORT_CAP, filters },
+      summary: full
+        ? `Exported the activity log (the newest ${written} of ${rows.length} entries: the file limit)`
+        : `Exported the activity log (${written} ${written === 1 ? "entry" : "entries"})`,
+      details: { rows: written, matched: rows.length, capped: rows.length === EXPORT_CAP || full, filters },
     });
     const stamp = new Date().toISOString().slice(0, 10);
+    if (full) res.setHeader("X-Export-Truncated", `${written}/${rows.length}`);
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="saequip-activity-${stamp}.csv"`);
     res.setHeader("Cache-Control", "no-store");
@@ -353,6 +381,7 @@ activityRouter.get("/activity/:id", requireSuperAdmin, async (req, res, next) =>
         ? prisma.activityEvent.findMany({
             where: { batchId: row.batchId },
             orderBy: { at: "asc" },
+            take: MEMBERS_CAP,
             select: { id: true, at: true, category: true, action: true, outcome: true, summary: true, targetType: true, targetId: true, targetLabel: true, details: true, status: true },
           })
         : Promise.resolve([]),
