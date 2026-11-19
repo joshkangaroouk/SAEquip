@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { supabase } from "../supabase.js";
+import { staffName } from "../services/supabaseUsers.js";
 import { requireSuperAdmin } from "../middleware/requireAuth.js";
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import { sweepOldActivity } from "../services/activity.js";
@@ -236,8 +237,8 @@ async function staffNames(): Promise<Map<string, string>> {
   try {
     const { data } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
     for (const u of data?.users ?? []) {
-      const m = (u.user_metadata ?? {}) as { first_name?: unknown; last_name?: unknown };
-      const name = [m.first_name, m.last_name].filter((x) => typeof x === "string" && x.trim()).join(" ").trim();
+      // The server's copy of the name (staffName()), not one the person can edit.
+      const name = staffName(u).full;
       if (name) names.set(u.id, name);
     }
   } catch {

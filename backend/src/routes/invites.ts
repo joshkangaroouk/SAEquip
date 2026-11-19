@@ -80,7 +80,8 @@ const deps: InviteDeps = {
       user_metadata: { first_name: firstName, last_name: lastName },
       // app_metadata: only the service role can write it, so the API can trust it.
       // Required unless two-factor is off for the Hub (services/twoFactor.ts).
-      app_metadata: { mfa_required: TWO_FACTOR_ON, invited_by: invitedBy },
+      // The name too: the user can edit user_metadata, not this (staffName()).
+      app_metadata: { mfa_required: TWO_FACTOR_ON, invited_by: invitedBy, first_name: firstName, last_name: lastName },
     });
     if (error || !data.user) return { error: error?.message ?? "Supabase returned no user." };
     return { id: data.user.id };

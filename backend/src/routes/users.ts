@@ -4,7 +4,7 @@ import { z } from "zod";
 import { env } from "../env.js";
 import { prisma } from "../prisma.js";
 import { supabase } from "../supabase.js";
-import { hasVerifiedFactor, listUsersWithFactors } from "../services/supabaseUsers.js";
+import { hasVerifiedFactor, listUsersWithFactors, staffName } from "../services/supabaseUsers.js";
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import { isSuperAdminSession, requireSuperAdmin } from "../middleware/requireAuth.js";
 import { TWO_FACTOR_ON } from "../services/twoFactor.js";
@@ -76,10 +76,7 @@ interface StaffUser {
   lastActiveAt: string | null;
 }
 
-const fullName = (meta: Record<string, unknown> | undefined): string | null => {
-  const parts = [meta?.first_name, meta?.last_name].filter((p): p is string => typeof p === "string" && p.trim() !== "");
-  return parts.length ? parts.join(" ") : null;
-};
+
 const isDisabled = (bannedUntil: string | undefined) => !!bannedUntil && Date.parse(bannedUntil) > Date.now();
 
 /**
@@ -116,7 +113,7 @@ usersRouter.get("/users", async (req, res, next) => {
         return {
           id: u.id,
           email: u.email ?? "",
-          name: fullName(u.user_metadata),
+          name: staffName(u).full,
           role: typeof app.role === "string" ? app.role : null,
           createdAt: u.created_at,
           lastSignInAt: u.last_sign_in_at ?? null,
@@ -285,14 +282,14 @@ const adminDeps: UserAdminDeps = {
     const { data, error } = await supabase.auth.admin.getUserById(id);
     if (error || !data.user) return null;
     const u = data.user;
-    const meta = (u.user_metadata ?? {}) as { first_name?: unknown; last_name?: unknown };
+    const name = staffName(u);
     const app = (u.app_metadata ?? {}) as { role?: unknown; mfa_required?: unknown };
     return {
       id: u.id,
       email: u.email ?? "",
       role: typeof app.role === "string" ? app.role : null,
-      firstName: typeof meta.first_name === "string" ? meta.first_name : null,
-      lastName: typeof meta.last_name === "string" ? meta.last_name : null,
+      firstName: name.first,
+      lastName: name.last,
       disabled: isDisabled(u.banned_until),
       // getUserById carries `factors` (listUsers does not; see supabaseUsers.ts).
       mfaEnabled: hasVerifiedFactor(u),

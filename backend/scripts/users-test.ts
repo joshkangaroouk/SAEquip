@@ -43,6 +43,7 @@ import {
 import { DudaApiError } from "../src/services/duda.js";
 import { resetRedirectFor } from "../src/routes/users.js";
 import { TWO_FACTOR_ON } from "../src/services/twoFactor.js";
+import { staffName } from "../src/services/supabaseUsers.js";
 
 let pass = 0;
 let fail = 0;
@@ -132,6 +133,13 @@ check(resetRedirectFor("https://evil.example", "hub.example") === undefined, "a 
 check(resetRedirectFor(undefined, "hub.example") === undefined, "no Origin: left to Supabase's Site URL");
 check(resetRedirectFor("javascript:alert(1)", "hub.example") === undefined, "a non-http origin is refused");
 check(resetRedirectFor("http://localhost:5173", "api.example") === "http://localhost:5173/reset-password", "localhost in development");
+
+// ---- Names ------------------------------------------------------------------------
+
+section("Names come from the server's copy");
+check(staffName({ app_metadata: { first_name: "Pat", last_name: "Lee" }, user_metadata: { first_name: "The", last_name: "Boss" } }).full === "Pat Lee", "app_metadata wins over a name the person edited themselves");
+check(staffName({ app_metadata: {}, user_metadata: { first_name: "Old", last_name: "Account" } }).full === "Old Account", "an account with no server copy still shows its name");
+check(staffName({ app_metadata: {}, user_metadata: {} }).full === null, "no name at all: null, so the email shows");
 
 // ---- Invites ----------------------------------------------------------------------
 

@@ -22,6 +22,14 @@ import { TWO_FACTOR_ON } from "../services/twoFactor.js";
  * the role is granted alone.
  *
  * Dry run without --confirm.
+ *
+ * Names (USERS-AUDIT L17, 2026-11-19):
+ *   npm run users:admin --workspace=backend -- --sync-names [--confirm]
+ * copies each account's first and last name into `app_metadata`, where only
+ * the service role can write, for every account that has no server copy yet.
+ * The Users and Activity pages read that copy first (staffName()), so after
+ * this nobody can rename themselves there by editing their own user_metadata.
+ * Invited accounts get it at creation; this is for the accounts made before.
  */
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(`--${name}`);
@@ -34,7 +42,31 @@ function fail(msg: string): never {
   process.exit(1);
 }
 
+async function syncNames() {
+  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) fail(error.message);
+  let changed = 0;
+  for (const u of data.users) {
+    const app = { ...(u.app_metadata ?? {}) } as Record<string, unknown>;
+    const has = typeof app.first_name === "string" || typeof app.last_name === "string";
+    const m = (u.user_metadata ?? {}) as Record<string, unknown>;
+    const first = typeof m.first_name === "string" && m.first_name.trim() ? m.first_name.trim() : null;
+    const last = typeof m.last_name === "string" && m.last_name.trim() ? m.last_name.trim() : null;
+    if (has || (!first && !last)) {
+      console.log(`  ${u.email}: ${has ? "already has a server copy" : "no name to copy"}`);
+      continue;
+    }
+    console.log(`  ${u.email}: copy "${[first, last].filter(Boolean).join(" ")}"`);
+    changed++;
+    if (!flag("confirm")) continue;
+    const { error: updErr } = await supabase.auth.admin.updateUserById(u.id, { app_metadata: { ...app, first_name: first, last_name: last } });
+    if (updErr) fail(`${u.email}: ${updErr.message}`);
+  }
+  console.log(flag("confirm") ? `\n✓ ${changed} account(s) updated.\n` : `\nDry run: ${changed} to copy. Add --confirm to apply.\n`);
+}
+
 async function main() {
+  if (flag("sync-names")) return syncNames();
   const email = arg("email")?.trim().toLowerCase();
   if (!email) fail("--email is required");
   const user = await findUserWithFactors(email);

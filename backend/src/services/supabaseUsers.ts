@@ -57,3 +57,23 @@ export async function findUserWithFactors(email: string): Promise<User | null> {
 
 export const hasVerifiedFactor = (u: User): boolean =>
   (u.factors ?? []).some((f) => f.status === "verified");
+
+/**
+ * A staff member's name, as the SERVER recorded it (USERS-AUDIT L17,
+ * 2026-11-19). `user_metadata` is writable by the user themselves straight
+ * through Supabase, so a name kept only there let anyone rename themselves,
+ * on the Users page and in the Activity page's Person column, which is the
+ * accountability record. Invites now write the name to `app_metadata` too
+ * (only the service role can), and that copy wins. `user_metadata` is read
+ * only for an account that has no server copy yet (`users:admin --sync-names`
+ * fills those in).
+ */
+export function staffName(u: Pick<User, "app_metadata" | "user_metadata">): { first: string | null; last: string | null; full: string | null } {
+  const pick = (m: Record<string, unknown> | undefined) => {
+    const first = typeof m?.first_name === "string" && m.first_name.trim() ? m.first_name.trim() : null;
+    const last = typeof m?.last_name === "string" && m.last_name.trim() ? m.last_name.trim() : null;
+    return first || last ? { first, last } : null;
+  };
+  const n = pick(u.app_metadata as Record<string, unknown> | undefined) ?? pick(u.user_metadata as Record<string, unknown> | undefined);
+  return { first: n?.first ?? null, last: n?.last ?? null, full: n ? [n.first, n.last].filter(Boolean).join(" ") : null };
+}
