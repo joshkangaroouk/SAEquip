@@ -20,7 +20,8 @@ import { assessPassword } from "./passwordPolicy.js";
  * - the email always comes from the invite, never from the browser.
  *
  * The handlers take their storage and Supabase calls as `deps`, so the rules
- * are tested without a database (see routes/invites.ts for the real ones).
+ * are tested without a database (scripts/users-test.ts; see routes/invites.ts
+ * for the real ones).
  */
 
 export const INVITE_TTL_MS = 5 * 60 * 60 * 1000;

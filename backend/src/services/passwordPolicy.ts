@@ -15,8 +15,9 @@ export function assessPassword(pw: string): { ok: boolean; problems: string[] } 
   if (!/[^A-Za-z0-9]/.test(pw)) problems.push("no symbol");
   // A dictionary word plus a trailing digit or two is the single most common
   // human password shape, and the first thing any credential-stuffing list
-  // tries. Length alone does not rescue it.
-  if (/^[A-Za-z]+\d{0,3}[!?.]?$/.test(pw)) problems.push("word-plus-digits shape — the first pattern any cracking list tries");
+  // tries. Length alone does not rescue it. Up to FOUR digits, so a year
+  // ("Summertime2026!") counts too: users:test found it slipping through.
+  if (/^[A-Za-z]+\d{0,4}[!?.]?$/.test(pw)) problems.push("word-plus-digits shape — the first pattern any cracking list tries");
   return { ok: problems.length === 0, problems };
 }
 

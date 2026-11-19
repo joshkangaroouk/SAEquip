@@ -7,7 +7,7 @@ import { TWO_FACTOR_ON } from "./twoFactor.js";
  * disable or enable it, delete it, give or remove its Website Editor access,
  * and turn its two-factor off or make it required (see turnOffMfaRoute). Behind
  * requireAuth + requireSuperAdmin (routes/users.ts); the calls are `deps` so
- * the rules are tested without Supabase or Duda.
+ * the rules are tested without Supabase or Duda (scripts/users-test.ts).
  *
  * - The super admin cannot disable themselves (it would lock out the only
  *   person who can undo it) or another super admin (that is a CLI job).

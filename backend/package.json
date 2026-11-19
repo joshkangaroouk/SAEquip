@@ -48,6 +48,7 @@
     "duda-ids:test": "tsx scripts/duda-ids-test.ts",
     "script-guards:test": "tsx scripts/script-guards-test.ts",
     "activity:test": "tsx scripts/activity-test.ts",
+    "users:test": "tsx scripts/users-test.ts",
     "catalogue:backup": "tsx src/scripts/catalogueBackup.ts",
     "logos:switch-on": "tsx src/scripts/logoSwitchOn.ts",
     "logos:replace-image": "tsx src/scripts/logoReplaceImage.ts",

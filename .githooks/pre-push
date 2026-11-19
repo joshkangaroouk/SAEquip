@@ -46,6 +46,13 @@ if ! npm run --silent activity:test --workspace=backend > /dev/null 2>&1; then
   exit 1
 fi
 
+echo "pre-push ▸ user management (invites, Users page actions, Website Editor, passwords)"
+if ! npm run --silent users:test --workspace=backend > /dev/null 2>&1; then
+  npm run --silent users:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30
+  echo "✗ user management tests failed — push stopped"
+  exit 1
+fi
+
 echo "pre-push ▸ widget tests"
 if ! npm run --silent widget:test --workspace=backend > /dev/null 2>&1; then
   npm run --silent widget:test --workspace=backend 2>&1 | grep -E "FAIL|failed" | head -30

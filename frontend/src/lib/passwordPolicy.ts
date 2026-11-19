@@ -20,7 +20,7 @@ export function assessPassword(pw: string): PasswordVerdict {
   if (!/[^A-Za-z0-9]/.test(pw)) problems.push("Include a symbol");
   // A dictionary word with a digit or two appended is the most common human
   // password shape and the first thing a credential-stuffing list tries.
-  if (/^[A-Za-z]+\d{0,3}[!?.]?$/.test(pw)) {
+  if (/^[A-Za-z]+\d{0,4}[!?.]?$/.test(pw)) {
     problems.push("Avoid a word with digits on the end — that pattern is guessed first");
   }
   return { ok: problems.length === 0, problems };

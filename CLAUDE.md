@@ -1465,6 +1465,7 @@ The rest of this section describes two-factor as it works when the switch is on.
     - who did it and when are stamped in `app_metadata` (`mfa_disabled_by`/`_at`, cleared by Require), and the Users page shows "Turned off by …" under Off;
     - the dialog asks the super admin to check with the person directly first.
   - **The person's open tab catches up.** `AuthContext` refreshes a stored session that says a code or a set-up is owed, once on load, so a tab left on the code step or `/setup-2fa` gets the account's current state from the server.
+- **Tests:** `npm run users:test --workspace=backend` (in pre-push, 2026-11-19) runs the real invite, Users page and Website Editor route code against in-memory fakes: the refusals, the order of each step, read-backs, the sweep, the password policy (its first run found a year, "Summertime2026!", slipping past the word-plus-digits rule, so the rule now allows up to four digits) and that the browser's password rules match the server's.
 - **Still CLI-only, deliberately:** granting super admin. `users:mfa --reset` still works as a CLI way to reset 2FA; unlike the Users page it leaves `mfa_required` as it was. Account creation also stays available with the CLI:
 
   ```
@@ -1726,7 +1727,7 @@ whole API and the live widget down for ~3 minutes.
 2. **Before every push** — `.githooks/pre-push`: the bundle check, `tsc` for both workspaces
    (Vercel's build typechecks neither), `scripts/check-doc-refs.mjs` (every function this file
    names as `name()` must still exist in the code), `scripts/check-csp-hash.mjs` (the inline
-   theme script's sha256 is in the CSP — see "Theme and surfaces"), `widget:test`, `i18n:test`, `duda-ids:test`, `script-guards:test`, and the widgets
+   theme script's sha256 is in the CSP — see "Theme and surfaces"), `widget:test`, `i18n:test`, `duda-ids:test`, `script-guards:test`, `activity:test`, `users:test` (invites, the Users page actions, Website Editor grants and the password policy), and the widgets
    pasted into Duda (`build-quote-widgets.mjs --check`, `quote-widgets:test` and
    `distributor-widget:test`). ~12s. Enabled per clone with
    `git config core.hooksPath .githooks`; run on demand with `npm run check`; skip once,
