@@ -17,6 +17,7 @@
     "duda:spike-options": "tsx src/scripts/dudaSpikeOptions.ts",
     "duda:probe-sso": "tsx src/scripts/dudaProbeSso.ts",
     "duda:editor-provision": "tsx src/scripts/dudaEditorProvision.ts",
+    "duda:editor-audit": "tsx src/scripts/dudaEditorAudit.ts",
     "duda:import-products": "tsx src/scripts/dudaImportProducts.ts",
     "media:verify-upload": "tsx src/scripts/mediaVerifyUpload.ts",
     "storage:ensure": "tsx src/scripts/storageEnsure.ts",

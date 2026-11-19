@@ -8,7 +8,7 @@ import { hasVerifiedFactor, listUsersWithFactors } from "../services/supabaseUse
 import { PgRateLimitStore } from "../middleware/pgRateLimitStore.js";
 import { isSuperAdminSession, requireSuperAdmin } from "../middleware/requireAuth.js";
 import { TWO_FACTOR_ON } from "../services/twoFactor.js";
-import { grantEditorAccess, revokeEditorAccess } from "../services/dudaEditorAccess.js";
+import { grantEditorAccess, revokeEveryEditorGrant } from "../services/dudaEditorAccess.js";
 import {
   deleteUserRoute,
   disableUserRoute,
@@ -335,9 +335,11 @@ const adminDeps: UserAdminDeps = {
     const { error } = await supabase.auth.admin.updateUserById(id, { ban_duration: disabled ? "876000h" : "none" });
     if (error) throw error;
   },
-  hasEditor: async (userId) => (await prisma.dudaEditorAccount.count({ where: { staffUserId: userId } })) > 0,
   grantEditor: (g) => grantEditorAccess(g),
-  revokeEditor: (r) => revokeEditorAccess(r),
+  revokeEditor: async (r) => {
+    const swept = await revokeEveryEditorGrant(r);
+    return { removed: swept.revoked.length > 0 || swept.hadMapping };
+  },
   clearEditorError: async (userId) => {
     await prisma.userInvite.updateMany({ where: { acceptedUserId: userId }, data: { editorGrantError: null } });
   },

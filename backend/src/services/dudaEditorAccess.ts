@@ -69,6 +69,17 @@ const prismaDb: EditorAccessDb = {
       select: { id: true, dudaAccountName: true },
     }),
   saveGrant: async (g) => {
+    // A row for the same Duda account and the same email under ANOTHER user id
+    // is what an account deleted outside the Users page leaves behind (the
+    // delete route removes it; the Supabase dashboard does not). Re-inviting
+    // that email used to hit the unique dudaAccountName after Duda had
+    // already granted, leaving a grant the Hub did not record. It is the same
+    // person's address, so the row moves to the new account. A different
+    // email on that Duda account is a real clash and still fails.
+    await prisma.dudaEditorAccount.updateMany({
+      where: { dudaAccountName: g.dudaAccountName, staffEmail: g.staffEmail, NOT: { staffUserId: g.staffUserId } },
+      data: { staffUserId: g.staffUserId },
+    });
     const account = await prisma.dudaEditorAccount.upsert({
       where: { staffUserId: g.staffUserId },
       create: { staffUserId: g.staffUserId, staffEmail: g.staffEmail, dudaAccountName: g.dudaAccountName },
@@ -213,14 +224,32 @@ export async function grantEditorAccess(
   }
 
   // 3. The Hub mapping, which is what authorises minting a link.
-  await deps.db.saveGrant({
-    staffUserId: input.staffUserId,
-    staffEmail: input.staffEmail,
-    dudaAccountName: name,
-    site,
-    permissions,
-    grantedBy: input.grantedBy,
-  });
+  // ⚠️ Duda has granted by now. If the Hub cannot record it, take the grant
+  // back, or Duda would hold access the Hub knows nothing about, which no
+  // Remove, Disable or Delete would ever look for (USERS-AUDIT M4). Only a NEW
+  // grant: with a mapping already there, the Hub's record still stands.
+  try {
+    await deps.db.saveGrant({
+      staffUserId: input.staffUserId,
+      staffEmail: input.staffEmail,
+      dudaAccountName: name,
+      site,
+      permissions,
+      grantedBy: input.grantedBy,
+    });
+  } catch (err) {
+    if (!mapping) {
+      try {
+        await deps.duda.revokeSiteAccess(name, site);
+      } catch {
+        // The sweep (revokeEveryEditorGrant) still finds it by name.
+      }
+    }
+    throw new EditorAccessError(
+      "duda_error",
+      `Duda granted access but the Hub couldn't record it (${err instanceof Error ? err.message.slice(0, 160) : "unknown error"}), so the grant was ${mapping ? "left as it was" : "taken back"}. Try again.`,
+    );
+  }
   steps.push(`Saved the Hub mapping (${input.staffEmail} → ${name} → ${site})`);
   return { dudaAccountName: name, created: !exists, aliased, steps };
 }
@@ -293,4 +322,71 @@ export async function revokeEditorAccess(
     steps.push("No Hub record to remove");
   }
   return { dudaAccountName: name, hadGrant, steps };
+}
+
+export interface SweepResult {
+  /** Duda accounts whose grant on the site was removed. */
+  revoked: string[];
+  /** A Hub mapping existed (and is gone now). */
+  hadMapping: boolean;
+  steps: string[];
+}
+
+/**
+ * Take away EVERY Website Editor grant this person could hold on `site`, not
+ * just the one the Hub records (USERS-AUDIT M4). Used by Remove access,
+ * Disable and Delete on the Users page.
+ *
+ * ⚠️ Why not just revokeEditorAccess(): that asks Duda only about the account
+ * the Hub maps (or the login email), so a grant the Hub has lost (the
+ * 2026-09-29 database wipe left exactly that) or never recorded survived a
+ * Disable or a Delete that reported success. This checks the mapped account,
+ * the login email AND its `+saequip` alias:
+ * - Duda answers ResourceNotExist for an account that does not exist and for
+ *   one with no access to the site (measured 2026-11-19, a STAFF login
+ *   included), so either means "nothing here";
+ * - any other answer stops with an error, so Delete keeps the account rather
+ *   than guessing (fail closed, as the revoke itself does);
+ * - each grant found goes through revokeEditorAccess(), which verifies it is
+ *   gone before the Hub forgets it.
+ */
+export async function revokeEveryEditorGrant(
+  input: { staffUserId: string; staffEmail: string; site?: string },
+  deps: { duda: Duda; db: EditorAccessDb } = realDeps,
+): Promise<SweepResult> {
+  const site = input.site ?? EDITOR_SITE;
+  const steps: string[] = [];
+  const mapping = await deps.db.findMapping({ staffUserId: input.staffUserId, staffEmail: input.staffEmail });
+  const names = [...new Set([mapping?.dudaAccountName, input.staffEmail, customerAlias(input.staffEmail)].filter((n): n is string => !!n))];
+  const revoked: string[] = [];
+
+  for (const name of names) {
+    let held: string[];
+    try {
+      const perms = (await deps.duda.getSitePermissions(name, site)) as { permissions?: string[] } | undefined;
+      held = perms?.permissions ?? [];
+    } catch (err) {
+      if (err instanceof DudaApiError && gone(err)) {
+        steps.push(`${name}: no access to ${site}`);
+        continue;
+      }
+      throw new EditorAccessError("duda_error", `Couldn't check ${name}'s access with Duda (${dudaMessage(err)}).`);
+    }
+    if (held.length === 0) {
+      steps.push(`${name}: no permissions on ${site}`);
+      continue;
+    }
+    const result = await revokeEditorAccess({ staffUserId: input.staffUserId, staffEmail: input.staffEmail, site, dudaAccountName: name }, deps);
+    steps.push(...result.steps.map((st) => `${name}: ${st}`));
+    revoked.push(name);
+  }
+
+  // A mapping with no grant behind it is removed too: the Hub must not offer
+  // a link Duda would refuse, nor say access exists.
+  const left = await deps.db.findMapping({ staffUserId: input.staffUserId, staffEmail: input.staffEmail });
+  if (left) {
+    await deps.db.removeSite(left, site);
+    steps.push(`Removed the Hub record for ${site}`);
+  }
+  return { revoked, hadMapping: !!mapping, steps };
 }

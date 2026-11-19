@@ -14,6 +14,12 @@ import { TWO_FACTOR_ON } from "./twoFactor.js";
  * - Disabling also removes Website Editor access, verified in Duda: a Duda
  *   session outlives the Hub one, so leaving it would keep a disabled person
  *   editing the live site. Enabling does NOT give it back; that is its own click.
+ * - ⚠️ Disable, Delete and Remove access ask DUDA, not only the Hub's record
+ *   (USERS-AUDIT M4, 2026-11-19). They used to revoke only when the Hub had a
+ *   mapping, so a grant the Hub had lost survived while the page reported
+ *   success. Every call now checks the mapped account, the login email and its
+ *   +saequip alias, so Duda being unreachable now stops a Delete even for
+ *   someone who never had access: that is the safe direction.
  */
 
 export interface AdminUser {
@@ -32,7 +38,6 @@ export interface AdminUser {
 export interface UserAdminDeps {
   getUser: (id: string) => Promise<AdminUser | null>;
   setDisabled: (id: string, disabled: boolean) => Promise<void>;
-  hasEditor: (userId: string) => Promise<boolean>;
   grantEditor: (g: {
     staffUserId: string;
     staffEmail: string;
@@ -40,7 +45,12 @@ export interface UserAdminDeps {
     lastName: string | null;
     grantedBy: string | null;
   }) => Promise<{ dudaAccountName: string; aliased: boolean }>;
-  revokeEditor: (r: { staffUserId: string; staffEmail: string }) => Promise<unknown>;
+  /**
+   * Remove EVERY Website Editor grant the person could hold, the Hub's record
+   * or not (revokeEveryEditorGrant). `removed`: there was something to remove.
+   * Throws an EditorAccessError when Duda cannot confirm it.
+   */
+  revokeEditor: (r: { staffUserId: string; staffEmail: string }) => Promise<{ removed: boolean }>;
   /** Clears an invite's "couldn't be set up" note once access is granted. */
   clearEditorError: (userId: string) => Promise<void>;
   /**
@@ -102,13 +112,10 @@ export function disableUserRoute(deps: UserAdminDeps): RequestHandler {
       console.info(`[users] ${req.user?.email} disabled ${user.email}`);
       let editorRevoked = false;
       let editorError: string | undefined;
-      if (await deps.hasEditor(user.id)) {
-        try {
-          await deps.revokeEditor({ staffUserId: user.id, staffEmail: user.email });
-          editorRevoked = true;
-        } catch (err) {
-          editorError = editorFailure(err)?.detail ?? "Couldn't remove Website Editor access.";
-        }
+      try {
+        editorRevoked = (await deps.revokeEditor({ staffUserId: user.id, staffEmail: user.email })).removed;
+      } catch (err) {
+        editorError = editorFailure(err)?.detail ?? "Couldn't remove Website Editor access.";
       }
       req.activity?.set({
         summary: `Disabled ${user.email}${editorRevoked ? " and removed their Website Editor access" : ""}`,
@@ -152,18 +159,15 @@ export function deleteUserRoute(deps: UserAdminDeps): RequestHandler {
         return;
       }
       let editorRevoked = false;
-      if (await deps.hasEditor(user.id)) {
-        try {
-          await deps.revokeEditor({ staffUserId: user.id, staffEmail: user.email });
-          editorRevoked = true;
-        } catch (err) {
-          const failure = editorFailure(err);
-          res.status(502).json({
-            error: "editor_revoke_failed",
-            detail: `Couldn't remove their Website Editor access, so the account was kept: ${failure?.detail ?? "Duda refused."} Try again, or remove the access first.`,
-          });
-          return;
-        }
+      try {
+        editorRevoked = (await deps.revokeEditor({ staffUserId: user.id, staffEmail: user.email })).removed;
+      } catch (err) {
+        const failure = editorFailure(err);
+        res.status(502).json({
+          error: "editor_revoke_failed",
+          detail: `Couldn't confirm with Duda that they have no Website Editor access, so the account was kept: ${failure?.detail ?? "Duda refused."} Try again in a moment.`,
+        });
+        return;
       }
       await deps.deleteUser(user.id);
       if (await deps.getUser(user.id)) {
