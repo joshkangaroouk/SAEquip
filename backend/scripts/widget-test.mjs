@@ -1275,21 +1275,97 @@ async function main() {
     check(/font-family:var\(--saeh-head\)/.test(css.match(/\.saeh-3d-cta-title\{[^}]*\}/)[0]),
       "headline uses the Barlow heading family");
     check(/\.saeh-3d-cta-title\{[^}]*font-size:20px/.test(css), "headline is 20px");
-    // The disclaimer: under the headline, inside the left group (so the banner
-    // keeps its two children), 12px, and dark enough to read on #eceef1.
-    const note = main.querySelector(".saeh-3d-note");
-    check(!!note && note.previousElementSibling === main.querySelector(".saeh-3d-cta-title"),
+    // The disclaimer (Josh, 2026-11-25): "(i) Disclaimer" under the headline,
+    // inside the left group (so the banner keeps its two children), with the
+    // wording in a tooltip rather than written out.
+    const disc = main.querySelector(".saeh-3d-disc");
+    check(!!disc && disc.previousElementSibling === main.querySelector(".saeh-3d-cta-title"),
       "the disclaimer sits directly under the headline");
-    check(/^Disclaimer: 3D rendering for illustrative purposes only\./.test(note?.textContent ?? "") &&
-      /5'9" \(175 cm\)/.test(note.textContent), "disclaimer text, with 5'9\" in feet and inches", note?.textContent);
-    check(note.tagName === "DIV", "a div, so the Duda theme's paragraph styles cannot reach it");
-    const noteRule = css.match(/\.saeh-3d-note\{[^}]*\}/)[0];
-    check(/font-size:12px/.test(noteRule) && /color:#555/.test(noteRule) && /grid-column:2/.test(noteRule),
-      "12px, #555, aligned under the headline text", noteRule);
-    check(/@media\(max-width:520px\)\{[^@]*\.saeh-3d-note\{grid-column:1\/-1\}/.test(css),
-      "full width on a phone");
+    check(main.querySelector(".saeh-3d-note") === null && !/\.saeh-3d-note\{/.test(css),
+      "the written-out note and its rule are gone");
+    const dbtn = disc.querySelector("button.saeh-3d-disc-btn");
+    check(!!dbtn && dbtn.type === "button", "its trigger is a real button, type=button");
+    check(dbtn.textContent === "Disclaimer", "labelled just \"Disclaimer\"", dbtn.textContent);
+    const info = dbtn.querySelector("svg.saeh-3d-disc-ico");
+    check(!!info && info.getAttribute("aria-hidden") === "true" && info.getAttribute("stroke") === "currentColor",
+      "with an inline (i) icon, decorative and in the button's colour");
+    check(dbtn.firstElementChild === info, "the (i) comes before the word");
+    const tip = d.getElementById(dbtn.getAttribute("aria-describedby") || "-");
+    check(!!tip && tip.getAttribute("role") === "tooltip" && disc.contains(tip),
+      "the button is described by a role=tooltip in the same wrapper (read on focus)");
+    check(/^3D rendering for illustrative purposes only\./.test(tip?.textContent ?? "") &&
+      /5'9" \(175 cm\)/.test(tip.textContent),
+      "tooltip wording, 5'9\" in feet and inches, not repeating \"Disclaimer:\"", tip?.textContent);
+    const discRule = css.match(/\.saeh-3d-disc\{[^}]*\}/)[0];
+    check(/grid-column:2/.test(discRule) && /justify-self:start/.test(discRule) && /position:relative/.test(discRule),
+      "aligned under the headline text, as wide as its button, anchoring the tooltip", discRule);
+    const dbtnRule = css.match(/\.saeh-3d-disc-btn\{[^}]*\}/)[0];
+    check(/font-size:12px/.test(dbtnRule) && /color:#555/.test(dbtnRule) && /min-height:24px/.test(dbtnRule),
+      "12px, #555 (~6.4:1 on #eceef1), a 24px target", dbtnRule);
+    check(/\.saeh-3d-tip\{display:none;position:absolute/.test(css) &&
+      /\.saeh-3d-disc\.is-open \.saeh-3d-tip\{display:block/.test(css),
+      "the tooltip is hidden until .is-open, and floats rather than growing the banner");
+    check(/prefers-reduced-motion:reduce\)\{\.saeh-3d-disc\.is-open \.saeh-3d-tip\{animation:none/.test(css),
+      "its fade is off under reduced motion");
+    check(!/@media\(max-width:520px\)\{[^@]*\.saeh-3d-disc\{/.test(css),
+      "no phone override: one line needs no full-width row");
     check(/\.saeh-3d-cta-main\{display:grid;grid-template-columns:auto minmax\(0,1fr\);align-items:center/.test(css),
       "icon stays centred on the headline line (a grid, not a flex row)");
+
+    // Behaviour. jsdom has no layout, so placement is checked in a browser;
+    // these pin when it opens and closes.
+    const isOpen = () => disc.classList.contains("is-open");
+    const ptr = (target, type, pointerType = "mouse") => {
+      const e = new w.Event(type, { bubbles: type === "pointerdown" });
+      Object.defineProperty(e, "pointerType", { value: pointerType });
+      target.dispatchEvent(e);
+    };
+    const esc = () => d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    check(!isOpen(), "closed until asked for");
+    ptr(disc, "pointerenter");
+    check(isOpen(), "a mouse hover opens it");
+    ptr(disc, "pointerleave");
+    check(isOpen(), "leaving does not close it at once (time to reach the tooltip)");
+    ptr(disc, "pointerenter");
+    await wait(200);
+    check(isOpen(), "coming back within the delay keeps it open");
+    ptr(disc, "pointerleave");
+    await wait(200);
+    check(!isOpen(), "and it closes shortly after the pointer leaves");
+    ptr(disc, "pointerenter");
+    esc();
+    check(!isOpen(), "Escape dismisses it even while hovered");
+    ptr(disc, "pointerleave");
+    ptr(disc, "pointerenter", "touch");
+    check(!isOpen(), "a touch pointer does not count as hover (so iOS keeps the tap's click)");
+    dbtn.focus();
+    check(isOpen(), "keyboard focus opens it");
+    esc();
+    check(!isOpen(), "Escape closes it with focus still on the button");
+    dbtn.blur();
+    dbtn.focus();
+    dbtn.blur();
+    check(!isOpen(), "and moving focus away closes it");
+    dbtn.click();
+    check(isOpen(), "a click or tap opens it");
+    ptr(disc, "pointerenter");
+    ptr(disc, "pointerleave");
+    await wait(200);
+    check(isOpen(), "a click PINS it: the pointer leaving does not close it");
+    dbtn.click();
+    check(!isOpen(), "a second click closes it");
+    dbtn.click();
+    ptr(tip, "pointerdown");
+    check(isOpen(), "pressing on the tooltip itself keeps it open");
+    ptr(d.body, "pointerdown");
+    check(!isOpen(), "pressing anywhere else closes it");
+    dbtn.click();
+    esc();
+    check(!isOpen(), "Escape closes a pinned one too");
+    dbtn.click();
+    check(isOpen(), "and the next click opens it again, rather than reading as a stale pin");
+    dbtn.click();
     // The label must be its own element, or the chevron would sit inside the
     // button's accessible name and read as part of "View 3D Mode".
     const label = cta.querySelector(".saeh-3d-btn > span");

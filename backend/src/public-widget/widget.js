@@ -325,7 +325,10 @@
       "3d.button": "View 3D Mode",
       // ⚠️ English only for now (Josh, 2026-11-25): a disclaimer, so its six
       // translations go in the pre-launch translation pass with native review.
-      "3d.note": "Disclaimer: 3D rendering for illustrative purposes only. Actual colour, texture, and finish may vary. Human figure shown is approximately 5'9\" (175 cm) for scale; please refer to specifications for exact dimensions.",
+      // "3d.disclaimer" is the visible button; "3d.note" the tooltip it opens,
+      // which does not repeat "Disclaimer:" because the button already says it.
+      "3d.disclaimer": "Disclaimer",
+      "3d.note": "3D rendering for illustrative purposes only. Actual colour, texture, and finish may vary. Human figure shown is approximately 5'9\" (175 cm) for scale; please refer to specifications for exact dimensions.",
       "cp.heading": "Compatible Products & Accessories",
       "cp.prev": "Previous products",
       "cp.next": "Next products",
@@ -1153,10 +1156,40 @@
       // (column 2, aligned with its text) while the icon stays centred on the
       // headline's line rather than on the headline and disclaimer together.
       ".saeh-3d-cta-main{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;flex:1 1 260px;min-width:0}",
-      // 12px small print. #555 rather than the accordion's #878787, which is
-      // ~3:1 on this #eceef1 banner; #555 is ~6.4:1. A div, not a <p>, so the
-      // Duda theme's paragraph styles cannot resize or recolour it.
-      ".saeh-3d-note{grid-column:2;font-family:var(--saeh-body);font-size:12px;font-weight:400;line-height:1.5;color:#555;margin:0;min-width:0;overflow-wrap:break-word}",
+      /*
+       * The disclaimer: a small "(i) Disclaimer" button under the headline
+       * (column 2, aligned with its text), its wording in a tooltip (Josh,
+       * 2026-11-25; written out in full it ran to five lines on a phone).
+       * 12px #555 rather than the accordion's #878787, which is ~3:1 on this
+       * #eceef1 banner; #555 is ~6.4:1. justify-self:start keeps the wrapper as
+       * wide as the button, so the tooltip anchors to the button, not the column.
+       * Every property the Duda theme might set on a <button> is restated.
+       * min-height:24px is WCAG 2.5.8's minimum target.
+       */
+      ".saeh-3d-disc{grid-column:2;justify-self:start;position:relative;min-width:0}",
+      ".saeh-3d-disc-btn{display:inline-flex;align-items:center;gap:5px;min-height:24px;margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none;font-family:var(--saeh-body);font-size:12px;font-weight:400;line-height:1.5;color:#555;text-transform:none;letter-spacing:normal;text-decoration:none;cursor:pointer}",
+      ".saeh-3d-disc-btn:hover,.saeh-3d-disc.is-open .saeh-3d-disc-btn{color:#111}",
+      ".saeh-3d-disc-btn:focus-visible{outline:2px solid #111;outline-offset:2px}",
+      ".saeh-3d-disc-ico{width:14px;height:14px;flex:0 0 auto;display:block}",
+      /*
+       * The tooltip, placed over the page above the button (below it when the
+       * top would be off screen or covered, which JS decides: .is-below), so
+       * opening it never changes the banner's height. Measured on the live
+       * page: nothing between the widget and <body> clips overflow or sets a
+       * transform. --saeh-tip-caret keeps the caret on the (i) when JS nudges
+       * the box in from the right edge of the screen.
+       */
+      ".saeh-3d-tip{display:none;position:absolute;left:-6px;bottom:calc(100% + 10px);z-index:30;box-sizing:border-box;width:max-content;max-width:min(300px,calc(100vw - 32px));padding:10px 12px;background:#111;color:#fff;font-family:var(--saeh-body);font-size:13px;font-weight:400;font-style:normal;line-height:1.5;text-align:left;text-transform:none;letter-spacing:normal;box-shadow:0 6px 20px rgba(0,0,0,.2);overflow-wrap:break-word}",
+      ".saeh-3d-disc.is-open .saeh-3d-tip{display:block;animation:saeh-tip-in .12s ease-out}",
+      ".saeh-3d-disc.is-below .saeh-3d-tip{bottom:auto;top:calc(100% + 10px)}",
+      ".saeh-3d-tip::after{content:'';position:absolute;left:var(--saeh-tip-caret,7px);top:100%;border:6px solid transparent;border-top-color:#111}",
+      ".saeh-3d-disc.is-below .saeh-3d-tip::after{top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:#111}",
+      // A transparent bridge over the 10px gap, so the pointer can cross from
+      // the button onto the tooltip without it closing (WCAG 1.4.13).
+      ".saeh-3d-tip::before{content:'';position:absolute;left:0;right:0;top:100%;height:12px}",
+      ".saeh-3d-disc.is-below .saeh-3d-tip::before{top:auto;bottom:100%}",
+      "@keyframes saeh-tip-in{from{opacity:0}to{opacity:1}}",
+      "@media(prefers-reduced-motion:reduce){.saeh-3d-disc.is-open .saeh-3d-tip{animation:none}}",
       ".saeh-3d-icon{width:34px;height:34px;color:#111;display:block;flex:0 0 auto}",
       // 20px flat — small enough to need no fluid scaling, so the clamp() that
       // was here for a 30px headline is gone. `overflow-wrap` stays: it stops a
@@ -1336,8 +1369,6 @@
         ".saeh-3d-sheet{margin:16px}" +
         ".saeh-3d-cta{padding:20px 18px;gap:16px}" +
         ".saeh-3d-cta-main{flex-basis:100%}" +
-        // Full width under the icon too: indented, it ran to five lines on a phone.
-        ".saeh-3d-note{grid-column:1/-1}" +
         ".saeh-3d-btn{flex:1 1 100%;width:100%}" +
       "}",
       // Wider screens: lift every header into a row above the panels using
@@ -2520,13 +2551,176 @@
    * text length; grouping them means the pair stays left-aligned as one block
    * however long the headline is, and wraps as one block on narrow screens.
    */
+  // An "i" in a circle, drawn inline like the cube (never fetched, so it is
+  // there the moment the button is). currentColor follows the button's colour.
+  function infoIcon() {
+    var NS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("class", "saeh-3d-disc-ico");
+    var ring = document.createElementNS(NS, "circle");
+    ring.setAttribute("cx", "12"); ring.setAttribute("cy", "12"); ring.setAttribute("r", "10");
+    var stem = document.createElementNS(NS, "path");
+    stem.setAttribute("d", "M12 11v6");
+    var dot = document.createElementNS(NS, "circle");
+    dot.setAttribute("cx", "12"); dot.setAttribute("cy", "7.5"); dot.setAttribute("r", "1.4");
+    dot.setAttribute("fill", "currentColor"); dot.setAttribute("stroke", "none");
+    svg.appendChild(ring);
+    svg.appendChild(stem);
+    svg.appendChild(dot);
+    return svg;
+  }
+
+  /*
+   * "(i) Disclaimer" under the 3D banner's headline, its wording in a tooltip
+   * (Josh, 2026-11-25).
+   *
+   * A real button DESCRIBED by the tooltip (aria-describedby), so a screen
+   * reader reads the wording when the button is focused. It opens on hover,
+   * on keyboard focus and on a click or tap, and keeps to WCAG 1.4.13:
+   * - hoverable: the pointer can move onto the tooltip (the ::before bridge
+   *   and a short close delay);
+   * - dismissible: Escape closes it;
+   * - persistent: it stays while the pointer is over it or the button has focus.
+   * ⚠️ A click or tap PINS it open, which is what makes it work on a phone,
+   * where there is no hover. A second tap, a tap anywhere else or Escape
+   * closes it. Touch pointers are ignored by the hover handlers on purpose:
+   * iOS swallows the first tap's click when a hover handler changes the page,
+   * which would have taken two taps to open it.
+   */
+  var discSeq = 0;
+  function disclaimerTip() {
+    var wrap = el("div", "saeh-3d-disc");
+    var btn = el("button", "saeh-3d-disc-btn");
+    btn.type = "button";
+    btn.appendChild(infoIcon());
+    btn.appendChild(tNode("span", null, "3d.disclaimer"));
+    var tip = tNode("div", "saeh-3d-tip", "3d.note");
+    tip.id = "saeh-3d-tip-" + ++discSeq;
+    tip.setAttribute("role", "tooltip");
+    btn.setAttribute("aria-describedby", tip.id);
+    wrap.appendChild(btn);
+    wrap.appendChild(tip);
+
+    var isOpen = false, pinned = false, hovered = false, hideTimer = null;
+
+    function onKey(e) {
+      if (e.key === "Escape" || e.key === "Esc") close();
+    }
+    function onDown(e) {
+      if (!wrap.contains(e.target)) close();
+    }
+    // Focus from the KEYBOARD keeps the tooltip open when the pointer leaves.
+    // ⚠️ Not plain focus: a click focuses the button too (in Chrome), and it
+    // keeps that focus after a second click has closed the tooltip, so the
+    // next hover would never close.
+    function keyboardFocused() {
+      if (document.activeElement !== btn) return false;
+      try {
+        return btn.matches(":focus-visible");
+      } catch (e) {
+        return true;
+      }
+    }
+    /*
+     * Width and the sideways nudge are worked out BEFORE the tooltip shows,
+     * from the screen width and the button's position. ⚠️ Measuring the shown
+     * tooltip is too late on a phone: one that runs past the edge widens the
+     * page (measured at 340px wide: the page grew to 370 and scrolled
+     * sideways), and the measurement then reads the widened page. The caret
+     * moves the other way, so it stays on the (i).
+     */
+    function placeAcross() {
+      tip.style.left = "";
+      tip.style.maxWidth = "";
+      tip.style.removeProperty("--saeh-tip-caret");
+      var vw = document.documentElement.clientWidth || window.innerWidth || 0;
+      if (!vw) return;
+      var max = Math.min(300, vw - 16);
+      tip.style.maxWidth = max + "px";
+      var left = wrap.getBoundingClientRect().left - 6;
+      var over = left + max - (vw - 8);
+      if (over > 0) {
+        var shift = Math.min(over, Math.max(0, left - 8));
+        tip.style.left = -6 - shift + "px";
+        tip.style.setProperty("--saeh-tip-caret", 7 + shift + "px");
+      }
+    }
+    // Above the button by default; below when its top would be off screen or
+    // under something else (a sticky header).
+    function placeUpDown() {
+      wrap.classList.remove("is-below");
+      var r = tip.getBoundingClientRect();
+      var covered = false;
+      if (r.top >= 8 && typeof document.elementFromPoint === "function") {
+        var hit = document.elementFromPoint(r.left + 12, r.top + 4);
+        covered = !!hit && !tip.contains(hit);
+      }
+      if (r.top < 8 || covered) wrap.classList.add("is-below");
+    }
+    function open() {
+      clearTimeout(hideTimer);
+      if (isOpen) return;
+      isOpen = true;
+      try { placeAcross(); } catch (e) { /* placement is cosmetic */ }
+      wrap.classList.add("is-open");
+      try { placeUpDown(); } catch (e) { /* placement is cosmetic */ }
+      document.addEventListener("keydown", onKey, true);
+      document.addEventListener("pointerdown", onDown, true);
+    }
+    function close() {
+      clearTimeout(hideTimer);
+      pinned = false;
+      if (!isOpen) return;
+      isOpen = false;
+      wrap.classList.remove("is-open", "is-below");
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("pointerdown", onDown, true);
+    }
+
+    wrap.addEventListener("pointerenter", function (e) {
+      if (e.pointerType === "touch") return;
+      hovered = true;
+      open();
+    });
+    wrap.addEventListener("pointerleave", function (e) {
+      if (e.pointerType === "touch") return;
+      hovered = false;
+      if (pinned || keyboardFocused()) return;
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(close, 150);
+    });
+    btn.addEventListener("focus", open);
+    btn.addEventListener("blur", function () {
+      // Clicking the tooltip's own text moves focus off the button; keep it
+      // open while the pointer is still over it, closing when the pointer leaves.
+      if (hovered) pinned = false;
+      else close();
+    });
+    btn.addEventListener("click", function () {
+      if (pinned) {
+        close();
+      } else {
+        pinned = true;
+        open();
+      }
+    });
+    return wrap;
+  }
+
   function model3dSection(url) {
     var sec = el("div", "saeh-section saeh-3d-cta");
 
     var main = el("div", "saeh-3d-cta-main");
     main.appendChild(cubeIcon());
     main.appendChild(el("div", "saeh-3d-cta-title", T("3d.cta")));
-    main.appendChild(tNode("div", "saeh-3d-note", "3d.note"));
+    main.appendChild(disclaimerTip());
     sec.appendChild(main);
 
     var btn = el("button", "saeh-3d-btn");
@@ -5023,7 +5217,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-11-25-3d-note+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-11-25-3d-tip+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**
