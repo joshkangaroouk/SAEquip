@@ -323,6 +323,9 @@
       "3d.reset": "Reset view",
       "3d.cta": "View the product in 3D Mode!",
       "3d.button": "View 3D Mode",
+      // ⚠️ English only for now (Josh, 2026-11-25): a disclaimer, so its six
+      // translations go in the pre-launch translation pass with native review.
+      "3d.note": "Disclaimer: 3D rendering for illustrative purposes only. Actual colour, texture, and finish may vary. Human figure shown is approximately 5'9\" (175 cm) for scale; please refer to specifications for exact dimensions.",
       "cp.heading": "Compatible Products & Accessories",
       "cp.prev": "Previous products",
       "cp.next": "Next products",
@@ -1146,7 +1149,14 @@
        * stretches the wrapped button to full width, which flex alone can't do.
        */
       ".saeh-3d-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px 24px;background:#eceef1;padding:24px 26px}",
-      ".saeh-3d-cta-main{display:flex;align-items:center;gap:16px;flex:1 1 260px;min-width:0}",
+      // A grid, not a flex row, so the disclaimer can sit under the headline
+      // (column 2, aligned with its text) while the icon stays centred on the
+      // headline's line rather than on the headline and disclaimer together.
+      ".saeh-3d-cta-main{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;flex:1 1 260px;min-width:0}",
+      // 12px small print. #555 rather than the accordion's #878787, which is
+      // ~3:1 on this #eceef1 banner; #555 is ~6.4:1. A div, not a <p>, so the
+      // Duda theme's paragraph styles cannot resize or recolour it.
+      ".saeh-3d-note{grid-column:2;font-family:var(--saeh-body);font-size:12px;font-weight:400;line-height:1.5;color:#555;margin:0;min-width:0;overflow-wrap:break-word}",
       ".saeh-3d-icon{width:34px;height:34px;color:#111;display:block;flex:0 0 auto}",
       // 20px flat — small enough to need no fluid scaling, so the clamp() that
       // was here for a 30px headline is gone. `overflow-wrap` stays: it stops a
@@ -1326,6 +1336,8 @@
         ".saeh-3d-sheet{margin:16px}" +
         ".saeh-3d-cta{padding:20px 18px;gap:16px}" +
         ".saeh-3d-cta-main{flex-basis:100%}" +
+        // Full width under the icon too: indented, it ran to five lines on a phone.
+        ".saeh-3d-note{grid-column:1/-1}" +
         ".saeh-3d-btn{flex:1 1 100%;width:100%}" +
       "}",
       // Wider screens: lift every header into a row above the panels using
@@ -2514,6 +2526,7 @@
     var main = el("div", "saeh-3d-cta-main");
     main.appendChild(cubeIcon());
     main.appendChild(el("div", "saeh-3d-cta-title", T("3d.cta")));
+    main.appendChild(tNode("div", "saeh-3d-note", "3d.note"));
     sec.appendChild(main);
 
     var btn = el("button", "saeh-3d-btn");
@@ -5010,7 +5023,7 @@
    * a local file) it stays the literal `%BUILD%`, which is itself a useful
    * signal: it means nothing served it.
    */
-  var iface = { init: init, clean: clean, version: "2026-10-02-resources+%BUILD%" };
+  var iface = { init: init, clean: clean, version: "2026-11-25-3d-note+%BUILD%" };
   window.SAEquipHubWidget = iface;
 
   /**

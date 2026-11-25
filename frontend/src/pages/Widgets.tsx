@@ -63,7 +63,8 @@ const WIDGET_CSS = `
 .saeh-ok{color:#137333}
 .saeh-err{color:#c5221f}
 .saeh-3d-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px 24px;background:#eceef1;padding:24px 26px}
-.saeh-3d-cta-main{display:flex;align-items:center;gap:16px;flex:1 1 260px;min-width:0}
+.saeh-3d-cta-main{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;flex:1 1 260px;min-width:0}
+.saeh-3d-note{grid-column:2;font-family:var(--saeh-body);font-size:12px;font-weight:400;line-height:1.5;color:#555;margin:0;min-width:0;overflow-wrap:break-word}
 .saeh-3d-icon{width:34px;height:34px;color:#111;display:block;flex:0 0 auto}
 .saeh-3d-cta-title{font-family:var(--saeh-head);font-size:20px;font-weight:500;line-height:1.25;color:#111;margin:0;min-width:0;overflow-wrap:break-word}
 .saeh-3d-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;border-radius:0;padding:12px 22px;min-height:44px;font-size:16px;font-weight:500;text-transform:none;letter-spacing:normal;line-height:1.25;cursor:pointer}
@@ -117,6 +118,7 @@ const WIDGET_CSS = `
 .saeh-3d-sheet{margin:16px}
 .saeh-3d-cta{padding:20px 18px;gap:16px}
 .saeh-3d-cta-main{flex-basis:100%}
+.saeh-3d-note{grid-column:1/-1}
 .saeh-3d-btn{flex:1 1 100%;width:100%}
 }
 @media(min-width:721px){.saeh-tabs{display:flex;flex-wrap:wrap;border:0;border-radius:0;overflow:visible;position:relative}

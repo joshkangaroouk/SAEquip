@@ -1275,6 +1275,21 @@ async function main() {
     check(/font-family:var\(--saeh-head\)/.test(css.match(/\.saeh-3d-cta-title\{[^}]*\}/)[0]),
       "headline uses the Barlow heading family");
     check(/\.saeh-3d-cta-title\{[^}]*font-size:20px/.test(css), "headline is 20px");
+    // The disclaimer: under the headline, inside the left group (so the banner
+    // keeps its two children), 12px, and dark enough to read on #eceef1.
+    const note = main.querySelector(".saeh-3d-note");
+    check(!!note && note.previousElementSibling === main.querySelector(".saeh-3d-cta-title"),
+      "the disclaimer sits directly under the headline");
+    check(/^Disclaimer: 3D rendering for illustrative purposes only\./.test(note?.textContent ?? "") &&
+      /5'9" \(175 cm\)/.test(note.textContent), "disclaimer text, with 5'9\" in feet and inches", note?.textContent);
+    check(note.tagName === "DIV", "a div, so the Duda theme's paragraph styles cannot reach it");
+    const noteRule = css.match(/\.saeh-3d-note\{[^}]*\}/)[0];
+    check(/font-size:12px/.test(noteRule) && /color:#555/.test(noteRule) && /grid-column:2/.test(noteRule),
+      "12px, #555, aligned under the headline text", noteRule);
+    check(/@media\(max-width:520px\)\{[^@]*\.saeh-3d-note\{grid-column:1\/-1\}/.test(css),
+      "full width on a phone");
+    check(/\.saeh-3d-cta-main\{display:grid;grid-template-columns:auto minmax\(0,1fr\);align-items:center/.test(css),
+      "icon stays centred on the headline line (a grid, not a flex row)");
     // The label must be its own element, or the chevron would sit inside the
     // button's accessible name and read as part of "View 3D Mode".
     const label = cta.querySelector(".saeh-3d-btn > span");
