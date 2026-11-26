@@ -63,13 +63,14 @@ const WIDGET_CSS = `
 .saeh-ok{color:#137333}
 .saeh-err{color:#c5221f}
 .saeh-3d-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px 24px;background:#eceef1;padding:24px 26px}
-.saeh-3d-cta-main{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;flex:1 1 260px;min-width:0}
-.saeh-3d-disc{grid-column:2;justify-self:start;position:relative;min-width:0}
+.saeh-3d-cta-main{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:16px;row-gap:0;flex:1 1 260px;min-width:0}
+.saeh-3d-cta-main>.saeh-3d-icon{grid-row:1/span 2;align-self:center}
+.saeh-3d-disc{grid-column:2;justify-self:start;position:relative;min-width:0;margin-top:-3px}
 .saeh-3d-disc-btn{display:inline-flex;align-items:center;gap:5px;min-height:24px;margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none;font-family:var(--saeh-body);font-size:12px;font-weight:400;line-height:1.5;color:#555;text-transform:none;letter-spacing:normal;text-decoration:none;cursor:pointer}
 .saeh-3d-disc-btn:hover,.saeh-3d-disc.is-open .saeh-3d-disc-btn{color:#111}
 .saeh-3d-disc-btn:focus-visible{outline:2px solid #111;outline-offset:2px}
 .saeh-3d-disc-ico{width:14px;height:14px;flex:0 0 auto;display:block}
-.saeh-3d-tip{display:none;position:absolute;left:-6px;bottom:calc(100% + 10px);z-index:30;box-sizing:border-box;width:max-content;max-width:min(300px,calc(100vw - 32px));padding:10px 12px;background:#111;color:#fff;font-family:var(--saeh-body);font-size:13px;font-weight:400;font-style:normal;line-height:1.5;text-align:left;text-transform:none;letter-spacing:normal;box-shadow:0 6px 20px rgba(0,0,0,.2);overflow-wrap:break-word}
+.saeh-3d-tip{display:none;position:absolute;left:-6px;bottom:calc(100% + 10px);z-index:30;box-sizing:border-box;width:max-content;max-width:min(300px,calc(100vw - 32px));padding:10px 12px;background:#111;color:#fff;font-family:var(--saeh-body);font-size:12px;font-weight:400;font-style:normal;line-height:1.5;text-align:left;text-transform:none;letter-spacing:normal;box-shadow:0 6px 20px rgba(0,0,0,.2);overflow-wrap:break-word}
 .saeh-3d-disc.is-open .saeh-3d-tip{display:block;animation:saeh-tip-in .12s ease-out}
 .saeh-3d-disc.is-below .saeh-3d-tip{bottom:auto;top:calc(100% + 10px)}
 .saeh-3d-tip::after{content:'';position:absolute;left:var(--saeh-tip-caret,7px);top:100%;border:6px solid transparent;border-top-color:#111}
