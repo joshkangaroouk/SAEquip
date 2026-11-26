@@ -65,7 +65,7 @@ const WIDGET_CSS = `
 .saeh-3d-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px 24px;background:#eceef1;padding:24px 26px}
 .saeh-3d-cta-main{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:16px;row-gap:0;flex:1 1 260px;min-width:0}
 .saeh-3d-cta-main>.saeh-3d-icon{grid-row:1/span 2;align-self:center}
-.saeh-3d-disc{grid-column:2;justify-self:start;position:relative;min-width:0;margin-top:-3px}
+.saeh-3d-disc{grid-column:2;justify-self:start;position:relative;min-width:0;margin-top:2px}
 .saeh-3d-disc-btn{display:inline-flex;align-items:center;gap:5px;min-height:24px;margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none;font-family:var(--saeh-body);font-size:12px;font-weight:400;line-height:1.5;color:#555;text-transform:none;letter-spacing:normal;text-decoration:none;cursor:pointer}
 .saeh-3d-disc-btn:hover,.saeh-3d-disc.is-open .saeh-3d-disc-btn{color:#111}
 .saeh-3d-disc-btn:focus-visible{outline:2px solid #111;outline-offset:2px}
@@ -84,6 +84,10 @@ to{opacity:1}
 }
 .saeh-3d-icon{width:34px;height:34px;color:#111;display:block;flex:0 0 auto}
 .saeh-3d-cta-title{font-family:var(--saeh-head);font-size:20px;font-weight:500;line-height:1.25;color:#111;margin:0;min-width:0;overflow-wrap:break-word}
+@media(min-width:561px){.saeh-3d-cta{column-gap:16px;padding-left:22px;padding-right:22px}
+.saeh-3d-cta-main{flex:1 0 auto;column-gap:14px}
+.saeh-3d-cta-title{white-space:nowrap}
+}
 .saeh-3d-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--saeh-body);background:#fed217;color:#000;border:0;border-radius:0;padding:12px 22px;min-height:44px;font-size:16px;font-weight:500;text-transform:none;letter-spacing:normal;line-height:1.25;cursor:pointer}
 .saeh-3d-btn-icon{width:20px;height:20px;flex:0 0 auto;display:block}
 .saeh-3d-btn:hover{background:#f0c400}

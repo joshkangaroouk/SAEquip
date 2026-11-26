@@ -1167,7 +1167,7 @@
        * Every property the Duda theme might set on a <button> is restated.
        * min-height:24px is WCAG 2.5.8's minimum target.
        */
-      ".saeh-3d-disc{grid-column:2;justify-self:start;position:relative;min-width:0;margin-top:-3px}",
+      ".saeh-3d-disc{grid-column:2;justify-self:start;position:relative;min-width:0;margin-top:2px}",
       ".saeh-3d-disc-btn{display:inline-flex;align-items:center;gap:5px;min-height:24px;margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none;font-family:var(--saeh-body);font-size:12px;font-weight:400;line-height:1.5;color:#555;text-transform:none;letter-spacing:normal;text-decoration:none;cursor:pointer}",
       ".saeh-3d-disc-btn:hover,.saeh-3d-disc.is-open .saeh-3d-disc-btn{color:#111}",
       ".saeh-3d-disc-btn:focus-visible{outline:2px solid #111;outline-offset:2px}",
@@ -1196,6 +1196,12 @@
       // was here for a 30px headline is gone. `overflow-wrap` stays: it stops a
       // long product word forcing sideways scroll on the narrowest screens.
       ".saeh-3d-cta-title{font-family:var(--saeh-head);font-size:20px;font-weight:500;line-height:1.25;color:#111;margin:0;min-width:0;overflow-wrap:break-word}",
+      // From tablet up the headline stays on ONE line: the block takes the
+      // width it needs and never shrinks, so when the row is too narrow the
+      // button wraps beneath instead of the headline breaking after "3D".
+      // Phones keep the normal wrapping. Gaps are tightened so the common
+      // banner width still fits both on one row (Josh, 2026-11-26).
+      "@media(min-width:561px){.saeh-3d-cta{column-gap:16px;padding-left:22px;padding-right:22px}.saeh-3d-cta-main{flex:1 0 auto;column-gap:14px}.saeh-3d-cta-title{white-space:nowrap}}",
       /*
        * Its own class, not a .saeh-btn modifier — .saeh-btn is the black
        * UPPERCASE pill used by downloads and the 3D modal's own controls, and
